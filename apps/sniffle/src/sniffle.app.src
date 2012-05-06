@@ -7,6 +7,6 @@
                   kernel,
                   stdlib
                  ]},
-  {mod, { sniffle_app, []}},
+  {mod, {sniffle_app, []}},
   {env, []}
  ]}.

@@ -36,7 +36,7 @@ $(APP_DIR)/ebin/%.beam: $(APP_DIR)/src/%.erl
 
 shell: all
 	ERL_LIBS="$(ERL_LIBS)" $(ERL) -pa $(PA) -config standalone -sname $(APP_NAME)
-	[ -f *.beam ] && rm *.beam || true
+	rm *.beam || true
 	[ -f erl_crash.dump ] && rm erl_crash.dump || true
 
 FORCE:
@@ -46,4 +46,4 @@ manifest: rel
 
 remove_trash:
 	-find . -name "*~" -exec rm {} \;.
-	-rm *.beam erl_crash.dump
+	-rm *.beam erl_crash.dump || true
