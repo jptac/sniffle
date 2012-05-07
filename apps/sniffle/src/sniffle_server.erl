@@ -272,31 +272,31 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 
 host_action({machines, get}, {{cloudapi, _}, Host} = HostDesc, Auth, [UUID]) ->
-    ?DBG({machiens, get, HostDesc}, [], [sniffle]),
+    ?DBG({machines, get, HostDesc}, [], [sniffle]),
     cloudapi:get_machine(ensure_list(Host), Auth, ensure_list(UUID));
 
 host_action({machines, info}, {{cloudapi, bark}, Host} = HostDesc, Auth, [UUID]) ->
-    ?DBG({machiens, get, HostDesc}, [], [sniffle]),
+    ?DBG({machines, get, HostDesc}, [], [sniffle]),
     bark:get_machine_info(ensure_list(Host), Auth, ensure_list(UUID));
 
 host_action({machines, delete}, {{cloudapi, _}, Host} = HostDesc, Auth, [UUID]) ->
-    ?DBG({machiens, delete, HostDesc}, [], [sniffle]),
+    ?DBG({machines, delete, HostDesc}, [], [sniffle]),
     cloudapi:delete_machine(ensure_list(Host), Auth, ensure_list(UUID));
 
 host_action({machines, start}, {{cloudapi, _}, Host} = HostDesc, Auth, [UUID]) ->
-    ?DBG({machiens, start, HostDesc}, [], [sniffle]),
+    ?DBG({machines, start, HostDesc}, [], [sniffle]),
     cloudapi:start_machine(ensure_list(Host), Auth, ensure_list(UUID));
 
 host_action({machines, start}, {{cloudapi, bark}, Host} = HostDesc, Auth, [UUID, Image]) ->
-    ?DBG({machiens, start, HostDesc}, [], [sniffle]),
+    ?DBG({machines, start, HostDesc}, [], [sniffle]),
     bark:start_machine(ensure_list(Host), Auth, ensure_list(UUID), ensure_list(Image));
 
 host_action({machines, stop}, {{cloudapi, _}, Host} = HostDesc, Auth, [UUID]) ->
-    ?DBG({machiens, stop, HostDesc}, [], [sniffle]),
+    ?DBG({machines, stop, HostDesc}, [], [sniffle]),
     cloudapi:stop_machine(ensure_list(Host), Auth, ensure_list(UUID));
 
 host_action({machines, reboot}, {{cloudapi, _}, Host}  = HostDesc, Auth, [UUID]) ->
-    ?DBG({machiens, reboot, HostDesc}, [], [sniffle]),
+    ?DBG({machines, reboot, HostDesc}, [], [sniffle]),
     cloudapi:reboot_machine(ensure_list(Host), Auth, ensure_list(UUID));
 
 host_action({packages, list}, {{cloudapi, _}, Host} = HostDesc, Auth, []) ->
