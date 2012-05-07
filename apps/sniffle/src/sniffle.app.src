@@ -1,10 +1,17 @@
 {application, sniffle,
  [
   {description, ""},
-  {vsn, "1"},
+  {vsn, "0.1.0"},
   {registered, []},
   {applications, [
                   kernel,
+		  erllibcloudapi,
+		  gproc,
+		  redo,
+		  redgrid,
+		  sasl,
+		  alog,
+		  uuid,
                   stdlib
                  ]},
   {mod, {sniffle_app, []}},

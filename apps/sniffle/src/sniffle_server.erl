@@ -13,7 +13,8 @@
 -include_lib("alog_pt.hrl").
 
 %% API
--export([start_link/0]).
+-export([start_link/0,
+	reregister/0]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -84,7 +85,8 @@
 start_link() ->
     gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
 
-
+reregister() ->
+    gen_server:cast(?SERVER, reregister).
 
 update_machines(Host, Ms) ->
     gen_server:cast(?SERVER, {update_machines, Host, Ms}).
@@ -105,10 +107,9 @@ update_machines(Host, Ms) ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
-    gproc:reg({n, g, sniffle}),
     Hosts = get_env_default(api_hosts, []),
     ?INFO({init, Hosts}, [], [sniffle]),
-    {ok, #state{api_hosts=Hosts}}.
+    {ok, #state{api_hosts=Hosts}, 100}.
 
 
 %%--------------------------------------------------------------------
@@ -219,7 +220,9 @@ handle_cast({update_machines, Host, Ms}, State) ->
 		      register_machine(Host, M)
 	      end, Ms),
     {noreply, State};
-
+handle_cast(reregister, State) ->
+    gproc:reg({n, g, sniffle}),
+    {noreply, State};
 handle_cast(_Msg, State) ->
     {noreply, State}.
 
@@ -233,6 +236,9 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_info(timeout, State) ->
+    reregister(),
+    {noreply, State};
 handle_info(_Info, State) ->
     {noreply, State}.
 

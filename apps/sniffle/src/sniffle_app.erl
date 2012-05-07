@@ -13,7 +13,8 @@ check_grid() ->
 	    check_grid();
 	_ ->
 	    application:stop(gproc),
-	    application:start(gproc)
+	    application:start(gproc),
+	    sniffle_server:reregister()
     end.
 
 load() ->
@@ -35,7 +36,7 @@ load() ->
 %% ===================================================================
 
 start(_StartType, _StartArgs) ->
-    check_grid(),
+    spawn(fun check_grid/0),
     sniffle_sup:start_link().
 
 stop(_State) ->
