@@ -25,5 +25,5 @@ start_link() ->
 
 init([]) ->
     {ok, { {one_for_one, 5, 10}, [?CHILD(redo, worker),
+				  ?CHILD(sniffle_host_sup, supervisor),
 				  ?CHILD(sniffle_server, worker)]}}.
-

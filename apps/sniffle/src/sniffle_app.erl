@@ -7,14 +7,12 @@
 
 
 check_grid() ->
+    timer:sleep(100),
     case length(redgrid:nodes()) of
 	1 ->
-	    timer:sleep(100),
 	    check_grid();
 	_ ->
-	    application:stop(gproc),
-	    application:start(gproc),
-	    sniffle_server:reregister()
+	    ok
     end.
 
 load() ->
@@ -28,6 +26,7 @@ load() ->
     application:start(lhttpc),
     application:start(erllibcloudapi),
     application:start(redo),
+    application:start(uuid),
     application:start(sniffle),
     ok.    
 
@@ -36,7 +35,7 @@ load() ->
 %% ===================================================================
 
 start(_StartType, _StartArgs) ->
-    spawn(fun check_grid/0),
+    check_grid(),
     sniffle_sup:start_link().
 
 stop(_State) ->

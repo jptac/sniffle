@@ -1,4 +1,5 @@
 ebin
+standalone.config
 db
 deps
 *~

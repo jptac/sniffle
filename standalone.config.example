@@ -4,8 +4,10 @@
   [{gproc_dist, all}]},
  {sniffle, 
   [{api_hosts, [
-	{{cloudapi,bark}, "http://192.168.155.139"},
-	{{cloudapi,bark}, "http://172.16.0.4"}]}]},
+	{{cloudapi,sdc}, {"http://192.168.155.139", {"admin","wiggle.devel",
+     <<"-----BEGIN RSA PRIVATE KEY-----\n...\n-----END RSA PRIVATE KEY-----\n">>}}},
+	{{cloudapi,bark}, {"http://172.16.0.4",{"admin","wiggle.devel",
+     <<"-----BEGIN RSA PRIVATE KEY-----\n...\n-----END RSA PRIVATE KEY-----\n">>>}}}]}]},
 {redgrid,
   [
    {url, "redis://localhost:6379/"},

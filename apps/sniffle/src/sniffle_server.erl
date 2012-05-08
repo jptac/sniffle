@@ -14,7 +14,8 @@
 
 %% API
 -export([start_link/0,
-	reregister/0]).
+	reregister/0,
+	 register_host_resource/4]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -22,7 +23,8 @@
 
 -define(SERVER, ?MODULE). 
 
--record(state, {api_hosts=[]}).
+-record(state, {api_hosts=[],
+		handlers=[]}).
 
 -define(HOST_ACTION(Category, Action),
 	handle_call({Category, Action, Auth, UUID}, _From, #state{api_hosts=Hosts} = State) ->
@@ -34,10 +36,12 @@
 			   {error, not_found} ->
 			       {reply, {error, not_found}, State};
 			   {ok, Host} ->
-			       {reply, host_action({Category, Action}, Host, Auth, [UUID]), State}
+			       Pid = gproc:lookup_pid({n, g, Host}),
+			       {reply, sniffle_host_srv:call(Pid, {Category, Action, [UUID]}), State}
 		       end;
 		   {ok, Host} ->
-		       {reply, host_action({Category, Action}, Host, Auth, [UUID]), State}
+		       Pid = gproc:lookup_pid({n, g, Host}),
+		       {reply, sniffle_host_srv:call(Pid, {Category, Action, [UUID]}), State}
 	       end).
 
 -define(HOST_ACTION_OPTS(Category, Action),
@@ -50,10 +54,12 @@
 			   {error, not_found} ->
 			       {reply, {error, not_found}, State};
 			   {ok, Host} ->
-			       {reply, host_action({Category, Action}, Host, Auth, [UUID|Opts]), State}
+			       Pid =gproc:lookup_pid({n, g, Host}),
+			       {reply, sniffle_host_srv:call(Pid, {Category, Action, [UUID|Opts]}), State}
 		       end;
 		   {ok, Host} ->
-		       {reply, host_action({Category, Action}, Host, Auth, [UUID|Opts]), State}
+		       Pid =gproc:lookup_pid({n, g, Host}),
+		       {reply, sniffle_host_srv:call(Pid, {Category, Action, [UUID|Opts]}), State}
 	       end).
 
 
@@ -62,7 +68,8 @@
 	handle_call({Category, list, Auth}, _From, #state{api_hosts=Hosts} = State) ->
 	       ?INFO({Category, list, Auth, Hosts}, [], [sniffle]),
 	       Res = lists:foldl(fun (Host, List) ->
-					 case host_action({Category, list}, Host, Auth, []) of
+					 Pid =gproc:lookup_pid({n, g, Host}),
+					 case sniffle_host_srv:call(Pid, {Category, list}) of
 					     {ok, HostRes} ->
 						 List ++ HostRes;
 					     _ ->
@@ -90,6 +97,10 @@ reregister() ->
 
 update_machines(Host, Ms) ->
     gen_server:cast(?SERVER, {update_machines, Host, Ms}).
+
+register_host_resource(Host, ResourceName, IDFn, Resouces) ->
+    gen_server:cast(?SERVER, {register_host_resource, Host, ResourceName, IDFn, Resouces}).
+    
     
 %%%===================================================================
 %%% gen_server callbacks
@@ -106,10 +117,18 @@ update_machines(Host, Ms) ->
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
+-define(IMPL_PROVIDERS, [{{cloudapi, sdc}, sniffle_impl_cloudapi},
+			 {{cloudapi, bark}, sniffle_impl_bark}]).
 init([]) ->
     Hosts = get_env_default(api_hosts, []),
+    HostUUIDs = lists:map(fun ({Type, Spec}) ->
+				      UUID = uuid:uuid4(),
+				      Provider=proplists:get_value(Type, ?IMPL_PROVIDERS),
+				      sniffle_host_sup:start_child(Provider, UUID, Spec),
+				      UUID
+			      end, Hosts),
     ?INFO({init, Hosts}, [], [sniffle]),
-    {ok, #state{api_hosts=Hosts}, 100}.
+    {ok, #state{api_hosts=HostUUIDs}, 100}.
 
 
 %%--------------------------------------------------------------------
@@ -155,10 +174,11 @@ handle_call({machines, list, Auth}, _From, #state{api_hosts=Hosts} = State) ->
 
 handle_call({keys, list, Auth}, _From, #state{api_hosts=Hosts} = State) ->
     ?INFO({keys, list, Auth, Hosts}, [], [sniffle]),
-    Res = lists:foldl(fun ({Type, Host}, Keys) ->
-			      ?DBG({Type, Host}, [], [sniffle]),
-			      case cloudapi:list_keys(ensure_list(Host), Auth) of
-				  {ok, [{<<"keys">>, Ks}]} ->
+    Res = lists:foldl(fun (Host, Keys) ->
+			      ?DBG({Host}, [], [sniffle]),
+			      Pid = gproc:lookup_pid({n, g, Host}),
+			      case sniffle_host_srv:call(Pid, {keys, list}) of
+				  {ok, Ks} ->
 				      ?DBG({keys, Ks}, [], [sniffle]),
 				      Keys ++ Ks;
 				  E ->
@@ -220,6 +240,15 @@ handle_cast({update_machines, Host, Ms}, State) ->
 		      register_machine(Host, M)
 	      end, Ms),
     {noreply, State};
+handle_cast({register_host_resource, Host, ResourceName, IDFn, Resouces}, State) ->
+    Name = <<"sniffle:", ResourceName/binary, ":", Host/binary>>,
+    redo:cmd([<<"DEL">>, Name]),
+    lists:map(fun (P) ->
+		      ID = IDFn(P),
+		      redo:cmd([<<"SADD">>, Name, ID])
+	      end, Resouces),
+    redo:cmd([<<"TTL">>, Name, 60*60*24]),
+    {noreply, State};
 handle_cast(reregister, State) ->
     gproc:reg({n, g, sniffle}),
     {noreply, State};
@@ -271,68 +300,6 @@ code_change(_OldVsn, State, _Extra) ->
 %%% Internal functions
 %%%===================================================================
 
-host_action({machines, get}, {{cloudapi, _}, Host} = HostDesc, Auth, [UUID]) ->
-    ?DBG({machines, get, HostDesc}, [], [sniffle]),
-    cloudapi:get_machine(ensure_list(Host), Auth, ensure_list(UUID));
-
-host_action({machines, info}, {{cloudapi, bark}, Host} = HostDesc, Auth, [UUID]) ->
-    ?DBG({machines, get, HostDesc}, [], [sniffle]),
-    bark:get_machine_info(ensure_list(Host), Auth, ensure_list(UUID));
-
-host_action({machines, delete}, {{cloudapi, _}, Host} = HostDesc, Auth, [UUID]) ->
-    ?DBG({machines, delete, HostDesc}, [], [sniffle]),
-    cloudapi:delete_machine(ensure_list(Host), Auth, ensure_list(UUID));
-
-host_action({machines, start}, {{cloudapi, _}, Host} = HostDesc, Auth, [UUID]) ->
-    ?DBG({machines, start, HostDesc}, [], [sniffle]),
-    cloudapi:start_machine(ensure_list(Host), Auth, ensure_list(UUID));
-
-host_action({machines, start}, {{cloudapi, bark}, Host} = HostDesc, Auth, [UUID, Image]) ->
-    ?DBG({machines, start, HostDesc}, [], [sniffle]),
-    bark:start_machine(ensure_list(Host), Auth, ensure_list(UUID), ensure_list(Image));
-
-host_action({machines, stop}, {{cloudapi, _}, Host} = HostDesc, Auth, [UUID]) ->
-    ?DBG({machines, stop, HostDesc}, [], [sniffle]),
-    cloudapi:stop_machine(ensure_list(Host), Auth, ensure_list(UUID));
-
-host_action({machines, reboot}, {{cloudapi, _}, Host}  = HostDesc, Auth, [UUID]) ->
-    ?DBG({machines, reboot, HostDesc}, [], [sniffle]),
-    cloudapi:reboot_machine(ensure_list(Host), Auth, ensure_list(UUID));
-
-host_action({packages, list}, {{cloudapi, _}, Host} = HostDesc, Auth, []) ->
-    ?DBG({packages, list, HostDesc}, [], [sniffle]),
-    case cloudapi:list_packages(ensure_list(Host), Auth) of
-	{ok, Ps} ->
-	    register_packages(HostDesc, Ps),
-	    {ok, Ps};
-	E ->
-	    {error, E}
-    end;
-
-host_action({datasets, list}, {{cloudapi, _}, Host} = HostDesc, Auth, []) ->
-    ?DBG({packages, list, HostDesc}, [], [sniffle]),
-    case cloudapi:list_datasets(ensure_list(Host), Auth) of
-	{ok, Ds} ->
-	    io:format("Datasets: ~p~n", [Ds]),
-	    register_datasets(HostDesc, Ds),
-	    {ok, Ds};
-	E ->
-	    {error, E}
-    end;
-
-host_action({images, list}, {{cloudapi, bark}, Host} = HostDesc, Auth, []) ->
-    ?DBG({images, list, HostDesc}, [], [sniffle]),
-    case bark:list_images(ensure_list(Host), Auth) of
-	{ok, Is} ->
-	    register_images(HostDesc, Is),
-	    {ok, Is};
-	E ->
-	    {error, E}
-    end;
-
-host_action(Call, HostDesc, _, _) ->
-    ?ERROR({unspuorrted_host_action, Call, HostDesc}, [], [sniffle]),
-    {error, not_supported}.
 
 
 
@@ -343,37 +310,6 @@ get_env_default(Key, Default) ->
 	_ ->
 	    Default
     end.
-
-register_packages({_Type, Host}, Packages) ->
-    HostBin = list_to_binary(Host),
-    Name = <<"sniffle:packages:", HostBin/binary>>,
-    redo:cmd([<<"DEL">>, Name, term_to_binary(Host)]),
-    lists:map(fun (P) ->
-		      ID = proplists:get_value(<<"name">>, P),
-		      redo:cmd([<<"SADD">>, Name, ID])
-	      end, Packages),
-    redo:cmd([<<"TTL">>, Name, 60*60*24]).
-
-
-register_datasets({_Type, Host}, Datasets) -> 
-    HostBin = list_to_binary(Host),
-    Name = <<"sniffle:datasets:", HostBin/binary>>,
-    redo:cmd([<<"DEL">>, Name, term_to_binary(Host)]),
-    lists:map(fun (P) ->
-		      ID = proplists:get_value(<<"id">>, P),
-		      redo:cmd([<<"SADD">>, Name, ID])
-	      end, Datasets),
-    redo:cmd([<<"TTL">>, Name, 60*60*24]).
-
-register_images({_Type, Host}, Packages) ->
-    HostBin = list_to_binary(Host),
-    Name = <<"sniffle:images:", HostBin/binary>>,
-    redo:cmd([<<"DEL">>, Name, term_to_binary(Host)]),
-    lists:map(fun (P) ->
-		      ID = proplists:get_value(<<"name">>, P),
-		      redo:cmd([<<"SADD">>, Name, ID])
-	      end, Packages),
-    redo:cmd([<<"TTL">>, Name, 60*60*24]).
 
 discover_machines(Auth, Hosts) ->
     lists:map(fun ({Type, Host}) ->
