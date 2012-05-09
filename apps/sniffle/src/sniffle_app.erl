@@ -9,9 +9,11 @@
 check_grid() ->
     timer:sleep(100),
     case length(redgrid:nodes()) of
-	1 ->
+	X when X =< 1 ->
 	    check_grid();
 	_ ->
+	    application:stop(gproc),
+	    application:start(gproc),
 	    ok
     end.
 
@@ -27,6 +29,7 @@ load() ->
     application:start(erllibcloudapi),
     application:start(redo),
     application:start(uuid),
+    application:start(libsnarl),
     application:start(sniffle),
     ok.    
 

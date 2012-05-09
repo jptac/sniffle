@@ -12,6 +12,7 @@
 		  sasl,
 		  alog,
 		  uuid,
+		  libsnarl,
                   stdlib
                  ]},
   {mod, {sniffle_app, []}},

@@ -10,15 +10,17 @@
 
 -include_lib("alog_pt.hrl").
 
+-behavior(sniffle_impl).
 %% API
 
 %% gen_server callbacks
--export([init/1, handle_call/3, handle_cast/2,
-	 terminate/2, code_change/3]).
+-export([init/2, handle_call/3, handle_cast/2,
+	 handle_info/2, terminate/2, code_change/3]).
+
 
 -record(state, {uuid, host, auth}).
 
-init([UUID, {Host, Auth}]) ->
+init(UUID, {Host, Auth}) ->
     {ok, #state{uuid=UUID,
 		host=Host,
 		auth=Auth}}.
@@ -85,6 +87,10 @@ handle_call(Call, From, State) ->
 %%--------------------------------------------------------------------
 handle_cast(_Msg, State) ->
     {noreply, State}.
+
+handle_info(_Info, State) ->
+    {noreply, State}.
+
 
 %%--------------------------------------------------------------------
 %% @private

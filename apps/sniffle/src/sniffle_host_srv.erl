@@ -61,7 +61,7 @@ reregister(PID) ->
 %% @end
 %%--------------------------------------------------------------------
 init([Dispatcher, UUID, Host]) ->
-    case Dispatcher:init([UUID, Host]) of
+    case Dispatcher:init(UUID, Host) of
 	{ok, State} ->
 	    {ok, #state{
 	       dispatcher_state = State,

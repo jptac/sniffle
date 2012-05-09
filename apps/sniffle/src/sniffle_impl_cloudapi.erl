@@ -10,15 +10,16 @@
 
 -include_lib("alog_pt.hrl").
 
+-behavior(sniffle_impl).
 %% API
 
 %% gen_server callbacks
--export([init/1, handle_call/3, handle_cast/2,
-	 terminate/2, code_change/3]).
+-export([init/2, handle_call/3, handle_cast/2,
+	 handle_info/2, terminate/2, code_change/3]).
 
 -record(state, {uuid, host, auth}).
 
-init([UUID, {Host, Auth}]) ->
+init(UUID, {Host, Auth}) ->
     {ok, #state{uuid=UUID,
 		host=Host,
 		auth=Auth}}.
@@ -37,6 +38,23 @@ init([UUID, {Host, Auth}]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+
+handle_call({machines, list}, _From,
+	    #state{host = Host,
+		   uuid=UUID,
+		   auth = Auth} = State) ->
+    ?INFO({machines, list, Auth, UUID}, [], [sniffle]),
+    Res = case cloudapi:list_machines(Host, Auth) of
+	      {ok, {Ms, _, _}} ->
+		  ?DBG({machines, Ms}, [], [sniffle]),
+		  sniffle_server:update_machines(UUID, Ms),
+		  {ok, Ms};
+	      E ->
+		  ?WARNING({error, E}, [], [sniffle]),
+		  {error, E}
+	  end,
+    {reply, Res, State};
+
 handle_call({machines, get, [UUID]}, _From, 
 	    #state{host = Host,
 		   auth = Auth} = State) ->
@@ -48,7 +66,7 @@ handle_call({machines, get, [UUID]}, _From,
 handle_call({machines, info, [UUID]}, _From, 
 	    #state{host = Host,
 		   auth = Auth} = State) ->
-    ?DBG({machines, get, Host}, [], [sniffle, sniffle_impl_cloudapi]),
+    ?DBG({machines, info, Host}, [], [sniffle, sniffle_impl_cloudapi]),
     {reply,
      bark:get_machine_info(Host, Auth, ensure_list(UUID)), State};
 	 
@@ -127,7 +145,7 @@ handle_call({keys, list}, _From,
 	    #state{host = Host,
 		   uuid=UUID,
 		   auth = Auth} = State) ->
-    ?DBG({packages, list, Host}, [], [sniffle, sniffle_impl_cloudapi]),
+    ?DBG({keys, list, UUID, Host}, [], [sniffle, sniffle_impl_cloudapi]),
     case cloudapi:list_keys(Host, Auth) of
 	{ok, [{<<"keys">>, Ks}]} ->
 	    {reply, {ok, Ks}, State};
@@ -136,6 +154,17 @@ handle_call({keys, list}, _From,
 	     {error, E}, State}
     end;
 
+handle_call({keys, create, Auth, Pass, KeyID, PublicKey}, _From,
+	    #state{host = Host,
+		   auth = Auth} = State) ->
+    case cloudapi:create_key(Host, Auth, ensure_list(Pass), ensure_list(KeyID), PublicKey) of
+	{ok, D} ->
+	    {reply, {ok, D}, State};
+    	E ->
+	    ?WARNING({error, E}, [], [sniffle]),
+	    {reply, {error, E}, State}
+    end;
+	
 handle_call(Call, _From, State) ->
     ?ERROR({unspuorrted_handle_call, Call}, [], [sniffle, sniffle_impl_cloudapi]),
     {reply, {error, not_supported}, State}.
@@ -152,6 +181,11 @@ handle_call(Call, _From, State) ->
 %%--------------------------------------------------------------------
 handle_cast(_Msg, State) ->
     {noreply, State}.
+
+handle_info(_Info, State) ->
+    {noreply, State}.
+
+
 
 %%--------------------------------------------------------------------
 %% @private
