@@ -283,9 +283,6 @@ code_change(_OldVsn, State, _Extra) ->
 %%% Internal functions
 %%%===================================================================
 
-
-
-
 get_env_default(Key, Default) ->
     case  application:get_env(Key) of
 	{ok, Res} ->
