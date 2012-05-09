@@ -14,7 +14,7 @@
 %% API
 
 %% gen_server callbacks
--export([init/2, handle_call/3, handle_cast/2,
+-export([init/2, handle_call/4, handle_cast/3,
 	 handle_info/2, terminate/2, code_change/3]).
 
 
@@ -30,7 +30,7 @@ init(UUID, {Host, Auth}) ->
 %% @doc
 %% Handling call messages
 %%
-%% @spec handle_call(Request, From, State) ->
+%% @spec handle_call(Auth, Request, From, State) ->
 %%                                   {reply, Reply, State} |
 %%                                   {reply, Reply, State, Timeout} |
 %%                                   {noreply, State} |
@@ -39,26 +39,26 @@ init(UUID, {Host, Auth}) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_call({machines, info, [UUID]}, _From, 
+handle_call(Auth, {machines, info, Auth, UUID}, _From, 
 	    #state{host = Host,
-		   auth = Auth} = State) ->
+		   auth=HAuth} = State) ->
     ?DBG({machines, get, Host}, [], [sniffle, sniffle_impl_bark]),
     {reply,
-     bark:get_machine_info(Host, Auth, ensure_list(UUID)), State};
+     bark:get_machine_info(Host, HAuth, ensure_list(UUID)), State};
 
-handle_call({machines, start, [UUID, Image]}, _From, 
+handle_call(Auth, {machines, start, UUID, Image}, _From, 
 	    #state{host = Host,
-		   auth = Auth} = State) ->
+		   auth=HAuth} = State) ->
     ?DBG({machines, start, Host}, [], [sniffle, sniffle_impl_bark]),
     {reply,
-     bark:start_machine(Host, Auth, ensure_list(UUID), ensure_list(Image)), State};
+     bark:start_machine(Host, HAuth, ensure_list(UUID), ensure_list(Image)), State};
 
-handle_call({images, list}, _From, 
+handle_call(Auth, {images, list}, _From, 
 	    #state{host = Host,
 		   uuid=UUID,
-		   auth = Auth} = State) ->
+		   auth=HAuth} = State) ->
     ?DBG({images, list, Host}, [], [sniffle, sniffle_impl_bark]),
-    case bark:list_images(Host, Auth) of
+    case bark:list_images(Host, HAuth) of
 	{ok, Is} ->
 	    sniffle_server:register_host_resource(
 	      UUID, <<"datasets">>, 
@@ -72,8 +72,8 @@ handle_call({images, list}, _From,
     end;
 
 
-handle_call(Call, From, State) ->
-    sniffle_impl_cloudapi:handle_call(Call, From, State).
+handle_call(Auth, Call, From, State) ->
+    sniffle_impl_cloudapi:handle_call(Auth, Call, From, State).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -85,7 +85,7 @@ handle_call(Call, From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_cast(_Msg, State) ->
+handle_cast(_Auth, _Msg, State) ->
     {noreply, State}.
 
 handle_info(_Info, State) ->

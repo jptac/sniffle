@@ -45,7 +45,7 @@
     {ok, State :: term()} | 
     {stop, Reason :: term()} | ignore.
 
--callback handle_call(Request :: sniffle_call(), From :: {pid(), Tag :: term()},
+-callback handle_call(Auth :: uuid(), Request :: sniffle_call(), From :: {pid(), Tag :: term()},
                       State :: term()) ->
     {reply, Reply :: term(), NewState :: term()} |
     {noreply, NewState :: term()} |
@@ -53,7 +53,7 @@
     {stop, Reason :: term(), Reply :: term(), NewState :: term()} |
     {stop, Reason :: term(), NewState :: term()}.
 
--callback handle_cast(Request :: sniffle_cast(), State :: term()) ->
+-callback handle_cast(Auth::uuid(), Request :: sniffle_cast(), State :: term()) ->
     {noreply, NewState :: term()} |
     {stop, Reason :: term(), NewState :: term()}.
 

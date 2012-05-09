@@ -16,7 +16,7 @@
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
 	 terminate/2, code_change/3,
-	reregister/1, call/2]).
+	 reregister/1, call/3]).
 
 -define(SERVER, ?MODULE). 
 
@@ -40,8 +40,8 @@
 start_link(Dispatcher, UUID, Host) ->
     gen_server:start_link(?MODULE,  [Dispatcher, UUID, Host], []).
 
-call(PID, Args) ->
-    gen_server:call(PID, {call, Args}).
+call(PID, Auth, Args) ->
+    gen_server:call(PID, {call, Auth, Args}).
 
 reregister(PID) ->
     gen_server:cast(PID, reregister).
@@ -86,10 +86,10 @@ init([Dispatcher, UUID, Host]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_call({call, Args}, From, 
+handle_call({call, Auth, Args}, From, 
 	    #state{dispatcher_state = DState,
 		   dispatcher = Dispatcher} = State) ->
-    case Dispatcher:handle_call(Args, From, DState) of
+    case Dispatcher:handle_call(Auth, Args, From, DState) of
 	{reply, Reply, DState1} ->
 	    {reply, Reply, State#state{dispatcher_state = DState1}};
 	{stop, Reason, Reply, DState1} ->
@@ -113,10 +113,10 @@ handle_call(_Request, _From, State) ->
 %% @end
 %%--------------------------------------------------------------------
 
-handle_cast({cast, Args},
+handle_cast({cast, Auth, Args},
 	    #state{dispatcher_state = DState,
 		   dispatcher = Dispatcher} = State) ->
-    case Dispatcher:cast(Args, DState) of
+    case Dispatcher:cast(Auth, Args, DState) of
 	{noreply, DState1} ->
 	    {noreply, State#state{dispatcher_state = DState1}};
 	{stop, Reason, DState1} ->
@@ -124,7 +124,7 @@ handle_cast({cast, Args},
     end;
 
 
-handle_cast(reregister,  #state{uuid = UUID} = State) ->
+handle_cast(reregister, #state{uuid = UUID} = State) ->
     reregister_int(UUID),
     {noreply, State};
 
