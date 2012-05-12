@@ -121,6 +121,7 @@ register_host_resource(Host, ResourceName, IDFn, Resouces) ->
 %% @end
 %%--------------------------------------------------------------------
 -define(IMPL_PROVIDERS, [{{cloudapi, sdc}, sniffle_impl_cloudapi},
+			 {chunter, sniffle_impl_chunter},
 			 {{cloudapi, bark}, sniffle_impl_bark}]).
 init([]) ->
     Hosts = get_env_default(api_hosts, []),
@@ -193,13 +194,23 @@ handle_call({call, Auth, {keys, create, Pass, KeyID, PublicKey}}, _From, #state{
 
 
 handle_call({call, Auth, info}, _From,  #state{api_hosts=Hosts} = State) ->
-    ?INFO({ping}, [], [sniffle]),
-    {reply, [{<<"version">>, <<"0.1.0">>},
-	     {<<"hosts">>, length(Hosts)}], State};
+    case libsnarl:allowed(Auth, [service, sniffle, info]) of
+	false ->
+	    {reply, {error, unauthorized}, State};
+	true ->
+	    ?INFO({ping}, [], [sniffle]),
+	    {reply, [{<<"version">>, <<"0.1.0">>},
+		     {<<"hosts">>, length(Hosts)}], State}
+    end;
 
 handle_call({call, Auth, ping}, _From, State) ->
-    ?INFO({ping}, [], [sniffle]),
-    {reply, pong, State};
+    case libsnarl:allowed(Auth, [service, sniffle, info]) of
+	false ->
+	    {reply, {error, unauthorized}, State};
+	true ->
+	    ?INFO({ping}, [], [sniffle]),
+	    {reply, pong, State}
+    end;
 
 
 
@@ -218,6 +229,18 @@ handle_call(_Request, _From, State) ->
 %% @end
 %%--------------------------------------------------------------------
 
+handle_cast({cast, Auth, {register, Type, Spec}}, #state{api_hosts=HostUUIDs} = State) ->
+    case libsnarl:allowed(Auth, [service, sniffle, hosts, add, Type]) of
+	false ->
+	    {noreply, State};
+	true ->
+	    Providers = get_env_default(providers, ?IMPL_PROVIDERS),
+	    UUID = uuid:uuid4(),
+	    Provider=proplists:get_value(Type, Providers),
+	    sniffle_host_sup:start_child(Provider, UUID, Spec),
+	    {noreply, State#state{api_hosts=[UUID|HostUUIDs]}}
+    end;
+	
 handle_cast({update_machines, Host, Ms}, State) ->
     lists:map(fun (M) ->
 		      register_machine(Host, M)

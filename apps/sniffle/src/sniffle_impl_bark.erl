@@ -71,7 +71,6 @@ handle_call(Auth, {images, list}, _From,
 	     {error, E}, State}
     end;
 
-
 handle_call(Auth, Call, From, State) ->
     sniffle_impl_cloudapi:handle_call(Auth, Call, From, State).
 

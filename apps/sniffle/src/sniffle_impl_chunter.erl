@@ -6,7 +6,7 @@
 %%% @end
 %%% Created :  7 May 2012 by Heinz N. Gies <>
 %%%-------------------------------------------------------------------
--module(sniffle_impl_cloudapi).
+-module(sniffle_impl_chunter).
 
 -include_lib("alog_pt.hrl").
 
@@ -17,12 +17,11 @@
 -export([init/2, handle_call/4, handle_cast/3,
 	 handle_info/2, terminate/2, code_change/3]).
 
--record(state, {uuid, host, auth}).
+-record(state, {uuid, host}).
 
-init(UUID, {Host, HAuth}) ->
+init(UUID, Host) ->
     {ok, #state{uuid=UUID,
-		host=Host,
-		auth=HAuth}}.
+		host=Host}}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -39,15 +38,12 @@ init(UUID, {Host, HAuth}) ->
 %% @end
 %%--------------------------------------------------------------------
 
-handle_call(Auth, {machines, list}, _From,
-	    #state{host = Host,
-		   uuid=UUID,
-		   auth=HAuth} = State) ->
-    ?INFO({machines, list, Auth, UUID}, [], [sniffle]),
-    Res = case cloudapi:list_machines(Host, HAuth) of
-	      {ok, {Ms, _, _}} ->
+handle_call(Auth, {machines, list}, _From, #state{host=Host, uuid=HUUID} = State) ->
+    ?INFO({machines, list, Auth}, [], [sniffle]),
+    Res = case libchunter:list_machines(Host, Auth) of
+	      {ok, Ms} ->
 		  ?DBG({machines, Ms}, [], [sniffle]),
-		  sniffle_server:update_machines(UUID, Ms),
+		  sniffle_server:update_machines(HUUID, Ms),
 		  {ok, Ms};
 	      E ->
 		  ?WARNING({error, E}, [], [sniffle]),
@@ -55,51 +51,48 @@ handle_call(Auth, {machines, list}, _From,
 	  end,
     {reply, Res, State};
 
-handle_call(Auth, {machines, get, UUID}, _From, 
-	    #state{host = Host,
-		   auth=HAuth} = State) ->
+handle_call(Auth, {machines, get, UUID}, _From, #state{host=Host} = State) ->
     ?DBG({machines, get, Host}, [], [sniffle, sniffle_impl_cloudapi]),
     {reply,
-     cloudapi:get_machine(Host, HAuth, ensure_list(UUID)),
+     libchunter:get_machine(Host, Auth, UUID),
      State};
 
-handle_call(Auth, {machines, delete, UUID}, _From, 
-	    #state{host = Host,
-		   auth=HAuth} = State) ->
-    ?DBG({machines, delete, Host}, [], [sniffle, sniffle_impl_cloudapi]),
+handle_call(Auth, {machines, info, UUID}, _From, #state{host=Host} = State) ->
+    ?DBG({machines, info, Host}, [], [sniffle, sniffle_impl_chunter]),
     {reply,
-     cloudapi:delete_machine(Host, HAuth, ensure_list(UUID)), State};
-
-handle_call(Auth, {machines, start, UUID}, _From, 
-	    #state{host = Host,
-		   auth=HAuth} = State) ->
-    ?DBG({machines, start, Host}, [], [sniffle, sniffle_impl_cloudapi]),
+     libchunter:get_machine_info(Host, Auth, UUID), State};
+	 
+handle_call(Auth, {machines, delete, UUID}, _From, #state{host=Host} = State) ->
+    ?DBG({machines, delete, Host}, [], [sniffle, sniffle_impl_chunter]),
     {reply,
-     cloudapi:start_machine(Host, HAuth, ensure_list(UUID)), State};
+     libchunter:delete_machine(Host, Auth, UUID), State};
 
-handle_call(Auth, {machines, stop, UUID}, _From, 
-	    #state{host = Host,
-		   auth=HAuth} = State) ->
-    ?DBG({machines, stop, Host}, [], [sniffle, sniffle_impl_cloudapi]),
+handle_call(Auth, {machines, start, UUID}, _From, #state{host=Host} = State) ->
+    ?DBG({machines, start, Host}, [], [sniffle, sniffle_impl_chunter]),
     {reply,
-     cloudapi:stop_machine(Host, HAuth, ensure_list(UUID)), State};
+     libchunter:start_machine(Host, Auth, UUID), State};
 
-handle_call(Auth, {machines, reboot, UUID}, _From, 
-	    #state{host = Host,
-		   auth=HAuth} = State) ->
-    ?DBG({machines, reboot, Host}, [], [sniffle, sniffle_impl_cloudapi]),
+handle_call(Auth, {machines, start, UUID, Image}, _From, #state{host=Host} = State) ->
+    ?DBG({machines, start, Host}, [], [sniffle, sniffle_impl_chunter]),
     {reply,
-     cloudapi:reboot_machine(Host, HAuth, ensure_list(UUID)), State};
+     libchunter:start_machine(Host, Auth, UUID, Image), State};
 
-handle_call(Auth, {packages, list}, _From, 
-	    #state{host=Host,
-		   uuid=UUID,
-		   auth=HAuth} = State) ->
-    ?DBG({packages, list, Host}, [], [sniffle, sniffle_impl_cloudapi]),
-    case cloudapi:list_packages(Host, HAuth) of
+handle_call(Auth, {machines, stop, UUID}, _From, #state{host=Host} = State) ->
+    ?DBG({machines, stop, Host}, [], [sniffle, sniffle_impl_chunter]),
+    {reply,
+     libchunter:stop_machine(Host, Auth, UUID), State};
+
+handle_call(Auth, {machines, reboot, UUID}, _From, #state{host=Host} = State) ->
+    ?DBG({machines, reboot, Host}, [], [sniffle, sniffle_impl_chunter]),
+    {reply,
+     libchunter:reboot_machine(Host, Auth, UUID), State};
+
+handle_call(Auth, {packages, list}, _From, #state{host=Host, uuid=HUUID} = State) ->
+    ?DBG({packages, list, Host}, [], [sniffle, sniffle_impl_chunter]),
+    case libchunter:list_packages(Auth, Host) of
 	{ok, Ps} ->
 	    sniffle_server:register_host_resource(
-	      UUID, <<"packages">>, 
+	      HUUID, <<"packages">>, 
 	      fun (P) ->
 		      proplists:get_value(<<"name">>, P)
 	      end, Ps),
@@ -109,15 +102,12 @@ handle_call(Auth, {packages, list}, _From,
 	     {error, E}, State}
     end;
 
-handle_call(Auth, {datasets, list}, _From, 
-	    #state{host = Host,
-		   uuid=UUID,
-		   auth=HAuth} = State) ->
-    ?DBG({packages, list, Host}, [], [sniffle, sniffle_impl_cloudapi]),
-    case cloudapi:list_datasets(Host, HAuth) of
+handle_call(Auth, {datasets, list}, _From, #state{host = Host, uuid=HUUID} = State) ->
+    ?DBG({packages, list, Host}, [], [sniffle, sniffle_impl_chunter]),
+    case libchunter:list_datasets(Host, Auth) of
 	{ok, Ds} ->
 	    sniffle_server:register_host_resource(
-	      UUID, <<"datasets">>, 
+	      HUUID, <<"datasets">>, 
 	      fun (E) ->
 		      proplists:get_value(<<"id">>, E)
 	      end, Ds),
@@ -127,12 +117,9 @@ handle_call(Auth, {datasets, list}, _From,
 	     {error, E}, State}
     end;
 
-handle_call(Auth, {keys, list}, _From, 
-	    #state{host = Host,
-		   uuid=UUID,
-		   auth=HAuth} = State) ->
-    ?DBG({keys, list, UUID, Host}, [], [sniffle, sniffle_impl_cloudapi]),
-    case cloudapi:list_keys(Host, HAuth) of
+handle_call(Auth, {keys, list}, _From, #state{host = Host} = State) ->
+    ?DBG({keys, list, Host}, [], [sniffle, sniffle_impl_chunter]),
+    case libchunter:list_keys(Host, Auth) of
 	{ok, [{<<"keys">>, Ks}]} ->
 	    {reply, {ok, Ks}, State};
 	E ->
@@ -140,19 +127,8 @@ handle_call(Auth, {keys, list}, _From,
 	     {error, E}, State}
     end;
 
-handle_call(Auth, {keys, create, Auth, Pass, KeyID, PublicKey}, _From,
-	    #state{host = Host,
-		   auth=HAuth} = State) ->
-    case cloudapi:create_key(Host, HAuth, ensure_list(Pass), ensure_list(KeyID), PublicKey) of
-	{ok, D} ->
-	    {reply, {ok, D}, State};
-    	E ->
-	    ?WARNING({error, E}, [], [sniffle]),
-	    {reply, {error, E}, State}
-    end;
-	
-handle_call(Auth, Call, _From, State) ->
-    ?ERROR({unspuorrted_handle_call, Call}, [], [sniffle, sniffle_impl_cloudapi]),
+handle_call(_Auth, Call, _From, State) ->
+    ?ERROR({unspuorrted_handle_call, Call}, [], [sniffle, sniffle_impl_chunter]),
     {reply, {error, not_supported}, State}.
 
 %%--------------------------------------------------------------------
@@ -160,7 +136,7 @@ handle_call(Auth, Call, _From, State) ->
 %% @doc
 %% Handling cast messages
 %%
-%% @spec handle_cast(Msg, State) -> {noreply, State} |
+%% @spec handle_cast(Msg, #state{host=Host} = State) -> {noreply, State} |
 %%                                  {noreply, State, Timeout} |
 %%                                  {stop, Reason, State}
 %% @end
@@ -181,7 +157,7 @@ handle_info(_Info, State) ->
 %% necessary cleaning up. When it returns, the gen_server terminates
 %% with Reason. The return value is ignored.
 %%
-%% @spec terminate(Reason, State) -> void()
+%% @spec terminate(Reason, #state{host=Host} = State) -> void()
 %% @end
 %%--------------------------------------------------------------------
 terminate(_Reason, _State) ->
@@ -201,8 +177,3 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
-
-ensure_list(B) when is_binary(B) ->
-    binary_to_list(B);
-ensure_list(L) when is_list(L) ->
-    L.

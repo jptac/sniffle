@@ -13,6 +13,7 @@
 		  alog,
 		  uuid,
 		  libsnarl,
+		  libchunter,
                   stdlib
                  ]},
   {mod, {sniffle_app, []}},
