@@ -257,8 +257,16 @@ handle_cast({register_host_resource, Host, ResourceName, IDFn, Resouces}, State)
     redo:cmd([<<"TTL">>, Name, 60*60*24]),
     {noreply, State};
 handle_cast(reregister, State) ->
-    gproc:reg({n, g, sniffle}),
-    {noreply, State};
+    try
+	gproc:reg({n, g, sniffle}),
+	{noreply, State}
+    catch
+	E ->
+	    application:stop(gproc),
+	    application:start(gproc),
+	    {noreply, State, 1000}
+    end;
+
 handle_cast(_Msg, State) ->
     {noreply, State}.
 
