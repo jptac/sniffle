@@ -30,6 +30,7 @@ load() ->
     application:start(redo),
     application:start(uuid),
     application:start(libsnarl),
+    application:start(libchunter),
     application:start(sniffle),
     ok.    
 

@@ -24,6 +24,16 @@ start_link() ->
 %% ===================================================================
 
 init([]) ->
-    {ok, { {one_for_one, 5, 10}, [?CHILD(redo, worker),
+    Url = get_env_default(url, "redis://localhost:6379/"),
+    Opts = redo_uri:parse(Url),
+    {ok, { {one_for_one, 5, 10}, [{redo, {redo, start_link, [Opts]}, permanent, 5000, worker, [redo]},
 				  ?CHILD(sniffle_host_sup, supervisor),
 				  ?CHILD(sniffle_server, worker)]}}.
+
+get_env_default(Key, Default) ->
+    case  application:get_env(redgrid, Key) of
+	{ok, Res} ->
+	    Res;
+	_ ->
+	    Default
+    end.
