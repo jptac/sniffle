@@ -194,7 +194,7 @@ handle_call({call, Auth, {keys, create, Pass, KeyID, PublicKey}}, _From, #state{
 
 
 handle_call({call, Auth, info}, _From,  #state{api_hosts=Hosts} = State) ->
-    case libsnarl:allowed(Auth, [service, sniffle, info]) of
+    case libsnarl:allowed(system, Auth, [service, sniffle, info]) of
 	false ->
 	    {reply, {error, unauthorized}, State};
 	true ->
@@ -204,7 +204,7 @@ handle_call({call, Auth, info}, _From,  #state{api_hosts=Hosts} = State) ->
     end;
 
 handle_call({call, Auth, ping}, _From, State) ->
-    case libsnarl:allowed(Auth, [service, sniffle, info]) of
+    case libsnarl:allowed(system, Auth, [service, sniffle, info]) of
 	false ->
 	    {reply, {error, unauthorized}, State};
 	true ->
@@ -230,7 +230,7 @@ handle_call(_Request, _From, State) ->
 %%--------------------------------------------------------------------
 
 handle_cast({cast, Auth, {register, Type, Spec}}, #state{api_hosts=HostUUIDs} = State) ->
-    case libsnarl:allowed(Auth, [service, sniffle, hosts, add, Type]) of
+    case libsnarl:allowed(system, Auth, [service, sniffle, hosts, add, Type]) of
 	false ->
 	    {noreply, State};
 	true ->
