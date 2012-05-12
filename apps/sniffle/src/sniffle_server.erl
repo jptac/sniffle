@@ -237,7 +237,8 @@ handle_cast({cast, Auth, {register, Type, Spec}}, #state{api_hosts=HostUUIDs} = 
 	    Providers = get_env_default(providers, ?IMPL_PROVIDERS),
 	    UUID = uuid:uuid4(),
 	    Provider=proplists:get_value(Type, Providers),
-	    sniffle_host_sup:start_child(Provider, UUID, Spec),
+	    ?INFO({register, Provider, UUID, Spec}, [], [sniffle]),
+	    sniffle_host_sup:start_child(Provider, UUID, [Spec]),
 	    {noreply, State#state{api_hosts=[UUID|HostUUIDs]}}
     end;
 	
