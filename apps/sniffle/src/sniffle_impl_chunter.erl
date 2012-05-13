@@ -43,8 +43,9 @@ handle_call(Auth, {machines, list}, _From, #state{host=Host, uuid=HUUID} = State
     Res = case libchunter:list_machines(Host, Auth) of
 	      {ok, Ms} ->
 		  ?DBG({machines, Ms}, [], [sniffle]),
-		  sniffle_server:update_machines(HUUID, Ms),
-		  {ok, Ms};
+		  Ms1 = [ make_frontend_json(M) || M <- Ms],
+		  sniffle_server:update_machines(HUUID, Ms1),
+		  {ok, Ms1};
 	      E ->
 		  ?WARNING({error, E}, [], [sniffle]),
 		  {error, E}
@@ -53,8 +54,9 @@ handle_call(Auth, {machines, list}, _From, #state{host=Host, uuid=HUUID} = State
 
 handle_call(Auth, {machines, get, UUID}, _From, #state{host=Host} = State) ->
     ?DBG({machines, get, Host}, [], [sniffle, sniffle_impl_cloudapi]),
+    {ok, M} = libchunter:get_machine(Host, Auth, UUID),
     {reply,
-     libchunter:get_machine(Host, Auth, UUID),
+     {ok, make_frontend_json(M)},
      State};
 
 handle_call(Auth, {machines, info, UUID}, _From, #state{host=Host} = State) ->
@@ -94,7 +96,7 @@ handle_call(Auth, {packages, list}, _From, #state{host=Host, uuid=HUUID} = State
 	    sniffle_server:register_host_resource(
 	      HUUID, <<"packages">>, 
 	      fun (P) ->
-		      proplists:get_value(<<"name">>, P)
+		      proplists:get_value(name, P)
 	      end, Ps),
 	    {reply, {ok, Ps}, State};
 	E ->
@@ -109,7 +111,7 @@ handle_call(Auth, {datasets, list}, _From, #state{host = Host, uuid=HUUID} = Sta
 	    sniffle_server:register_host_resource(
 	      HUUID, <<"datasets">>, 
 	      fun (E) ->
-		      proplists:get_value(<<"id">>, E)
+		      proplists:get_value(id, E)
 	      end, Ds),
 	    {reply, {ok, Ds}, State};
 	E ->
@@ -177,3 +179,27 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+
+
+
+make_frontend_json([{nics, Ns} | R]) ->
+    IPs = lists:map(fun (N) ->
+			    proplists:get_value(ip, N)
+		    end,Ns),
+    [{ips, IPs}|make_frontend_json(R)];
+make_frontend_json([{zonename, N} | R]) ->
+    Rest = make_frontend_json(R),
+    case proplists:get_value(name, Rest) of
+	undefined ->
+	    [{name, N}|make_frontend_json(R)];
+	_ ->
+	    Rest
+    end;
+make_frontend_json([{alias, N} | R]) ->
+    [{name, N}|make_frontend_json(R)];
+make_frontend_json([]) ->
+    [];
+make_frontend_json([{K, V}|R]) ->
+    [{K, V}|make_frontend_json(R)].
+
+	
