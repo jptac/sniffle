@@ -326,7 +326,7 @@ get_env_default(Key, Default) ->
 
 discover_machines(Auth, Hosts) ->
     lists:map(fun (Host) ->
-		    Pid = gproc:lookup_pid({n, l, {host, Host}}),
+		      Pid = gproc:lookup_pid({n, l, {host, Host}}),
 		      sniffle_host_srv:call(Pid, Auth, {machines, list})
 	      end, Hosts),
     ok.
