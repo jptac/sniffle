@@ -1,10 +1,10 @@
 %%%-------------------------------------------------------------------
-%%% @Author Heinz N. Gies <>
+%%% @Author Heinz N. Gies <heinz@licenser.net>
 %%% @copyright (C) 2012, Heinz N. Gies
 %%% @doc
 %%%
 %%% @end
-%%% Created :  7 May 2012 by Heinz N. Gies <>
+%%% Created :  7 May 2012 by Heinz N. Gies <heinz@licenser.net>
 %%%-------------------------------------------------------------------
 -module(sniffle_impl_bark).
 
