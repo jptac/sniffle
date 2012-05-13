@@ -196,10 +196,18 @@ make_frontend_json([{zonename, N} | R]) ->
 	_ ->
 	    Rest
     end;
+make_frontend_json([{max_physical_memory, N} | R]) ->
+    Rest = make_frontend_json(R),
+    case proplists:get_value(memory, Rest) of
+	undefined ->
+	    [{memory, N/(1024*1024)}|make_frontend_json(R)];
+	_ ->
+	    Rest
+    end;
 make_frontend_json([{alias, N} | R]) ->
     [{name, N}|make_frontend_json(R)];
-make_frontend_json([{ram, N} | R]) ->
-    [{memory, N}|make_frontend_json(R)];
+make_frontend_json([{ram, R} | R]) ->
+    [{memory, R}|make_frontend_json(R)];
 make_frontend_json([]) ->
     [];
 make_frontend_json([{K, V}|R]) ->
