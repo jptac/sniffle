@@ -204,6 +204,8 @@ make_frontend_json([{max_physical_memory, N} | R]) ->
 	_ ->
 	    Rest
     end;
+make_frontend_json([{state, <<"installed">>} | R]) ->
+    [{state, <<"stopped">>}|make_frontend_json(R)];
 make_frontend_json([{alias, N} | R]) ->
     [{name, N}|make_frontend_json(R)];
 make_frontend_json([{ram, R} | R]) ->
