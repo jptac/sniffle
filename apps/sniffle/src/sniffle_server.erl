@@ -35,7 +35,7 @@
 		       {reply, {error, E}, State};
 		   {ok, Host} ->
 		       try
-			   Pid = gproc:lookup_pid({n, g, Host}),
+			   Pid = gproc:lookup_pid({n, l, {host, Host}}),
 			   {reply, sniffle_host_srv:call(Pid, Auth, {Category, Action, UUID}), State}
 		       catch
 			   E ->
@@ -50,7 +50,7 @@
 		       {reply, {error, E}, State};
 		   {ok, Host} ->
 		       try
-			   Pid = gproc:lookup_pid({n, g, Host}),
+			   Pid = gproc:lookup_pid({n, l, {host, Host}}),
 			   {reply, sniffle_host_srv:call(Pid, Auth, {Category, Action, UUID, O1}), State}
 		       catch
 			   E ->
@@ -64,14 +64,14 @@
 		   {error, E} ->
 		       {reply, {error, E}, State};
 		   {ok, Host} ->
-		       Pid = gproc:lookup_pid({n, g, Host}),
+		       Pid = gproc:lookup_pid({n, l, {host, Host}}),
 		       {reply, sniffle_host_srv:call(Pid, Auth, {Category, Action, UUID, O1, O2}), State}
 	       end).
 -define(LIST(Category),
 	handle_call({call, Auth, {Category, list}}, _From, #state{api_hosts=Hosts} = State) ->
 	       ?INFO({Category, list, Auth, Hosts}, [], [sniffle]),
 	       Res = lists:foldl(fun (Host, List) ->
-					 Pid = gproc:lookup_pid({n, g, Host}),
+					 Pid = gproc:lookup_pid({n, l, {host, Host}}),
 					 case sniffle_host_srv:call(Pid, Auth, {Category, list}) of
 					     {ok, HostRes} ->
 						 List ++ HostRes;
@@ -171,7 +171,7 @@ handle_call({call, Auth, {keys, create, Pass, KeyID, PublicKey}}, _From, #state{
     Res = lists:foldl(
 	    fun (Host, Res) ->
 		    ?DBG({Host}, [], [sniffle]),
-		    Pid =gproc:lookup_pid({n, g, Host}),
+		    Pid =gproc:lookup_pid({n, l, {host, Host}}),
 		    case sniffle_host_srv:call(Pid, Auth, {keys, create, Pass, KeyID, PublicKey}) of
 			{ok, D} ->
 			    ?DBG({reply, D}, [], [sniffle]),
@@ -326,7 +326,7 @@ get_env_default(Key, Default) ->
 
 discover_machines(Auth, Hosts) ->
     lists:map(fun (Host) ->
-		    Pid = gproc:lookup_pid({n, g, Host}),
+		    Pid = gproc:lookup_pid({n, l, {host, Host}}),
 		      sniffle_host_srv:call(Pid, Auth, {machines, list})
 	      end, Hosts),
     ok.

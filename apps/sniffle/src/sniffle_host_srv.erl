@@ -179,4 +179,4 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 reregister_int(UUID) ->
     gproc:reg({p, l, {sniffle, host}}, UUID),
-    gproc:reg({n, g, UUID}, self()).
+    gproc:reg({n, l, {host, UUID}}, self()).
