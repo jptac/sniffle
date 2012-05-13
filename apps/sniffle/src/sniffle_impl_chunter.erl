@@ -89,7 +89,7 @@ handle_call(Auth, {machines, reboot, UUID}, _From, #state{host=Host} = State) ->
 
 handle_call(Auth, {packages, list}, _From, #state{host=Host, uuid=HUUID} = State) ->
     ?DBG({packages, list, Host}, [], [sniffle, sniffle_impl_chunter]),
-    case libchunter:list_packages(Auth, Host) of
+    case libchunter:list_packages(Host, Auth) of
 	{ok, Ps} ->
 	    sniffle_server:register_host_resource(
 	      HUUID, <<"packages">>, 
