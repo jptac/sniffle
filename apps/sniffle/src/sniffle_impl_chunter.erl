@@ -187,6 +187,7 @@ make_frontend_json([{nics, Ns} | R]) ->
 			    proplists:get_value(ip, N)
 		    end,Ns),
     [{ips, IPs}|make_frontend_json(R)];
+
 make_frontend_json([{zonename, N} | R]) ->
     Rest = make_frontend_json(R),
     case proplists:get_value(name, Rest) of
@@ -197,6 +198,8 @@ make_frontend_json([{zonename, N} | R]) ->
     end;
 make_frontend_json([{alias, N} | R]) ->
     [{name, N}|make_frontend_json(R)];
+make_frontend_json([{ram, N} | R]) ->
+    [{memory, N}|make_frontend_json(R)];
 make_frontend_json([]) ->
     [];
 make_frontend_json([{K, V}|R]) ->
