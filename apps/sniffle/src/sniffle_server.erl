@@ -331,7 +331,7 @@ discover_machines(Auth, Hosts) ->
     ok.
 
 register_machine(Host, M) ->
-    UUID = proplists:get_value(<<"id">>, M),
+    UUID = proplists:get_value(id, M),
     Name = <<"sniffle:machines:", UUID/binary>>,
     redo:cmd([<<"SET">>, Name, term_to_binary(Host)]),
     redo:cmd([<<"TTL">>, Name, 60*60*24]).
