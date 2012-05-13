@@ -11,12 +11,12 @@
 -behaviour(gen_server).
 
 %% API
--export([start_link/3]).
+-export([start_link/3, kill/1,
+	 reregister/1, call/3]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
-	 terminate/2, code_change/3,
-	 reregister/1, call/3]).
+	 terminate/2, code_change/3]).
 
 -define(SERVER, ?MODULE). 
 
@@ -42,6 +42,9 @@ start_link(Dispatcher, UUID, Host) ->
 
 call(PID, Auth, Args) ->
     gen_server:call(PID, {call, Auth, Args}).
+
+kill(PID) ->
+    gen_server:cast(PID, kill).
 
 reregister(PID) ->
     gen_server:cast(PID, reregister).
@@ -127,6 +130,9 @@ handle_cast({cast, Auth, Args},
 handle_cast(reregister, #state{uuid = UUID} = State) ->
     reregister_int(UUID),
     {noreply, State};
+
+handle_cast(kill, State) ->
+    {stop, shutdown, State};
 
 handle_cast(_Msg, State) ->
     {noreply, State}.

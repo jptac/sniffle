@@ -36,9 +36,16 @@
 		   {ok, Host} ->
 		       try
 			   Pid = gproc:lookup_pid({n, l, {host, Host}}),
-			   {reply, sniffle_host_srv:call(Pid, Auth, {Category, Action, UUID}), State}
+			   case sniffle_host_srv:call(Pid, Auth, {Category, Action, UUID}) of
+			       {error, cant_call} = E1->
+				   remove_host(Host),
+				   {reply, {error, E1}, State};
+			       Res ->
+				   {reply, Res, State}
+			   end
 		       catch
-			   E ->
+			   _T:E ->
+			       remove_host(Host),
 			       {reply, {error, {host_down, E}}, State}
 		       end
 	       end).
@@ -51,9 +58,17 @@
 		   {ok, Host} ->
 		       try
 			   Pid = gproc:lookup_pid({n, l, {host, Host}}),
-			   {reply, sniffle_host_srv:call(Pid, Auth, {Category, Action, UUID, O1}), State}
+
+			   case sniffle_host_srv:call(Pid, Auth, {Category, Action, UUID, O1}) of
+			       {error, cant_call} = E1 ->
+				   remove_host(Host),
+				   {reply, {error,  E1}, State};
+			       Res ->
+				   {reply, Res, State}
+			   end
 		       catch
-			   E ->
+			   _T:E ->
+			       remove_host(Host),
 			       {reply, {error, {host_down, E}}, State}
 		       end
 	       end).
@@ -64,19 +79,40 @@
 		   {error, E} ->
 		       {reply, {error, E}, State};
 		   {ok, Host} ->
-		       Pid = gproc:lookup_pid({n, l, {host, Host}}),
-		       {reply, sniffle_host_srv:call(Pid, Auth, {Category, Action, UUID, O1, O2}), State}
+		       try
+			   Pid = gproc:lookup_pid({n, l, {host, Host}}),
+			   case sniffle_host_srv:call(Pid, Auth, {Category, Action, UUID, O1, O2}) of
+			       {error, cant_call} = E1 ->
+				   remove_host(Host),
+				   {reply, {error, E1}, State};
+			       Res ->
+				   {reply, Res, State}
+			   end
+		       catch
+			   _T:E ->
+			       remove_host(Host),
+			       {reply, {error, {host_down, E}}, State}
+		       end
 	       end).
 -define(LIST(Category),
 	handle_call({call, Auth, {Category, list}}, _From, #state{api_hosts=Hosts} = State) ->
 	       ?INFO({Category, list, Auth, Hosts}, [], [sniffle]),
 	       Res = lists:foldl(fun (Host, List) ->
-					 Pid = gproc:lookup_pid({n, l, {host, Host}}),
-					 case sniffle_host_srv:call(Pid, Auth, {Category, list}) of
-					     {ok, HostRes} ->
-						 List ++ HostRes;
-					     _ ->
-						 List
+					 try
+					     Pid = gproc:lookup_pid({n, l, {host, Host}}),
+					     case sniffle_host_srv:call(Pid, Auth, {Category, list}) of
+						 {ok, HostRes} ->
+						     List ++ HostRes;
+						 {error, cant_call} ->
+						     remove_host(Host),
+						     List;
+						 _ ->
+						     List
+					     end
+					 catch
+					     _T:E ->
+						 remove_host(Host),
+						 {reply, {error, {host_down, E}}, State}
 					 end
 				 end, [], Hosts),
 	       {reply, {ok, Res}, State}).
@@ -103,6 +139,8 @@ update_machines(Host, Ms) ->
 
 register_host_resource(Host, ResourceName, IDFn, Resouces) ->
     gen_server:cast(?SERVER, {register_host_resource, Host, ResourceName, IDFn, Resouces}).
+remove_host(Host) ->
+    gen_server:cast(?SERVER, {remove_host, Host}).
     
     
 %%%===================================================================
@@ -181,6 +219,14 @@ handle_call({call, Auth, {keys, create, Pass, KeyID, PublicKey}}, _From, #state{
 				_ ->
 				    {ok, D}
 			    end;
+			{error, cant_call} = E->
+			    remove_host(Host),
+			    case Res of
+				{error, Es} ->
+				    {error, [{Host, E}|Es]};
+				_ ->
+				    {error, [{Host, E}]}
+			    end;
 			E ->
 			    case Res of
 				{error, Es} ->
@@ -256,6 +302,17 @@ handle_cast({register_host_resource, Host, ResourceName, IDFn, Resouces}, State)
 	      end, Resouces),
     redo:cmd([<<"TTL">>, Name, 60*60*24]),
     {noreply, State};
+
+handle_cast({remove_host, UUID}, #state{api_hosts=Hosts} = State) ->
+    try
+	Pid =gproc:lookup_pid({n, l, {host, UUID}}),
+	sniffle_host_srv:kill(Pid)
+    catch
+	_T:_E ->
+	    ok
+    end,
+    {noreply, State#state{api_hosts=[H||H<-Hosts,H=/=UUID]}};
+
 handle_cast(reregister, State) ->
     try
 	gproc:reg({n, g, sniffle}),
