@@ -124,6 +124,7 @@ register_host_resource(Host, ResourceName, IDFn, Resouces) ->
 			 {chunter, sniffle_impl_chunter},
 			 {{cloudapi, bark}, sniffle_impl_bark}]).
 init([]) ->
+    gproc:send({p,g,{sniffle,register}}, {sniffle, request, register}),
     Hosts = get_env_default(api_hosts, []),
     Providers = get_env_default(providers, ?IMPL_PROVIDERS),
     HostUUIDs = lists:map(fun ({Type, Spec}) ->
@@ -261,7 +262,7 @@ handle_cast(reregister, State) ->
 	gproc:reg({n, g, sniffle}),
 	{noreply, State}
     catch
-	E ->
+	_T:_E ->
 	    application:stop(gproc),
 	    application:start(gproc),
 	    {noreply, State, 1000}
