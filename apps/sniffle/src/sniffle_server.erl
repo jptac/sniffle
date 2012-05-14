@@ -198,10 +198,47 @@ init([]) ->
 ?HOST_ACTION(machines, reboot);
 
 ?LIST(machines);
-?LIST(packages);
 ?LIST(datasets);
 ?LIST(images);
 ?LIST(keys);
+
+handle_call({call, Auth, {packages, list}}, _From, #state{api_hosts=Hosts} = State) ->
+    ?INFO({packages, list, Auth, Hosts}, [], [sniffle]),
+    {ok, GlobalPackageNames} = libsnarl:option_list(system, packages),
+    GlobalPackages = 
+	[ P1 || {ok, P1 }<- [libsnarl:option_get(system, packages, P) || P <- GlobalPackageNames]],
+    Res = lists:foldl(fun (Host, List) ->
+			      try
+				  Pid = gproc:lookup_pid({n, l, {host, Host}}),
+				  case sniffle_host_srv:call(Pid, Auth, {packages, list}) of
+				      {ok, HostRes} ->
+					  List ++ HostRes;
+				      {error, cant_call} ->
+					  remove_host(Host),
+					  List;
+				      _ ->
+					  List
+				  end
+			      catch
+				  _T:E ->
+				      remove_host(Host),
+				      {reply, {error, {host_down, E}}, State}
+			      end
+		      end, GlobalPackages, Hosts),
+    {reply, {ok, Res}, State};
+
+handle_call({call, Auth, {packages, create, Name, Disk, Memory, Swap}}, _From, State) ->
+    case libsnarl:allowed(system, Auth, [packages, Name, add]) of
+	false ->
+	    {reply, {error, unauthorized}, State};
+	true ->
+	    Pkg = [{name, Name}, 
+		   {disk, Disk}, 
+		   {memory, Memory}, 
+		   {swap, Swap}],
+	    libsnarl:option_set(system, packages, Name, Pkg),
+	    {reply, {ok, Pkg}, State}
+    end;
 
 
 handle_call({call, Auth, {keys, create, Pass, KeyID, PublicKey}}, _From, #state{api_hosts=Hosts} = State) ->
@@ -237,7 +274,6 @@ handle_call({call, Auth, {keys, create, Pass, KeyID, PublicKey}}, _From, #state{
 		    end
 	    end, ok, Hosts),
     {reply, {ok, Res}, State};
-
 
 handle_call({call, Auth, info}, _From,  #state{api_hosts=Hosts} = State) ->
     case libsnarl:allowed(system, Auth, [service, sniffle, info]) of
