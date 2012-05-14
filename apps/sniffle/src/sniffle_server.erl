@@ -250,7 +250,7 @@ handle_call({call, Auth, {machines, create, Name, PackageUUID, DatasetUUID, Meta
 	{error, E} ->
 	    {reply, {error, E}, State};
 	O ->
-	    {reply, O, State}
+	    {reply, {unknown, O}, State}
     end;
 
 
@@ -319,7 +319,7 @@ handle_call({call, Auth, ping}, _From, State) ->
 
 
 handle_call(_Request, _From, State) ->
-    Reply = ok,
+    Reply = {error, unknown},
     {reply, Reply, State}.
 
 %%--------------------------------------------------------------------
