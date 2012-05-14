@@ -10,6 +10,11 @@
 	{machines, get, UUID :: uuid()} |
 	{machines, info, UUID :: uuid()} |
 	{machines, delete, UUID :: uuid()} |
+	{machines, create, Name :: binary(), 
+	 PackageUUID :: binary(), 
+	 DatasetUUID :: uuid(), 
+	 Metadata :: term(), 
+	 Tags :: term()} |
 	{machines, start, UUID :: uuid()} |
 	{machines, start, UUID :: uuid(), ImageName :: binary()} |
 	{machines, stop, UUID :: uuid()} |

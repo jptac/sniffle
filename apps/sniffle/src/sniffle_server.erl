@@ -206,7 +206,7 @@ handle_call({call, Auth, {packages, list}}, _From, #state{api_hosts=Hosts} = Sta
     ?INFO({packages, list, Auth, Hosts}, [], [sniffle]),
     {ok, GlobalPackageNames} = libsnarl:option_list(system, packages),
     GlobalPackages = 
-	[ P1 || {ok, P1 }<- [libsnarl:option_get(system, packages, P) || P <- GlobalPackageNames]],
+	[P1 || {ok, P1 }<- [libsnarl:option_get(system, packages, P) || P <- GlobalPackageNames]],
     Res = lists:foldl(fun (Host, List) ->
 			      try
 				  Pid = gproc:lookup_pid({n, l, {host, Host}}),
@@ -228,7 +228,7 @@ handle_call({call, Auth, {packages, list}}, _From, #state{api_hosts=Hosts} = Sta
     {reply, {ok, Res}, State};
 
 handle_call({call, Auth, {packages, create, Name, Disk, Memory, Swap}}, _From, State) ->
-    case libsnarl:allowed(system, Auth, [packages, Name, add]) of
+    case libsnarl:allowed(system, Auth, [packages, Name, set]) of
 	false ->
 	    {reply, {error, unauthorized}, State};
 	true ->
@@ -239,6 +239,20 @@ handle_call({call, Auth, {packages, create, Name, Disk, Memory, Swap}}, _From, S
 	    libsnarl:option_set(system, packages, Name, Pkg),
 	    {reply, {ok, Pkg}, State}
     end;
+
+handle_call({call, Auth, {machines, create, Name, PackageUUID, DatasetUUID, Metadata, Tags}}, _From, 
+	    #state{api_hosts=Hosts} = State) ->
+    Host = pick_host(Hosts),
+    Pid = gproc:lookup_pid({n, l, {host, Host}}),
+    case sniffle_host_srv:call(Pid, Auth, {machines, create, Name, PackageUUID, DatasetUUID, Metadata, Tags}) of
+	{ok, Res} ->
+	    {reply, {ok, Res}, State};
+	{error, E} ->
+	    {reply, {error, E}, State};
+	O ->
+	    {reply, O, State}
+    end;
+
 
 handle_call({call, Auth, {packages, delete, Name}}, _From, State) ->
     case libsnarl:allowed(system, Auth, [packages, Name, delete]) of
@@ -455,3 +469,29 @@ get_machine_host_int(UUID) ->
 	Bin ->
 	    {ok, binary_to_term(Bin)}
     end.
+
+
+%% Wo loadbalance nodes by a very accurate measurement of random.
+%% It is good practive to hope that the random node is the least 
+%% loded one - not much else you can do about it.
+pick_host(Hosts) ->
+    [H|R] = shuffle(Hosts),
+    H.
+
+shuffle(List) ->
+%% Determine the log n portion then randomize the list.
+   randomize(round(math:log(length(List)) + 0.5), List).
+
+randomize(1, List) ->
+   randomize(List);
+randomize(T, List) ->
+   lists:foldl(fun(_E, Acc) ->
+                  randomize(Acc)
+               end, randomize(List), lists:seq(1, (T - 1))).
+
+randomize(List) ->
+   D = lists:map(fun(A) ->
+                    {random:uniform(), A}
+             end, List),
+   {_, D1} = lists:unzip(lists:keysort(1, D)), 
+   D1.
