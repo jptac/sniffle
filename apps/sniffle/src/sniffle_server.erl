@@ -240,6 +240,14 @@ handle_call({call, Auth, {packages, create, Name, Disk, Memory, Swap}}, _From, S
 	    {reply, {ok, Pkg}, State}
     end;
 
+handle_call({call, Auth, {packages, delete, Name}}, _From, State) ->
+    case libsnarl:allowed(system, Auth, [packages, Name, delete]) of
+	false ->
+	    {reply, {error, unauthorized}, State};
+	true ->
+	    libsnarl:option_delete(system, packages, Name),
+	    {reply, ok, State}
+    end;
 
 handle_call({call, Auth, {keys, create, Pass, KeyID, PublicKey}}, _From, #state{api_hosts=Hosts} = State) ->
     ?INFO({keys, create, Auth, Pass, KeyID, PublicKey, Hosts}, [], [sniffle]),
