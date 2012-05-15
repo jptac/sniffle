@@ -28,7 +28,7 @@
 		handlers=[]}).
 
 -define(HOST_ACTION(Category, Action),
-	handle_call({call, Auth, {Category, Action, UUID}}, _From, #state{api_hosts=Hosts} = State) ->
+	handle_call({call, Auth, {Category, Action, UUID}}, From, #state{api_hosts=Hosts} = State) ->
 	       ?INFO({Category, Action, Auth, UUID, Hosts}, [], [sniffle]),
 	       case get_machine_host(Auth, UUID, Hosts) of
 		   {error, E} ->
@@ -36,7 +36,7 @@
 		   {ok, Host} ->
 		       try
 			   Pid = gproc:lookup_pid({n, l, {host, Host}}),
-			   case sniffle_host_srv:call(Pid, Auth, {Category, Action, UUID}) of
+			   case sniffle_host_srv:call(Pid, From, Auth, {Category, Action, UUID}) of
 			       {error, cant_call} = E1->
 				   remove_host(Host),
 				   {reply, {error, E1}, State};
@@ -50,7 +50,7 @@
 		       end
 	       end).
 -define(HOST_ACTION1(Category, Action),
-	handle_call({call, Auth, {Category, Action, UUID, O1}}, _From, #state{api_hosts=Hosts} = State) ->
+	handle_call({call, Auth, {Category, Action, UUID, O1}}, From, #state{api_hosts=Hosts} = State) ->
 	       ?INFO({Category, Action, Auth, UUID, Hosts}, [], [sniffle]),
 	       case get_machine_host(Auth, UUID, Hosts) of
 		   {error, E} ->
@@ -59,7 +59,7 @@
 		       try
 			   Pid = gproc:lookup_pid({n, l, {host, Host}}),
 
-			   case sniffle_host_srv:call(Pid, Auth, {Category, Action, UUID, O1}) of
+			   case sniffle_host_srv:call(Pid, From, Auth, {Category, Action, UUID, O1}) of
 			       {error, cant_call} = E1 ->
 				   remove_host(Host),
 				   {reply, {error,  E1}, State};
@@ -73,7 +73,7 @@
 		       end
 	       end).
 -define(HOST_ACTION2(Category, Action),
-	handle_call({call, Auth, {Category, Action, UUID, O1, O2}}, _From, #state{api_hosts=Hosts} = State) ->
+	handle_call({call, Auth, {Category, Action, UUID, O1, O2}}, From, #state{api_hosts=Hosts} = State) ->
 	       ?INFO({Category, Action, Auth, UUID, Hosts}, [], [sniffle]),
 	       case get_machine_host(Auth, UUID, Hosts) of
 		   {error, E} ->
@@ -81,7 +81,7 @@
 		   {ok, Host} ->
 		       try
 			   Pid = gproc:lookup_pid({n, l, {host, Host}}),
-			   case sniffle_host_srv:call(Pid, Auth, {Category, Action, UUID, O1, O2}) of
+			   case sniffle_host_srv:scall(Pid, From, Auth, {Category, Action, UUID, O1, O2}) of
 			       {error, cant_call} = E1 ->
 				   remove_host(Host),
 				   {reply, {error, E1}, State};
@@ -95,12 +95,12 @@
 		       end
 	       end).
 -define(LIST(Category),
-	handle_call({call, Auth, {Category, list}}, _From, #state{api_hosts=Hosts} = State) ->
+	handle_call({call, Auth, {Category, list}}, From, #state{api_hosts=Hosts} = State) ->
 	       ?INFO({Category, list, Auth, Hosts}, [], [sniffle]),
 	       Res = lists:foldl(fun (Host, List) ->
 					 try
 					     Pid = gproc:lookup_pid({n, l, {host, Host}}),
-					     case sniffle_host_srv:call(Pid, Auth, {Category, list}) of
+					     case sniffle_host_srv:scall(Pid, Auth, {Category, list}) of
 						 {ok, HostRes} ->
 						     List ++ HostRes;
 						 {error, cant_call} ->
@@ -202,7 +202,7 @@ init([]) ->
 ?LIST(images);
 ?LIST(keys);
 
-handle_call({call, Auth, {packages, list}}, _From, #state{api_hosts=Hosts} = State) ->
+handle_call({call, Auth, {packages, list}}, From, #state{api_hosts=Hosts} = State) ->
     ?INFO({packages, list, Auth, Hosts}, [], [sniffle]),
     {ok, GlobalPackageNames} = libsnarl:option_list(system, packages),
     GlobalPackages = 
@@ -210,7 +210,7 @@ handle_call({call, Auth, {packages, list}}, _From, #state{api_hosts=Hosts} = Sta
     Res = lists:foldl(fun (Host, List) ->
 			      try
 				  Pid = gproc:lookup_pid({n, l, {host, Host}}),
-				  case sniffle_host_srv:call(Pid, Auth, {packages, list}) of
+				  case sniffle_host_srv:call(Pid, From, Auth, {packages, list}) of
 				      {ok, HostRes} ->
 					  List ++ HostRes;
 				      {error, cant_call} ->
@@ -240,11 +240,11 @@ handle_call({call, Auth, {packages, create, Name, Disk, Memory, Swap}}, _From, S
 	    {reply, {ok, Pkg}, State}
     end;
 
-handle_call({call, Auth, {machines, create, Name, PackageUUID, DatasetUUID, Metadata, Tags}}, _From, 
+handle_call({call, Auth, {machines, create, Name, PackageUUID, DatasetUUID, Metadata, Tags}}, From, 
 	    #state{api_hosts=Hosts} = State) ->
     Host = pick_host(Hosts),
     Pid = gproc:lookup_pid({n, l, {host, Host}}),
-    case sniffle_host_srv:call(Pid, Auth, {machines, create, Name, PackageUUID, DatasetUUID, Metadata, Tags}) of
+    case sniffle_host_srv:call(Pid, From, Auth, {machines, create, Name, PackageUUID, DatasetUUID, Metadata, Tags}) of
 	{ok, Res} ->
 	    {reply, {ok, Res}, State};
 	{error, E} ->
@@ -263,13 +263,13 @@ handle_call({call, Auth, {packages, delete, Name}}, _From, State) ->
 	    {reply, ok, State}
     end;
 
-handle_call({call, Auth, {keys, create, Pass, KeyID, PublicKey}}, _From, #state{api_hosts=Hosts} = State) ->
+handle_call({call, Auth, {keys, create, Pass, KeyID, PublicKey}}, From, #state{api_hosts=Hosts} = State) ->
     ?INFO({keys, create, Auth, Pass, KeyID, PublicKey, Hosts}, [], [sniffle]),
     Res = lists:foldl(
 	    fun (Host, Res) ->
 		    ?DBG({Host}, [], [sniffle]),
 		    Pid =gproc:lookup_pid({n, l, {host, Host}}),
-		    case sniffle_host_srv:call(Pid, Auth, {keys, create, Pass, KeyID, PublicKey}) of
+		    case sniffle_host_srv:call(Pid, From, Auth, {keys, create, Pass, KeyID, PublicKey}) of
 			{ok, D} ->
 			    ?DBG({reply, D}, [], [sniffle]),
 			    case Res of 
@@ -442,7 +442,7 @@ get_env_default(Key, Default) ->
 discover_machines(Auth, Hosts) ->
     lists:map(fun (Host) ->
 		      Pid = gproc:lookup_pid({n, l, {host, Host}}),
-		      sniffle_host_srv:call(Pid, Auth, {machines, list})
+		      sniffle_host_srv:call(Pid, self(), Auth, {machines, list})
 	      end, Hosts),
     ok.
 
@@ -464,7 +464,7 @@ get_machine_host(Auth, UUID, Hosts) ->
 get_machine_host_int(UUID) ->
     Name = <<"sniffle:machines:", UUID/binary>>,
     case redo:cmd([<<"get">>, Name]) of
-	undefined ->
+	undefined -> 
 	    {error, not_found};
 	Bin ->
 	    {ok, binary_to_term(Bin)}
@@ -475,7 +475,7 @@ get_machine_host_int(UUID) ->
 %% It is good practive to hope that the random node is the least 
 %% loded one - not much else you can do about it.
 pick_host(Hosts) ->
-    [H|R] = shuffle(Hosts),
+    [H|_Rest] = shuffle(Hosts),
     H.
 
 shuffle(List) ->

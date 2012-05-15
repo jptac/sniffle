@@ -12,7 +12,8 @@
 
 %% API
 -export([start_link/3, kill/1,
-	 reregister/1, call/3]).
+	 scall/3,
+	 reregister/1, call/4]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -40,8 +41,12 @@
 start_link(Dispatcher, UUID, Host) ->
     gen_server:start_link(?MODULE,  [Dispatcher, UUID, Host], []).
 
-call(PID, Auth, Args) ->
+call(PID, From, Auth, Args) ->
+    gen_server:cast(PID, {call, From, Auth, Args}).
+
+scall(PID, Auth, Args) ->
     gen_server:call(PID, {call, Auth, Args}).
+
 
 kill(PID) ->
     gen_server:cast(PID, kill).
@@ -89,10 +94,11 @@ init([Dispatcher, UUID, Host]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_call({call, Auth, Args}, From, 
+    
+handle_call({call, Auth, Args}, _From,
 	    #state{dispatcher_state = DState,
 		   dispatcher = Dispatcher} = State) ->
-    case Dispatcher:handle_call(Auth, Args, From, DState) of
+    case Dispatcher:handle_call(Auth, Args, self(), DState) of
 	{reply, Reply, DState1} ->
 	    {reply, Reply, State#state{dispatcher_state = DState1}};
 	{stop, Reason, Reply, DState1} ->
@@ -100,7 +106,7 @@ handle_call({call, Auth, Args}, From,
 	{stop, Reason, DState1} ->
 	    {stop, Reason, State#state{dispatcher_state = DState1}}
     end;
-    
+
 handle_call(_Request, _From, State) ->
     Reply = ok,
     {reply, Reply, State}.
@@ -115,6 +121,20 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+
+handle_cast({call, From, Auth, Args},
+	    #state{dispatcher_state = DState,
+		   dispatcher = Dispatcher} = State) ->
+    case Dispatcher:handle_call(Auth, Args, From, DState) of
+	{reply, Reply, DState1} ->
+	    gen_server:reply(From, Reply),
+	    {noreply, State#state{dispatcher_state = DState1}};
+	{stop, Reason, Reply, DState1} ->
+	    gen_server:reply(From, Reply),
+	    {stop, Reply, State#state{dispatcher_state = DState1}};
+	{stop, Reason, DState1} ->
+	    {stop, Reason, State#state{dispatcher_state = DState1}}
+    end;
 
 handle_cast({cast, Auth, Args},
 	    #state{dispatcher_state = DState,

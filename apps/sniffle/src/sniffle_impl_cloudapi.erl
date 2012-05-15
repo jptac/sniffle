@@ -47,8 +47,9 @@ handle_call(Auth, {machines, list}, _From,
     Res = case cloudapi:list_machines(Host, HAuth) of
 	      {ok, {Ms, _, _}} ->
 		  ?DBG({machines, Ms}, [], [sniffle]),
-		  sniffle_server:update_machines(UUID, Ms),
-		  {ok, Ms};
+		  Ms2 = [niceify_json(M) || M <- Ms],
+		  sniffle_server:update_machines(UUID, Ms2),
+		  {ok, Ms2};
 	      E ->
 		  ?WARNING({error, E}, [], [sniffle]),
 		  {error, E}
@@ -59,37 +60,36 @@ handle_call(Auth, {machines, get, UUID}, _From,
 	    #state{host = Host,
 		   auth=HAuth} = State) ->
     ?DBG({machines, get, Host}, [], [sniffle, sniffle_impl_cloudapi]),
-    {reply,
-     cloudapi:get_machine(Host, HAuth, ensure_list(UUID)),
-     State};
+    {ok, R} =  cloudapi:get_machine(Host, HAuth, ensure_list(UUID)),
+    {reply, niceify_json(R), State};
 
 handle_call(Auth, {machines, delete, UUID}, _From, 
 	    #state{host = Host,
 		   auth=HAuth} = State) ->
     ?DBG({machines, delete, Host}, [], [sniffle, sniffle_impl_cloudapi]),
-    {reply,
-     cloudapi:delete_machine(Host, HAuth, ensure_list(UUID)), State};
+    {ok, R} = cloudapi:delete_machine(Host, HAuth, ensure_list(UUID)),
+    {reply, niceify_json(R), State};
 
 handle_call(Auth, {machines, start, UUID}, _From, 
 	    #state{host = Host,
 		   auth=HAuth} = State) ->
     ?DBG({machines, start, Host}, [], [sniffle, sniffle_impl_cloudapi]),
-    {reply,
-     cloudapi:start_machine(Host, HAuth, ensure_list(UUID)), State};
+    {ok, R} = cloudapi:start_machine(Host, HAuth, ensure_list(UUID)),
+    {reply, niceify_json(R), State};
 
 handle_call(Auth, {machines, stop, UUID}, _From, 
 	    #state{host = Host,
 		   auth=HAuth} = State) ->
     ?DBG({machines, stop, Host}, [], [sniffle, sniffle_impl_cloudapi]),
-    {reply,
-     cloudapi:stop_machine(Host, HAuth, ensure_list(UUID)), State};
+    {ok, R} = cloudapi:stop_machine(Host, HAuth, ensure_list(UUID)),
+    {reply, niceify_json(R), State};
 
 handle_call(Auth, {machines, reboot, UUID}, _From, 
 	    #state{host = Host,
 		   auth=HAuth} = State) ->
     ?DBG({machines, reboot, Host}, [], [sniffle, sniffle_impl_cloudapi]),
-    {reply,
-     cloudapi:reboot_machine(Host, HAuth, ensure_list(UUID)), State};
+    {ok, R} = cloudapi:reboot_machine(Host, HAuth, ensure_list(UUID)),
+    {reply, niceify_json(R), State};
 
 handle_call(Auth, {packages, list}, _From, 
 	    #state{host=Host,
@@ -103,7 +103,7 @@ handle_call(Auth, {packages, list}, _From,
 	      fun (P) ->
 		      proplists:get_value(<<"name">>, P)
 	      end, Ps),
-	    {reply, {ok, Ps}, State};
+	    {reply, {ok, niceify_json(Ps)}, State};
 	E ->
 	    {reply,
 	     {error, E}, State}
@@ -121,7 +121,7 @@ handle_call(Auth, {datasets, list}, _From,
 	      fun (E) ->
 		      proplists:get_value(<<"id">>, E)
 	      end, Ds),
-	    {reply, {ok, Ds}, State};
+	    {reply, {ok, niceify_json(Ds)}, State};
 	E ->
 	    {reply,
 	     {error, E}, State}
@@ -134,7 +134,7 @@ handle_call(Auth, {keys, list}, _From,
     ?DBG({keys, list, UUID, Host}, [], [sniffle, sniffle_impl_cloudapi]),
     case cloudapi:list_keys(Host, HAuth) of
 	{ok, [{<<"keys">>, Ks}]} ->
-	    {reply, {ok, Ks}, State};
+	    {reply, {ok, niceify_json(Ks)}, State};
 	E ->
 	    {reply,
 	     {error, E}, State}
@@ -145,7 +145,7 @@ handle_call(Auth, {keys, create, Auth, Pass, KeyID, PublicKey}, _From,
 		   auth=HAuth} = State) ->
     case cloudapi:create_key(Host, HAuth, ensure_list(Pass), ensure_list(KeyID), PublicKey) of
 	{ok, D} ->
-	    {reply, {ok, D}, State};
+	    {reply, {ok, niceify_json(D)}, State};
     	E ->
 	    ?WARNING({error, E}, [], [sniffle]),
 	    {reply, {error, E}, State}
@@ -170,8 +170,6 @@ handle_cast(_Auth, _Msg, State) ->
 
 handle_info(_Info, State) ->
     {noreply, State}.
-
-
 
 %%--------------------------------------------------------------------
 %% @private
@@ -206,3 +204,24 @@ ensure_list(B) when is_binary(B) ->
     binary_to_list(B);
 ensure_list(L) when is_list(L) ->
     L.
+
+niceify_json([{K, V}|R]) when is_list(V), is_binary(K) ->
+    [{binary_to_atom(K), niceify_json(V)}|niceify_json(R)];
+
+niceify_json([{K, V}|R]) when is_list(V) ->
+    [{K, niceify_json(V)}|niceify_json(R)];
+
+niceify_json([{K, V}|R]) when is_binary(K) ->
+    [{binary_to_atom(K), V}|niceify_json(R)];
+
+niceify_json([H|R]) ->
+    [H|niceify_json(R)];
+
+niceify_json([]) ->
+    [];
+
+niceify_json(O) ->
+    O.
+
+binary_to_atom(B) ->
+    list_to_atom(binary_to_list(B)).
