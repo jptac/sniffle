@@ -94,6 +94,7 @@
 			       {reply, {error, {host_down, E}}, State}
 		       end
 	       end).
+
 -define(LIST(Category),
 	handle_call({call, Auth, {Category, list}}, From, #state{api_hosts=Hosts} = State) ->
 	       ?INFO({Category, list, Auth, Hosts}, [], [sniffle]),
