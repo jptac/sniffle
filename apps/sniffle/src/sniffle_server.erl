@@ -245,15 +245,8 @@ handle_call({call, Auth, {machines, create, Name, PackageUUID, DatasetUUID, Meta
 	    #state{api_hosts=Hosts} = State) ->
     Host = pick_host(Hosts),
     Pid = gproc:lookup_pid({n, l, {host, Host}}),
-    case sniffle_host_srv:scall(Pid, Auth, {machines, create, Name, PackageUUID, DatasetUUID, Metadata, Tags}) of
-	{ok, Res} ->
-	    {reply, {ok, Res}, State};
-	{error, E} ->
-	    {reply, {error, E}, State};
-	O ->
-	    {reply, {unknown, O}, State}
-    end;
-
+    sniffle_host_srv:call(Pid, From, Auth, {machines, create, Name, PackageUUID, DatasetUUID, Metadata, Tags}),
+    {noreply, State};
 
 handle_call({call, Auth, {packages, delete, Name}}, _From, State) ->
     case libsnarl:allowed(system, Auth, [packages, Name, delete]) of
