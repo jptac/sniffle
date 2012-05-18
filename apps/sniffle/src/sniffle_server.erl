@@ -59,7 +59,7 @@
 		       try
 			   Pid = gproc:lookup_pid({n, l, {host, Host}}),
 
-			   case sniffle_host_srv:scall(Pid, From, Auth, {Category, Action, UUID, O1}) of
+			   case sniffle_host_srv:scall(Pid, Auth, {Category, Action, UUID, O1}) of
 			       {error, cant_call} = E1 ->
 				   remove_host(Host),
 				   {reply, {error,  E1}, State};
@@ -81,7 +81,7 @@
 		   {ok, Host} ->
 		       try
 			   Pid = gproc:lookup_pid({n, l, {host, Host}}),
-			   case sniffle_host_srv:scall(Pid, From, Auth, {Category, Action, UUID, O1, O2}) of
+			   case sniffle_host_srv:scall(Pid, Auth, {Category, Action, UUID, O1, O2}) of
 			       {error, cant_call} = E1 ->
 				   remove_host(Host),
 				   {reply, {error, E1}, State};
@@ -211,7 +211,7 @@ handle_call({call, Auth, {packages, list}}, From, #state{api_hosts=Hosts} = Stat
     Res = lists:foldl(fun (Host, List) ->
 			      try
 				  Pid = gproc:lookup_pid({n, l, {host, Host}}),
-				  case sniffle_host_srv:scall(Pid, From, Auth, {packages, list}) of
+				  case sniffle_host_srv:scall(Pid, Auth, {packages, list}) of
 				      {ok, HostRes} ->
 					  List ++ HostRes;
 				      {error, cant_call} ->
@@ -245,7 +245,7 @@ handle_call({call, Auth, {machines, create, Name, PackageUUID, DatasetUUID, Meta
 	    #state{api_hosts=Hosts} = State) ->
     Host = pick_host(Hosts),
     Pid = gproc:lookup_pid({n, l, {host, Host}}),
-    case sniffle_host_srv:scall(Pid, From, Auth, {machines, create, Name, PackageUUID, DatasetUUID, Metadata, Tags}) of
+    case sniffle_host_srv:scall(Pid, Auth, {machines, create, Name, PackageUUID, DatasetUUID, Metadata, Tags}) of
 	{ok, Res} ->
 	    {reply, {ok, Res}, State};
 	{error, E} ->
@@ -270,7 +270,7 @@ handle_call({call, Auth, {keys, create, Pass, KeyID, PublicKey}}, From, #state{a
 	    fun (Host, Res) ->
 		    ?DBG({Host}, [], [sniffle]),
 		    Pid =gproc:lookup_pid({n, l, {host, Host}}),
-		    case sniffle_host_srv:scall(Pid, From, Auth, {keys, create, Pass, KeyID, PublicKey}) of
+		    case sniffle_host_srv:scall(Pid, Auth, {keys, create, Pass, KeyID, PublicKey}) of
 			{ok, D} ->
 			    ?DBG({reply, D}, [], [sniffle]),
 			    case Res of 
