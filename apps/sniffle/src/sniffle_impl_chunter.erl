@@ -95,7 +95,7 @@ handle_call(Auth, {machines, create, Name, PackageUUID, DatasetUUID, Metadata, T
     ?DBG({machines, create, Host, Name, PackageUUID, DatasetUUID, Metadata, Tags}, [], [sniffle, sniffle_impl_chunter]),
     Res = case libchunter:create_machine(Host, Auth, Name, PackageUUID, DatasetUUID, Metadata, Tags) of
 	      {ok, JSON} ->
-		  sniffle_server:register_machine(HUUID, [JSON]),
+		  sniffle_server:update_machines(HUUID, [JSON]),
 		  {ok, make_frontend_json(JSON)};
 	      E ->
 		  E
