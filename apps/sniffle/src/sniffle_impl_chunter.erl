@@ -90,10 +90,12 @@ handle_call(Auth, {machines, reboot, UUID}, _From, #state{host=Host} = State) ->
      libchunter:reboot_machine(Host, Auth, UUID), State};
 
 handle_call(Auth, {machines, create, Name, PackageUUID, DatasetUUID, Metadata, Tags},
-	    _From, #state{host = Host} = State) ->
+	    _From, #state{host = Host,
+			  uuid= HUUID} = State) ->
     ?DBG({machines, create, Host, Name, PackageUUID, DatasetUUID, Metadata, Tags}, [], [sniffle, sniffle_impl_chunter]),
     Res = case libchunter:create_machine(Host, Auth, Name, PackageUUID, DatasetUUID, Metadata, Tags) of
 	      {ok, JSON} ->
+		  register_machine(HUUID, [JSON]),
 		  {ok, make_frontend_json(JSON)};
 	      E ->
 		  E
