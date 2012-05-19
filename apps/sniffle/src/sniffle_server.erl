@@ -36,7 +36,7 @@
 		   {ok, Host} ->
 		       try
 			   Pid = gproc:lookup_pid({n, l, {host, Host}}),
-			   case sniffle_host_srv:scall(Pid, From, Auth, {Category, Action, UUID}) of
+			   case sniffle_host_srv:scall(Pid, Auth, {Category, Action, UUID}) of
 			       {error, cant_call} = E1->
 				   remove_host(Host),
 				   {reply, {error, E1}, State};
@@ -436,7 +436,7 @@ get_env_default(Key, Default) ->
 discover_machines(Auth, Hosts) ->
     lists:map(fun (Host) ->
 		      Pid = gproc:lookup_pid({n, l, {host, Host}}),
-		      sniffle_host_srv:scall(Pid, self(), Auth, {machines, list})
+		      sniffle_host_srv:scall(Pid, Auth, {machines, list})
 	      end, Hosts),
     ok.
 
