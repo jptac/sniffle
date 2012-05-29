@@ -54,8 +54,8 @@ start_link() ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
-    Element ={sniffle_host_srv, {sniffle_host_srv, start_link, []}, 
-	      permanent, brutal_kill, worker, [sniffle_host_srv]}, 
+    Element = {sniffle_host_srv, {sniffle_host_srv, start_link, []}, 
+	       permanent, brutal_kill, worker, [sniffle_host_srv]}, 
     Children = [Element],
     RestartStrategy = {simple_one_for_one, 5, 10},
     {ok, {RestartStrategy, Children}}.

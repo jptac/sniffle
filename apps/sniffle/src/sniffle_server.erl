@@ -229,7 +229,7 @@ handle_call({call, Auth, {packages, list}}, From, #state{api_hosts=Hosts} = Stat
     {reply, {ok, Res}, State};
 
 handle_call({call, Auth, {packages, create, Name, Disk, Memory, Swap}}, _From, State) ->
-    case libsnarl:allowed(system, Auth, [packages, Name, set]) of
+    case libsnarl:allowed(system, Auth, [package, Name, set]) of
 	false ->
 	    {reply, {error, unauthorized}, State};
 	true ->
@@ -249,7 +249,7 @@ handle_call({call, Auth, {machines, create, Name, PackageUUID, DatasetUUID, Meta
     {noreply, State};
 
 handle_call({call, Auth, {packages, delete, Name}}, _From, State) ->
-    case libsnarl:allowed(system, Auth, [packages, Name, delete]) of
+    case libsnarl:allowed(system, Auth, [package, Name, delete]) of
 	false ->
 	    {reply, {error, unauthorized}, State};
 	true ->
@@ -328,7 +328,7 @@ handle_call(_Request, _From, State) ->
 %%--------------------------------------------------------------------
 
 handle_cast({cast, Auth, {register, Type, Spec}}, #state{api_hosts=HostUUIDs} = State) ->
-    case libsnarl:allowed(system, Auth, [service, sniffle, hosts, add, Type]) of
+    case libsnarl:allowed(system, Auth, [service, sniffle, host, add, Type]) of
 	false ->
 	    {noreply, State};
 	true ->
