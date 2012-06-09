@@ -32,6 +32,7 @@
 	       ?INFO({Category, Action, Auth, UUID, Hosts}, [], [sniffle]),
 	       case get_machine_host(Auth, UUID, Hosts) of
 		   {error, E} ->
+		       ?WARNING({host_action, 0, cant_find_host, {Auth, UUID, Hosts}, E}, [], [sniffle]),
 		       {reply, {error, E}, State};
 		   {ok, Host} ->
 		       try
@@ -44,7 +45,8 @@
 				   {reply, Res, State}
 			   end
 		       catch
-			   _T:E ->
+			   T:E ->
+			       ?ERROR({host_action, 0, {Category, Action, Auth, UUID, Hosts}, T, E}, [], [sniffle]),
 			       remove_host(Host),
 			       {reply, {error, {host_down, E}}, State}
 		       end
@@ -54,6 +56,7 @@
 	       ?INFO({Category, Action, Auth, UUID, Hosts}, [], [sniffle]),
 	       case get_machine_host(Auth, UUID, Hosts) of
 		   {error, E} ->
+		       ?WARNING({host_action, 1, cant_find_host, {Auth, UUID, Hosts}, E}, [], [sniffle]),
 		       {reply, {error, E}, State};
 		   {ok, Host} ->
 		       try
@@ -67,7 +70,8 @@
 				   {reply, Res, State}
 			   end
 		       catch
-			   _T:E ->
+			   T:E ->
+			       ?ERROR({host_action, 1, {Category, Action, Auth, UUID, Hosts, O1}, T, E}, [], [sniffle]),
 			       remove_host(Host),
 			       {reply, {error, {host_down, E}}, State}
 		       end
@@ -77,6 +81,7 @@
 	       ?INFO({Category, Action, Auth, UUID, Hosts}, [], [sniffle]),
 	       case get_machine_host(Auth, UUID, Hosts) of
 		   {error, E} ->
+		       ?WARNING({host_action, 2, cant_find_host, {Auth, UUID, Hosts}, E}, [], [sniffle]),
 		       {reply, {error, E}, State};
 		   {ok, Host} ->
 		       try
@@ -89,7 +94,8 @@
 				   {reply, Res, State}
 			   end
 		       catch
-			   _T:E ->
+			   T:E ->
+			       ?ERROR({host_action, 2, {Category, Action, Auth, UUID, Hosts, O1, O2}, T, E}, [], [sniffle]),
 			       remove_host(Host),
 			       {reply, {error, {host_down, E}}, State}
 		       end
@@ -111,7 +117,8 @@
 						     List
 					     end
 					 catch
-					     _T:E ->
+					     T:E ->
+						 ?ERROR({list, Category, T, E}, [], [sniffle]),
 						 remove_host(Host),
 						 {reply, {error, {host_down, E}}, State}
 					 end
@@ -221,7 +228,8 @@ handle_call({call, Auth, {packages, list}}, From, #state{api_hosts=Hosts} = Stat
 					  List
 				  end
 			      catch
-				  _T:E ->
+				  T:E ->
+				      ?ERROR({list, packages, T, E}, [], [sniffle]),
 				      remove_host(Host),
 				      {reply, {error, {host_down, E}}, State}
 			      end
@@ -296,7 +304,7 @@ handle_call({call, Auth, info}, _From,  #state{api_hosts=Hosts} = State) ->
 	false ->
 	    {reply, {error, unauthorized}, State};
 	true ->
-	    ?INFO({ping}, [], [sniffle]),
+	    ?INFO({info}, [], [sniffle]),
 	    {reply, [{<<"version">>, <<"0.1.0">>},
 		     {<<"hosts">>, length(Hosts)}], State}
     end;
@@ -360,7 +368,8 @@ handle_cast({remove_host, UUID}, #state{api_hosts=Hosts} = State) ->
 	Pid =gproc:lookup_pid({n, l, {host, UUID}}),
 	sniffle_host_srv:kill(Pid)
     catch
-	_T:_E ->
+	T:E ->
+	    ?WARNING({remove_host, failed, T, E}, [], [sniffle]),
 	    ok
     end,
     {noreply, State#state{api_hosts=[H||H<-Hosts,H=/=UUID]}};
@@ -372,6 +381,7 @@ handle_cast(reregister, State) ->
 	{noreply, State}
     catch
 	_T:_E ->
+	    ?WARNING({register, failed}, [], [sniffle]),
 	    application:stop(gproc),
 	    application:start(gproc),
 	    {noreply, State, 1000}
@@ -443,12 +453,14 @@ discover_machines(Auth, Hosts) ->
 register_machine(Host, M) ->
     UUID = proplists:get_value(id, M),
     Name = <<"sniffle:machines:", UUID/binary>>,
+    ?INFO({register_machine, Host, UUID}, [], [sniffle]),
     redo:cmd([<<"SET">>, Name, term_to_binary(Host)]),
     redo:cmd([<<"TTL">>, Name, 60*60*24]).
 
 get_machine_host(Auth, UUID, Hosts) ->
     case get_machine_host_int(UUID) of
 	{error, not_found} ->
+	    ?WARNING({not_cached, host, UUID}, [], [sniffle]),
 	    discover_machines(Auth, Hosts),
 	    get_machine_host_int(UUID);
 	{ok, Host} ->
@@ -458,7 +470,8 @@ get_machine_host(Auth, UUID, Hosts) ->
 get_machine_host_int(UUID) ->
     Name = <<"sniffle:machines:", UUID/binary>>,
     case redo:cmd([<<"get">>, Name]) of
-	undefined -> 
+	undefined ->
+	    ?ERROR({not_found, host, UUID}, [], [sniffle]),
 	    {error, not_found};
 	Bin ->
 	    {ok, binary_to_term(Bin)}
@@ -473,19 +486,19 @@ pick_host(Hosts) ->
     H.
 
 shuffle(List) ->
-%% Determine the log n portion then randomize the list.
-   randomize(round(math:log(length(List)) + 0.5), List).
+    %% Determine the log n portion then randomize the list.
+    randomize(round(math:log(length(List)) + 0.5), List).
 
 randomize(1, List) ->
-   randomize(List);
+    randomize(List);
 randomize(T, List) ->
-   lists:foldl(fun(_E, Acc) ->
-                  randomize(Acc)
-               end, randomize(List), lists:seq(1, (T - 1))).
+    lists:foldl(fun(_E, Acc) ->
+			randomize(Acc)
+		end, randomize(List), lists:seq(1, (T - 1))).
 
 randomize(List) ->
-   D = lists:map(fun(A) ->
-                    {random:uniform(), A}
-             end, List),
-   {_, D1} = lists:unzip(lists:keysort(1, D)), 
-   D1.
+    D = lists:map(fun(A) ->
+			  {random:uniform(), A}
+		  end, List),
+    {_, D1} = lists:unzip(lists:keysort(1, D)), 
+    D1.
