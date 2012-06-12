@@ -8,8 +8,6 @@
 %%%-------------------------------------------------------------------
 -module(sniffle_impl_cloudapi).
 
--include_lib("alog_pt.hrl").
-
 -behavior(sniffle_impl).
 %% API
 
@@ -43,15 +41,21 @@ handle_call(Auth, {machines, list}, _From,
 	    #state{host = Host,
 		   uuid=UUID,
 		   auth=HAuth} = State) ->
-    ?INFO({machines, list, Auth, UUID}, [], [sniffle]),
+    lager:info([{fifi_component, sniffle_impl_cloudapi}, {user, Auth}],
+	       "machines:list.",
+	       []),
     Res = case cloudapi:list_machines(Host, HAuth) of
 	      {ok, {Ms, _, _}} ->
-		  ?DBG({machines, Ms}, [], [sniffle]),
+		  lager:error([{fifi_component, sniffle_impl_cloudapi}, {user, Auth}],
+			      "machines:list - Machines: ~p.",
+			      [Ms]),
 		  Ms2 = [niceify_json(M) || M <- Ms],
 		  sniffle_server:update_machines(UUID, Ms2),
 		  {ok, Ms2};
 	      E ->
-		  ?WARNING({error, E}, [], [sniffle]),
+	    lager:error([{fifi_component, sniffle_impl_cloudapi}, {user, Auth}],
+			"machines:list - Error: ~p.",
+			[E]),
 		  {error, E}
 	  end,
     {reply, Res, State};
@@ -59,35 +63,45 @@ handle_call(Auth, {machines, list}, _From,
 handle_call(Auth, {machines, get, UUID}, _From, 
 	    #state{host = Host,
 		   auth=HAuth} = State) ->
-    ?DBG({machines, get, Host}, [], [sniffle, sniffle_impl_cloudapi]),
+    lager:info([{fifi_component, sniffle_impl_cloudapi}, {user, Auth}],
+	       "machines:get - UUID: ~s.",
+	       [UUID]),
     {ok, R} =  cloudapi:get_machine(Host, HAuth, ensure_list(UUID)),
     {reply, niceify_json(R), State};
 
 handle_call(Auth, {machines, delete, UUID}, _From, 
 	    #state{host = Host,
 		   auth=HAuth} = State) ->
-    ?DBG({machines, delete, Host}, [], [sniffle, sniffle_impl_cloudapi]),
+    lager:info([{fifi_component, sniffle_impl_cloudapi}, {user, Auth}],
+	       "machines:delete - UUID: ~s.",
+	       [UUID]),
     {ok, R} = cloudapi:delete_machine(Host, HAuth, ensure_list(UUID)),
     {reply, niceify_json(R), State};
 
 handle_call(Auth, {machines, start, UUID}, _From, 
 	    #state{host = Host,
 		   auth=HAuth} = State) ->
-    ?DBG({machines, start, Host}, [], [sniffle, sniffle_impl_cloudapi]),
+    lager:info([{fifi_component, sniffle_impl_cloudapi}, {user, Auth}],
+	       "machines:start - UUID: ~s.",
+	       [UUID]),
     {ok, R} = cloudapi:start_machine(Host, HAuth, ensure_list(UUID)),
     {reply, niceify_json(R), State};
 
 handle_call(Auth, {machines, stop, UUID}, _From, 
 	    #state{host = Host,
 		   auth=HAuth} = State) ->
-    ?DBG({machines, stop, Host}, [], [sniffle, sniffle_impl_cloudapi]),
+    lager:info([{fifi_component, sniffle_impl_cloudapi}, {user, Auth}],
+	       "machines:stop - UUID: ~s.",
+	       [UUID]),
     {ok, R} = cloudapi:stop_machine(Host, HAuth, ensure_list(UUID)),
     {reply, niceify_json(R), State};
 
 handle_call(Auth, {machines, reboot, UUID}, _From, 
 	    #state{host = Host,
 		   auth=HAuth} = State) ->
-    ?DBG({machines, reboot, Host}, [], [sniffle, sniffle_impl_cloudapi]),
+    lager:info([{fifi_component, sniffle_impl_cloudapi}, {user, Auth}],
+	       "machines:reboot - UUID: ~s.",
+	       [UUID]),
     {ok, R} = cloudapi:reboot_machine(Host, HAuth, ensure_list(UUID)),
     {reply, niceify_json(R), State};
 
@@ -95,7 +109,9 @@ handle_call(Auth, {packages, list}, _From,
 	    #state{host=Host,
 		   uuid=UUID,
 		   auth=HAuth} = State) ->
-    ?DBG({packages, list, Host}, [], [sniffle, sniffle_impl_cloudapi]),
+    lager:info([{fifi_component, sniffle_impl_cloudapi}, {user, Auth}],
+	       "packages:list.",
+	       []),
     case cloudapi:list_packages(Host, HAuth) of
 	{ok, Ps} ->
 	    sniffle_server:register_host_resource(
@@ -105,6 +121,9 @@ handle_call(Auth, {packages, list}, _From,
 	      end, Ps),
 	    {reply, {ok, niceify_json(Ps)}, State};
 	E ->
+	    lager:error([{fifi_component, sniffle_impl_cloudapi}, {user, Auth}],
+			"packags:list - Error: ~p.",
+			[E]),
 	    {reply,
 	     {error, E}, State}
     end;
@@ -113,7 +132,9 @@ handle_call(Auth, {datasets, list}, _From,
 	    #state{host = Host,
 		   uuid=UUID,
 		   auth=HAuth} = State) ->
-    ?DBG({packages, list, Host}, [], [sniffle, sniffle_impl_cloudapi]),
+    lager:info([{fifi_component, sniffle_impl_cloudapi}, {user, Auth}],
+	       "datasets:list.",
+	       []),
     case cloudapi:list_datasets(Host, HAuth) of
 	{ok, Ds} ->
 	    sniffle_server:register_host_resource(
@@ -123,19 +144,26 @@ handle_call(Auth, {datasets, list}, _From,
 	      end, Ds),
 	    {reply, {ok, niceify_json(Ds)}, State};
 	E ->
+	    lager:error([{fifi_component, sniffle_impl_cloudapi}, {user, Auth}],
+			"datasets:list - Error: ~p.",
+			[E]),
 	    {reply,
 	     {error, E}, State}
     end;
 
 handle_call(Auth, {keys, list}, _From, 
 	    #state{host = Host,
-		   uuid=UUID,
 		   auth=HAuth} = State) ->
-    ?DBG({keys, list, UUID, Host}, [], [sniffle, sniffle_impl_cloudapi]),
+    lager:info([{fifi_component, sniffle_impl_cloudapi}, {user, Auth}],
+	       "keys:list.",
+	       []),
     case cloudapi:list_keys(Host, HAuth) of
 	{ok, [{<<"keys">>, Ks}]} ->
 	    {reply, {ok, niceify_json(Ks)}, State};
 	E ->
+	    lager:error([{fifi_component, sniffle_impl_cloudapi}, {user, Auth}],
+			"keys:list - Error: ~p.",
+			[E]),
 	    {reply,
 	     {error, E}, State}
     end;
@@ -143,16 +171,23 @@ handle_call(Auth, {keys, list}, _From,
 handle_call(Auth, {keys, create, Auth, Pass, KeyID, PublicKey}, _From,
 	    #state{host = Host,
 		   auth=HAuth} = State) ->
+    lager:info([{fifi_component, sniffle_impl_cloudapi}, {user, Auth}],
+	       "keys:create - KeyID: ~p.",
+	       [KeyID]),
     case cloudapi:create_key(Host, HAuth, ensure_list(Pass), ensure_list(KeyID), PublicKey) of
 	{ok, D} ->
 	    {reply, {ok, niceify_json(D)}, State};
     	E ->
-	    ?WARNING({error, E}, [], [sniffle]),
+	    lager:error([{fifi_component, sniffle_impl_cloudapi}, {user, Auth}],
+			"keys:create - Error: ~p.",
+			[E]),
 	    {reply, {error, E}, State}
     end;
 	
 handle_call(Auth, Call, _From, State) ->
-    ?ERROR({unspuorrted_handle_call, Call}, [], [sniffle, sniffle_impl_cloudapi]),
+    lager:error([{fifi_component, sniffle_impl_cloudapi}, {user, Auth}],
+		"sniffle_impl_cloudapi:unknwon - Call: ~p.",
+		[Call]),
     {reply, {error, not_supported}, State}.
 
 %%--------------------------------------------------------------------

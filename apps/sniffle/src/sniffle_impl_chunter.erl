@@ -8,8 +8,6 @@
 %%%-------------------------------------------------------------------
 -module(sniffle_impl_chunter).
 
--include_lib("alog_pt.hrl").
-
 -behavior(sniffle_impl).
 %% API
 
@@ -39,60 +37,97 @@ init(UUID, Host) ->
 %%--------------------------------------------------------------------
 
 handle_call(Auth, {machines, list}, _From, #state{host=Host, uuid=HUUID} = State) ->
-    ?INFO({machines, list, Auth}, [], [sniffle]),
+    lager:info([{fifi_component, sniffle_impl_chunter}, {user, Auth}],
+	       "machines:list.",
+	       []),
     Res = case libchunter:list_machines(Host, Auth) of
 	      {ok, Ms} ->
-		  ?DBG({machines, Ms}, [], [sniffle]),
+		  lager:error([{fifi_component, sniffle_impl_chunter}, {user, Auth}],
+			      "machines:list - Machines: ~p.",
+			      [Ms]),
 		  Ms1 = [ make_frontend_json(M) || M <- Ms],
 		  sniffle_server:update_machines(HUUID, Ms1),
 		  {ok, Ms1};
 	      E ->
-		  ?WARNING({error, E}, [], [sniffle]),
+	    lager:error([{fifi_component, sniffle_impl_chunter}, {user, Auth}],
+			"machines:list - Error: ~p.",
+			[E]),
 		  {error, E}
 	  end,
     {reply, Res, State};
 
 handle_call(Auth, {machines, get, UUID}, _From, #state{host=Host} = State) ->
-    ?DBG({machines, get, Host}, [], [sniffle, sniffle_impl_cloudapi]),
+    lager:info([{fifi_component, sniffle_impl_chunter}, 
+		{user, Auth},
+		{machine, UUID}],
+	       "machines:get - UUID: ~s.",
+	       [UUID]),
     {ok, M} = libchunter:get_machine(Host, Auth, UUID),
     {reply,
      {ok, make_frontend_json(M)},
      State};
 
 handle_call(Auth, {machines, info, UUID}, _From, #state{host=Host} = State) ->
-    ?DBG({machines, info, Host}, [], [sniffle, sniffle_impl_chunter]),
+    lager:info([{fifi_component, sniffle_impl_chunter}, 
+		{user, Auth},
+		{machine, UUID}],
+	       "machines:info - UUID: ~s.",
+	       [UUID]),
     {reply,
      libchunter:get_machine_info(Host, Auth, UUID), State};
 	 
 handle_call(Auth, {machines, delete, UUID}, _From, #state{host=Host} = State) ->
-    ?DBG({machines, delete, Host}, [], [sniffle, sniffle_impl_chunter]),
+    lager:info([{fifi_component, sniffle_impl_chunter}, 
+		{user, Auth},
+		{machine, UUID}],
+	       "machines:delete - UUID: ~s.",
+	       [UUID]),
     {reply,
      libchunter:delete_machine(Host, Auth, UUID), State};
 
 handle_call(Auth, {machines, start, UUID}, _From, #state{host=Host} = State) ->
-    ?DBG({machines, start, Host}, [], [sniffle, sniffle_impl_chunter]),
+    lager:info([{fifi_component, sniffle_impl_chunter}, 
+		{user, Auth},
+		{machine, UUID}],
+	       "machines:start - UUID: ~s.",
+	       [UUID]),
     {reply,
      libchunter:start_machine(Host, Auth, UUID), State};
 
 handle_call(Auth, {machines, start, UUID, Image}, _From, #state{host=Host} = State) ->
-    ?DBG({machines, start, Host}, [], [sniffle, sniffle_impl_chunter]),
+    lager:info([{fifi_component, sniffle_impl_chunter}, 
+		{user, Auth},
+		{machine, UUID}],
+	       "machines:start - UUID: ~s, Image: ~s.",
+	       [UUID, Image]),
     {reply,
      libchunter:start_machine(Host, Auth, UUID, Image), State};
 
 handle_call(Auth, {machines, stop, UUID}, _From, #state{host=Host} = State) ->
-    ?DBG({machines, stop, Host}, [], [sniffle, sniffle_impl_chunter]),
+    lager:info([{fifi_component, sniffle_impl_chunter}, 
+		{user, Auth},
+		{machine, UUID}],
+	       "machines:stop - UUID: ~s.",
+	       [UUID]),
     {reply,
      libchunter:stop_machine(Host, Auth, UUID), State};
 
 handle_call(Auth, {machines, reboot, UUID}, _From, #state{host=Host} = State) ->
-    ?DBG({machines, reboot, Host}, [], [sniffle, sniffle_impl_chunter]),
+    lager:info([{fifi_component, sniffle_impl_chunter}, 
+		{user, Auth},
+		{machine, UUID}],
+	       "machines:reboot - UUID: ~s.",
+	       [UUID]),
     {reply,
      libchunter:reboot_machine(Host, Auth, UUID), State};
 
 handle_call(Auth, {machines, create, Name, PackageUUID, DatasetUUID, Metadata, Tags},
 	    _From, #state{host = Host,
 			  uuid= HUUID} = State) ->
-    ?DBG({machines, create, Host, Name, PackageUUID, DatasetUUID, Metadata, Tags}, [], [sniffle, sniffle_impl_chunter]),
+    lager:info([{fifi_component, sniffle_impl_chunter}, 
+		{user, Auth}],
+	       "machines:create - Host: ~p, Name: ~s, Package: ~s, Dataset: ~s.",
+	       [Host, Name, PackageUUID, DatasetUUID]),
     Res = case libchunter:create_machine(Host, Auth, Name, PackageUUID, DatasetUUID, Metadata, Tags) of
 	      {ok, JSON} ->
 		  sniffle_server:update_machines(HUUID, [JSON]),
@@ -103,7 +138,10 @@ handle_call(Auth, {machines, create, Name, PackageUUID, DatasetUUID, Metadata, T
     {reply, Res, State};
 
 handle_call(Auth, {packages, list}, _From, #state{host=Host, uuid=HUUID} = State) ->
-    ?DBG({packages, list, Host}, [], [sniffle, sniffle_impl_chunter]),
+    lager:info([{fifi_component, sniffle_impl_chunter}, 
+		{user, Auth}],
+	       "packages:list.",
+	       []),
     case libchunter:list_packages(Host, Auth) of
 	{ok, Ps} ->
 	    sniffle_server:register_host_resource(
@@ -118,7 +156,10 @@ handle_call(Auth, {packages, list}, _From, #state{host=Host, uuid=HUUID} = State
     end;
 
 handle_call(Auth, {datasets, list}, _From, #state{host = Host, uuid=HUUID} = State) ->
-    ?DBG({packages, list, Host}, [], [sniffle, sniffle_impl_chunter]),
+    lager:info([{fifi_component, sniffle_impl_chunter}, 
+		{user, Auth}],
+	       "datasets:list.",
+	       []),
     case libchunter:list_datasets(Host, Auth) of
 	{ok, Ds} ->
 	    sniffle_server:register_host_resource(
@@ -134,7 +175,10 @@ handle_call(Auth, {datasets, list}, _From, #state{host = Host, uuid=HUUID} = Sta
 
 
 handle_call(Auth, {keys, list}, _From, #state{host = Host} = State) ->
-    ?DBG({keys, list, Host}, [], [sniffle, sniffle_impl_chunter]),
+    lager:info([{fifi_component, sniffle_impl_chunter}, 
+		{user, Auth}],
+	       "keys:list.",
+	       []),
     case libchunter:list_keys(Host, Auth) of
 	{ok, [{<<"keys">>, Ks}]} ->
 	    {reply, {ok, Ks}, State};
@@ -143,8 +187,11 @@ handle_call(Auth, {keys, list}, _From, #state{host = Host} = State) ->
 	     {error, E}, State}
     end;
 
-handle_call(_Auth, Call, _From, State) ->
-    ?ERROR({unspuorrted_handle_call, Call}, [], [sniffle, sniffle_impl_chunter]),
+handle_call(Auth, Call, _From, State) ->
+    lager:error([{fifi_component, sniffle_impl_chunter}, 
+		{user, Auth}],
+	       "sniffle_impl_chunter:unknown_call - Call: ~p.",
+	       [Call]),
     {reply, {error, not_supported}, State}.
 
 %%--------------------------------------------------------------------

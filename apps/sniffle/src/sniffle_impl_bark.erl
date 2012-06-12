@@ -8,8 +8,6 @@
 %%%-------------------------------------------------------------------
 -module(sniffle_impl_bark).
 
--include_lib("alog_pt.hrl").
-
 -behavior(sniffle_impl).
 %% API
 
@@ -42,14 +40,18 @@ init(UUID, {Host, Auth}) ->
 handle_call(Auth, {machines, info, Auth, UUID}, _From, 
 	    #state{host = Host,
 		   auth=HAuth} = State) ->
-    ?DBG({machines, get, Host}, [], [sniffle, sniffle_impl_bark]),
+    lager:info([{fifi_component, sniffle_impl_bark}, {user, Auth}],
+	       "machines:info - UUID: ~s.",
+	       [UUID]),
     {reply,
      bark:get_machine_info(Host, HAuth, ensure_list(UUID)), State};
 
 handle_call(Auth, {machines, start, UUID, Image}, _From, 
 	    #state{host = Host,
 		   auth=HAuth} = State) ->
-    ?DBG({machines, start, Host}, [], [sniffle, sniffle_impl_bark]),
+    lager:info([{fifi_component, sniffle_impl_bark}, {user, Auth}],
+	       "machines:start - UUID: ~s, Image: ~s.",
+	       [UUID, Image]),
     {reply,
      bark:start_machine(Host, HAuth, ensure_list(UUID), ensure_list(Image)), State};
 
@@ -57,7 +59,9 @@ handle_call(Auth, {images, list}, _From,
 	    #state{host = Host,
 		   uuid=UUID,
 		   auth=HAuth} = State) ->
-    ?DBG({images, list, Host}, [], [sniffle, sniffle_impl_bark]),
+    lager:info([{fifi_component, sniffle_impl_bark}, {user, Auth}],
+	       "images:list.",
+	       []),
     case bark:list_images(Host, HAuth) of
 	{ok, Is} ->
 	    sniffle_server:register_host_resource(
@@ -72,6 +76,9 @@ handle_call(Auth, {images, list}, _From,
     end;
 
 handle_call(Auth, Call, From, State) ->
+    lager:info([{fifi_component, sniffle_impl_bark}, {user, Auth}],
+	       "bark:hand_down_to_cloudapi.",
+	       []),
     sniffle_impl_cloudapi:handle_call(Auth, Call, From, State).
 
 %%--------------------------------------------------------------------

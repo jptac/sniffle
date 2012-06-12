@@ -10,8 +10,6 @@
 
 -behaviour(gen_server).
 
--include_lib("alog_pt.hrl").
-
 %% API
 -export([start_link/0,
 	 reregister/0,
@@ -29,10 +27,15 @@
 
 -define(HOST_ACTION(Category, Action),
 	handle_call({call, Auth, {Category, Action, UUID}}, From, #state{api_hosts=Hosts} = State) ->
-	       ?INFO({Category, Action, Auth, UUID, Hosts}, [], [sniffle]),
+	       lager:info([{fifi_component, sniffle}, {user, Auth}],
+			  "~p:~p - UUID: ~s.",
+			  [Category, Action, UUID]),
+	       lager:debug([{fifi_component, sniffle}, {user, Auth}],
+			   "~p:~p - From: ~p Hosts: ~p.", [Category, Action, From, Hosts]),
 	       case get_machine_host(Auth, UUID, Hosts) of
 		   {error, E} ->
-		       ?WARNING({host_action, 0, cant_find_host, {Auth, UUID, Hosts}, E}, [], [sniffle]),
+		       lager:warning([{fifi_component, chunter}],
+				     "~p:~p - Host not found: ~s.", [Category, Action, UUID]),
 		       {reply, {error, E}, State};
 		   {ok, Host} ->
 		       try
@@ -46,17 +49,24 @@
 			   end
 		       catch
 			   T:E ->
-			       ?ERROR({host_action, 0, {Category, Action, Auth, UUID, Hosts}, T, E}, [], [sniffle]),
+			       lager:error([{fifi_component, sniffle}, {user, Auth}],
+					   "~p:~p - Error: ~p:~p.",
+					   [Category, Action, T,E]),
 			       remove_host(Host),
 			       {reply, {error, {host_down, E}}, State}
 		       end
 	       end).
 -define(HOST_ACTION1(Category, Action),
 	handle_call({call, Auth, {Category, Action, UUID, O1}}, From, #state{api_hosts=Hosts} = State) ->
-	       ?INFO({Category, Action, Auth, UUID, Hosts}, [], [sniffle]),
+	       lager:info([{fifi_component, sniffle}, {user, Auth}],
+			  "~p:~p - UUID: ~s, O1: ~p.",
+			  [Category, Action, UUID, O1]),
+	       lager:debug([{fifi_component, sniffle}, {user, Auth}],
+			   "~p:~p - From: ~p Hosts: ~p.", [Category, Action, From, Hosts]),
 	       case get_machine_host(Auth, UUID, Hosts) of
 		   {error, E} ->
-		       ?WARNING({host_action, 1, cant_find_host, {Auth, UUID, Hosts}, E}, [], [sniffle]),
+		       lager:warning([{fifi_component, chunter}],
+				     "~p:~p - Host not found: ~s.", [Category, Action, UUID]),
 		       {reply, {error, E}, State};
 		   {ok, Host} ->
 		       try
@@ -71,17 +81,24 @@
 			   end
 		       catch
 			   T:E ->
-			       ?ERROR({host_action, 1, {Category, Action, Auth, UUID, Hosts, O1}, T, E}, [], [sniffle]),
+			       lager:error([{fifi_component, sniffle}, {user, Auth}],
+					   "~p:~p - Error: ~p:~p.",
+					   [Category, Action, T,E]),
 			       remove_host(Host),
 			       {reply, {error, {host_down, E}}, State}
 		       end
 	       end).
 -define(HOST_ACTION2(Category, Action),
 	handle_call({call, Auth, {Category, Action, UUID, O1, O2}}, From, #state{api_hosts=Hosts} = State) ->
-	       ?INFO({Category, Action, Auth, UUID, Hosts}, [], [sniffle]),
+	       lager:info([{fifi_component, sniffle}, {user, Auth}],
+			  "~p:~p - UUID: ~s, O1: ~p, O2: ~p.",
+			  [Category, Action, UUID, O1, O2]),
+	       lager:debug([{fifi_component, sniffle}, {user, Auth}],
+			   "~p:~p - From: ~p Hosts: ~p.", [Category, Action, From, Hosts]),
 	       case get_machine_host(Auth, UUID, Hosts) of
 		   {error, E} ->
-		       ?WARNING({host_action, 2, cant_find_host, {Auth, UUID, Hosts}, E}, [], [sniffle]),
+		       lager:warning([{fifi_component, chunter}],
+				     "~p:~p - Host not found: ~s.", [Category, Action, UUID]),
 		       {reply, {error, E}, State};
 		   {ok, Host} ->
 		       try
@@ -95,7 +112,9 @@
 			   end
 		       catch
 			   T:E ->
-			       ?ERROR({host_action, 2, {Category, Action, Auth, UUID, Hosts, O1, O2}, T, E}, [], [sniffle]),
+			       lager:error([{fifi_component, sniffle}, {user, Auth}],
+					  "~p:~p - Error: ~p:~p.",
+					  [Category, Action, T,E]),
 			       remove_host(Host),
 			       {reply, {error, {host_down, E}}, State}
 		       end
@@ -103,7 +122,11 @@
 
 -define(LIST(Category),
 	handle_call({call, Auth, {Category, list}}, From, #state{api_hosts=Hosts} = State) ->
-	       ?INFO({Category, list, Auth, Hosts}, [], [sniffle]),
+	       lager:info([{fifi_component, sniffle}, {user, Auth}],
+			  "~p:list.",
+			  [Category]),
+	       lager:debug([{fifi_component, sniffle}, {user, Auth}],
+			   "~p:lust - From: ~p Hosts: ~p.", [Category, From, Hosts]),
 	       Res = lists:foldl(fun (Host, List) ->
 					 try
 					     Pid = gproc:lookup_pid({n, l, {host, Host}}),
@@ -118,7 +141,9 @@
 					     end
 					 catch
 					     T:E ->
-						 ?ERROR({list, Category, T, E}, [], [sniffle]),
+						 lager:error([{fifi_component, sniffle}, {user, Auth}],
+							     "~p:list - Error: ~p:~p.",
+							     [Category, T,E]),
 						 remove_host(Host),
 						 {reply, {error, {host_down, E}}, State}
 					 end
@@ -178,7 +203,12 @@ init([]) ->
 				      sniffle_host_sup:start_child(Provider, UUID, Spec),
 				      UUID
 			      end, Hosts),
-    ?INFO({init, Hosts}, [], [sniffle]),
+    lager:info([{fifi_component, sniffle}],
+	       "sniffle:init.",
+	       []),
+    lager:debug([{fifi_component, sniffle}],
+	       "sniffle:init - Hosts: ~p.",
+	       [Hosts]),
     {ok, #state{api_hosts=HostUUIDs}, 1000}.
 
 
@@ -211,7 +241,11 @@ init([]) ->
 ?LIST(keys);
 
 handle_call({call, Auth, {packages, list}}, From, #state{api_hosts=Hosts} = State) ->
-    ?INFO({packages, list, Auth, Hosts}, [], [sniffle]),
+    lager:info([{fifi_component, sniffle}, {user, Auth}],
+	       "packages:list.",
+	       []),
+    lager:debug([{fifi_component, sniffle}, {user, Auth}],
+		"packages:list - From: ~p Hosts: ~p.", [From, Hosts]),
     {ok, GlobalPackageNames} = libsnarl:option_list(system, packages),
     GlobalPackages = 
 	[P1 || {ok, P1 }<- [libsnarl:option_get(system, packages, P) || P <- GlobalPackageNames]],
@@ -229,14 +263,21 @@ handle_call({call, Auth, {packages, list}}, From, #state{api_hosts=Hosts} = Stat
 				  end
 			      catch
 				  T:E ->
-				      ?ERROR({list, packages, T, E}, [], [sniffle]),
+				      lager:error([{fifi_component, sniffle}, {user, Auth}],
+						  "packages:list - Error: ~p:~p.",
+						  [T,E]),
 				      remove_host(Host),
 				      {reply, {error, {host_down, E}}, State}
 			      end
 		      end, GlobalPackages, Hosts),
     {reply, {ok, Res}, State};
 
-handle_call({call, Auth, {packages, create, Name, Disk, Memory, Swap}}, _From, State) ->
+handle_call({call, Auth, {packages, create, Name, Disk, Memory, Swap}}, From, State) ->
+    lager:info([{fifi_component, sniffle}, {user, Auth}],
+	       "packages:create - Name: ~s, Disk: ~p, Memory: ~p, Swap: ~p.",
+	       [Name, Disk, Memory, Swap]),
+    lager:debug([{fifi_component, sniffle}, {user, Auth}],
+		"packages:create - From: ~p.", [From]),
     case libsnarl:allowed(system, Auth, [package, Name, set]) of
 	false ->
 	    {reply, {error, unauthorized}, State};
@@ -251,12 +292,22 @@ handle_call({call, Auth, {packages, create, Name, Disk, Memory, Swap}}, _From, S
 
 handle_call({call, Auth, {machines, create, Name, PackageUUID, DatasetUUID, Metadata, Tags}}, From, 
 	    #state{api_hosts=Hosts} = State) ->
+    lager:info([{fifi_component, sniffle}, {user, Auth}],
+	       "machines:create - Name: ~s, Package, ~s, Dataset: ~s.",
+	       [Name, PackageUUID, DatasetUUID]),
+    lager:debug([{fifi_component, sniffle}, {user, Auth}],
+		"machines:create - From: ~p Hosts: ~p.", [From, Hosts]),
     Host = pick_host(Hosts),
     Pid = gproc:lookup_pid({n, l, {host, Host}}),
     sniffle_host_srv:call(Pid, From, Auth, {machines, create, Name, PackageUUID, DatasetUUID, Metadata, Tags}),
     {noreply, State};
 
-handle_call({call, Auth, {packages, delete, Name}}, _From, State) ->
+handle_call({call, Auth, {packages, delete, Name}}, From, State) ->
+    lager:info([{fifi_component, sniffle}, {user, Auth}],
+	       "packages:delete - Name: ~s.",
+	       [Name]),
+    lager:debug([{fifi_component, sniffle}, {user, Auth}],
+		"packages:delete - From: ~p.", [From]),
     case libsnarl:allowed(system, Auth, [package, Name, delete]) of
 	false ->
 	    {reply, {error, unauthorized}, State};
@@ -266,14 +317,16 @@ handle_call({call, Auth, {packages, delete, Name}}, _From, State) ->
     end;
 
 handle_call({call, Auth, {keys, create, Pass, KeyID, PublicKey}}, From, #state{api_hosts=Hosts} = State) ->
-    ?INFO({keys, create, Auth, Pass, KeyID, PublicKey, Hosts}, [], [sniffle]),
+    lager:info([{fifi_component, sniffle}, {user, Auth}],
+	       "keys:create - KeyID: ~s.",
+	       [KeyID]),
+    lager:debug([{fifi_component, sniffle}, {user, Auth}],
+		"keys:create - PublicKey: ~s, From: ~p Hosts: ~p.", [PublicKey, From, Hosts]),
     Res = lists:foldl(
 	    fun (Host, Res) ->
-		    ?DBG({Host}, [], [sniffle]),
 		    Pid =gproc:lookup_pid({n, l, {host, Host}}),
 		    case sniffle_host_srv:scall(Pid, Auth, {keys, create, Pass, KeyID, PublicKey}) of
 			{ok, D} ->
-			    ?DBG({reply, D}, [], [sniffle]),
 			    case Res of 
 				{error, _} ->
 				    Res;
@@ -299,22 +352,30 @@ handle_call({call, Auth, {keys, create, Pass, KeyID, PublicKey}}, From, #state{a
 	    end, ok, Hosts),
     {reply, {ok, Res}, State};
 
-handle_call({call, Auth, info}, _From,  #state{api_hosts=Hosts} = State) ->
+handle_call({call, Auth, info}, From,  #state{api_hosts=Hosts} = State) ->
+    lager:info([{fifi_component, sniffle}, {user, Auth}],
+	       "sniffle:info.",
+	       []),
+    lager:debug([{fifi_component, sniffle}, {user, Auth}],
+		"sniffle:info - From: ~p Hosts: ~p.", [From, Hosts]),
     case libsnarl:allowed(system, Auth, [service, sniffle, info]) of
 	false ->
 	    {reply, {error, unauthorized}, State};
 	true ->
-	    ?INFO({info}, [], [sniffle]),
 	    {reply, [{<<"version">>, <<"0.1.0">>},
 		     {<<"hosts">>, length(Hosts)}], State}
     end;
 
-handle_call({call, Auth, ping}, _From, State) ->
+handle_call({call, Auth, ping}, From, State) ->
+    lager:info([{fifi_component, sniffle}, {user, Auth}],
+	       "sniffle:ping.",
+	       []),
+    lager:debug([{fifi_component, sniffle}, {user, Auth}],
+		"sniffle:ping - From: ~p.", [From]),
     case libsnarl:allowed(system, Auth, [service, sniffle, info]) of
 	false ->
 	    {reply, {error, unauthorized}, State};
 	true ->
-	    ?INFO({ping}, [], [sniffle]),
 	    {reply, pong, State}
     end;
 
@@ -336,6 +397,12 @@ handle_call(_Request, _From, State) ->
 %%--------------------------------------------------------------------
 
 handle_cast({cast, Auth, {register, Type, Spec}}, #state{api_hosts=HostUUIDs} = State) ->
+    lager:info([{fifi_component, sniffle}, {user, Auth}],
+	       "sniffle:register - Type: ~p, Spec: ~s.",
+	       [Type, Spec]),
+    lager:debug([{fifi_component, sniffle}, {user, Auth}],
+		"sniffle:register - Hosts: ~p.", [HostUUIDs]),
+
     case libsnarl:allowed(system, Auth, [service, sniffle, host, add, Type]) of
 	false ->
 	    {noreply, State};
@@ -343,16 +410,19 @@ handle_cast({cast, Auth, {register, Type, Spec}}, #state{api_hosts=HostUUIDs} = 
 	    Providers = get_env_default(providers, ?IMPL_PROVIDERS),
 	    UUID = uuid:uuid4(),
 	    Provider=proplists:get_value(Type, Providers),
-	    ?INFO({register, Provider, UUID, Spec}, [], [sniffle]),
 	    sniffle_host_sup:start_child(Provider, UUID, Spec),
 	    {noreply, State#state{api_hosts=[UUID|HostUUIDs]}}
     end;
 	
 handle_cast({update_machines, Host, Ms}, State) ->
+    lager:info([{fifi_component, sniffle}],
+	       "sniffle:update_machines - Host: ~p.",
+	       [Host]),
     lists:map(fun (M) ->
 		      register_machine(Host, M)
 	      end, Ms),
     {noreply, State};
+
 handle_cast({register_host_resource, Host, ResourceName, IDFn, Resouces}, State) ->
     Name = <<"sniffle:", ResourceName/binary, ":", Host/binary>>,
     redo:cmd([<<"DEL">>, Name]),
@@ -364,12 +434,19 @@ handle_cast({register_host_resource, Host, ResourceName, IDFn, Resouces}, State)
     {noreply, State};
 
 handle_cast({remove_host, UUID}, #state{api_hosts=Hosts} = State) ->
+    lager:info([{fifi_component, sniffle}],
+	       "sniffle:remove_host - Host: ~s.",
+	       [UUID]),
+    lager:debug([{fifi_component, sniffle}],
+		"sniffle:remove_host - Hosts: ~p.", [Hosts]),
     try
 	Pid =gproc:lookup_pid({n, l, {host, UUID}}),
 	sniffle_host_srv:kill(Pid)
     catch
 	T:E ->
-	    ?WARNING({remove_host, failed, T, E}, [], [sniffle]),
+	    lager:error([{fifi_component, sniffle}],
+			"sniffle:remove_host - Error: ~p:~p.",
+			[T,E]),
 	    ok
     end,
     {noreply, State#state{api_hosts=[H||H<-Hosts,H=/=UUID]}};
@@ -380,8 +457,10 @@ handle_cast(reregister, State) ->
 	gproc:send({p,g,{sniffle,register}}, {sniffle, request, register}),
 	{noreply, State}
     catch
-	_T:_E ->
-	    ?WARNING({register, failed}, [], [sniffle]),
+	T:E ->
+	    lager:error([{fifi_component, sniffle}],
+			"sniffle:register - Error: ~p:~p.",
+			[T,E]),
 	    application:stop(gproc),
 	    application:start(gproc),
 	    {noreply, State, 1000}
@@ -453,14 +532,15 @@ discover_machines(Auth, Hosts) ->
 register_machine(Host, M) ->
     UUID = proplists:get_value(id, M),
     Name = <<"sniffle:machines:", UUID/binary>>,
-    ?INFO({register_machine, Host, UUID}, [], [sniffle]),
     redo:cmd([<<"SET">>, Name, term_to_binary(Host)]),
     redo:cmd([<<"TTL">>, Name, 60*60*24]).
 
 get_machine_host(Auth, UUID, Hosts) ->
     case get_machine_host_int(UUID) of
 	{error, not_found} ->
-	    ?WARNING({not_cached, host, UUID}, [], [sniffle]),
+	    lager:warning([{fifi_component, sniffle}, {user, Auth}],
+			"sniffle:host_cache_miss - ~s.",
+			[UUID]),
 	    discover_machines(Auth, Hosts),
 	    get_machine_host_int(UUID);
 	{ok, Host} ->
@@ -471,7 +551,9 @@ get_machine_host_int(UUID) ->
     Name = <<"sniffle:machines:", UUID/binary>>,
     case redo:cmd([<<"get">>, Name]) of
 	undefined ->
-	    ?ERROR({not_found, host, UUID}, [], [sniffle]),
+	    lager:error([{fifi_component, sniffle}],
+			"sniffle:host_not found - ~s.",
+			[UUID]),
 	    {error, not_found};
 	Bin ->
 	    {ok, binary_to_term(Bin)}
