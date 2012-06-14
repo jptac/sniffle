@@ -398,7 +398,7 @@ handle_call(_Request, _From, State) ->
 
 handle_cast({cast, Auth, {register, Type, Spec}}, #state{api_hosts=HostUUIDs} = State) ->
     lager:info([{fifi_component, sniffle}, {user, Auth}],
-	       "sniffle:register - Type: ~p, Spec: ~s.",
+	       "sniffle:register - Type: ~p, Spec: ~p.",
 	       [Type, Spec]),
     lager:debug([{fifi_component, sniffle}, {user, Auth}],
 		"sniffle:register - Hosts: ~p.", [HostUUIDs]),
@@ -416,7 +416,7 @@ handle_cast({cast, Auth, {register, Type, Spec}}, #state{api_hosts=HostUUIDs} = 
 	
 handle_cast({update_machines, Host, Ms}, State) ->
     lager:info([{fifi_component, sniffle}],
-	       "sniffle:update_machines - Host: ~p.",
+	       "sniffle:update_machines - Host: ~s.",
 	       [Host]),
     lists:map(fun (M) ->
 		      register_machine(Host, M)

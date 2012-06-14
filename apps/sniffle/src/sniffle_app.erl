@@ -20,6 +20,7 @@ check_grid() ->
 load() ->
     application:start(sasl),
     application:start(alog),
+    application:start(lager),
     application:start(redgrid),
     application:start(gproc),
     application:start(crypto),

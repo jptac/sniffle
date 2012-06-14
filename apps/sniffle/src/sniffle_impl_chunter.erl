@@ -13,7 +13,7 @@
 
 %% gen_server callbacks
 -export([init/2, handle_call/4, handle_cast/3,
-	 handle_info/2, terminate/2, code_change/3]).
+	 handle_info/2, terminate/2, code_change/3, make_frontend_json/1]).
 
 -record(state, {uuid, host}).
 
@@ -42,7 +42,7 @@ handle_call(Auth, {machines, list}, _From, #state{host=Host, uuid=HUUID} = State
 	       []),
     Res = case libchunter:list_machines(Host, Auth) of
 	      {ok, Ms} ->
-		  lager:error([{fifi_component, sniffle_impl_chunter}, {user, Auth}],
+		  lager:debug([{fifi_component, sniffle_impl_chunter}, {user, Auth}],
 			      "machines:list - Machines: ~p.",
 			      [Ms]),
 		  Ms1 = [ make_frontend_json(M) || M <- Ms],
