@@ -261,7 +261,10 @@ make_frontend_json([{max_physical_memory, N} | R]) ->
     Rest = make_frontend_json(R),
     case proplists:get_value(memory, Rest) of
 	undefined ->
-	    [{memory, N/(1024*1024)}|make_frontend_json(R)];
+	    M = N/(1024*1024),
+	    [{memory, M},
+	     {max_physical_memory, M}
+	     |make_frontend_json(R)];
 	_ ->
 	    Rest
     end;
