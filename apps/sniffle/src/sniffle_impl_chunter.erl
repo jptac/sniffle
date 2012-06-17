@@ -259,21 +259,22 @@ make_frontend_json([{zonename, N} | R]) ->
     end;
 make_frontend_json([{max_physical_memory, N} | R]) ->
     Rest = make_frontend_json(R),
+    M = N/(1024*1024),
     case proplists:get_value(memory, Rest) of
 	undefined ->
-	    M = N/(1024*1024),
 	    [{memory, M},
 	     {max_physical_memory, M}
-	     |make_frontend_json(R)];
+	     |Rest];
 	_ ->
-	    Rest
-    end;
+	    [{max_physical_memory, M}
+	     |Rest]
+	end;
 make_frontend_json([{state, <<"installed">>} | R]) ->
     [{state, <<"stopped">>}|make_frontend_json(R)];
 make_frontend_json([{alias, N} | R]) ->
     [{name, N}|make_frontend_json(R)];
 make_frontend_json([{ram, R} | R]) ->
-    [{memory, R}|make_frontend_json(R)];
+    [{memory, R}|proplists:delete(memory,make_frontend_json(R))];
 make_frontend_json([]) ->
     [];
 make_frontend_json([{K, V}|R]) ->

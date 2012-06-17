@@ -413,6 +413,23 @@ handle_cast({cast, Auth, {register, Type, Spec}}, #state{api_hosts=HostUUIDs} = 
 	    sniffle_host_sup:start_child(Provider, UUID, Spec),
 	    {noreply, State#state{api_hosts=[UUID|HostUUIDs]}}
     end;
+
+handle_cast({cast, Auth, {register, Type, UUID, Spec}}, #state{api_hosts=HostUUIDs} = State) ->
+    lager:info([{fifi_component, sniffle}, {user, Auth}],
+	       "sniffle:register - Type: ~p, Spec: ~p.",
+	       [Type, Spec]),
+    lager:debug([{fifi_component, sniffle}, {user, Auth}],
+		"sniffle:register - Hosts: ~p.", [HostUUIDs]),
+
+    case libsnarl:allowed(system, Auth, [service, sniffle, host, add, Type]) of
+	false ->
+	    {noreply, State};
+	true ->
+	    Providers = get_env_default(providers, ?IMPL_PROVIDERS),
+	    Provider=proplists:get_value(Type, Providers),
+	    sniffle_host_sup:start_child(Provider, UUID, Spec),
+	    {noreply, State#state{api_hosts=[UUID|HostUUIDs]}}
+    end;
 	
 handle_cast({update_machines, Host, Ms}, State) ->
     lager:info([{fifi_component, sniffle}],
