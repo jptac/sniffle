@@ -246,7 +246,7 @@ handle_call({call, Auth, {packages, list}}, From, #state{api_hosts=Hosts} = Stat
 	       []),
     lager:debug([{fifi_component, sniffle}, {user, Auth}],
 		"packages:list - From: ~p Hosts: ~p.", [From, Hosts]),
-    {ok, GlobalPackageNames} = libsnarl:option_list(system, <"packages">>),
+    {ok, GlobalPackageNames} = libsnarl:option_list(system, <<"packages">>),
     GlobalPackages = 
 	[P1 || {ok, P1 }<- [libsnarl:option_get(system, <<"packages">>, P) || P <- GlobalPackageNames]],
     Res = lists:foldl(fun (Host, List) ->
