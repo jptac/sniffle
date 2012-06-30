@@ -240,6 +240,22 @@ init([]) ->
 ?LIST(images);
 ?LIST(keys);
 
+handle_call({call, Auth, {hosts, list}}, From, #state{api_hosts=Hosts} = State) ->
+    lager:info([{fifi_component, sniffle}, {user, Auth}],
+	       "hosts:list.",
+	       []),
+    lager:debug([{fifi_component, sniffle}, {user, Auth}],
+		"hosts:list - From: ~p Hosts: ~p.", [From, Hosts]),
+    {ok, AuthC} = libsnarl:user_cache(system, Auth),
+    case libsnarl:allowed(system, AuthC, [host, list]) of
+	false ->
+	    {reply, {error, permission_denied}, State};
+	true ->
+	    Hosts1 =[UUID || UUID <- Hosts,
+			     libsnarl:allowed(system, AuthC, [vm, UUID, get]) == true],
+	    {reply, {ok, Hosts1}, State}
+    end;
+		   
 handle_call({call, Auth, {packages, list}}, From, #state{api_hosts=Hosts} = State) ->
     lager:info([{fifi_component, sniffle}, {user, Auth}],
 	       "packages:list.",
