@@ -246,9 +246,9 @@ handle_call({call, Auth, {packages, list}}, From, #state{api_hosts=Hosts} = Stat
 	       []),
     lager:debug([{fifi_component, sniffle}, {user, Auth}],
 		"packages:list - From: ~p Hosts: ~p.", [From, Hosts]),
-    {ok, GlobalPackageNames} = libsnarl:option_list(system, packages),
+    {ok, GlobalPackageNames} = libsnarl:option_list(system, <"packages">>),
     GlobalPackages = 
-	[P1 || {ok, P1 }<- [libsnarl:option_get(system, packages, P) || P <- GlobalPackageNames]],
+	[P1 || {ok, P1 }<- [libsnarl:option_get(system, <<"packages">>, P) || P <- GlobalPackageNames]],
     Res = lists:foldl(fun (Host, List) ->
 			      try
 				  Pid = gproc:lookup_pid({n, l, {host, Host}}),
@@ -286,7 +286,7 @@ handle_call({call, Auth, {packages, create, Name, Disk, Memory, Swap}}, From, St
 		   {disk, Disk}, 
 		   {memory, Memory}, 
 		   {swap, Swap}],
-	    libsnarl:option_set(system, packages, Name, Pkg),
+	    libsnarl:option_set(system, <<"packages">>, Name, Pkg),
 	    {reply, {ok, Pkg}, State}
     end;
 
@@ -312,7 +312,7 @@ handle_call({call, Auth, {packages, delete, Name}}, From, State) ->
 	false ->
 	    {reply, {error, unauthorized}, State};
 	true ->
-	    libsnarl:option_delete(system, packages, Name),
+	    libsnarl:option_delete(system, <<"packages">>, Name),
 	    {reply, ok, State}
     end;
 
