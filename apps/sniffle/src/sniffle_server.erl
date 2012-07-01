@@ -198,7 +198,7 @@ init([]) ->
     Hosts = get_env_default(api_hosts, []),
     Providers = get_env_default(providers, ?IMPL_PROVIDERS),
     HostUUIDs = lists:map(fun ({Type, Spec}) ->
-				      UUID = uuid:uuid4(),
+				      UUID = list_to_binary(uuid:to_string(uuid:uuid4())),
 				      Provider=proplists:get_value(Type, Providers),
 				      sniffle_host_sup:start_child(Provider, UUID, Spec),
 				      UUID
@@ -424,7 +424,7 @@ handle_cast({cast, Auth, {register, Type, Spec}}, #state{api_hosts=HostUUIDs} = 
 	    {noreply, State};
 	true ->
 	    Providers = get_env_default(providers, ?IMPL_PROVIDERS),
-	    UUID = uuid:uuid4(),
+	    UUID = list_to_binary(uuid:to_string(uuid:uuid4())),
 	    Provider=proplists:get_value(Type, Providers),
 	    sniffle_host_sup:start_child(Provider, UUID, Spec),
 	    {noreply, State#state{api_hosts=[UUID|HostUUIDs]}}
