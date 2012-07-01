@@ -418,7 +418,7 @@ handle_cast({cast, Auth, {register, Type, Spec}}, #state{api_hosts=HostUUIDs} = 
 	       [Type, Spec]),
     lager:debug([{fifi_component, sniffle}, {user, Auth}],
 		"sniffle:register - Hosts: ~p.", [HostUUIDs]),
-
+    
     case libsnarl:allowed(system, Auth, [service, sniffle, host, add, Type]) of
 	false ->
 	    {noreply, State};
@@ -427,7 +427,7 @@ handle_cast({cast, Auth, {register, Type, Spec}}, #state{api_hosts=HostUUIDs} = 
 	    UUID = list_to_binary(uuid:to_string(uuid:uuid4())),
 	    Provider=proplists:get_value(Type, Providers),
 	    sniffle_host_sup:start_child(Provider, UUID, Spec),
-	    {noreply, State#state{api_hosts=[UUID|HostUUIDs]}}
+	    {noreply, State#state{api_hosts=[UUID|lists:delete(UUID, HostUUIDs)]}}
     end;
 
 handle_cast({cast, Auth, {register, Type, UUID, Spec}}, #state{api_hosts=HostUUIDs} = State) ->
