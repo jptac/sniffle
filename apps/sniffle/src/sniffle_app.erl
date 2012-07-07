@@ -11,7 +11,7 @@ load() ->
     application:start(lager),
     application:start(crypto),
     application:start(nodefinder),
-    application:start(gproc),
+    application:start(backyard),
     application:start(public_key),
     application:start(ssl),
     application:start(lhttpc),

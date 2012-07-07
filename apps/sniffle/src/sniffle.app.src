@@ -6,9 +6,8 @@
   {applications, [
                   kernel,
 		  erllibcloudapi,
-		  gproc,
 		  redo,
-		  nodefinder,
+		  backyard,
 		  sasl,
 		  alog,
 		  uuid,
