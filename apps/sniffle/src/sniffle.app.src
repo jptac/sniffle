@@ -8,7 +8,7 @@
 		  erllibcloudapi,
 		  gproc,
 		  redo,
-		  mdns,
+		  nodefinder,
 		  sasl,
 		  alog,
 		  uuid,
