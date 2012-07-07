@@ -12,8 +12,7 @@
 
 %% API
 -export([start_link/3, kill/1,
-	 scall/3,
-	 reregister/1, call/4]).
+	 scall/3, call/4]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -51,8 +50,6 @@ scall(PID, Auth, Args) ->
 kill(PID) ->
     gen_server:cast(PID, kill).
 
-reregister(PID) ->
-    gen_server:cast(PID, reregister).
 %%%===================================================================
 %%% gen_server callbacks
 %%%===================================================================
@@ -69,6 +66,7 @@ reregister(PID) ->
 %% @end
 %%--------------------------------------------------------------------
 init([Dispatcher, UUID, Host]) ->
+    ok = backyard_srv:register_connect_handler(backyard_connect),
     case Dispatcher:init(UUID, Host) of
 	{ok, State} ->
 	    {ok, #state{
@@ -121,6 +119,9 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_cast(backyard_connect,  #state{uuid = UUID} = State) ->
+    reregister_int(UUID),
+    {noreply, State};
 
 handle_cast({call, From, Auth, Args},
 	    #state{dispatcher_state = DState,
@@ -145,11 +146,6 @@ handle_cast({cast, Auth, Args},
 	{stop, Reason, DState1} ->
 	    {stop, Reason, State#state{dispatcher_state = DState1}}
     end;
-
-
-handle_cast(reregister, #state{uuid = UUID} = State) ->
-    reregister_int(UUID),
-    {noreply, State};
 
 handle_cast(kill, State) ->
     {stop, shutdown, State};
@@ -187,6 +183,7 @@ handle_info(_Info, State) ->
 %%--------------------------------------------------------------------
 terminate(Reason, #state{dispatcher_state = DState,
 			  dispatcher = Dispatcher}) ->
+    backyard_srv:unregister_handler(),
     Dispatcher:terminate(Reason, DState).
 
 %%--------------------------------------------------------------------
@@ -204,5 +201,11 @@ code_change(_OldVsn, State, _Extra) ->
 %%% Internal functions
 %%%===================================================================
 reregister_int(UUID) ->
-    gproc:reg({p, l, {sniffle, host}}, UUID),
-    gproc:reg({n, l, {host, UUID}}, self()).
+    try
+	gproc:reg({p, l, {sniffle, host}}, UUID),
+	gproc:reg({n, l, {host, UUID}}, self()),
+	ok
+    catch
+	_:_ ->
+	    ok
+    end.
