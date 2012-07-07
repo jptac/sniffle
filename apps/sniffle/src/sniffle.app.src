@@ -8,7 +8,7 @@
 		  erllibcloudapi,
 		  gproc,
 		  redo,
-		  redgrid,
+		  mdns,
 		  sasl,
 		  alog,
 		  uuid,

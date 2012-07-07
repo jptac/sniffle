@@ -1,4 +1,5 @@
 ebin
+log
 standalone.config
 db
 deps
