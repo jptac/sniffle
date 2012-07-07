@@ -195,6 +195,7 @@ remove_host(Host) ->
 			 {chunter, sniffle_impl_chunter},
 			 {{cloudapi, bark}, sniffle_impl_bark}]).
 init([]) ->
+    ok = backyard_srv:register_connect_handler(backyard_connect),
     Hosts = get_env_default(api_hosts, []),
     Providers = get_env_default(providers, ?IMPL_PROVIDERS),
     HostUUIDs = lists:map(fun ({Type, Spec}) ->
@@ -484,10 +485,18 @@ handle_cast({remove_host, UUID}, #state{api_hosts=Hosts} = State) ->
     end,
     {noreply, State#state{api_hosts=[H||H<-Hosts,H=/=UUID]}};
 
+
+handle_cast(backyard_connect, State) ->
+    lager:info([{fifi_component, sniffle}],
+	       "sniffle:backyard - connecting!"),
+    gproc:reg({n, g, sniffle}),
+    gproc:send({p,g, {sniffle,register}}, {sniffle, request, register}),
+    {noreply, State};
+
 handle_cast(reregister, State) ->
     try
-	gproc:reg({n, g, sniffle}),
-	gproc:send({p,g,{sniffle,register}}, {sniffle, request, register}),
+%	gproc:reg({n, g, sniffle}),
+%	gproc:send({p,g,{sniffle,register}}, {sniffle, request, register}),
 	{noreply, State}
     catch
 	T:E ->

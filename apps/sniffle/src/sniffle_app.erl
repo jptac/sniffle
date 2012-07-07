@@ -20,8 +20,7 @@ load() ->
     application:start(uuid),
     application:start(libsnarl),
     application:start(libchunter),
-    application:start(sniffle),
-    ok.    
+    application:start(sniffle).    
 
 %% ===================================================================
 %% Application callbacks
