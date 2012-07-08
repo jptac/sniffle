@@ -163,8 +163,10 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info({'DOWN', _Ref, process, _Pid2, Reason}, State) ->
-    {stop, Reason, State};
+handle_info({'DOWN', _Ref, process, _Pid2, Reason}, #state{uuid = UUID} = State) ->
+    sniffle_server:remove_host(UUID),
+    {noreply, State};    
+%{stop, Reason, State};
 
 handle_info(timeout, #state{uuid = UUID} = State) ->
     reregister_int(UUID),
