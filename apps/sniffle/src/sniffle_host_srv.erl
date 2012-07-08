@@ -148,7 +148,7 @@ handle_cast({cast, Auth, Args},
     end;
 
 handle_cast(kill, State) ->
-    {stop, shutdown, State};
+    {stop, normal, State};
 
 handle_cast(_Msg, State) ->
     {noreply, State}.
