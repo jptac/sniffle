@@ -130,7 +130,7 @@ handle_cast({call, From, Auth, Args},
 	{reply, Reply, DState1} ->
 	    gen_server:reply(From, Reply),
 	    {noreply, State#state{dispatcher_state = DState1}};
-	{stop, Reason, Reply, DState1} ->
+	{stop, _Reason, Reply, DState1} ->
 	    gen_server:reply(From, Reply),
 	    {stop, Reply, State#state{dispatcher_state = DState1}};
 	{stop, Reason, DState1} ->
@@ -163,6 +163,9 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_info({'DOWN', _Ref, process, _Pid2, Reason}, State) ->
+    {stop, Reason, State};
+
 handle_info(timeout, #state{uuid = UUID} = State) ->
     reregister_int(UUID),
     {noreply, State};

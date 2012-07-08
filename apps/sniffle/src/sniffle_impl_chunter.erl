@@ -18,6 +18,7 @@
 -record(state, {uuid, host}).
 
 init(UUID, Host) ->
+    erlang:monitor(process, Host),
     {ok, #state{uuid=UUID,
 		host=Host}}.
 
