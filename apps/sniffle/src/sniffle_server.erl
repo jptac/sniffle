@@ -15,7 +15,7 @@
 	 reregister/0,
 	 update_machines/2,
 	 register_host_resource/4,
-	remove_host/1]).
+	 remove_host/1]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
