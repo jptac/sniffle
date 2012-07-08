@@ -442,8 +442,15 @@ handle_cast({cast, Auth, {register, Type, UUID, Spec}}, #state{api_hosts=HostUUI
 	false ->
 	    {noreply, State};
 	true ->
+	    try
+		Pid = gproc:lookup_pid({n, l, {host, UUID}}),
+		sniffle_host_srv:kill(Pid)
+	    catch
+		_:_ ->
+		    ok
+	    end,
 	    Providers = get_env_default(providers, ?IMPL_PROVIDERS),
-	    Provider=proplists:get_value(Type, Providers),
+	    Provider= proplists:get_value(Type, Providers),
 	    sniffle_host_sup:start_child(Provider, UUID, Spec),
 	    {noreply, State#state{api_hosts=[UUID|HostUUIDs]}}
     end;
