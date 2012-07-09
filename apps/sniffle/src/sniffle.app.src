@@ -13,6 +13,8 @@
 		  uuid,
 		  libsnarl,
 		  libchunter,
+		  statsderl,
+		  vmstats,
                   stdlib
                  ]},
   {mod, {sniffle_app, []}},
