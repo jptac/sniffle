@@ -20,6 +20,8 @@ load() ->
     application:start(uuid),
     application:start(libsnarl),
     application:start(libchunter),
+    application:start(statsderl),
+    application:start(vmstats),
     application:start(sniffle).    
 
 %% ===================================================================
