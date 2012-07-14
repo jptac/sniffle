@@ -320,6 +320,17 @@ handle_call({call, Auth, {machines, create, Name, PackageUUID, DatasetUUID, Meta
     sniffle_host_srv:call(Pid, From, Auth, {machines, create, Name, PackageUUID, DatasetUUID, Metadata, Tags}),
     {noreply, State};
 
+handle_call({call, Auth, {machines, create, Host, Name, PackageUUID, DatasetUUID, Metadata, Tags}}, From, 
+	    #state{api_hosts=Hosts} = State) ->
+    lager:info([{fifi_component, sniffle}, {user, Auth}],
+	       "machines:create - Host: ~s, Name: ~s, Package, ~s, Dataset: ~s.",
+	       [Host, Name, PackageUUID, DatasetUUID]),
+    lager:debug([{fifi_component, sniffle}, {user, Auth}],
+		"machines:create - From: ~p Hosts: ~p.", [From, Hosts]),
+    Pid = gproc:lookup_pid({n, l, {host, Host}}),
+    sniffle_host_srv:call(Pid, From, Auth, {machines, create, Name, PackageUUID, DatasetUUID, Metadata, Tags}),
+    {noreply, State};
+
 handle_call({call, Auth, {packages, delete, Name}}, From, State) ->
     lager:info([{fifi_component, sniffle}, {user, Auth}],
 	       "packages:delete - Name: ~s.",
