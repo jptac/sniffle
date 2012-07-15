@@ -37,6 +37,26 @@ init(UUID, Host) ->
 %% @end
 %%--------------------------------------------------------------------
 
+handle_call(Auth, {info, memory}, _From, #state{host=Host, uuid=HUUID} = State) ->
+    lager:info([{fifi_component, sniffle_impl_chunter}, {user, Auth}, {host, HUUID}],
+	       "info:memory.",
+	       []),
+    Res = case libchunter:get_memory_info(Host, Auth) of
+	      {ok, {Provisioned, Total}} ->
+		  lager:debug([{fifi_component, sniffle_impl_chunter}, {user, Auth}, {host, HUUID}],
+			      "info:memory - Provisioned: ~p, Total: ~p.",
+			      [Provisioned, Total]),
+		  {ok, {Provisioned, Total}};
+	      E ->
+	    lager:error([{fifi_component, sniffle_impl_chunter}, {user, Auth}, {host, HUUID}],
+			"info:memory - Error: ~p.",
+			[E]),
+		  {error, E}
+	  end,
+    {reply, Res, State};
+
+
+
 handle_call(Auth, {machines, list}, _From, #state{host=Host, uuid=HUUID} = State) ->
     lager:info([{fifi_component, sniffle_impl_chunter}, {user, Auth}],
 	       "machines:list.",

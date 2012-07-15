@@ -33,7 +33,11 @@
 	{keys, create, Auth :: term(), Pass :: term(),  KeyID :: term(), PublicKey :: binary()} | 
 	{keys, list}.
 
+-type sniffle_call_hypervisor() ::
+	{info, memory}.
+
 -type sniffle_call() ::
+	sniffle_call_hypervisor() |
 	sniffle_call_machiens() |
 	sniffle_call_packages() | 
 	sniffle_call_datasets() |
