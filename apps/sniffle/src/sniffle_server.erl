@@ -321,6 +321,9 @@ handle_call({call, Auth, {machines, create, Name, PackageUUID, DatasetUUID, Meta
 	    sniffle_host_srv:call(Pid, From, Auth, {machines, create, Name, PackageUUID, DatasetUUID, Metadata, Tags}),
 	    {noreply, State};
 	{error, E} ->
+	    lager:debug([{fifi_component, sniffle}, {user, Auth}],
+		"machines:create - pick host error: ~p.", [E]),
+	    
 	    {reply, {error, E}, State}
     end;
 
@@ -633,7 +636,7 @@ pick_host(Hosts) ->
     {_, H} = lists:foldl(fun (UUID, {S, Res}) ->
 			   try
 			       Pid = gproc:lookup_pid({n, l, {host, UUID}}),
-			       case sniffle_host_srv:call(Pid, self(), system, {info, memory}) of
+			       case sniffle_host_srv:scall(Pid, system, {info, memory}) of
 				   {ok, {Used, Total}} when (Total - Used) > S ->
 				       {(Total - Used), {ok, UUID}};
 				   _ ->
