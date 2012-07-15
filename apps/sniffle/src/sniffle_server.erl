@@ -626,7 +626,7 @@ get_machine_host_int(UUID) ->
 %% It is good practive to hope that the random node is the least 
 %% loded one - not much else you can do about it.
 pick_host(Hosts) ->
-    {_, H} = lists:fold(fun (UUID, {S, Res}) ->
+    {_, H} = lists:foldl(fun (UUID, {S, Res}) ->
 			   try
 			       Pid = gproc:lookup_pid({n, l, {host, UUID}}),
 			       case sniffle_host_srv:call(Pid, self(), system, {info, memory}) of
