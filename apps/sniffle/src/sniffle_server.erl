@@ -315,10 +315,14 @@ handle_call({call, Auth, {machines, create, Name, PackageUUID, DatasetUUID, Meta
 	       [Name, PackageUUID, DatasetUUID]),
     lager:debug([{fifi_component, sniffle}, {user, Auth}],
 		"machines:create - From: ~p Hosts: ~p.", [From, Hosts]),
-    Host = pick_host(Hosts),
-    Pid = gproc:lookup_pid({n, l, {host, Host}}),
-    sniffle_host_srv:call(Pid, From, Auth, {machines, create, Name, PackageUUID, DatasetUUID, Metadata, Tags}),
-    {noreply, State};
+    case pick_host(Hosts) of 
+	{ok, Host} ->
+	    Pid = gproc:lookup_pid({n, l, {host, Host}}),
+	    sniffle_host_srv:call(Pid, From, Auth, {machines, create, Name, PackageUUID, DatasetUUID, Metadata, Tags}),
+	    {noreply, State};
+	{error, E} ->
+	    {reply, {error, E}, State}
+    end;
 
 handle_call({call, Auth, {machines, create, Host, Name, PackageUUID, DatasetUUID, Metadata, Tags}}, From, 
 	    #state{api_hosts=Hosts} = State) ->
@@ -631,7 +635,7 @@ pick_host(Hosts) ->
 			       Pid = gproc:lookup_pid({n, l, {host, UUID}}),
 			       case sniffle_host_srv:call(Pid, self(), system, {info, memory}) of
 				   {ok, {Used, Total}} when (Total - Used) > S ->
-				       {(Total - Used), UUID};
+				       {(Total - Used), {ok, UUID}};
 				   _ ->
 				       {S, Res}
 			       end
@@ -639,7 +643,7 @@ pick_host(Hosts) ->
 			       _:_ ->
 				   {S, Res}
 			   end
-			end, {0, undefined}, Hosts),
+			end, {0, {error, not_found}}, Hosts),
     H.
 
 shuffle(List) ->
