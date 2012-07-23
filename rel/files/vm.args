@@ -1,5 +1,5 @@
 ## Name of the node
--name sniffle@_OWN_IP_
+-name sniffle@_HOST_
 
 ## Cookie for distributed erlang
 -setcookie _FIFOCOOKIE_
