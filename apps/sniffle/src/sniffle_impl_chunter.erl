@@ -142,6 +142,16 @@ handle_call(Auth, {machines, reboot, UUID}, _From, #state{host=Host} = State) ->
     {reply,
      libchunter:reboot_machine(Host, Auth, UUID), State};
 
+handle_call(Auth, {machines, create, Name, PackageUUID, DatasetUUID, Metadata, Tags},
+	    _From, #state{host = Host,
+			  uuid= HUUID} = State) ->
+    lager:info([{fifi_component, sniffle_impl_chunter}, 
+		{user, Auth}],
+	       "machines:create - Host: ~p, Name: ~s, Package: ~s, Dataset: ~s.",
+	       [Host, Name, PackageUUID, DatasetUUID]),
+    libchunter:create_machine(Host, Auth, Name, PackageUUID, DatasetUUID, Metadata, Tags),
+    {reply, ok, State};
+
 handle_call(Auth, {packages, list}, _From, #state{host=Host, uuid=HUUID} = State) ->
     lager:info([{fifi_component, sniffle_impl_chunter}, 
 		{user, Auth}],
@@ -209,16 +219,6 @@ handle_call(Auth, Call, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_cast(Auth, {machines, create, Name, PackageUUID, DatasetUUID, Metadata, Tags}, 
-	    #state{host = Host,
-		   uuid= HUUID} = State) ->
-    lager:info([{fifi_component, sniffle_impl_chunter}, 
-		{user, Auth}],
-	       "machines:create - Host: ~p, Name: ~s, Package: ~s, Dataset: ~s.",
-	       [Host, Name, PackageUUID, DatasetUUID]),
-    libchunter:create_machine(Host, Auth, Name, PackageUUID, DatasetUUID, Metadata, Tags),
-    {noreply, State};
-
 handle_cast(_Auth, _Msg, State) ->
     {noreply, State}.
 

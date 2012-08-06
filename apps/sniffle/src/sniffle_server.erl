@@ -323,7 +323,7 @@ handle_call({call, Auth, {machines, create, Name, PackageUUID, DatasetUUID, Meta
 		       [Host]),
 	    Pid = gproc:lookup_pid({n, l, {host, Host}}),
 	    sniffle_host_srv:call(Pid, From, Auth, {machines, create, Name, PackageUUID, DatasetUUID, Metadata, Tags}),
-	    {noreply, State};
+	    {reply, ok, State};
 	{error, E} ->
 	    lager:debug([{fifi_component, sniffle}, {user, Auth}],
 		"machines:create - pick host error: ~p.", [E]),
