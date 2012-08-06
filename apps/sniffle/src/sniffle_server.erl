@@ -298,6 +298,7 @@ handle_call({call, Auth, {packages, create, Name, Disk, Memory, Swap}}, From, St
 		"packages:create - From: ~p.", [From]),
     case libsnarl:allowed(system, Auth, [package, Name, set]) of
 	false ->
+	    msg(Auth, <<"error">>, <<"Permission denied!">>),
 	    {reply, {error, unauthorized}, State};
 	true ->
 	    Pkg = [{name, Name}, 
@@ -317,13 +318,16 @@ handle_call({call, Auth, {machines, create, Name, PackageUUID, DatasetUUID, Meta
 		"machines:create - From: ~p Hosts: ~p.", [From, Hosts]),
     case pick_host(Hosts) of 
 	{ok, Host} ->
+	    lager:info([{fifi_component, sniffle}, {user, Auth}],
+		       "machines:create - Autopicked Host: ~p.",
+		       [Host]),
 	    Pid = gproc:lookup_pid({n, l, {host, Host}}),
 	    sniffle_host_srv:call(Pid, From, Auth, {machines, create, Name, PackageUUID, DatasetUUID, Metadata, Tags}),
 	    {noreply, State};
 	{error, E} ->
 	    lager:debug([{fifi_component, sniffle}, {user, Auth}],
 		"machines:create - pick host error: ~p.", [E]),
-	    
+	    msg(Auth, <<"error">>, <<"No suitable deployment host found!">>),
 	    {reply, {error, E}, State}
     end;
 
@@ -346,6 +350,7 @@ handle_call({call, Auth, {packages, delete, Name}}, From, State) ->
 		"packages:delete - From: ~p.", [From]),
     case libsnarl:allowed(system, Auth, [package, Name, delete]) of
 	false ->
+	    msg(Auth, <<"error">>, <<"Permission denied!">>),
 	    {reply, {error, unauthorized}, State};
 	true ->
 	    libsnarl:option_delete(system, <<"packages">>, Name),
@@ -649,20 +654,8 @@ pick_host(Hosts) ->
 			end, {0, {error, not_found}}, Hosts),
     H.
 
-shuffle(List) ->
-    %% Determine the log n portion then randomize the list.
-    randomize(round(math:log(length(List)) + 0.5), List).
+msg({Auth, _}, Type, Msg) ->
+    msg(Auth, Type, Msg);
 
-randomize(1, List) ->
-    randomize(List);
-randomize(T, List) ->
-    lists:foldl(fun(_E, Acc) ->
-			randomize(Acc)
-		end, randomize(List), lists:seq(1, (T - 1))).
-
-randomize(List) ->
-    D = lists:map(fun(A) ->
-			  {random:uniform(), A}
-		  end, List),
-    {_, D1} = lists:unzip(lists:keysort(1, D)), 
-    D1.
+msg(Auth, Type, Msg) ->
+    gproc:send({p, g, {user, Auth}}, {msg, Type, Msg}).
