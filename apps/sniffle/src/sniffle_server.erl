@@ -254,7 +254,7 @@ handle_call({call, Auth, {hosts, list}}, From, #state{api_hosts=Hosts} = State) 
 	    {reply, {error, permission_denied}, State};
 	true ->
 	    Hosts1 =[UUID || UUID <- Hosts,
-			     libsnarl:allowed(system, AuthC, [vm, UUID, get]) == true],
+			     libsnarl:allowed(system, AuthC, [host, UUID, get]) == true],
 	    {reply, {ok, Hosts1}, State}
     end;
 		   
