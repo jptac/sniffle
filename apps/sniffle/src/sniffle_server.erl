@@ -614,7 +614,7 @@ get_machine_host(Auth, UUID, Hosts) ->
 				lists:foldl(fun (VM, Res1) ->
 						     case lists:keyfind(id, 1, VM) of
 							 {id, UUID} ->
-							     Host;
+							     {ok, Host};
 							 _ ->
 							     Res1
 						     end
