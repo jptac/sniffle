@@ -596,13 +596,6 @@ get_env_default(Key, Default) ->
 	    Default
     end.
 
-discover_machines(Auth, Hosts) ->
-    lists:map(fun (Host) ->
-		      Pid = gproc:lookup_pid({n, l, {host, Host}}),
-		      sniffle_host_srv:scall(Pid, Auth, {machines, list})
-	      end, Hosts),
-    ok.
-
 register_machine(Host, M) ->
     UUID = proplists:get_value(id, M),
     Name = <<"sniffle:machines:", UUID/binary>>,
@@ -613,10 +606,18 @@ get_machine_host(Auth, UUID, Hosts) ->
     case get_machine_host_int(UUID) of
 	{error, not_found} ->
 	    lager:warning([{fifi_component, sniffle}, {user, Auth}],
-			"sniffle:host_cache_miss - ~s.",
-			[UUID]),
-	    discover_machines(Auth, Hosts),
-	    get_machine_host_int(UUID);
+			  "sniffle:host_cache_miss - ~s.",
+			  [UUID]),
+	    lists:foldl(fun (Host, Res) ->
+				Pid = gproc:lookup_pid({n, l, {host, Host}}),
+				{ok, VMs} = sniffle_host_srv:scall(Pid, Auth, {machines, list}),
+				case lists:member(UUID, vms) of
+				    true ->
+					Host;
+				    false ->
+					Res
+				end
+			end, {error, not_found}, Hosts);
 	{ok, Host} ->
 	    {ok, Host}
     end.
