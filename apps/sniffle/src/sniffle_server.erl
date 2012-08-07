@@ -613,7 +613,7 @@ get_machine_host(Auth, UUID, Hosts) ->
 				{ok, VMs} = sniffle_host_srv:scall(Pid, Auth, {machines, list}),
 				lists:foldl(fun (VM, Res1) ->
 						     case lists:keyfind(id, 1, VM) of
-							 UUID ->
+							 {id, UUID} ->
 							     Host;
 							 _ ->
 							     Res1
