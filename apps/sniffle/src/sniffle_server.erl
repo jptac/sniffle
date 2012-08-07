@@ -611,12 +611,14 @@ get_machine_host(Auth, UUID, Hosts) ->
 	    lists:foldl(fun (Host, Res) ->
 				Pid = gproc:lookup_pid({n, l, {host, Host}}),
 				{ok, VMs} = sniffle_host_srv:scall(Pid, Auth, {machines, list}),
-				case lists:member(UUID, VMs) of
-				    true ->
-					Host;
-				    false ->
-					Res
-				end
+				lists:reduce(fun (VM, Res1) ->
+						     case lists:keyfind(id, 1, VM) of
+							 UUID ->
+							     Host;
+							 _ ->
+							     Res1
+						     end
+					     end, Res, VMs)
 			end, {error, not_found}, Hosts);
 	{ok, Host} ->
 	    {ok, Host}

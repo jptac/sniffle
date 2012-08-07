@@ -70,7 +70,7 @@ handle_call(Auth, {machines, list}, _From, #state{host=Host, uuid=HUUID} = State
 		  sniffle_server:update_machines(HUUID, Ms1),
 		  {ok, Ms1};
 	      E ->
-	    lager:error([{fifi_component, sniffle_impl_chunter}, {user, Auth}],
+		  lager:error([{fifi_component, sniffle_impl_chunter}, {user, Auth}],
 			"machines:list - Error: ~p.",
 			[E]),
 		  {error, E}
