@@ -316,6 +316,7 @@ handle_call({call, Auth, {machines, create, Name, PackageUUID, DatasetUUID, Meta
 	       [Name, PackageUUID, DatasetUUID]),
     lager:debug([{fifi_component, sniffle}, {user, Auth}],
 		"machines:create - From: ~p Hosts: ~p.", [From, Hosts]),
+    PermHosts = [H || H <- Hosts, libsnarl:allowed(Auth, [host, H, vm, create])],
     case pick_host(Hosts) of 
 	{ok, Host} ->
 	    lager:info([{fifi_component, sniffle}, {user, Auth}],
