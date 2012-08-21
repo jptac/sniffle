@@ -18,6 +18,7 @@
 -record(state, {uuid, host}).
 
 init(UUID, Host) ->
+    erlang:monitor(process, Host),
     {ok, #state{uuid=UUID,
 		host=Host}}.
 
@@ -36,6 +37,26 @@ init(UUID, Host) ->
 %% @end
 %%--------------------------------------------------------------------
 
+handle_call(Auth, {info, memory}, _From, #state{host=Host, uuid=HUUID} = State) ->
+    lager:info([{fifi_component, sniffle_impl_chunter}, {user, Auth}, {host, HUUID}],
+	       "info:memory.",
+	       []),
+    Res = case libchunter:get_memory_info(Host, Auth) of
+	      {ok, {Provisioned, Total}} ->
+		  lager:debug([{fifi_component, sniffle_impl_chunter}, {user, Auth}, {host, HUUID}],
+			      "info:memory - Provisioned: ~p, Total: ~p.",
+			      [Provisioned, Total]),
+		  {ok, {Provisioned, Total}};
+	      E ->
+	    lager:error([{fifi_component, sniffle_impl_chunter}, {user, Auth}, {host, HUUID}],
+			"info:memory - Error: ~p.",
+			[E]),
+		  {error, E}
+	  end,
+    {reply, Res, State};
+
+
+
 handle_call(Auth, {machines, list}, _From, #state{host=Host, uuid=HUUID} = State) ->
     lager:info([{fifi_component, sniffle_impl_chunter}, {user, Auth}],
 	       "machines:list.",
@@ -49,7 +70,7 @@ handle_call(Auth, {machines, list}, _From, #state{host=Host, uuid=HUUID} = State
 		  sniffle_server:update_machines(HUUID, Ms1),
 		  {ok, Ms1};
 	      E ->
-	    lager:error([{fifi_component, sniffle_impl_chunter}, {user, Auth}],
+		  lager:error([{fifi_component, sniffle_impl_chunter}, {user, Auth}],
 			"machines:list - Error: ~p.",
 			[E]),
 		  {error, E}
@@ -128,14 +149,8 @@ handle_call(Auth, {machines, create, Name, PackageUUID, DatasetUUID, Metadata, T
 		{user, Auth}],
 	       "machines:create - Host: ~p, Name: ~s, Package: ~s, Dataset: ~s.",
 	       [Host, Name, PackageUUID, DatasetUUID]),
-    Res = case libchunter:create_machine(Host, Auth, Name, PackageUUID, DatasetUUID, Metadata, Tags) of
-	      {ok, JSON} ->
-		  sniffle_server:update_machines(HUUID, [JSON]),
-		  {ok, make_frontend_json(JSON)};
-	      E ->
-		  E
-	  end,
-    {reply, Res, State};
+    libchunter:create_machine(Host, Auth, Name, PackageUUID, DatasetUUID, Metadata, Tags),
+    {reply, ok, State};
 
 handle_call(Auth, {packages, list}, _From, #state{host=Host, uuid=HUUID} = State) ->
     lager:info([{fifi_component, sniffle_impl_chunter}, 

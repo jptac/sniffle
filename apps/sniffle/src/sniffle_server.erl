@@ -14,7 +14,8 @@
 -export([start_link/0,
 	 reregister/0,
 	 update_machines/2,
-	 register_host_resource/4]).
+	 register_host_resource/4,
+	 remove_host/1]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -148,7 +149,7 @@
 						 {reply, {error, {host_down, E}}, State}
 					 end
 				 end, [], Hosts),
-	       {reply, {ok, Res}, State}).
+	       {reply, {ok, lists:usort(Res)}, State}).
 
 %%%===================================================================
 %%% API
@@ -195,10 +196,11 @@ remove_host(Host) ->
 			 {chunter, sniffle_impl_chunter},
 			 {{cloudapi, bark}, sniffle_impl_bark}]).
 init([]) ->
+    ok = backyard_srv:register_connect_handler(backyard_connect),
     Hosts = get_env_default(api_hosts, []),
     Providers = get_env_default(providers, ?IMPL_PROVIDERS),
     HostUUIDs = lists:map(fun ({Type, Spec}) ->
-				      UUID = uuid:uuid4(),
+				      UUID = list_to_binary(uuid:to_string(uuid:uuid4())),
 				      Provider=proplists:get_value(Type, Providers),
 				      sniffle_host_sup:start_child(Provider, UUID, Spec),
 				      UUID
@@ -240,6 +242,22 @@ init([]) ->
 ?LIST(images);
 ?LIST(keys);
 
+handle_call({call, Auth, {hosts, list}}, From, #state{api_hosts=Hosts} = State) ->
+    lager:info([{fifi_component, sniffle}, {user, Auth}],
+	       "hosts:list.",
+	       []),
+    lager:debug([{fifi_component, sniffle}, {user, Auth}],
+		"hosts:list - From: ~p Hosts: ~p.", [From, Hosts]),
+    {ok, AuthC} = libsnarl:user_cache(system, Auth),
+    case libsnarl:allowed(system, AuthC, [host, list]) of
+	false ->
+	    {reply, {error, permission_denied}, State};
+	true ->
+	    Hosts1 =[UUID || UUID <- Hosts,
+			     libsnarl:allowed(system, AuthC, [host, UUID, get]) == true],
+	    {reply, {ok, lists:usort(Hosts1)}, State}
+    end;
+		   
 handle_call({call, Auth, {packages, list}}, From, #state{api_hosts=Hosts} = State) ->
     lager:info([{fifi_component, sniffle}, {user, Auth}],
 	       "packages:list.",
@@ -280,6 +298,7 @@ handle_call({call, Auth, {packages, create, Name, Disk, Memory, Swap}}, From, St
 		"packages:create - From: ~p.", [From]),
     case libsnarl:allowed(system, Auth, [package, Name, set]) of
 	false ->
+	    msg(Auth, <<"error">>, <<"Permission denied!">>),
 	    {reply, {error, unauthorized}, State};
 	true ->
 	    Pkg = [{name, Name}, 
@@ -297,7 +316,29 @@ handle_call({call, Auth, {machines, create, Name, PackageUUID, DatasetUUID, Meta
 	       [Name, PackageUUID, DatasetUUID]),
     lager:debug([{fifi_component, sniffle}, {user, Auth}],
 		"machines:create - From: ~p Hosts: ~p.", [From, Hosts]),
-    Host = pick_host(Hosts),
+    PermHosts = [H || H <- Hosts, libsnarl:allowed(system, Auth, [host, H, vm, create])],
+    case pick_host(PermHosts) of 
+	{ok, Host} ->
+	    lager:info([{fifi_component, sniffle}, {user, Auth}],
+		       "machines:create - Autopicked Host: ~p.",
+		       [Host]),
+	    Pid = gproc:lookup_pid({n, l, {host, Host}}),
+	    sniffle_host_srv:call(Pid, From, Auth, {machines, create, Name, PackageUUID, DatasetUUID, Metadata, Tags}),
+	    {reply, ok, State};
+	{error, E} ->
+	    lager:debug([{fifi_component, sniffle}, {user, Auth}],
+		"machines:create - pick host error: ~p.", [E]),
+	    msg(Auth, <<"error">>, <<"No suitable deployment host found!">>),
+	    {reply, {error, E}, State}
+    end;
+
+handle_call({call, Auth, {machines, create, Host, Name, PackageUUID, DatasetUUID, Metadata, Tags}}, From, 
+	    #state{api_hosts=Hosts} = State) ->
+    lager:info([{fifi_component, sniffle}, {user, Auth}],
+	       "machines:create - Host: ~s, Name: ~s, Package, ~s, Dataset: ~s.",
+	       [Host, Name, PackageUUID, DatasetUUID]),
+    lager:debug([{fifi_component, sniffle}, {user, Auth}],
+		"machines:create - From: ~p Hosts: ~p.", [From, Hosts]),
     Pid = gproc:lookup_pid({n, l, {host, Host}}),
     sniffle_host_srv:call(Pid, From, Auth, {machines, create, Name, PackageUUID, DatasetUUID, Metadata, Tags}),
     {noreply, State};
@@ -310,6 +351,7 @@ handle_call({call, Auth, {packages, delete, Name}}, From, State) ->
 		"packages:delete - From: ~p.", [From]),
     case libsnarl:allowed(system, Auth, [package, Name, delete]) of
 	false ->
+	    msg(Auth, <<"error">>, <<"Permission denied!">>),
 	    {reply, {error, unauthorized}, State};
 	true ->
 	    libsnarl:option_delete(system, <<"packages">>, Name),
@@ -402,16 +444,16 @@ handle_cast({cast, Auth, {register, Type, Spec}}, #state{api_hosts=HostUUIDs} = 
 	       [Type, Spec]),
     lager:debug([{fifi_component, sniffle}, {user, Auth}],
 		"sniffle:register - Hosts: ~p.", [HostUUIDs]),
-
+    
     case libsnarl:allowed(system, Auth, [service, sniffle, host, add, Type]) of
 	false ->
 	    {noreply, State};
 	true ->
 	    Providers = get_env_default(providers, ?IMPL_PROVIDERS),
-	    UUID = uuid:uuid4(),
+	    UUID = list_to_binary(uuid:to_string(uuid:uuid4())),
 	    Provider=proplists:get_value(Type, Providers),
 	    sniffle_host_sup:start_child(Provider, UUID, Spec),
-	    {noreply, State#state{api_hosts=[UUID|HostUUIDs]}}
+	    {noreply, State#state{api_hosts=[UUID|lists:delete(UUID, HostUUIDs)]}}
     end;
 
 handle_cast({cast, Auth, {register, Type, UUID, Spec}}, #state{api_hosts=HostUUIDs} = State) ->
@@ -425,10 +467,17 @@ handle_cast({cast, Auth, {register, Type, UUID, Spec}}, #state{api_hosts=HostUUI
 	false ->
 	    {noreply, State};
 	true ->
+	    try
+		Pid = gproc:lookup_pid({n, l, {host, UUID}}),
+		sniffle_host_srv:kill(Pid)
+	    catch
+		_:_ ->
+		    ok
+	    end,
 	    Providers = get_env_default(providers, ?IMPL_PROVIDERS),
-	    Provider=proplists:get_value(Type, Providers),
+	    Provider= proplists:get_value(Type, Providers),
 	    sniffle_host_sup:start_child(Provider, UUID, Spec),
-	    {noreply, State#state{api_hosts=[UUID|HostUUIDs]}}
+	    {noreply, State#state{api_hosts=[UUID|lists:delete(UUID,HostUUIDs)]}}
     end;
 	
 handle_cast({update_machines, Host, Ms}, State) ->
@@ -468,10 +517,18 @@ handle_cast({remove_host, UUID}, #state{api_hosts=Hosts} = State) ->
     end,
     {noreply, State#state{api_hosts=[H||H<-Hosts,H=/=UUID]}};
 
+
+handle_cast(backyard_connect, State) ->
+    lager:info([{fifi_component, sniffle}],
+	       "sniffle:backyard - connecting!"),
+    gproc:reg({n, g, sniffle}),
+    gproc:send({p,g, {sniffle,register}}, {sniffle, request, register}),
+    {noreply, State};
+
 handle_cast(reregister, State) ->
     try
-	gproc:reg({n, g, sniffle}),
-	gproc:send({p,g,{sniffle,register}}, {sniffle, request, register}),
+%	gproc:reg({n, g, sniffle}),
+%	gproc:send({p,g,{sniffle,register}}, {sniffle, request, register}),
 	{noreply, State}
     catch
 	T:E ->
@@ -514,6 +571,7 @@ handle_info(_Info, State) ->
 %% @end
 %%--------------------------------------------------------------------
 terminate(_Reason, _State) ->
+    backyard_srv:unregister_handler(),
     ok.
 
 %%--------------------------------------------------------------------
@@ -539,13 +597,6 @@ get_env_default(Key, Default) ->
 	    Default
     end.
 
-discover_machines(Auth, Hosts) ->
-    lists:map(fun (Host) ->
-		      Pid = gproc:lookup_pid({n, l, {host, Host}}),
-		      sniffle_host_srv:scall(Pid, Auth, {machines, list})
-	      end, Hosts),
-    ok.
-
 register_machine(Host, M) ->
     UUID = proplists:get_value(id, M),
     Name = <<"sniffle:machines:", UUID/binary>>,
@@ -556,10 +607,20 @@ get_machine_host(Auth, UUID, Hosts) ->
     case get_machine_host_int(UUID) of
 	{error, not_found} ->
 	    lager:warning([{fifi_component, sniffle}, {user, Auth}],
-			"sniffle:host_cache_miss - ~s.",
-			[UUID]),
-	    discover_machines(Auth, Hosts),
-	    get_machine_host_int(UUID);
+			  "sniffle:host_cache_miss - ~s.",
+			  [UUID]),
+	    lists:foldl(fun (Host, Res) ->
+				Pid = gproc:lookup_pid({n, l, {host, Host}}),
+				{ok, VMs} = sniffle_host_srv:scall(Pid, Auth, {machines, list}),
+				lists:foldl(fun (VM, Res1) ->
+						     case lists:keyfind(id, 1, VM) of
+							 {id, UUID} ->
+							     {ok, Host};
+							 _ ->
+							     Res1
+						     end
+					     end, Res, VMs)
+			end, {error, not_found}, Hosts);
 	{ok, Host} ->
 	    {ok, Host}
     end.
@@ -581,23 +642,24 @@ get_machine_host_int(UUID) ->
 %% It is good practive to hope that the random node is the least 
 %% loded one - not much else you can do about it.
 pick_host(Hosts) ->
-    [H|_Rest] = shuffle(Hosts),
+    {_, H} = lists:foldl(fun (UUID, {S, Res}) ->
+			   try
+			       Pid = gproc:lookup_pid({n, l, {host, UUID}}),
+			       case sniffle_host_srv:scall(Pid, system, {info, memory}) of
+				   {ok, {Used, Total}} when (Total - Used) > S ->
+				       {(Total - Used), {ok, UUID}};
+				   _ ->
+				       {S, Res}
+			       end
+			   catch
+			       _:_ ->
+				   {S, Res}
+			   end
+			end, {0, {error, not_found}}, Hosts),
     H.
 
-shuffle(List) ->
-    %% Determine the log n portion then randomize the list.
-    randomize(round(math:log(length(List)) + 0.5), List).
+msg({Auth, _}, Type, Msg) ->
+    msg(Auth, Type, Msg);
 
-randomize(1, List) ->
-    randomize(List);
-randomize(T, List) ->
-    lists:foldl(fun(_E, Acc) ->
-			randomize(Acc)
-		end, randomize(List), lists:seq(1, (T - 1))).
-
-randomize(List) ->
-    D = lists:map(fun(A) ->
-			  {random:uniform(), A}
-		  end, List),
-    {_, D1} = lists:unzip(lists:keysort(1, D)), 
-    D1.
+msg(Auth, Type, Msg) ->
+    gproc:send({p, g, {user, Auth}}, {msg, Type, Msg}).
