@@ -149,7 +149,7 @@
 						 {reply, {error, {host_down, E}}, State}
 					 end
 				 end, [], Hosts),
-	       {reply, {ok, Res}, State}).
+	       {reply, {ok, lists:usort(Res)}, State}).
 
 %%%===================================================================
 %%% API
@@ -255,7 +255,7 @@ handle_call({call, Auth, {hosts, list}}, From, #state{api_hosts=Hosts} = State) 
 	true ->
 	    Hosts1 =[UUID || UUID <- Hosts,
 			     libsnarl:allowed(system, AuthC, [host, UUID, get]) == true],
-	    {reply, {ok, Hosts1}, State}
+	    {reply, {ok, lists:usort(Hosts1)}, State}
     end;
 		   
 handle_call({call, Auth, {packages, list}}, From, #state{api_hosts=Hosts} = State) ->
@@ -316,7 +316,8 @@ handle_call({call, Auth, {machines, create, Name, PackageUUID, DatasetUUID, Meta
 	       [Name, PackageUUID, DatasetUUID]),
     lager:debug([{fifi_component, sniffle}, {user, Auth}],
 		"machines:create - From: ~p Hosts: ~p.", [From, Hosts]),
-    case pick_host(Hosts) of 
+    PermHosts = [H || H <- Hosts, libsnarl:allowed(system, Auth, [host, H, vm, create])],
+    case pick_host(PermHosts) of 
 	{ok, Host} ->
 	    lager:info([{fifi_component, sniffle}, {user, Auth}],
 		       "machines:create - Autopicked Host: ~p.",
