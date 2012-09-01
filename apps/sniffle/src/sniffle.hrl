@@ -25,3 +25,11 @@
 	  port :: pos_integer(),
 	  resources :: dict()
 	}).
+
+-record(vm,
+	{
+	  uuid :: string(),
+	  alias :: string(),
+	  hypervisor :: string(),
+	  attributes :: dict()
+	}).

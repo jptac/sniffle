@@ -1,55 +1,57 @@
--module(sniffle_hypervisor).
+-module(sniffle_vm).
 -include("sniffle.hrl").
 %-include_lib("riak_core/include/riak_core_vnode.hrl").
 
 
 -export(
    [
-    register/3,
+    register/2,
     unregister/1,
     get/1,
     list/0,
     list/1,
-    get_resource/2,
-    set_resource/3
+    get_attribute/2,
+    set_attribute/3
    ]
   ).
 
-register(Hypervisor, IP, Port) ->
-    case sniffle_hypervisor:get(Hypervisor) of
+
+
+register(Vm, Hypervisor) ->
+    case sniffle_vm:get(Vm) of
 	{ok, not_found} ->
-	    do_write(Hypervisor, register, [IP, Port]);
+	    do_write(Vm, register, Hypervisor);
 	{ok, _UserObj} ->
 	    duplicate
     end.
 
-unregister(Hypervisor) ->    
-    do_update(Hypervisor, delete).
+unregister(Vm) ->    
+    do_update(Vm, delete).
 
-get(Hypervisor) ->
+get(Vm) ->
     sniffle_entity_read_fsm:start(
-      {sniffle_hypervisor_vnode, sniffle_hypervisor},
-      get, Hypervisor
+      {sniffle_vm_vnode, sniffle_vm},
+      get, Vm
      ).
 
 list() ->
     sniffle_entity_coverage_fsm:start(
-      {sniffle_hypervisor_vnode, sniffle_hypervisor},
+      {sniffle_vm_vnode, sniffle_vm},
       list
      ).
 
 list(User) ->
     sniffle_entity_coverage_fsm:start(
-      {sniffle_hypervisor_vnode, sniffle_hypervisor},
+      {sniffle_vm_vnode, sniffle_vm},
       list, undefined, User
      ).
 
-get_resource(Hypervisor, Resource) ->
-    case sniffle_hypervisor:get(Hypervisor) of
+get_attribute(Vm, Attribute) ->
+    case sniffle_vm:get(Vm) of
 	{ok, not_found} ->
 	    not_found;
 	{ok, V} ->
-	    case dict:find(Resource, V#hypervisor.resources) of
+	    case dict:find(Attribute, V#vm.attributes) of
 		error ->
 		    not_found;
 		Result ->
@@ -57,8 +59,8 @@ get_resource(Hypervisor, Resource) ->
 	    end
     end.
 
-set_resource(Hypervisor, Resource, Value) ->
-    do_update(Hypervisor, resource, [Resource, Value]).
+set_attribute(Vm, Attribute, Value) ->
+    do_update(Vm, resource, [Attribute, Value]).
 
 
 %%%===================================================================
@@ -83,7 +85,7 @@ do_update(User, Op, Val) ->
     end.
 
 do_write(User, Op) ->
-    sniffle_entity_write_fsm:write({sniffle_hypervisor_vnode, sniffle_hypervisor}, User, Op).
+    sniffle_entity_write_fsm:write({sniffle_vm_vnode, sniffle_vm}, User, Op).
 
 do_write(User, Op, Val) ->
-    sniffle_entity_write_fsm:write({sniffle_hypervisor_vnode, sniffle_hypervisor}, User, Op, Val).
+    sniffle_entity_write_fsm:write({sniffle_vm_vnode, sniffle_vm}, User, Op, Val).

@@ -28,6 +28,10 @@ init(_Args) ->
 		    { riak_core_vnode_master, start_link, [sniffle_hypervisor_vnode]},
 		    permanent, 5000, worker, [sniffle_hypervisor_vnode_master]},
     
+    VVM = { sniffle_vm_vnode_master,
+	    { riak_core_vnode_master, start_link, [sniffle_vm_vnode]},
+	    permanent, 5000, worker, [sniffle_vm_vnode_master]},
+    
     WriteFSMs = { sniffle_entity_write_fsm_sup,
 		  { sniffle_entity_write_fsm_sup, start_link, []},
 		  permanent, infinity, supervisor, [sniffle_entity_write_fsm_sup]},
@@ -44,4 +48,4 @@ init(_Args) ->
     
     { ok,
       { {one_for_one, 5, 10},
-	[VMaster, VHypervisor, WriteFSMs, ReadFSMs, CoverageFSMs]}}.
+	[VMaster, VHypervisor, VVM, WriteFSMs, ReadFSMs, CoverageFSMs]}}.
