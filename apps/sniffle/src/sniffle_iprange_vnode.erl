@@ -31,7 +31,9 @@
 -record(state, {
 	  ipranges,
 	  partition,
-	  node
+	  node,
+	  dbref,
+	  index
 	 }).
 
 -define(MASTER, sniffle_iprange_vnode_master).
@@ -105,10 +107,14 @@ return_ip(Preflist, ReqID, Iprange, IP) ->
 %%%===================================================================
 
 init([Partition]) ->
+    {ok, DBRef} = eleveldb:open("ipranges."++integer_to_list(Partition)++".ldb", [{create_if_missing, true}]),
+    {Index, Ranges} = read_ranges(DBRef),
     {ok, #state{
-       ipranges = dict:new(),
        partition = Partition,
-       node = node()
+       index = Index,
+       node = node(),
+       ipranges = Ranges,
+       dbref=DBRef
       }}.
 
 handle_command(ping, _Sender, State) ->
@@ -129,7 +135,7 @@ handle_command({get, ReqID, Iprange}, _Sender, State) ->
 
 handle_command({create, {ReqID, Coordinator}, Iprange, 
 		[Network, Gateway, Netmask, First, Last, Tag]}, 
-	       _Sender, State) ->
+	       _Sender, #state{dbref = DBRef} = State) ->
 
     I0 = statebox:new(fun sniffle_iprange_state:new/0),
     I1 = statebox:modify({fun sniffle_iprange_state:name/2, [Iprange]}, I0),
@@ -146,14 +152,22 @@ handle_command({create, {ReqID, Coordinator}, Iprange,
     HObject = #sniffle_obj{val=I8, vclock=VC},
 
     Is0 = dict:store(Iprange, HObject, State#state.ipranges),
+
+    eleveldb:put(DBRef, <<"#ipranges">>, term_to_binary(dict:fetch_keys(Is0)), []),
+    eleveldb:put(DBRef, Iprange, term_to_binary(HObject), []),
+    
     {reply, {ok, ReqID}, State#state{ipranges = Is0}};
 
-handle_command({delete, {ReqID, _Coordinator}, Iprange}, _Sender, State) ->
-    Hs0 = dict:erase(Iprange, State#state.ipranges),
-    {reply, {ok, ReqID}, State#state{ipranges = Hs0}};
+handle_command({delete, {ReqID, _Coordinator}, Iprange}, _Sender, #state{dbref = DBRef} = State) ->
+    Is0 = dict:erase(Iprange, State#state.ipranges),
+
+    eleveldb:put(DBRef, <<"#ipranges">>, term_to_binary(dict:fetch_keys(Is0)), []),
+    eleveldb:delete(DBRef, Iprange, []),
+
+    {reply, {ok, ReqID}, State#state{ipranges = Is0}};
 
 handle_command({ip, claim, 
-		{ReqID, Coordinator}, Iprange, IP}, _Sender, State) ->
+		{ReqID, Coordinator}, Iprange, IP}, _Sender, #state{dbref = DBRef} = State) ->
     Hs0 = dict:update(Iprange, 
 		      fun(_, #sniffle_obj{val=I0} = O) ->
 			      I1 = statebox:modify(
@@ -179,21 +193,26 @@ handle_command({ip, claim,
 			       I0
 			      ),
 			I2 = statebox:expire(?STATEBOX_EXPIRE, I1),
+
+			eleveldb:put(DBRef, Iprange, term_to_binary(I2), []),
+			
 			Hs0 = dict:store(Iprange, 
 					 sniffle_obj:update(I2, Coordinator, O), 
 					 State#state.ipranges),
 			{NewIP, Hs0}
 		end,
+
     {reply, {ok, ReqID, IP}, State#state{ipranges = Hs1}};
 
 handle_command({ip, return, 
-		{ReqID, Coordinator}, Iprange, IP}, _Sender, State) ->
+		{ReqID, Coordinator}, Iprange, IP}, _Sender, #state{dbref = DBRef} = State) ->
     Hs0 = dict:update(Iprange, 
 		      fun(_, #sniffle_obj{val=I0} = O) ->
 			      I1 = statebox:modify(
 				     {fun sniffle_iprange_state:return_ip/2, 
 				      [IP]}, I0),
 			      I2 = statebox:expire(?STATEBOX_EXPIRE, I1),
+			      eleveldb:put(DBRef, Iprange, term_to_binary(I2), []),
 			      sniffle_obj:update(I2, Coordinator, O)
 		      end, State#state.ipranges),
     {reply, {ok, ReqID}, State#state{ipranges = Hs0}};
@@ -215,10 +234,12 @@ handoff_cancelled(State) ->
 handoff_finished(_TargetNode, State) ->
     {ok, State}.
 
-handle_handoff_data(Data, State) ->
+handle_handoff_data(Data, #state{dbref = DBRef} = State) ->
     {Iprange, HObject} = binary_to_term(Data),
-    Hs0 = dict:store(Iprange, HObject, State#state.ipranges),
-    {reply, ok, State#state{ipranges = Hs0}}.
+    Is0 = dict:store(Iprange, HObject, State#state.ipranges),
+    eleveldb:put(DBRef, <<"#ipranges">>, term_to_binary(dict:fetch_keys(Is0)), []),
+    eleveldb:put(DBRef, Iprange, term_to_binary(HObject), []),
+    {reply, ok, State#state{ipranges = Is0}}.
 
 encode_handoff_item(Iprange, Data) ->
     term_to_binary({Iprange, Data}).
@@ -231,8 +252,12 @@ is_empty(State) ->
 	    {true, State}
     end.
 
-delete(State) ->
-    {ok, State#state{ipranges = dict:new()}}.
+delete(#state{dbref = DBRef} = State) ->
+    eleveldb:close(DBRef),
+    eleveldb:destroy("ipranges."++integer_to_list(State#state.partition)++".ldb",[]),
+    {ok, DBRef1} = eleveldb:open("ipranges."++integer_to_list(State#state.partition)++".ldb", [{create_if_missing, true}]),
+
+    {ok, State#state{ipranges = dict:new(), dbref = DBRef1}}.
 
 handle_coverage({list, ReqID}, _KeySpaces, _Sender, State) ->
     {reply, 
@@ -245,5 +270,19 @@ handle_coverage(_Req, _KeySpaces, _Sender, State) ->
 handle_exit(_Pid, _Reason, State) ->
     {noreply, State}.
 
-terminate(_Reason, _State) ->
+terminate(_Reason, #state{dbref=DBRef} = _State) ->
+    eleveldb:close(DBRef),
     ok.
+
+read_ranges(DBRef) ->
+    case eleveldb:get(DBRef, <<"#ipranges">>, []) of
+	not_found -> 
+	    {[], dict:new()};
+	{ok, Bin} ->
+	    Index = binary_to_term(Bin),
+	    {Index,
+	     lists:foldl(fun (Iprange, Ipranges0) ->
+				 {ok, IpBin} = eleveldb:get(DBRef, Iprange, []),
+				 dict:store(Iprange, binary_to_term(IpBin), Ipranges0)
+			 end, dict:new(), Index)}
+    end.

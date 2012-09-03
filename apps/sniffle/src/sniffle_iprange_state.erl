@@ -9,6 +9,11 @@
 
 -include("sniffle.hrl").
 
+-ifdef(TEST).
+-include_lib("eunit/include/eunit.hrl").
+-endif.
+
+
 -export([
 	 new/0,
 	 name/2,
@@ -61,3 +66,14 @@ return_ip(IP, #iprange{current = LIP} = Iprange) when LIP == IP + 1 ->
 
 return_ip(IP, Iprange) ->
     Iprange#iprange{free = ordsets:add_element(IP, Iprange#iprange.free)}.
+
+
+-ifdef(TEST).
+
+create_example_range() ->
+    #iprange{
+	      iprange
+	    }.
+    
+
+-endif.
