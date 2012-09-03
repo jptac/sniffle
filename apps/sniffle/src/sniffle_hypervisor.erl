@@ -2,7 +2,6 @@
 -include("sniffle.hrl").
 %-include_lib("riak_core/include/riak_core_vnode.hrl").
 
-
 -export(
    [
     register/3,
@@ -59,7 +58,6 @@ get_resource(Hypervisor, Resource) ->
 
 set_resource(Hypervisor, Resource, Value) ->
     do_update(Hypervisor, resource, [Resource, Value]).
-
 
 %%%===================================================================
 %%% Internal Functions

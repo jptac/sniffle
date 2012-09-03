@@ -8,7 +8,6 @@
 %% API
 -export([start_link/6, start/2, start/3, start/4]).
 
-
 -export([reconcile/1, different/1, needs_repair/2, repair/4, unique/1]).
 
 %% Callbacks
@@ -22,7 +21,8 @@
                 from,
 		entity,
 		op,
-		r=?R,
+		r,
+		n,
                 preflist,
                 num_r=0,
 		size,
@@ -64,43 +64,38 @@ start(VNodeInfo, Op, User, Val) ->
 %%%===================================================================
 
 %% Intiailize state data.
+init([ReqId, {VNode, System}, Op, From]) ->
+    init([ReqId, {VNode, System}, Op, From, undefined, undefined]);
+
+init([ReqId, {VNode, System}, Op, From, Entity]) ->
+    init([ReqId, {VNode, System}, Op, From, Entity, undefined]);
+
 init([ReqId, {VNode, System}, Op, From, Entity, Val]) ->
     ?PRINT({init, [Op, ReqId, From, Entity, Val]}),
+    {N, R, _W} = case application:get_key(System) of
+		     {ok, Res} ->
+			 Res;
+		     undefined ->
+			 {?N, ?R, ?W}
+		 end,
     SD = #state{req_id=ReqId,
+		r=R,
+		n=N,
                 from=From,
 		op=Op,
 		val=Val,
 		vnode=VNode,
 		system=System,
                 entity=Entity},
-    {ok, prepare, SD, 0};
-
-init([ReqId, {VNode, System}, Op, From, Entity]) ->
-    ?PRINT({init, [Op, ReqId, From, Entity]}),
-    SD = #state{req_id=ReqId,
-                from=From,
-		op=Op,
-		vnode=VNode,
-		system=System,
-                entity=Entity},
-    {ok, prepare, SD, 0};
-
-init([ReqId, {VNode, System}, Op, From]) ->
-    ?PRINT({init, [Op, ReqId, From]}),
-    SD = #state{req_id=ReqId,
-                from=From,
-		vnode=VNode,
-		system=System,
-		op=Op},
     {ok, prepare, SD, 0}.
 
 %% @doc Calculate the Preflist.
 prepare(timeout, SD0=#state{entity=Entity, 
+			    n=N,
 			    system=System}) ->
-    
     Bucket = list_to_binary(atom_to_list(System)),
     DocIdx = riak_core_util:chash_key({Bucket, term_to_binary(Entity)}),
-    Prelist = riak_core_apl:get_apl(DocIdx, ?N, System),
+    Prelist = riak_core_apl:get_apl(DocIdx, N, System),
     SD = SD0#state{preflist=Prelist},
     {next_state, execute, SD, 0}.
 
@@ -132,7 +127,7 @@ execute(timeout, SD0=#state{req_id=ReqId,
 
 waiting({ok, ReqID, IdxNode, Obj},
         SD0=#state{from=From, num_r=NumR0, replies=Replies0,
-                   r=R, timeout=Timeout}) ->
+                   r=R, n=N, timeout=Timeout}) ->
     NumR = NumR0 + 1,
     Replies = [{IdxNode, Obj}|Replies0],
     SD = SD0#state{num_r=NumR,replies=Replies},
@@ -146,7 +141,7 @@ waiting({ok, ReqID, IdxNode, Obj},
 		    From ! {ReqID, ok, statebox:value(Reply)}
 	    end,
 	    if 
-		NumR =:= ?N -> 
+		NumR =:= N -> 
 		    {next_state, finalize, SD, 0};
 	       true -> 
 		    {next_state, wait_for_n, SD, Timeout}
@@ -156,9 +151,9 @@ waiting({ok, ReqID, IdxNode, Obj},
     end.
 
 wait_for_n({ok, _ReqID, IdxNode, Obj},
-             SD0=#state{num_r=?N - 1, replies=Replies0}) ->
+             SD0=#state{n=N, num_r=NumR, replies=Replies0}) when NumR == N-1 ->
     Replies = [{IdxNode, Obj}|Replies0],
-    {next_state, finalize, SD0#state{num_r=?N, replies=Replies}, 0};
+    {next_state, finalize, SD0#state{num_r=N, replies=Replies}, 0};
 
 wait_for_n({ok, _ReqID, IdxNode, Obj},
              SD0=#state{num_r=NumR0, replies=Replies0, timeout=Timeout}) ->
@@ -217,7 +212,6 @@ merge(Replies) ->
 reconcile(Vals) -> 
     statebox:merge(Vals).
 
-
 %% @pure
 %%
 %% @doc Given the merged object `MObj' and a list of `Replies'
@@ -238,9 +232,10 @@ repair(_, _, _, []) -> io;
 
 repair(VNode, StatName, MObj, [{IdxNode,Obj}|T]) ->
     case sniffle_obj:equal(MObj, Obj) of
-        true -> repair(VNode, StatName, MObj, T);
+        true -> 
+	    repair(VNode, StatName, MObj, T);
         false ->
-            sniffle_entity_vnode:repair(VNode, IdxNode, StatName, MObj),
+	    VNode:repair(VNode, IdxNode, StatName, MObj),
             repair(VNode, StatName, MObj, T)
     end.
 

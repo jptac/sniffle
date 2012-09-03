@@ -33,3 +33,17 @@
 	  hypervisor :: string(),
 	  attributes :: dict()
 	}).
+
+-record(iprange,
+	{
+	  name :: string(),
+	  network :: integer(),
+	  gateway :: integer(),
+	  netmask :: integer(),
+	  first :: integer(),
+	  last :: integer(),
+	  current :: integer(),
+	  tag :: string(),
+	  free :: [integer()]
+	}).
+

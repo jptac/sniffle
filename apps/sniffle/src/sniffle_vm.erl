@@ -1,7 +1,6 @@
 -module(sniffle_vm).
--include("sniffle.hrl").
-%-include_lib("riak_core/include/riak_core_vnode.hrl").
 
+-include("sniffle.hrl").
 
 -export(
    [
@@ -14,8 +13,6 @@
     set_attribute/3
    ]
   ).
-
-
 
 register(Vm, Hypervisor) ->
     case sniffle_vm:get(Vm) of
@@ -62,11 +59,9 @@ get_attribute(Vm, Attribute) ->
 set_attribute(Vm, Attribute, Value) ->
     do_update(Vm, resource, [Attribute, Value]).
 
-
 %%%===================================================================
 %%% Internal Functions
 %%%===================================================================
-
 
 do_update(User, Op) ->
     case sniffle_user:get(User) of
