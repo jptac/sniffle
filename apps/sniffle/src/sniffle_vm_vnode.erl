@@ -3,13 +3,13 @@
 -include("sniffle.hrl").
 -include_lib("riak_core/include/riak_core_vnode.hrl").
 
--export([
-	 repair/3,
+-export([repair/3,
 	 get/3,
 	 list/2,
 	 register/4,
 	 unregister/3,
-	 set_resource/4
+	 set_attribute/4,
+	 mset_attribute/4
 	]).
 
 -export([start_vnode/1,
@@ -44,7 +44,7 @@ start_vnode(I) ->
 
 repair(IdxNode, Vm, Obj) ->
     riak_core_vnode_master:command(IdxNode,
-                                   {repair, undefined, Vm, Obj},
+                                   {repair, Vm, Obj},
                                    ignore,
                                    ?MASTER).
 
@@ -87,9 +87,15 @@ unregister(Preflist, ReqID, Vm) ->
 				   {fsm, undefined, self()},
                                    ?MASTER).
 
-set_resource(Preflist, ReqID, Vm, Data) ->
+set_attribute(Preflist, ReqID, Vm, Data) ->
     riak_core_vnode_master:command(Preflist,
-                                   {resource, set, ReqID, Vm, Data},
+                                   {attribute, set, ReqID, Vm, Data},
+				   {fsm, undefined, self()},
+                                   ?MASTER).
+
+mset_attribute(Preflist, ReqID, Vm, Data) ->
+    riak_core_vnode_master:command(Preflist,
+                                   {attribute, mset, ReqID, Vm, Data},
 				   {fsm, undefined, self()},
                                    ?MASTER).
 
@@ -107,6 +113,10 @@ init([Partition]) ->
 handle_command(ping, _Sender, State) ->
     {reply, {pong, State#state.partition}, State};
 
+handle_command({repair, Vm, Obj}, _Sender, State) ->
+    Hs0 = dict:store(Vm, Obj, State#state.vms),
+    {noreply, State#state{vms=Hs0}};
+
 handle_command({get, ReqID, Vm}, _Sender, State) ->
     ?PRINT({handle_command, get, ReqID, Vm}),
     NodeIdx = {State#state.partition, State#state.node},
@@ -120,15 +130,14 @@ handle_command({get, ReqID, Vm}, _Sender, State) ->
      Res,
      State};
 
-handle_command({register, {ReqID, Coordinator}, Vm, [Ip, Port]}, _Sender, State) ->
+handle_command({register, {ReqID, Coordinator}, Vm, Hypervisor}, _Sender, State) ->
     H0 = statebox:new(fun sniffle_vm_state:new/0),
-    H1 = statebox:modify({fun sniffle_vm_state:name/2, [Vm]}, H0),
-    H2 = statebox:modify({fun sniffle_vm_state:host/2, [Ip]}, H1),
-    H3 = statebox:modify({fun sniffle_vm_state:port/2, [Port]}, H2),
+    H1 = statebox:modify({fun sniffle_vm_state:uuid/2, [Vm]}, H0),
+    H2 = statebox:modify({fun sniffle_vm_state:hypervisor/2, [Hypervisor]}, H1),
 
     VC0 = vclock:fresh(),
     VC = vclock:increment(Coordinator, VC0),
-    HObject = #sniffle_obj{val=H3, vclock=VC},
+    HObject = #sniffle_obj{val=H2, vclock=VC},
 
     Hs0 = dict:store(Vm, HObject, State#state.vms),
     {reply, {ok, ReqID}, State#state{vms = Hs0}};
@@ -137,18 +146,40 @@ handle_command({unregister, {ReqID, _Coordinator}, Vm}, _Sender, State) ->
     Hs0 = dict:erase(Vm, State#state.vms),
     {reply, {ok, ReqID}, State#state{vms = Hs0}};
 
-handle_command({resource, set, 
+handle_command({attribute, set, 
 		{ReqID, Coordinator}, Vm, 
 		[Resource, Value]}, _Sender, State) ->
+    io:format("1~n"),
     Hs0 = dict:update(Vm, 
-		      fun(_, #sniffle_obj{val=H0} = O) ->
+		      fun(#sniffle_obj{val=H0} = O) ->
+			      io:format("2~n"),			     
 			      H1 = statebox:modify(
-				     {fun sniffle_vm_state:resource/3, 
+				     {fun sniffle_vm_state:attribute/3, 
 				      [Resource, Value]}, H0),
+			      io:format("3~n"),
+			      H2 = statebox:expire(?STATEBOX_EXPIRE, H1),
+			      io:format("4~n"),
+			      sniffle_obj:update(H2, Coordinator, O)
+		      end, State#state.vms),
+    io:format("5~n"),
+    {reply, {ok, ReqID}, State#state{vms = Hs0}};
+
+handle_command({attribute, mset, 
+		{ReqID, Coordinator}, Vm, 
+		Resources}, _Sender, State) ->
+    Hs0 = dict:update(Vm, 
+		      fun(#sniffle_obj{val=H0} = O) ->
+			      H1 = lists:foldr(
+				     fun ({Resource, Value}, H) ->
+					     statebox:modify(
+					       {fun sniffle_vm_state:attribute/3, 
+						[Resource, Value]}, H)
+				     end, H0, Resources),
 			      H2 = statebox:expire(?STATEBOX_EXPIRE, H1),
 			      sniffle_obj:update(H2, Coordinator, O)
 		      end, State#state.vms),
     {reply, {ok, ReqID}, State#state{vms = Hs0}};
+
 
 handle_command(Message, _Sender, State) ->
     ?PRINT({unhandled_command, Message}),

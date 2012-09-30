@@ -4,8 +4,8 @@
 
 -export(
    [
-    register/3,
-    unregister/1,
+    create/7,
+    delete/1,
     get/1,
     list/0,
     list/1,
@@ -14,15 +14,15 @@
    ]
   ).
 
-register(Iprange, IP, Port) ->
+create(Iprange, Network, Gateway, Netmask, First, Last, Tag) ->
     case sniffle_iprange:get(Iprange) of
 	{ok, not_found} ->
-	    do_write(Iprange, register, [IP, Port]);
-	{ok, _UserObj} ->
+	    do_write(Iprange, create, [Network, Gateway, Netmask, First, Last, Tag]);
+	{ok, _RangeObj} ->
 	    duplicate
     end.
 
-unregister(Iprange) ->    
+delete(Iprange) ->    
     do_update(Iprange, delete).
 
 get(Iprange) ->

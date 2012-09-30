@@ -18,7 +18,7 @@
 	]).
 
 new() ->
-    #vm{}.
+    #vm{attributes=dict:new()}.
 
 
 uuid(UUID, Vm) ->

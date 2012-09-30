@@ -7,7 +7,9 @@
   {applications, [
                   kernel,
                   stdlib,
-                  riak_core
+                  riak_core,
+                  zmq_mdns_server,
+                  lager
                  ]},
   {mod, { sniffle_app, []}},
   {env, []}

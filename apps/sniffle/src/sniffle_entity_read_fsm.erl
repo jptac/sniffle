@@ -235,7 +235,7 @@ repair(VNode, StatName, MObj, [{IdxNode,Obj}|T]) ->
         true -> 
 	    repair(VNode, StatName, MObj, T);
         false ->
-	    VNode:repair(VNode, IdxNode, StatName, MObj),
+	    VNode:repair(IdxNode, StatName, MObj),
             repair(VNode, StatName, MObj, T)
     end.
 

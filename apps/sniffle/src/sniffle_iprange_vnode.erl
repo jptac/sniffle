@@ -133,23 +133,25 @@ handle_command({get, ReqID, Iprange}, _Sender, State) ->
      Res,
      State};
 
-handle_command({create, {ReqID, Coordinator}, Iprange, 
-		[Network, Gateway, Netmask, First, Last, Tag]}, 
+handle_command({create, {ReqID, Coordinator}, Iprange,
+		[Network, Gateway, Netmask, First, Last, Tag]},
 	       _Sender, #state{dbref = DBRef} = State) ->
-
     I0 = statebox:new(fun sniffle_iprange_state:new/0),
-    I1 = statebox:modify({fun sniffle_iprange_state:name/2, [Iprange]}, I0),
-    I2 = statebox:modify({fun sniffle_iprange_state:network/2, [Network]}, I1),
-    I3 = statebox:modify({fun sniffle_iprange_state:gateway/2, [Gateway]}, I2),
-    I4 = statebox:modify({fun sniffle_iprange_state:netmask/2, [Netmask]}, I3),
-    I5 = statebox:modify({fun sniffle_iprange_state:first/2, [First]}, I4),
-    I6 = statebox:modify({fun sniffle_iprange_state:current/2, [First]}, I5),
-    I7 = statebox:modify({fun sniffle_iprange_state:last/2, [Last]}, I6),
-    I8 = statebox:modify({fun sniffle_iprange_state:tag/2, [Tag]}, I7),
-
+    I1 = lists:foldl(
+	   fun (OP, SB) ->
+		   statebox:modify(OP, SB)
+	   end, I0, [{fun sniffle_iprange_state:name/2, [Iprange]},
+		     {fun sniffle_iprange_state:network/2, [Network]},
+		     {fun sniffle_iprange_state:gateway/2, [Gateway]},
+		     {fun sniffle_iprange_state:netmask/2, [Netmask]},
+		     {fun sniffle_iprange_state:first/2, [First]},
+		     {fun sniffle_iprange_state:current/2, [First]},
+		     {fun sniffle_iprange_state:last/2, [Last]},
+		     {fun sniffle_iprange_state:tag/2, [Tag]}]),
+    
     VC0 = vclock:fresh(),
     VC = vclock:increment(Coordinator, VC0),
-    HObject = #sniffle_obj{val=I8, vclock=VC},
+    HObject = #sniffle_obj{val=I1, vclock=VC},
 
     Is0 = dict:store(Iprange, HObject, State#state.ipranges),
 
@@ -168,10 +170,10 @@ handle_command({delete, {ReqID, _Coordinator}, Iprange}, _Sender, #state{dbref =
 
 handle_command({ip, claim, 
 		{ReqID, Coordinator}, Iprange, IP}, _Sender, #state{dbref = DBRef} = State) ->
-    Hs0 = dict:update(Iprange, 
+    Hs0 = dict:update(Iprange,
 		      fun(_, #sniffle_obj{val=I0} = O) ->
 			      I1 = statebox:modify(
-				     {fun sniffle_iprange_state:claim_ip/2, 
+				     {fun sniffle_iprange_state:claim_ip/2,
 				      [IP]}, I0),
 			      I2 = statebox:expire(?STATEBOX_EXPIRE, I1),
 			      sniffle_obj:update(I2, Coordinator, O)
@@ -255,13 +257,30 @@ is_empty(State) ->
 delete(#state{dbref = DBRef} = State) ->
     eleveldb:close(DBRef),
     eleveldb:destroy("ipranges."++integer_to_list(State#state.partition)++".ldb",[]),
-    {ok, DBRef1} = eleveldb:open("ipranges."++integer_to_list(State#state.partition)++".ldb", [{create_if_missing, true}]),
+    {ok, DBRef1} = eleveldb:open("ipranges."++integer_to_list(State#state.partition)++".ldb",
+				 [{create_if_missing, true}]),
 
     {ok, State#state{ipranges = dict:new(), dbref = DBRef1}}.
 
 handle_coverage({list, ReqID}, _KeySpaces, _Sender, State) ->
     {reply, 
      {ok, ReqID, {State#state.partition,State#state.node}, dict:fetch_keys(State#state.ipranges)},
+     State};
+
+handle_coverage({overlap, ReqID, Start, Stop}, _KeySpaces, _Sender, State) ->
+    Res = dict:fold(fun (_, _, true) ->
+			    true;
+			(_, #sniffle_obj{val=V0}, false) ->
+			    #iprange{first=Start1,
+				     last=Stop1} = statebox:value(V0),
+			    (Start1 =< Start andalso
+				Start =< Stop1)
+				orelse
+				  (Start1 =< Stop andalso
+				   Stop =< Stop1)
+		    end, false, State#state.ipranges),
+    {reply, 
+     {ok, ReqID, {State#state.partition,State#state.node}, [Res]},
      State};
 
 handle_coverage(_Req, _KeySpaces, _Sender, State) ->

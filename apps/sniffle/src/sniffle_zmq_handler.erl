@@ -19,6 +19,11 @@ message({vm, unregister, Vm}, State) ->
      sniffle_vm:unregister(ensure_binary(Vm)),
      State};
 
+message({vm, attribute, get, Vm}, State) ->
+    {reply, 
+     sniffle_vm:get_attribute(ensure_binary(Vm)),
+     State};
+
 message({vm, attribute, get, Vm, Attribute}, State) ->
     {reply, 
      sniffle_vm:get_attribute(ensure_binary(Vm), Attribute),
@@ -26,7 +31,12 @@ message({vm, attribute, get, Vm, Attribute}, State) ->
 
 message({vm, attribute, set, Vm, Attribute, Value}, State) ->
     {reply, 
-     sniffle_vm:get_attribute(ensure_binary(Vm), Attribute, Value),
+     sniffle_vm:set_attribute(ensure_binary(Vm), Attribute, Value),
+     State};
+
+message({vm, attribute, set, Vm, Attributes}, State) ->
+    {reply, 
+     sniffle_vm:set_attribute(ensure_binary(Vm), Attributes),
      State};
 
 message({vm, list}, State) ->
