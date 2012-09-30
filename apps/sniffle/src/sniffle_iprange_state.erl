@@ -69,7 +69,7 @@ return_ip(IP, Iprange) ->
 
 -ifdef(TEST).
 
-test_create() ->
+create_test() ->
     ?assert(#iprange{} == new()).
 
 -endif.
