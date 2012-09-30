@@ -13,7 +13,6 @@
 -include_lib("eunit/include/eunit.hrl").
 -endif.
 
-
 -export([
 	 new/0,
 	 name/2,
@@ -71,9 +70,6 @@ return_ip(IP, Iprange) ->
 -ifdef(TEST).
 
 create_example_range() ->
-    #iprange{
-	      iprange
-	    }.
+    #iprange{}.
     
-
 -endif.
