@@ -1,0 +1,20 @@
+%% app generated at {2012,8,8} {1,57,51}
+{application,mdns,
+             [{description,"mDNS Erlang Node Discovery"},
+              {vsn,"0.1.0"},
+              {id,[]},
+              {modules,[mdns,mdns_application,
+                        mdns_discovery_connect_node_handler,
+                        mdns_node_discovery,mdns_node_discovery_event,
+                        mdns_node_discovery_server,mdns_supervisor]},
+              {registered,[]},
+              {applications,[kernel,stdlib]},
+              {included_applications,[]},
+              {env,[{port,5353},
+                    {address,{224,0,0,251}},
+                    {domain,".local"},
+                    {type,"_erlang._tcp"}]},
+              {maxT,infinity},
+              {maxP,infinity},
+              {mod,{mdns_application,[]}}]}.
+

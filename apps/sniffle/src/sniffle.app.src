@@ -1,22 +1,16 @@
+%% -*- erlang -*-
 {application, sniffle,
  [
-  {description, "Central cloud management server."},
-  {vsn, "0.2.0"},
+  {description, ""},
+  {vsn, "1"},
   {registered, []},
   {applications, [
                   kernel,
-		  erllibcloudapi,
-		  redo,
-		  backyard,
-		  sasl,
-		  alog,
-		  uuid,
-		  libsnarl,
-		  libchunter,
-		  statsderl,
-		  vmstats,
-                  stdlib
+                  stdlib,
+                  riak_core,
+                  zmq_mdns_server,
+                  lager
                  ]},
-  {mod, {sniffle_app, []}},
+  {mod, { sniffle_app, []}},
   {env, []}
  ]}.
