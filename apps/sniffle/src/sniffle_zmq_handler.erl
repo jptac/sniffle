@@ -20,17 +20,17 @@ message({vm, unregister, Vm}, State) ->
      State};
 
 message({vm, attribute, get, Vm}, State) ->
-    {reply, 
+    {reply,
      sniffle_vm:get_attribute(ensure_binary(Vm)),
      State};
 
 message({vm, attribute, get, Vm, Attribute}, State) ->
-    {reply, 
+    {reply,
      sniffle_vm:get_attribute(ensure_binary(Vm), Attribute),
      State};
 
 message({vm, attribute, set, Vm, Attribute, Value}, State) ->
-    {reply, 
+    {reply,
      sniffle_vm:set_attribute(ensure_binary(Vm), Attribute, Value),
      State};
 
@@ -53,32 +53,32 @@ message({vm, list, User}, State) ->
 %%%  Hypervisor Functions
 %%%===================================================================
 
-message({hyperisor, register, Hypervisor, Host, Port}, State) ->
+message({hypervisor, register, Hypervisor, Host, Port}, State) ->
     {reply, 
      sniffle_hypervisor:register(ensure_binary(Hypervisor), Host, Port),
      State};
 
-message({hyperisor, unregister, Hypervisor}, State) ->
+message({hypervisor, unregister, Hypervisor}, State) ->
     {reply, 
      sniffle_hypervisor:unregister(ensure_binary(Hypervisor)),
      State};
 
-message({hyperisor, resource, get, Hypervisor, Resource}, State) ->
+message({hypervisor, resource, get, Hypervisor, Resource}, State) ->
     {reply, 
      sniffle_hypervisor:get_resource(ensure_binary(Hypervisor), Resource),
      State};
 
-message({hyperisor, resource, set, Hypervisor, Resource, Value}, State) ->
+message({hypervisor, resource, set, Hypervisor, Resource, Value}, State) ->
     {reply, 
      sniffle_hypervisor:get_resource(ensure_binary(Hypervisor), Resource, Value),
      State};
 
-message({hyperisor, list}, State) ->
+message({hypervisor, list}, State) ->
     {reply, 
      sniffle_hypervisor:list(),
      State};
 
-message({hyperisor, list, User}, State) ->
+message({hypervisor, list, User}, State) ->
     {reply, 
      sniffle_hypervisor:list(ensure_binary(User)),
      State};
