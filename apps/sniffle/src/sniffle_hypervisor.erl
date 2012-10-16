@@ -65,7 +65,7 @@ set_resource(Hypervisor, Resource, Value) ->
 
 
 do_update(User, Op) ->
-    case sniffle_user:get(User) of
+    case sniffle_hypervisor:get(User) of
 	{ok, not_found} ->
 	    not_found;
 	{ok, _UserObj} ->
@@ -73,7 +73,7 @@ do_update(User, Op) ->
     end.
 
 do_update(User, Op, Val) ->
-    case sniffle_user:get(User) of
+    case sniffle_hypervisor:get(User) of
 	{ok, not_found} ->
 	    not_found;
 	{ok, _UserObj} ->

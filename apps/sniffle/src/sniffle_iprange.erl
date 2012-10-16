@@ -61,7 +61,6 @@ claim_ip(Iprange) ->
 	    do_write(Iprange, claim_ip, FoundIP);
 	{ok,
 	 #iprange{free=[FoundIP|_]}} ->
-	    
 	    do_write(Iprange, claim_ip, FoundIP)
     end.
 
@@ -79,7 +78,7 @@ do_update(Iprange, Op) ->
     end.
 
 do_update(Iprange, Op, Val) ->
-    case sniffle_user:get(Iprange) of
+    case sniffle_iprange:get(Iprange) of
 	{ok, not_found} ->
 	    not_found;
 	{ok, _RangeObj} ->

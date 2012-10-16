@@ -37,6 +37,9 @@ docs:
 ## Developer targets
 ##
 
+xref:
+	$(REBAR) xref skip_deps=true
+
 stage : rel
 	$(foreach dep,$(wildcard deps/* wildcard apps/*), rm -rf rel/sniffle/lib/$(shell basename $(dep))-* && ln -sf $(abspath $(dep)) rel/sniffle/lib;)
 

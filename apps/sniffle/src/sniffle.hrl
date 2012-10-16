@@ -47,3 +47,16 @@
 	  free :: [integer()]
 	}).
 
+-record(package,
+	{
+	  uuid :: string(),
+	  name :: string(),
+	  attributes :: dict()
+	}).
+
+-record(dataset,
+	{
+	  uuid :: string(),
+	  name :: string(),
+	  attributes :: dict()
+	}).
