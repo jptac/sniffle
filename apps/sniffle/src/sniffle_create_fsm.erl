@@ -10,6 +10,8 @@
 
 -behaviour(gen_fsm).
 
+-include("sniffle.hrl").
+
 %% API
 -export([create/4,
 	 start_link/0]).
@@ -116,6 +118,7 @@ init([UUID, Package, Dataset, Owner]) ->
 %%                   {stop, Reason, NewState}
 %% @end
 %%--------------------------------------------------------------------
+
 get_package(_Event, State = #state{
 		      uuid = UUID,
 		      package_name = PackageName}) ->
@@ -131,21 +134,23 @@ get_dataset(_Event, State = #state{
     {next_state, compile_spec, State#state{dataset = dict:to_list(Dataset)}, 0}.
 
 compile_spec(_Event, State = #state{dataset = Dataset,
-				    package = Package}) ->
-    {next_state, get_server, State#state{spec = Dataset ++ Package}, 0}.
+				    package = Package,
+				    owner = Owner}) ->
+    {next_state, get_server, State#state{spec = [{<<"owner">>, Owner} | Dataset ++ Package]}, 0}.
 
 get_server(_Event, State = #state{
 		     uuid = UUID,
 		     owner = Owner}) ->
     sniffle_vm:set_attribute(UUID, <<"state">>, <<"fetching_dataset">>),
-    {ok, Hypervisor} = sniffle_hypervisor:best_server(Owner),
-    {next_state, create, State#state{hypervisor = Hypervisor}, 0}.
-    
+    {ok, #hypervisor{host=Host,port=Port}} = sniffle_hypervisor:best_server(Owner),
+    {next_state, create, State#state{hypervisor = {Host, Port}}, 0}.
 
-create(_Event, State = #state{uuid = UUID}) ->
-    sniffle_vm:set_attribute(UUID, <<"state">>, <<"fetching_server">>),
+create(_Event, State = #state{uuid = UUID,
+			      spec = Spec,
+			      hypervisor = {Host, Port}}) ->
+    sniffle_vm:set_attribute(UUID, <<"state">>, <<"creating">>),
+    libchunter:create_machine(Host, Port, UUID, Spec),
     {next_state, create, State#state{}, 0}.
-
 
 %%--------------------------------------------------------------------
 %% @private
