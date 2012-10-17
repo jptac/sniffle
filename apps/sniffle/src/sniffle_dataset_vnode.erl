@@ -13,7 +13,8 @@
 	 mset_attribute/4
 	]).
 
--export([start_vnode/1,
+-export([
+	 start_vnode/1,
          init/1,
          terminate/2,
          handle_command/3,
@@ -26,7 +27,8 @@
          handle_handoff_data/2,
          encode_handoff_item/2,
          handle_coverage/4,
-         handle_exit/3]).
+         handle_exit/3
+	]).
 
 -record(state, {
 	  datasets,
@@ -35,6 +37,17 @@
 	  dbref,
 	  index
 	 }).
+
+-ignore_xref([
+	      create/4,
+	      delete/3,
+	      get/3,
+	      list/2,
+	      mset_attribute/4,
+	      repair/3,
+	      set_attribute/4,
+	      start_vnode/1
+	     ]).
 
 -define(MASTER, sniffle_dataset_vnode_master).
 

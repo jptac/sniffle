@@ -20,10 +20,6 @@ start_link() ->
 %% ===================================================================
 
 init(_Args) ->
-    VMaster = { 
-      sniffle_vnode_master,
-      { riak_core_vnode_master, start_link, [sniffle_vnode]},
-      permanent, 5000, worker, [riak_core_vnode_master]},
     VHypervisor = { 
       sniffle_hypervisor_vnode_master,
       { riak_core_vnode_master, start_link, [sniffle_hypervisor_vnode]},
@@ -48,8 +44,13 @@ init(_Args) ->
       sniffle_entity_read_fsm_sup,
       {sniffle_entity_read_fsm_sup, start_link, []},
       permanent, infinity, supervisor, [sniffle_entity_read_fsm_sup]},
+    CreateFSMs = {
+      sniffle_create_fsm_sup,
+      {sniffle_create_fsm_sup, start_link, []},
+      permanent, infinity, supervisor, [sniffle_create_fsm_sup]},
     
     { ok,
       { {one_for_one, 5, 10},
-	[VMaster, VHypervisor, VVM, VIprange,
-	 WriteFSMs, ReadFSMs, CoverageFSMs]}}.
+	[VHypervisor, VVM, VIprange,
+	 WriteFSMs, ReadFSMs, CoverageFSMs,
+	 CreateFSMs]}}.

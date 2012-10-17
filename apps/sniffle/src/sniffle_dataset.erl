@@ -2,19 +2,17 @@
 -include("sniffle.hrl").
 %-include_lib("riak_core/include/riak_core_vnode.hrl").
 
--export(
-   [
-    create/1,
-    delete/1,
-    get/1,
-    list/0,
-    list/1,
-    get_attribute/2,
-    get_attribute/1,
-    set_attribute/2,
-    set_attribute/3
-   ]
-  ).
+-export([
+	 create/1,
+	 delete/1,
+	 get/1,
+	 list/0,
+	 list/1,
+	 get_attribute/2,
+	 get_attribute/1,
+	 set_attribute/2,
+	 set_attribute/3
+	]).
 
 create(Dataset) ->
     case sniffle_dataset:get(Dataset) of

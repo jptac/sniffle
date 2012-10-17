@@ -6,6 +6,7 @@
    [
     register/2,
     unregister/1,
+    create/3,
     get/1,
     list/0,
     list/1,
@@ -26,6 +27,11 @@ register(Vm, Hypervisor) ->
 
 unregister(Vm) ->    
     do_update(Vm, delete).
+
+create(Package, Dataset, Owner) ->
+    UUID = uuid:to_string(uuid:uuid1()),
+    sniffle_create_fsm:create(UUID, Package, Dataset, Owner),
+    {ok, UUID}.    
 
 get(Vm) ->
     sniffle_entity_read_fsm:start(

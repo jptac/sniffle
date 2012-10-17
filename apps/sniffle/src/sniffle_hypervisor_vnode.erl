@@ -7,6 +7,8 @@
 	 repair/3,
 	 get/3,
 	 list/2,
+	 list/3,
+	 best_server/3,
 	 register/4,
 	 unregister/3,
 	 set_resource/4
@@ -32,6 +34,18 @@
 	  partition,
 	  node
 	 }).
+
+-ignore_xref([
+	      best_server/3,
+	      get/3,
+	      list/2,
+	      list/3,
+	      register/4,
+	      repair/3,
+	      set_resource/4,
+	      start_vnode/1,
+	      unregister/3
+	     ]).
 
 -define(MASTER, sniffle_hypervisor_vnode_master).
 
@@ -66,6 +80,22 @@ get(Preflist, ReqID, Hypervisor) ->
 list(Preflist, ReqID) ->
     riak_core_vnode_master:coverage(
       {list, ReqID},
+      Preflist,
+      all,
+      {fsm, undefined, self()},
+      ?MASTER).
+
+list(Preflist, ReqID, User) ->
+    riak_core_vnode_master:coverage(
+      {list, ReqID, User},
+      Preflist,
+      all,
+      {fsm, undefined, self()},
+      ?MASTER).
+
+best_server(Preflist, ReqID, User) ->
+    riak_core_vnode_master:coverage(
+      {best_server, ReqID, User},
       Preflist,
       all,
       {fsm, undefined, self()},
@@ -185,6 +215,36 @@ is_empty(State) ->
 
 delete(State) ->
     {ok, State#state{hypervisors = dict:new()}}.
+
+
+handle_coverage({best_server, ReqID, User}, _KeySpaces, _Sender, State) ->
+    Server = lists:foldl(fun(#sniffle_obj{val=S0}, []) ->
+				 S1 = statebox:value(S0),
+				 case libsnarl:allowed(User, [hypervisor, S1#hypervisor.name, create]) of
+				     {ok, true} ->
+					 [{S1, dict:fetch(S1#hypervisor.resources, <<"freememory">>)}];
+				     {ok, false} ->
+					 []
+				 end;
+			    (#sniffle_obj{val=S0}, Cur = [{_, MBest}]) ->
+				 S1 = statebox:value(S0),
+				 case dict:fetch(S1#hypervisor.resources, <<"freememory">>) of
+				     MNew when MBest < MNew -> 
+					 case libsnarl:allowed(User, [hypervisor, S1#hypervisor.name, create]) of
+					     {ok, true} ->
+						 [{S1, MNew}];
+					     {ok, false} ->
+						 Cur
+					 end;
+				     _ ->
+					 Cur
+				 end
+			 end, undefined, State#state.hypervisors),
+    {reply, 
+     {ok, ReqID, {State#state.partition, State#state.node}, Server},
+     State};
+
+
 
 handle_coverage({list, ReqID}, _KeySpaces, _Sender, State) ->
     {reply, 

@@ -15,6 +15,19 @@
 %% States
 -export([prepare/2, execute/2, waiting/2]).
 
+-ignore_xref([
+	      code_change/4,
+	      execute/2,
+	      handle_event/3,
+	      handle_info/3,
+	      handle_sync_event/4,
+	      init/1,
+	      prepare/2,
+	      start_link/6,
+	      terminate/3,
+	      waiting/2
+	     ]).
+
 -record(state, {req_id,
                 from,
 		entity,

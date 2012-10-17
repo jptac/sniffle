@@ -33,6 +33,19 @@
 	  node
 	 }).
 
+% those functions do not get called directly.
+-ignore_xref([
+	      get/3,
+	      list/2,
+	      mset_attribute/4,
+	      register/4,
+	      repair/3,
+	      set_attribute/4,
+	      start_vnode/1,
+	      unregister/3
+	      ]).
+
+
 -define(MASTER, sniffle_vm_vnode_master).
 
 %%%===================================================================

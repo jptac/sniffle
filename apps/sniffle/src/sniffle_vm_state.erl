@@ -12,7 +12,7 @@
 -export([
 	 new/0,
 	 uuid/2,
-	 alias/2,
+%	 alias/2,
 	 hypervisor/2,
 	 attribute/3
 	]).
@@ -24,8 +24,8 @@ new() ->
 uuid(UUID, Vm) ->
     Vm#vm{uuid = UUID}.
 
-alias(Alias, Vm) ->
-    Vm#vm{alias = Alias}.
+%alias(Alias, Vm) ->
+%    Vm#vm{alias = Alias}.
 
 hypervisor(Hypervisor, Vm) ->
     Vm#vm{hypervisor = Hypervisor}.

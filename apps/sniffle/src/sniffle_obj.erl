@@ -11,6 +11,13 @@
          update/3]).
 -export([val/1, vclock/1]).
 
+-ignore_xref([
+	      ancestors/1,
+	      equal/1,
+	      unique/1,
+	      vclock/1
+	     ]).
+
 -include("sniffle.hrl").
 
 %% @pure

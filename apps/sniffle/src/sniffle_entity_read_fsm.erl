@@ -32,6 +32,28 @@
 		system,
                 replies=[]}).
 
+-ignore_xref([
+	      code_change/4,
+	      different/1,
+	      execute/2,
+	      finalize/2,
+	      handle_event/3,
+	      handle_info/3,
+	      handle_sync_event/4,
+	      init/1,
+	      needs_repair/2,
+	      prepare/2,
+	      reconcile/1,
+	      repair/4,
+	      start/2,
+	      start/4,
+	      start_link/6,
+	      terminate/3,
+	      unique/1,
+	      wait_for_n/2,
+	      waiting/2
+	     ]).
+
 %%%===================================================================
 %%% API
 %%%===================================================================

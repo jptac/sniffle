@@ -36,6 +36,17 @@
 	  index
 	 }).
 
+-ignore_xref([
+	      claim_ip/3,
+	      create/4,
+	      delete/3,
+	      get/3,
+	      list/2,
+	      repair/3,
+	      return_ip/4,
+	      start_vnode/1
+	     ]).
+
 -define(MASTER, sniffle_iprange_vnode_master).
 
 %%%===================================================================

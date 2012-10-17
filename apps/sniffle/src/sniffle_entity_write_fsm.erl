@@ -41,6 +41,21 @@
                 preflist :: riak_core_apl:preflist2(),
                 num_w = 0 :: non_neg_integer()}).
 
+-ignore_xref([
+	      code_change/4,
+	      execute/2,
+	      handle_event/3,
+	      handle_info/3,
+	      handle_sync_event/4,
+	      init/1,
+	      mk_reqid/0,
+	      prepare/2,
+	      start_link/5,
+	      start_link/6,
+	      terminate/3,
+	      waiting/2
+	     ]).
+
 %%%===================================================================
 %%% API
 %%%===================================================================

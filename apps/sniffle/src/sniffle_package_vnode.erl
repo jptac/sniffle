@@ -36,6 +36,17 @@
 	  index
 	 }).
 
+-ignore_xref([
+	      create/4,
+	      delete/3,
+	      get/3,
+	      list/2,
+	      mset_attribute/4,
+	      repair/3,
+	      set_attribute/4,
+	      start_vnode/1
+	     ]).
+
 -define(MASTER, sniffle_package_vnode_master).
 
 %%%===================================================================

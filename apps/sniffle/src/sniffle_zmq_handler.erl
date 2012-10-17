@@ -2,6 +2,8 @@
 
 -export([init/1, message/2]).
 
+-ignore_xref([init/1, message/2]).
+
 init([]) ->
     {ok, stateless}.
 
@@ -9,34 +11,49 @@ init([]) ->
 %%%  VM Functions
 %%%===================================================================
 
-message({vm, register, Vm, Hypervisor}, State) ->
+message({vm, register, Vm, Hypervisor}, State) when
+      is_binary(Vm) 
+      andalso is_binary(Hypervisor) ->
     {reply, 
-     sniffle_vm:register(ensure_binary(Vm), ensure_binary(Hypervisor)),
+     sniffle_vm:register(Vm, Hypervisor),
      State};
 
-message({vm, unregister, Vm}, State) ->
+message({vm, create, Package, Dataset, Owner}, State) when 
+      is_binary(Package) 
+      andalso is_binary(Dataset) 
+      andalso is_binary(Owner) ->
     {reply, 
-     sniffle_vm:unregister(ensure_binary(Vm)),
+     sniffle_vm:create(Package, Dataset, Owner),
      State};
 
-message({vm, attribute, get, Vm}, State) ->
-    {reply,
-     sniffle_vm:get_attribute(ensure_binary(Vm)),
-     State};
-
-message({vm, attribute, get, Vm, Attribute}, State) ->
-    {reply,
-     sniffle_vm:get_attribute(ensure_binary(Vm), Attribute),
-     State};
-
-message({vm, attribute, set, Vm, Attribute, Value}, State) ->
-    {reply,
-     sniffle_vm:set_attribute(ensure_binary(Vm), Attribute, Value),
-     State};
-
-message({vm, attribute, set, Vm, Attributes}, State) ->
+message({vm, unregister, Vm}, State) when
+      is_binary(Vm) ->
     {reply, 
-     sniffle_vm:set_attribute(ensure_binary(Vm), Attributes),
+     sniffle_vm:unregister(Vm),
+     State};
+
+message({vm, attribute, get, Vm}, State) when
+      is_binary(Vm) ->
+    {reply,
+     sniffle_vm:get_attribute(Vm),
+     State};
+
+message({vm, attribute, get, Vm, Attribute}, State) when
+      is_binary(Vm) ->
+    {reply,
+     sniffle_vm:get_attribute(Vm, Attribute),
+     State};
+
+message({vm, attribute, set, Vm, Attribute, Value}, State) when
+      is_binary(Vm) ->
+    {reply,
+     sniffle_vm:set_attribute(Vm, Attribute, Value),
+     State};
+
+message({vm, attribute, set, Vm, Attributes}, State) when
+      is_binary(Vm) ->
+    {reply, 
+     sniffle_vm:set_attribute(Vm, Attributes),
      State};
 
 message({vm, list}, State) ->
@@ -44,9 +61,10 @@ message({vm, list}, State) ->
      sniffle_vm:list(),
      State};
 
-message({vm, list, User}, State) when is_binary(User) ->
+message({vm, list, User}, State) when 
+      is_binary(User) ->
     {reply,
-     sniffle_vm:list(ensure_binary(User)),
+     sniffle_vm:list(User),
      State};
 
 %%%===================================================================
