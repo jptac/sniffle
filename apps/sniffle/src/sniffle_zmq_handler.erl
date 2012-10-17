@@ -44,7 +44,7 @@ message({vm, list}, State) ->
      sniffle_vm:list(),
      State};
 
-message({vm, list, User}, State) ->
+message({vm, list, User}, State) when is_binary(User) ->
     {reply,
      sniffle_vm:list(ensure_binary(User)),
      State};
@@ -170,34 +170,39 @@ message({iprange, list, User}, State) ->
 %%%  PACKAGE Functions
 %%%===================================================================
 
-message({package, register, Package}, State) ->
+message({package, create, Package}, State) when is_binary(Package) ->
     {reply, 
-     sniffle_package:create(ensure_binary(Package)),
+     sniffle_package:create(Package),
      State};
 
-message({package, unregister, Package}, State) ->
+message({package, delete, Package}, State) when is_binary(Package) ->
     {reply, 
-     sniffle_package:delete(ensure_binary(Package)),
+     sniffle_package:delete(Package),
      State};
 
-message({package, attribute, get, Package}, State) ->
-    {reply,
-     sniffle_package:get_attribute(ensure_binary(Package)),
-     State};
-
-message({package, attribute, get, Package, Attribute}, State) ->
-    {reply,
-     sniffle_package:get_attribute(ensure_binary(Package), Attribute),
-     State};
-
-message({package, attribute, set, Package, Attribute, Value}, State) ->
-    {reply,
-     sniffle_package:set_attribute(ensure_binary(Package), Attribute, Value),
-     State};
-
-message({package, attribute, set, Package, Attributes}, State) ->
+message({package, get, Package}, State) when is_binary(Package) ->
     {reply, 
-     sniffle_package:set_attribute(ensure_binary(Package), Attributes),
+     sniffle_package:get(Package),
+     State};
+
+message({package, attribute, get, Package}, State) when is_binary(Package) ->
+    {reply,
+     sniffle_package:get_attribute(Package),
+     State};
+
+message({package, attribute, get, Package, Attribute}, State) when is_binary(Package) ->
+    {reply,
+     sniffle_package:get_attribute(Package, Attribute),
+     State};
+
+message({package, attribute, set, Package, Attribute, Value}, State) when is_binary(Package) ->
+    {reply,
+     sniffle_package:set_attribute(Package, Attribute, Value),
+     State};
+
+message({package, attribute, set, Package, Attributes}, State) when is_binary(Package) ->
+    {reply, 
+     sniffle_package:set_attribute(Package, Attributes),
      State};
 
 message({package, list}, State) ->
@@ -205,11 +210,10 @@ message({package, list}, State) ->
      sniffle_package:list(),
      State};
 
-message({package, list, User}, State) ->
+message({package, list, User}, State) when is_binary(User) ->
     {reply,
-     sniffle_package:list(ensure_binary(User)),
+     sniffle_package:list(User),
      State};
-
 
 %%%===================================================================
 %%%  Internal Functions
