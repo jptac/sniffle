@@ -180,6 +180,11 @@ handle_command({attribute, set,
 			      H2 = statebox:expire(?STATEBOX_EXPIRE, H1),
 			      sniffle_obj:update(H2, Coordinator, O)
 		      end, State#state.packages),
+
+    P = dict:fetch(Package, Hs0),
+    eleveldb:put(State#state.dbref, <<"#packages">>, term_to_binary(dict:fetch_keys(Hs0)), []),
+    eleveldb:put(State#state.dbref, Package, term_to_binary(P), []),
+
     {reply, {ok, ReqID}, State#state{packages = Hs0}};
 
 handle_command({attribute, mset, 
@@ -196,6 +201,11 @@ handle_command({attribute, mset,
 			      H2 = statebox:expire(?STATEBOX_EXPIRE, H1),
 			      sniffle_obj:update(H2, Coordinator, O)
 		      end, State#state.packages),
+
+    P = dict:fetch(Package, Hs0),
+    eleveldb:put(State#state.dbref, <<"#packages">>, term_to_binary(dict:fetch_keys(Hs0)), []),
+    eleveldb:put(State#state.dbref, Package, term_to_binary(P), []),
+
     {reply, {ok, ReqID}, State#state{packages = Hs0}};
 
 handle_command(Message, _Sender, State) ->

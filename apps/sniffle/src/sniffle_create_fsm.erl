@@ -124,8 +124,8 @@ get_package(_Event, State = #state{
 		      uuid = UUID,
 		      package_name = PackageName}) ->
     sniffle_vm:set_attribute(UUID, <<"state">>, <<"fetching_package">>),
-    {ok, Package} = sniffle_package:get_attribute(PackageName),
-    {next_state, get_dataset, State#state{package = dict:to_list(Package)}, 0}.
+    Package = sniffle_package:get_attribute(PackageName),
+    {next_state, get_dataset, State#state{package = Package}, 0}.
 
 get_dataset(_Event, State = #state{
 		      uuid = UUID,
