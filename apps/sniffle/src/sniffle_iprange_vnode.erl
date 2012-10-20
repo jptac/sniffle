@@ -219,6 +219,9 @@ handle_command({ip, claim,
 			{{NewIP, Net, Gw}, Hs0}
 		end,
 
+    P = dict:fetch(Iprange, Hs1),
+    eleveldb:put(State#state.dbref, Iprange, term_to_binary(P), []),
+
     {reply, {ok, ReqID, IP}, State#state{ipranges = Hs1}};
 
 handle_command({ip, return, 
@@ -232,6 +235,10 @@ handle_command({ip, return,
 			      eleveldb:put(DBRef, Iprange, term_to_binary(I2), []),
 			      sniffle_obj:update(I2, Coordinator, O)
 		      end, State#state.ipranges),
+
+    P = dict:fetch(Iprange, Hs0),
+    eleveldb:put(State#state.dbref, Iprange, term_to_binary(P), []),
+
     {reply, {ok, ReqID}, State#state{ipranges = Hs0}};
 
 handle_command(Message, _Sender, State) ->

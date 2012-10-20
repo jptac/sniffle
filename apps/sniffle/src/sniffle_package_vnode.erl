@@ -182,7 +182,6 @@ handle_command({attribute, set,
 		      end, State#state.packages),
 
     P = dict:fetch(Package, Hs0),
-    eleveldb:put(State#state.dbref, <<"#packages">>, term_to_binary(dict:fetch_keys(Hs0)), []),
     eleveldb:put(State#state.dbref, Package, term_to_binary(P), []),
 
     {reply, {ok, ReqID}, State#state{packages = Hs0}};
@@ -203,7 +202,6 @@ handle_command({attribute, mset,
 		      end, State#state.packages),
 
     P = dict:fetch(Package, Hs0),
-    eleveldb:put(State#state.dbref, <<"#packages">>, term_to_binary(dict:fetch_keys(Hs0)), []),
     eleveldb:put(State#state.dbref, Package, term_to_binary(P), []),
 
     {reply, {ok, ReqID}, State#state{packages = Hs0}};
