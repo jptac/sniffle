@@ -180,7 +180,7 @@ handle_command({delete, {ReqID, _Coordinator}, Iprange}, _Sender, #state{dbref =
     {reply, {ok, ReqID}, State#state{ipranges = Is0}};
 
 handle_command({ip, claim, 
-		{ReqID, Coordinator}, Iprange, IP}, _Sender, #state{dbref = DBRef} = State) ->
+		{ReqID, Coordinator}, Iprange, IP}, _Sender, State) ->
     Hs0 = dict:update(Iprange,
 		      fun(#sniffle_obj{val=I0} = O) ->
 			      I1 = statebox:modify(
@@ -188,41 +188,11 @@ handle_command({ip, claim,
 				      [IP]}, I0),
 			      I2 = statebox:expire(?STATEBOX_EXPIRE, I1),
 			      sniffle_obj:update(I2, Coordinator, O)
-		      end, State#state.ipranges),
-    
-    {IP, Hs1} = case dict:find(Iprange, State#state.ipranges) of
-		    error ->
-			{not_found, Iprange};
-		    {ok, #sniffle_obj{val=I0} = O} ->
-			{NewIP, Net, Gw} = case statebox:value(I0) of
-					       #iprange{free=[],
-							current=FoundIP,
-							gateway = Gateway,
-							netmask = Netmask} ->
-						   {FoundIP, Netmask, Gateway};
-					       #iprange{free=[FoundIP|_],
-							gateway = Gateway,
-							netmask = Netmask} ->
-						   {FoundIP, Netmask, Gateway}
-					   end,
-			I1 = statebox:modify(
-			       {fun sniffle_iprange_state:claim_ip/2, [NewIP]}, 
-			       I0
-			      ),
-			I2 = statebox:expire(?STATEBOX_EXPIRE, I1),
-
-			eleveldb:put(DBRef, Iprange, term_to_binary(I2), []),
-			
-			Hs0 = dict:store(Iprange, 
-					 sniffle_obj:update(I2, Coordinator, O), 
-					 State#state.ipranges),
-			{{NewIP, Net, Gw}, Hs0}
-		end,
-
-    P = dict:fetch(Iprange, Hs1),
+		      end, State#state.ipranges),    
+    P = dict:fetch(Iprange, Hs0),
     eleveldb:put(State#state.dbref, Iprange, term_to_binary(P), []),
 
-    {reply, {ok, ReqID, IP}, State#state{ipranges = Hs1}};
+    {reply, {ok, ReqID, IP}, State#state{ipranges = Hs0}};
 
 handle_command({ip, return, 
 		{ReqID, Coordinator}, Iprange, IP}, _Sender, #state{dbref = DBRef} = State) ->
@@ -235,7 +205,6 @@ handle_command({ip, return,
 			      eleveldb:put(DBRef, Iprange, term_to_binary(I2), []),
 			      sniffle_obj:update(I2, Coordinator, O)
 		      end, State#state.ipranges),
-
     P = dict:fetch(Iprange, Hs0),
     eleveldb:put(State#state.dbref, Iprange, term_to_binary(P), []),
 
