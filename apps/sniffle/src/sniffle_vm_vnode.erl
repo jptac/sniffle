@@ -162,19 +162,14 @@ handle_command({unregister, {ReqID, _Coordinator}, Vm}, _Sender, State) ->
 handle_command({attribute, set, 
 		{ReqID, Coordinator}, Vm, 
 		[Resource, Value]}, _Sender, State) ->
-    io:format("1~n"),
     Hs0 = dict:update(Vm, 
 		      fun(#sniffle_obj{val=H0} = O) ->
-			      io:format("2~n"),			     
 			      H1 = statebox:modify(
 				     {fun sniffle_vm_state:attribute/3, 
 				      [Resource, Value]}, H0),
-			      io:format("3~n"),
 			      H2 = statebox:expire(?STATEBOX_EXPIRE, H1),
-			      io:format("4~n"),
 			      sniffle_obj:update(H2, Coordinator, O)
 		      end, State#state.vms),
-    io:format("5~n"),
     {reply, {ok, ReqID}, State#state{vms = Hs0}};
 
 handle_command({attribute, mset, 

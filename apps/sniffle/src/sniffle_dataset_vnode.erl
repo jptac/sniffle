@@ -172,19 +172,14 @@ handle_command({delete, {ReqID, _Coordinator}, Dataset}, _Sender, #state{dbref =
 handle_command({attribute, set, 
 		{ReqID, Coordinator}, Dataset, 
 		[Resource, Value]}, _Sender, State) ->
-    io:format("1~n"),
     Hs0 = dict:update(Dataset, 
 		      fun(#sniffle_obj{val=H0} = O) ->
-			      io:format("2~n"),			     
 			      H1 = statebox:modify(
 				     {fun sniffle_dataset_state:attribute/3, 
 				      [Resource, Value]}, H0),
-			      io:format("3~n"),
 			      H2 = statebox:expire(?STATEBOX_EXPIRE, H1),
-			      io:format("4~n"),
 			      sniffle_obj:update(H2, Coordinator, O)
 		      end, State#state.datasets),
-    io:format("5~n"),
     {reply, {ok, ReqID}, State#state{datasets = Hs0}};
 
 handle_command({attribute, mset, 
