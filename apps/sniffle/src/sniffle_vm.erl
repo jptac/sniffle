@@ -29,7 +29,7 @@ unregister(Vm) ->
     do_update(Vm, delete).
 
 create(Package, Dataset, Config) ->
-    UUID = uuid:to_string(uuid:uuid1()),
+    UUID = uuid:to_string(uuid:uuid4()),
     do_write(UUID, register, undefined),    
     sniffle_create_fsm:create(UUID, Package, Dataset, Config),
     {ok, UUID}.    
