@@ -18,7 +18,6 @@
 new() ->
     #package{attributes = dict:new()}.
 
-
 name(Name, Package) ->
     Package#package{name = Name}.
 

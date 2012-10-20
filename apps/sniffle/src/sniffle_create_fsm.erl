@@ -134,10 +134,14 @@ get_dataset(_Event, State = #state{
     {ok, Dataset} = sniffle_dataset:get_attribute(DatasetName),
     {next_state, get_ips, State#state{dataset = dict:to_list(Dataset)}, 0}.
 
-get_ips(_Event, State = #state{dataset = Dataset}) ->
+get_ips(_Event, State = #state{owner = Owner,
+			       dataset = Dataset}) ->
+    {<<"networks">>, On} = lists:keyfind(<<"networks">>, 1, Owner),
     {<<"networks">>, Ns} = lists:keyfind(<<"networks">>, 1, Dataset),
     Dataset1 = lists:keydelete(<<"networks">>, 1, Dataset),
-    Ns1 = lists:foldl(fun(NicTag, NsAcc) ->
+    Ns1 = lists:foldl(fun(Nic, NsAcc) ->
+			      {<<"name">>, Name} = lists:keyfind(<<"name">>, 1, Nic),
+			      {Name, NicTag} = lists:keyfind(Name, 1, On),
 			      {ok, {IP, Net, Gw}} = sniffle_iprange:claim_ip(NicTag),
 			      [[{<<"nic_tag">>, NicTag},
 				{<<"ip">>, sniffle_iprange_state:to_bin(IP)},
