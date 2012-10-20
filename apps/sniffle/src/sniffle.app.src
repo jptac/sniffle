@@ -9,6 +9,7 @@
                   stdlib,
                   riak_core,
                   mdns_server_lib,
+                  libsnarl,
                   lager
                  ]},
   {mod, { sniffle_app, []}},
