@@ -194,13 +194,17 @@ handle_command({ip, claim,
 		    error ->
 			{not_found, Iprange};
 		    {ok, #sniffle_obj{val=I0} = O} ->
-			NewIP = case statebox:value(I0) of
-				    #iprange{free=[],
-					     current=FoundIP} ->
-					FoundIP;
-				    #iprange{free=[FoundIP|_]} ->
-					FoundIP
-				end,
+			{NewIP, Net, Gw} = case statebox:value(I0) of
+					       #iprange{free=[],
+							current=FoundIP,
+							gateway = Gateway,
+							netmask = Netmask} ->
+						   {FoundIP, Netmask, Gateway};
+					       #iprange{free=[FoundIP|_],
+							gateway = Gateway,
+							netmask = Netmask} ->
+						   {FoundIP, Netmask, Gateway}
+					   end,
 			I1 = statebox:modify(
 			       {fun sniffle_iprange_state:claim_ip/2, [NewIP]}, 
 			       I0
@@ -212,7 +216,7 @@ handle_command({ip, claim,
 			Hs0 = dict:store(Iprange, 
 					 sniffle_obj:update(I2, Coordinator, O), 
 					 State#state.ipranges),
-			{NewIP, Hs0}
+			{{NewIP, Net, Gw}, Hs0}
 		end,
 
     {reply, {ok, ReqID, IP}, State#state{ipranges = Hs1}};

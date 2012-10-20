@@ -24,7 +24,8 @@
 	 return_ip/2,
 	 gateway/2,
 	 claim_ip/2,
-	 tag/2
+	 tag/2,
+	 to_bin/1
 	]).
 
 new() ->
@@ -60,12 +61,20 @@ claim_ip(IP, #iprange{current = IP} = Iprange) ->
 claim_ip(IP, Iprange) ->
     Iprange#iprange{free = ordsets:del_element(IP, Iprange#iprange.free)}.
 
-return_ip(IP, #iprange{current = LIP} = Iprange) when LIP == IP + 1 ->
+return_ip(IP, #iprange{current = LIP} = Iprange) when
+      Iprange#iprange.first =< IP andalso
+      Iprange#iprange.last >= IP andalso
+      LIP == IP + 1 ->
     Iprange#iprange{current = IP};
 
-return_ip(IP, Iprange) ->
+return_ip(IP, Iprange) when 
+      Iprange#iprange.first =< IP andalso
+      Iprange#iprange.last >= IP ->
     Iprange#iprange{free = ordsets:add_element(IP, Iprange#iprange.free)}.
 
+to_bin(IP) ->
+    <<A, B, C, D>> = <<IP:32>>,
+    list_to_binary(io_lib:format("~p.~p.~p.~p", [A, B, C, D])).
 
 -ifdef(TEST).
 

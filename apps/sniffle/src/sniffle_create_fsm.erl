@@ -32,7 +32,7 @@
 	 compile_spec/2,
 	 create/2,
 	 get_server/2,
-	 state_name/3
+	 get_ips/2
 	]).
 
 -define(SERVER, ?MODULE).
@@ -44,7 +44,7 @@
 	      get_package/2,
 	      start_link/0,
 	      get_server/2,
-	      state_name/3
+	      get_ips/2
 	     ]).
 
 -record(state, {
@@ -96,6 +96,7 @@ create(UUID, Package, Dataset, Owner) ->
 %% @end
 %%--------------------------------------------------------------------
 init([UUID, Package, Dataset, Owner]) ->
+    process_flag(trap_exit, true),
     {ok, get_package, #state{
 	   uuid = UUID,
 	   package_name = Package,
@@ -131,18 +132,45 @@ get_dataset(_Event, State = #state{
 		      dataset_name = DatasetName}) ->
     sniffle_vm:set_attribute(UUID, <<"state">>, <<"fetching_dataset">>),
     {ok, Dataset} = sniffle_dataset:get_attribute(DatasetName),
-    {next_state, compile_spec, State#state{dataset = dict:to_list(Dataset)}, 0}.
+    {next_state, get_ips, State#state{dataset = dict:to_list(Dataset)}, 0}.
+
+get_ips(_Event, State = #state{dataset = Dataset}) ->
+    {<<"networks">>, Ns} = lists:keyfind(<<"networks">>, 1, Dataset),
+    Dataset1 = lists:keydelete(<<"networks">>, 1, Dataset),
+    Ns1 = lists:foldl(fun(NicTag, NsAcc) ->
+			      {ok, {IP, Net, Gw}} = sniffle_iprange:claim_ip(NicTag),
+			      [[{<<"nic_tag">>, NicTag},
+				{<<"ip">>, sniffle_iprange_state:to_bin(IP)},
+				{<<"netmask">>, sniffle_iprange_state:to_bin(Net)},
+				{<<"gateway">>, sniffle_iprange_state:to_bin(Gw)}] | NsAcc]
+		      end, [], Ns),
+    {next_state, compile_spec, State#state{dataset = [{<<"networks">>, Ns1} | Dataset1]}, 0}.
 
 compile_spec(_Event, State = #state{dataset = Dataset,
 				    package = Package,
 				    owner = Owner}) ->
     {next_state, get_server, State#state{spec = [{<<"owner">>, Owner} | Dataset ++ Package]}, 0}.
 
+
 get_server(_Event, State = #state{
+		     dataset = Dataset,
 		     uuid = UUID,
-		     owner = Owner}) ->
+		     owner = Owner,
+		     package = Package}) ->
+    {<<"ram">>, Ram} = lists:keyfind(<<"ram">>, 1, Package),
     sniffle_vm:set_attribute(UUID, <<"state">>, <<"fetching_dataset">>),
-    {ok, #hypervisor{host=Host,port=Port}} = sniffle_hypervisor:best_server(Owner),
+    Permission = [hypervisor, {<<"res">>, <<"name">>}, create],
+    {<<"networks">>, Ns} = lists:keyfind(<<"networks">>, 1, Dataset),
+    NicTags = lists:foldl(fun (N, Acc) ->
+			     {<<"nic_tag">>, Tag} = lists:keyfind(<<"nic_tag">>, 1, N),
+			     [Tag | Acc]
+		     end, [], Ns),
+    {ok, #hypervisor{host=Host,port=Port}} = 
+	sniffle_hypervisor:list([
+				 {'allowed', Permission, Owner},
+				 {'subset', <<"networks">>, NicTags},
+				 {'>=', <<"free-memory">>, Ram}
+				]),
     {next_state, create, State#state{hypervisor = {Host, Port}}, 0}.
 
 create(_Event, State = #state{uuid = UUID,
@@ -150,29 +178,7 @@ create(_Event, State = #state{uuid = UUID,
 			      hypervisor = {Host, Port}}) ->
     sniffle_vm:set_attribute(UUID, <<"state">>, <<"creating">>),
     libchunter:create_machine(Host, Port, UUID, Spec),
-    {next_state, create, State#state{}, 0}.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% There should be one instance of this function for each possible
-%% state name. Whenever a gen_fsm receives an event sent using
-%% gen_fsm:sync_send_event/[2,3], the instance of this function with
-%% the same name as the current state name StateName is called to
-%% handle the event.
-%%
-%% @spec state_name(Event, From, State) ->
-%%                   {next_state, NextStateName, NextState} |
-%%                   {next_state, NextStateName, NextState, Timeout} |
-%%                   {reply, Reply, NextStateName, NextState} |
-%%                   {reply, Reply, NextStateName, NextState, Timeout} |
-%%                   {stop, Reason, NewState} |
-%%                   {stop, Reason, Reply, NewState}
-%% @end
-%%--------------------------------------------------------------------
-state_name(_Event, _From, State) ->
-    Reply = ok,
-    {reply, Reply, state_name, State}.
+    {stop, normal, State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -237,6 +243,9 @@ handle_info(_Info, StateName, State) ->
 %% @spec terminate(Reason, StateName, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
+terminate(shutdown, _StateName, _StateData) ->
+    ok;
+
 terminate(_Reason, _StateName, _State) ->
     ok.
 

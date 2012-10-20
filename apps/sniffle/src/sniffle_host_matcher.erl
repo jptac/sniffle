@@ -146,4 +146,5 @@ create_permission_test() ->
     ?assertEqual(create_permission(test_hypervisort(), [some, {<<"res">>, <<"str-res">>}, permission], []), [some, <<"str">>, permission]),
     ?assertEqual(create_permission(test_hypervisort(), [some, {<<"res">>, <<"name">>}, permission], []), [some, <<"test-hypervisor">>, permission]),
     ?assertEqual(create_permission(test_hypervisort(), [some, permission], []), [some, permission]).
+
 -endif.

@@ -25,7 +25,8 @@
 	      prepare/2,
 	      start_link/6,
 	      terminate/3,
-	      waiting/2
+	      waiting/2,
+	      start/3
 	     ]).
 
 -record(state, {req_id,
@@ -53,8 +54,8 @@ start_link(ReqID, {VNode, System}, Op, From, Entity, Val) ->
 start(VNodeInfo, Op) ->
     start(VNodeInfo, Op, undefined).
 
-start(VNodeInfo, Op, User) ->
-    start(VNodeInfo, Op, User, undefined).
+start(VNodeInfo, Op, Arg) ->
+    start(VNodeInfo, Op, Arg, undefined).
 
 start(VNodeInfo, Op, User, Val) ->
     ReqID = mk_reqid(),

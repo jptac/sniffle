@@ -8,7 +8,6 @@
 	 get/3,
 	 list/2,
 	 list/3,
-	 best_server/3,
 	 register/4,
 	 unregister/3,
 	 set_resource/4
@@ -36,7 +35,6 @@
 	 }).
 
 -ignore_xref([
-	      best_server/3,
 	      get/3,
 	      list/2,
 	      list/3,
@@ -85,17 +83,9 @@ list(Preflist, ReqID) ->
       {fsm, undefined, self()},
       ?MASTER).
 
-list(Preflist, ReqID, User) ->
+list(Preflist, ReqID, Requirements) ->
     riak_core_vnode_master:coverage(
-      {list, ReqID, User},
-      Preflist,
-      all,
-      {fsm, undefined, self()},
-      ?MASTER).
-
-best_server(Preflist, ReqID, User) ->
-    riak_core_vnode_master:coverage(
-      {best_server, ReqID, User},
+      {list, ReqID, Requirements},
       Preflist,
       all,
       {fsm, undefined, self()},
@@ -217,29 +207,29 @@ delete(State) ->
     {ok, State#state{hypervisors = dict:new()}}.
 
 
-handle_coverage({best_server, ReqID, User}, _KeySpaces, _Sender, State) ->
+handle_coverage({list, ReqID, Requiremetns}, _KeySpaces, _Sender, State) ->
     Server = lists:foldl(fun(#sniffle_obj{val=S0}, []) ->
 				 S1 = statebox:value(S0),
-				 case libsnarl:allowed(User, [hypervisor, S1#hypervisor.name, create]) of
-				     {ok, true} ->
+				 case sniffle_host_matcher:match(S1, Requiremetns) of
+				     true ->
 					 [{S1, dict:fetch(S1#hypervisor.resources, <<"freememory">>)}];
-				     {ok, false} ->
+				     false ->
 					 []
 				 end;
 			    (#sniffle_obj{val=S0}, Cur = [{_, MBest}]) ->
 				 S1 = statebox:value(S0),
-				 case dict:fetch(S1#hypervisor.resources, <<"freememory">>) of
-				     MNew when MBest < MNew -> 
-					 case libsnarl:allowed(User, [hypervisor, S1#hypervisor.name, create]) of
-					     {ok, true} ->
+				 case sniffle_host_matcher:match(S1, Requiremetns) of
+				     true ->
+					 case dict:fetch(S1#hypervisor.resources, <<"freememory">>) of
+					     MNew when MBest < MNew ->
 						 [{S1, MNew}];
-					     {ok, false} ->
+					     _ ->
 						 Cur
 					 end;
 				     _ ->
 					 Cur
 				 end
-			 end, undefined, State#state.hypervisors),
+			    end, undefined, State#state.hypervisors),
     {reply, 
      {ok, ReqID, {State#state.partition, State#state.node}, Server},
      State};

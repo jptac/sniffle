@@ -96,9 +96,9 @@ message({hypervisor, list}, State) ->
      sniffle_hypervisor:list(),
      State};
 
-message({hypervisor, list, User}, State) ->
+message({hypervisor, list, Requirements}, State) ->
     {reply, 
-     sniffle_hypervisor:list(ensure_binary(User)),
+     sniffle_hypervisor:list(Requirements),
      State};
 
 %%%===================================================================

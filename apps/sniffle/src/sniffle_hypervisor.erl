@@ -10,8 +10,7 @@
     list/0,
     list/1,
     get_resource/2,
-    set_resource/3,
-    best_server/1
+    set_resource/3
    ]
   ).
 
@@ -38,18 +37,11 @@ list() ->
       list
      ).
 
-list(User) ->
+list(Requirements) ->
     sniffle_entity_coverage_fsm:start(
       {sniffle_hypervisor_vnode, sniffle_hypervisor},
-      list, undefined, User
+      list, undefined, Requirements
      ).
-
-best_server(User) ->
-    sniffle_entity_coverage_fsm:start(
-      {sniffle_hypervisor_vnode, sniffle_hypervisor},
-      best_server, User
-     ).
-
 
 get_resource(Hypervisor, Resource) ->
     case sniffle_hypervisor:get(Hypervisor) of
