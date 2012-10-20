@@ -189,10 +189,11 @@ handle_command({ip, claim,
 			      I2 = statebox:expire(?STATEBOX_EXPIRE, I1),
 			      sniffle_obj:update(I2, Coordinator, O)
 		      end, State#state.ipranges),    
-    P = dict:fetch(Iprange, Hs0),
+    #sniffle_obj{val=V} = P = dict:fetch(Iprange, Hs0),
+    V1 = statebox:value(V),
     eleveldb:put(State#state.dbref, Iprange, term_to_binary(P), []),
 
-    {reply, {ok, ReqID, IP}, State#state{ipranges = Hs0}};
+    {reply, {ok, ReqID, {IP, V1#iprange.netmask, V1#iprange.gateway}}, State#state{ipranges = Hs0}};
 
 handle_command({ip, return, 
 		{ReqID, Coordinator}, Iprange, IP}, _Sender, #state{dbref = DBRef} = State) ->
