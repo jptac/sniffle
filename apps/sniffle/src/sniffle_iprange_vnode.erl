@@ -182,7 +182,7 @@ handle_command({delete, {ReqID, _Coordinator}, Iprange}, _Sender, #state{dbref =
 handle_command({ip, claim, 
 		{ReqID, Coordinator}, Iprange, IP}, _Sender, #state{dbref = DBRef} = State) ->
     Hs0 = dict:update(Iprange,
-		      fun(_, #sniffle_obj{val=I0} = O) ->
+		      fun(#sniffle_obj{val=I0} = O) ->
 			      I1 = statebox:modify(
 				     {fun sniffle_iprange_state:claim_ip/2,
 				      [IP]}, I0),
@@ -227,7 +227,7 @@ handle_command({ip, claim,
 handle_command({ip, return, 
 		{ReqID, Coordinator}, Iprange, IP}, _Sender, #state{dbref = DBRef} = State) ->
     Hs0 = dict:update(Iprange, 
-		      fun(_, #sniffle_obj{val=I0} = O) ->
+		      fun(#sniffle_obj{val=I0} = O) ->
 			      I1 = statebox:modify(
 				     {fun sniffle_iprange_state:return_ip/2, 
 				      [IP]}, I0),
