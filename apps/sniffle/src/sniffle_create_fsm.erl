@@ -14,7 +14,7 @@
 
 %% API
 -export([create/4,
-	 start_link/0]).
+	 start_link/4]).
 
 %% gen_fsm callbacks
 -export([
@@ -41,7 +41,7 @@
 	      create/2,
 	      get_dataset/2,
 	      get_package/2,
-	      start_link/0,
+	      start_link/4,
 	      get_server/2,
 	      create_permissions/2,
 	      get_ips/2
