@@ -9,10 +9,11 @@
     get/1,
     list/0,
     list/1,
+    get_resource/1,
     get_resource/2,
-    set_resource/3
-   ]
-  ).
+    set_resource/3,
+    set_resource/2
+   ]).
 
 register(Hypervisor, IP, Port) ->
     case sniffle_hypervisor:get(Hypervisor) of
@@ -43,6 +44,15 @@ list(Requirements) ->
       list, undefined, Requirements
      ).
 
+
+get_resource(Hypervisor) ->
+    case sniffle_hypervisor:get(Hypervisor) of
+	{ok, not_found} ->
+	    not_found;
+	{ok, V} ->
+	    V#hypervisor.resources
+    end.
+
 get_resource(Hypervisor, Resource) ->
     case sniffle_hypervisor:get(Hypervisor) of
 	{ok, not_found} ->
@@ -57,7 +67,10 @@ get_resource(Hypervisor, Resource) ->
     end.
 
 set_resource(Hypervisor, Resource, Value) ->
-    do_update(Hypervisor, resource, [Resource, Value]).
+    do_update(Hypervisor, set_resource, [Resource, Value]).
+
+set_resource(Hypervisor, Resources) ->
+    do_update(Hypervisor, mset_resource, Resources).
 
 %%%===================================================================
 %%% Internal Functions

@@ -193,7 +193,6 @@ handle_command({attribute, mset,
 		      end, State#state.vms),
     {reply, {ok, ReqID}, State#state{vms = Hs0}};
 
-
 handle_command(Message, _Sender, State) ->
     ?PRINT({unhandled_command, Message}),
     {noreply, State}.

@@ -10,7 +10,8 @@
 	 list/3,
 	 register/4,
 	 unregister/3,
-	 set_resource/4
+	 set_resource/4,
+	 mset_resource/4
 	]).
 
 -export([start_vnode/1,
@@ -41,6 +42,7 @@
 	      register/4,
 	      repair/3,
 	      set_resource/4,
+	      mset_resource/4,
 	      start_vnode/1,
 	      unregister/3
 	     ]).
@@ -113,6 +115,12 @@ set_resource(Preflist, ReqID, Hypervisor, Data) ->
 				   {fsm, undefined, self()},
                                    ?MASTER).
 
+mset_resource(Preflist, ReqID, Hypervisor, Data) ->
+    riak_core_vnode_master:command(Preflist,
+                                   {resource, mset, ReqID, Hypervisor, Data},
+				   {fsm, undefined, self()},
+                                   ?MASTER).
+
 %%%===================================================================
 %%% VNode
 %%%===================================================================
@@ -165,6 +173,22 @@ handle_command({resource, set,
 			      H1 = statebox:modify(
 				     {fun sniffle_hypervisor_state:resource/3, 
 				      [Resource, Value]}, H0),
+			      H2 = statebox:expire(?STATEBOX_EXPIRE, H1),
+			      sniffle_obj:update(H2, Coordinator, O)
+		      end, State#state.hypervisors),
+    {reply, {ok, ReqID}, State#state{hypervisors = Hs0}};
+
+handle_command({resource, mset, 
+		{ReqID, Coordinator}, Vm, 
+		Resources}, _Sender, State) ->
+    Hs0 = dict:update(Vm, 
+		      fun(#sniffle_obj{val=H0} = O) ->
+			      H1 = lists:foldr(
+				     fun ({Resource, Value}, H) ->
+					     statebox:modify(
+					       {fun sniffle_hypervisor_state:resource/3, 
+						[Resource, Value]}, H)
+				     end, H0, Resources),
 			      H2 = statebox:expire(?STATEBOX_EXPIRE, H1),
 			      sniffle_obj:update(H2, Coordinator, O)
 		      end, State#state.hypervisors),

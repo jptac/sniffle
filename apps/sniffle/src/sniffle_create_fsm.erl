@@ -173,11 +173,14 @@ get_server(_Event, State = #state{
 				]),
     {next_state, create, State#state{hypervisor = {Host, Port}}, 0}.
 
-create(_Event, State = #state{uuid = UUID,
-			      spec = Spec,
-			      hypervisor = {Host, Port}}) ->
+create(_Event, State = #state{
+		 dataset = Dataset,
+		 package = Package,
+		 uuid = UUID,
+		 owner = Owner,
+		 hypervisor = {Host, Port}}) ->
     sniffle_vm:set_attribute(UUID, <<"state">>, <<"creating">>),
-    libchunter:create_machine(Host, Port, UUID, Spec),
+    libchunter:create_machine(Host, Port, UUID, Package, Dataset, [{<<"owner">>, Owner}]),
     {stop, normal, State}.
 
 %%--------------------------------------------------------------------

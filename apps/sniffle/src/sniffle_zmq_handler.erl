@@ -86,9 +86,19 @@ message({hypervisor, resource, get, Hypervisor, Resource}, State) ->
      sniffle_hypervisor:get_resource(ensure_binary(Hypervisor), Resource),
      State};
 
+message({hypervisor, resource, get, Hypervisor}, State) ->
+    {reply, 
+     sniffle_hypervisor:get_resource(ensure_binary(Hypervisor)),
+     State};
+
 message({hypervisor, resource, set, Hypervisor, Resource, Value}, State) ->
     {reply, 
      sniffle_hypervisor:set_resource(ensure_binary(Hypervisor), Resource, Value),
+     State};
+
+message({hypervisor, resource, set, Hypervisor, Resources}, State) ->
+    {reply, 
+     sniffle_hypervisor:set_resource(ensure_binary(Hypervisor), Resources),
      State};
 
 message({hypervisor, list}, State) ->
