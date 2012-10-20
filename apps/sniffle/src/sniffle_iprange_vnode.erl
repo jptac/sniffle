@@ -9,7 +9,7 @@
 	 list/2,
 	 create/4,
 	 delete/3,
-	 claim_ip/3,
+	 claim_ip/4,
 	 return_ip/4
 	]).
 
@@ -37,7 +37,7 @@
 	 }).
 
 -ignore_xref([
-	      claim_ip/3,
+	      claim_ip/4,
 	      create/4,
 	      delete/3,
 	      get/3,
@@ -101,9 +101,9 @@ delete(Preflist, ReqID, Iprange) ->
 				   {fsm, undefined, self()},
                                    ?MASTER).
 
-claim_ip(Preflist, ReqID, Iprange) ->
+claim_ip(Preflist, ReqID, Iprange, Ip) ->
     riak_core_vnode_master:command(Preflist,
-                                   {ip, claim, ReqID, Iprange},
+                                   {ip, claim, ReqID, Iprange, Ip},
 				   {fsm, undefined, self()},
                                    ?MASTER).
 
