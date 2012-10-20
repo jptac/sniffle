@@ -170,7 +170,7 @@ get_server(_Event, State = #state{
 				 {'subset', <<"networks">>, NicTags},
 				 {'>=', <<"free-memory">>, Ram}
 				]),
-    #hypervisor{port = Port, host = Host} = sniffle_hypervisor:get(HypervisorID),
+    {ok, #hypervisor{port = Port, host = Host}} = sniffle_hypervisor:get(HypervisorID),
     {next_state, create_permissions, State#state{hypervisor = {Host, Port}}, 0}.
 
 create_permissions(_Event, State = #state{
