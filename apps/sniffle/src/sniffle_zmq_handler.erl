@@ -18,12 +18,11 @@ message({vm, register, Vm, Hypervisor}, State) when
      sniffle_vm:register(Vm, Hypervisor),
      State};
 
-message({vm, create, Package, Dataset, Owner}, State) when 
+message({vm, create, Package, Dataset, Config}, State) when 
       is_binary(Package) 
-      andalso is_binary(Dataset) 
-      andalso is_binary(Owner) ->
+      andalso is_binary(Dataset) ->
     {reply, 
-     sniffle_vm:create(Package, Dataset, Owner),
+     sniffle_vm:create(Package, Dataset, Config),
      State};
 
 message({vm, unregister, Vm}, State) when

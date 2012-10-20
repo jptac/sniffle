@@ -28,9 +28,10 @@ register(Vm, Hypervisor) ->
 unregister(Vm) ->    
     do_update(Vm, delete).
 
-create(Package, Dataset, Owner) ->
+create(Package, Dataset, Config) ->
     UUID = uuid:to_string(uuid:uuid1()),
-    sniffle_create_fsm:create(UUID, Package, Dataset, Owner),
+    do_write(UUID, register, undefined),    
+    sniffle_create_fsm:create(UUID, Package, Dataset, Config),
     {ok, UUID}.    
 
 get(Vm) ->
