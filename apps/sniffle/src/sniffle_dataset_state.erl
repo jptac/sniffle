@@ -16,7 +16,7 @@
 	]).
 
 new() ->
-    #dataset{}.
+    #dataset{attributes=dict:new()}.
 
 
 name(Name, Dataset) ->

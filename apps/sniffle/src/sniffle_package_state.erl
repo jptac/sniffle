@@ -16,7 +16,7 @@
 	]).
 
 new() ->
-    #package{}.
+    #package{attributes = dict:new()}.
 
 
 name(Name, Package) ->
