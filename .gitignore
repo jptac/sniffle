@@ -6,3 +6,4 @@ apps/sniffle/ebin
 dev/*
 doc/*
 rel/sniffle
+erl_crash.dump
