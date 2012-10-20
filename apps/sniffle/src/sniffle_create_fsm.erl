@@ -164,12 +164,13 @@ get_server(_Event, State = #state{
 			     {<<"nic_tag">>, Tag} = lists:keyfind(<<"nic_tag">>, 1, N),
 			     [Tag | Acc]
 		     end, [], Ns),
-    {ok, #hypervisor{host=Host,port=Port}} = 
+    {ok, [HypervisorID | _]} = 
 	sniffle_hypervisor:list([
 				 {'allowed', Permission, Owner},
 				 {'subset', <<"networks">>, NicTags},
 				 {'>=', <<"free-memory">>, Ram}
 				]),
+    #hypervisor{port = Port, host = Host} = sniffle_hypervisor:get(HypervisorID),
     {next_state, create_permissions, State#state{hypervisor = {Host, Port}}, 0}.
 
 create_permissions(_Event, State = #state{
