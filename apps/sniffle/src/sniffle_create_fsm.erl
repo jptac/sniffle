@@ -71,8 +71,8 @@
 %% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
 %% @end
 %%--------------------------------------------------------------------
-start_link() ->
-    gen_fsm:start_link({local, ?SERVER}, ?MODULE, [], []).
+start_link(UUID, Package, Dataset, Config) ->
+    gen_fsm:start_link({local, ?SERVER}, ?MODULE, [UUID, Package, Dataset, Config], []).
 
 create(UUID, Package, Dataset, Config) ->
     supervisor:start_child(sniffle_create_fsm_sup, [UUID, Package, Dataset, Config]).
