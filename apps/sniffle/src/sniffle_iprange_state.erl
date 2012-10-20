@@ -29,7 +29,7 @@
 	]).
 
 new() ->
-    #iprange{}.
+    #iprange{free=[]}.
 
 name(Name, Iprange) ->
     Iprange#iprange{name = Name}.
