@@ -18,7 +18,7 @@
 	]).
 
 new() ->
-    #hypervisor{}.
+    #hypervisor{resources = dict:new()}.
 
 
 name(Name, Hypervisor) ->
