@@ -160,6 +160,8 @@ get_server(_Event, State = #state{
     sniffle_vm:set_attribute(UUID, <<"state">>, <<"fetching_dataset">>),
     Permission = [hypervisor, {<<"res">>, <<"name">>}, create],
     {<<"networks">>, Ns} = lists:keyfind(<<"networks">>, 1, Dataset),
+    {<<"type">>, Type} = lists:keyfind(<<"type">>, 1, Dataset),
+    
     NicTags = lists:foldl(fun (N, Acc) ->
 			     {<<"nic_tag">>, Tag} = lists:keyfind(<<"nic_tag">>, 1, N),
 			     [Tag | Acc]
@@ -168,6 +170,7 @@ get_server(_Event, State = #state{
 	sniffle_hypervisor:list([
 				 {'allowed', Permission, Owner},
 				 {'subset', <<"networks">>, NicTags},
+				 {'element', <<"virtualisation">>, Type},
 				 {'>=', <<"free-memory">>, Ram}
 				]),
     {ok, #hypervisor{port = Port, host = Host}} = sniffle_hypervisor:get(HypervisorID),
