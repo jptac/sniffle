@@ -10,7 +10,7 @@
 	 create/4,
 	 delete/3,
 	 claim_ip/4,
-	 return_ip/4
+	 release_ip/4
 	]).
 
 -export([start_vnode/1,
@@ -37,13 +37,13 @@
 	 }).
 
 -ignore_xref([
-	      claim_ip/4,
+	      release_ip/4,
 	      create/4,
 	      delete/3,
 	      get/3,
 	      list/2,
 	      repair/3,
-	      return_ip/4,
+	      release_ip/4,
 	      start_vnode/1
 	     ]).
 
@@ -107,9 +107,9 @@ claim_ip(Preflist, ReqID, Iprange, Ip) ->
 				   {fsm, undefined, self()},
                                    ?MASTER).
 
-return_ip(Preflist, ReqID, Iprange, IP) ->
+release_ip(Preflist, ReqID, Iprange, IP) ->
     riak_core_vnode_master:command(Preflist,
-                                   {ip, return, ReqID, Iprange, IP},
+                                   {ip, release, ReqID, Iprange, IP},
 				   {fsm, undefined, self()},
                                    ?MASTER).
 
@@ -195,12 +195,12 @@ handle_command({ip, claim,
 
     {reply, {ok, ReqID, {IP, V1#iprange.netmask, V1#iprange.gateway}}, State#state{ipranges = Hs0}};
 
-handle_command({ip, return, 
+handle_command({ip, release, 
 		{ReqID, Coordinator}, Iprange, IP}, _Sender, #state{dbref = DBRef} = State) ->
     Hs0 = dict:update(Iprange, 
 		      fun(#sniffle_obj{val=I0} = O) ->
 			      I1 = statebox:modify(
-				     {fun sniffle_iprange_state:return_ip/2, 
+				     {fun sniffle_iprange_state:release_ip/2, 
 				      [IP]}, I0),
 			      I2 = statebox:expire(?STATEBOX_EXPIRE, I1),
 			      eleveldb:put(DBRef, Iprange, term_to_binary(I2), []),
