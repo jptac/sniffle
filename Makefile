@@ -15,6 +15,9 @@ rel: all remove_trash FORCE
 echo:
 	echo $(DEPS)
 
+deps:
+	$(REBAR) get-deps
+
 tar: rel
 	cd rel; tar jcvf $(APP_NAME).tar.bz2 $(APP_NAME)
 
