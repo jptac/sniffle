@@ -10,6 +10,8 @@
                   riak_core,
                   mdns_server_lib,
                   uuid,
+                  libchunter,
+                  libhowl,
                   libsnarl,
                   lager
                  ]},

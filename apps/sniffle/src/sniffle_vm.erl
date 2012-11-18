@@ -10,6 +10,10 @@
     get/1,
     list/0,
     list/1,
+    start/1,
+    stop/1,
+    reboot/1,
+    delete/1,
     get_attribute/2,
     get_attribute/1,
     set_attribute/2,
@@ -18,19 +22,14 @@
   ).
 
 register(Vm, Hypervisor) ->
-    case sniffle_vm:get(Vm) of
-	{ok, not_found} ->
-	    do_write(Vm, register, Hypervisor);
-	{ok, _Obj} ->
-	    duplicate
-    end.
+    do_write(Vm, register, Hypervisor).
 
 unregister(Vm) ->    
     do_update(Vm, delete).
 
 create(Package, Dataset, Config) ->
     UUID = list_to_binary(uuid:to_string(uuid:uuid4())),
-    do_write(UUID, register, pending), %we've to put pending here since undefined will cause a wrong call!
+    do_write(UUID, register, <<"pending">>), %we've to put pending here since undefined will cause a wrong call!
     sniffle_create_fsm:create(UUID, Package, Dataset, Config),
     {ok, UUID}.    
 
@@ -51,6 +50,48 @@ list(User) ->
       {sniffle_vm_vnode, sniffle_vm},
       list, undefined, User
      ).
+
+delete(Vm) ->
+    case sniffle_vm:get(Vm) of
+	{ok, not_found} ->
+	    not_found;
+	{ok, V} ->
+	    {ok, #hypervisor{name = Server, port = Port}} = sniffle_hypervisor:get(V#vm.hypervisor),
+	    libchunter:delete_machine(Server, Port, Vm),
+	    ok
+    end.
+
+
+start(Vm) ->
+    case sniffle_vm:get(Vm) of
+	{ok, not_found} ->
+	    not_found;
+	{ok, V} ->
+	    {ok, #hypervisor{name = Server, port = Port}} = sniffle_hypervisor:get(V#vm.hypervisor),
+	    libchunter:start_machine(Server, Port, Vm),
+	    ok
+    end.
+
+stop(Vm) ->
+    case sniffle_vm:get(Vm) of
+	{ok, not_found} ->
+	    not_found;
+	{ok, V} ->
+	    {ok, #hypervisor{name = Server, port = Port}} = sniffle_hypervisor:get(V#vm.hypervisor),
+	    libchunter:stop_machine(Server, Port, Vm),
+	    ok
+    end.
+
+reboot(Vm) ->
+    case sniffle_vm:get(Vm) of
+	{ok, not_found} ->
+	    not_found;
+	{ok, V} ->
+	    {ok, #hypervisor{name = Server, port = Port}} = sniffle_hypervisor:get(V#vm.hypervisor),
+	    libchunter:reboot_machine(Server, Port, Vm),
+	    ok
+    end.
+    
 
 get_attribute(Vm) ->
     case sniffle_vm:get(Vm) of

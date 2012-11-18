@@ -31,10 +31,40 @@ message({vm, unregister, Vm}, State) when
      sniffle_vm:unregister(Vm),
      State};
 
+message({vm, get, Vm}, State) when
+      is_binary(Vm) ->
+    {reply,
+     sniffle_vm:get(Vm),
+     State};
+
 message({vm, attribute, get, Vm}, State) when
       is_binary(Vm) ->
     {reply,
      sniffle_vm:get_attribute(Vm),
+     State};
+
+message({vm, start, Vm}, State) when
+      is_binary(Vm) ->
+    {reply,
+     sniffle_vm:start(Vm),
+     State};
+
+message({vm, delete, Vm}, State) when
+      is_binary(Vm) ->
+    {reply,
+     sniffle_vm:delete(Vm),
+     State};
+
+message({vm, stop, Vm}, State) when
+      is_binary(Vm) ->
+    {reply,
+     sniffle_vm:stop(Vm),
+     State};
+
+message({vm, reboot, Vm}, State) when
+      is_binary(Vm) ->
+    {reply,
+     sniffle_vm:reboot(Vm),
      State};
 
 message({vm, attribute, get, Vm, Attribute}, State) when
@@ -65,6 +95,8 @@ message({vm, list, User}, State) when
     {reply,
      sniffle_vm:list(User),
      State};
+
+
 
 %%%===================================================================
 %%%  Hypervisor Functions
