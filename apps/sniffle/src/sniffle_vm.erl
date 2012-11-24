@@ -25,7 +25,7 @@ register(Vm, Hypervisor) ->
     do_write(Vm, register, Hypervisor).
 
 unregister(Vm) ->    
-    do_update(Vm, delete).
+    do_update(Vm, unregister).
 
 create(Package, Dataset, Config) ->
     UUID = list_to_binary(uuid:to_string(uuid:uuid4())),
