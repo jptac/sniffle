@@ -1,8 +1,8 @@
 %% -*- erlang -*-
 {application, sniffle,
  [
-  {description, ""},
-  {vsn, "1"},
+  {description, "Project FiFo's central management server."},
+  {vsn, "0.3.0"},
   {registered, []},
   {applications, [
                   kernel,

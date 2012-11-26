@@ -1,6 +1,6 @@
 REBAR = $(shell pwd)/rebar
 
-.PHONY: deps rel stagedevrel
+.PHONY: deps rel stagedevrel package
 
 all: deps compile
 
@@ -12,6 +12,7 @@ deps:
 
 clean:
 	$(REBAR) clean
+	make -C rel/pkg clean
 
 distclean: clean devclean relclean
 	$(REBAR) delete-deps
@@ -26,6 +27,9 @@ relclean:
 	rm -rf rel/sniffle
 
 devrel: dev1 dev2 dev3
+
+package: rel
+	make -C rel/pkg package
 
 ###
 ### Docs
