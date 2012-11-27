@@ -5,7 +5,7 @@ GROUP=$USER
 
 case $2 in
     PRE-INSTALL)
-	if grep "^$GROUP" /etc/group > /dev/null 2>&1
+	if grep "^$GROUP:" /etc/group > /dev/null 2>&1
 	then
 	    echo "Group already exists, skipping creation."
 	else
