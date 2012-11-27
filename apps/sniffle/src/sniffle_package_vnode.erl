@@ -118,7 +118,8 @@ mset_attribute(Preflist, ReqID, Vm, Data) ->
 %%%===================================================================
 
 init([Partition]) ->
-    {ok, DBRef} = eleveldb:open("packages."++integer_to_list(Partition)++".ldb", [{create_if_missing, true}]),
+    {ok, DBLoc} = application:get_env(sniffle, db_path),
+    {ok, DBRef} = eleveldb:open(DBLoc ++ "/packages/"++integer_to_list(Partition)++".ldb", [{create_if_missing, true}]),
     {Index, Ranges} = read_ranges(DBRef),
     {ok, #state{
        partition = Partition,
@@ -242,15 +243,16 @@ is_empty(State) ->
     end.
 
 delete(#state{dbref = DBRef} = State) ->
+    {ok, DBLoc} = application:get_env(sniffle, db_path),
     eleveldb:close(DBRef),
-    eleveldb:destroy("packages."++integer_to_list(State#state.partition)++".ldb",[]),
-    {ok, DBRef1} = eleveldb:open("packages."++integer_to_list(State#state.partition)++".ldb",
+    eleveldb:destroy(DBLoc ++ "/packages/"++integer_to_list(State#state.partition)++".ldb",[]),
+    {ok, DBRef1} = eleveldb:open(DBLoc ++ "/packages/"++integer_to_list(State#state.partition)++".ldb",
 				 [{create_if_missing, true}]),
 
     {ok, State#state{packages = dict:new(), dbref = DBRef1}}.
 
 handle_coverage({list, ReqID}, _KeySpaces, _Sender, State) ->
-    {reply, 
+    {reply,
      {ok, ReqID, {State#state.partition,State#state.node}, dict:fetch_keys(State#state.packages)},
      State};
 
@@ -266,7 +268,7 @@ terminate(_Reason, #state{dbref=DBRef} = _State) ->
 
 read_ranges(DBRef) ->
     case eleveldb:get(DBRef, <<"#packages">>, []) of
-	not_found -> 
+	not_found ->
 	    {[], dict:new()};
 	{ok, Bin} ->
 	    Index = binary_to_term(Bin),

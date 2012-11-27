@@ -5,7 +5,7 @@ RUNNER_SCRIPT=${0##*/}
 
 RUNNER_BASE_DIR=${RUNNER_SCRIPT_DIR%/*}
 RUNNER_ETC_DIR=$RUNNER_BASE_DIR/etc
-RUNNER_LOG_DIR=$RUNNER_BASE_DIR/log
+RUNNER_LOG_DIR=/var/log/sniffle
 RUNNER_USER=
 
 # Make sure this script is running as the appropriate user

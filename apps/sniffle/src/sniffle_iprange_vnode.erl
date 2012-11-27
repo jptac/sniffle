@@ -118,7 +118,8 @@ release_ip(Preflist, ReqID, Iprange, IP) ->
 %%%===================================================================
 
 init([Partition]) ->
-    {ok, DBRef} = eleveldb:open("ipranges."++integer_to_list(Partition)++".ldb", [{create_if_missing, true}]),
+    {ok, DBLoc} = application:get_env(sniffle, db_path),
+    {ok, DBRef} = eleveldb:open(DBLoc ++ "/ipranges/"++integer_to_list(Partition)++".ldb", [{create_if_missing, true}]),
     {Index, Ranges} = read_ranges(DBRef),
     {ok, #state{
        partition = Partition,
@@ -140,7 +141,7 @@ handle_command({get, ReqID, Iprange}, _Sender, State) ->
 	      {ok, V} ->
 		  {ok, ReqID, NodeIdx, V}
 	  end,
-    {reply, 
+    {reply,
      Res,
      State};
 
@@ -247,15 +248,16 @@ is_empty(State) ->
     end.
 
 delete(#state{dbref = DBRef} = State) ->
+    {ok, DBLoc} = application:get_env(sniffle, db_path),
     eleveldb:close(DBRef),
-    eleveldb:destroy("ipranges."++integer_to_list(State#state.partition)++".ldb",[]),
-    {ok, DBRef1} = eleveldb:open("ipranges."++integer_to_list(State#state.partition)++".ldb",
+    eleveldb:destroy(DBLoc ++ "/ipranges/"++integer_to_list(State#state.partition)++".ldb",[]),
+    {ok, DBRef1} = eleveldb:open(DBLoc ++ "/ipranges/"++integer_to_list(State#state.partition)++".ldb",
 				 [{create_if_missing, true}]),
 
     {ok, State#state{ipranges = dict:new(), dbref = DBRef1}}.
 
 handle_coverage({list, ReqID}, _KeySpaces, _Sender, State) ->
-    {reply, 
+    {reply,
      {ok, ReqID, {State#state.partition,State#state.node}, dict:fetch_keys(State#state.ipranges)},
      State};
 
@@ -271,7 +273,7 @@ handle_coverage({overlap, ReqID, Start, Stop}, _KeySpaces, _Sender, State) ->
 				  (Start1 =< Stop andalso
 				   Stop =< Stop1)
 		    end, false, State#state.ipranges),
-    {reply, 
+    {reply,
      {ok, ReqID, {State#state.partition,State#state.node}, [Res]},
      State};
 

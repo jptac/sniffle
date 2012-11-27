@@ -119,7 +119,8 @@ mset_attribute(Preflist, ReqID, Dataset, Data) ->
 %%%===================================================================
 
 init([Partition]) ->
-    {ok, DBRef} = eleveldb:open("datasets."++integer_to_list(Partition)++".ldb", [{create_if_missing, true}]),
+    {ok, DBLoc} = application:get_env(sniffle, db_path),
+    {ok, DBRef} = eleveldb:open(DBLoc ++ "/datasets/"++integer_to_list(Partition)++".ldb", [{create_if_missing, true}]),
     {Index, Ranges} = read_ranges(DBRef),
     {ok, #state{
        partition = Partition,
@@ -141,7 +142,7 @@ handle_command({get, ReqID, Dataset}, _Sender, State) ->
 	      {ok, V} ->
 		  {ok, ReqID, NodeIdx, V}
 	  end,
-    {reply, 
+    {reply,
      Res,
      State};
 
@@ -149,7 +150,7 @@ handle_command({create, {ReqID, Coordinator}, Dataset,
 		[]},
 	       _Sender, #state{dbref = DBRef} = State) ->
     I0 = statebox:new(fun sniffle_dataset_state:new/0),
-    I1 = statebox:modify({fun sniffle_dataset_state:name/2, [Dataset]}, I0),    
+    I1 = statebox:modify({fun sniffle_dataset_state:name/2, [Dataset]}, I0),
     VC0 = vclock:fresh(),
     VC = vclock:increment(Coordinator, VC0),
     HObject = #sniffle_obj{val=I1, vclock=VC},
@@ -158,7 +159,6 @@ handle_command({create, {ReqID, Coordinator}, Dataset,
 
     eleveldb:put(DBRef, <<"#datasets">>, term_to_binary(dict:fetch_keys(Is0)), []),
     eleveldb:put(DBRef, Dataset, term_to_binary(HObject), []),
-    
     {reply, {ok, ReqID}, State#state{datasets = Is0}};
 
 handle_command({delete, {ReqID, _Coordinator}, Dataset}, _Sender, #state{dbref = DBRef} = State) ->
@@ -169,28 +169,28 @@ handle_command({delete, {ReqID, _Coordinator}, Dataset}, _Sender, #state{dbref =
 
     {reply, {ok, ReqID}, State#state{datasets = Is0}};
 
-handle_command({attribute, set, 
-		{ReqID, Coordinator}, Dataset, 
+handle_command({attribute, set,
+		{ReqID, Coordinator}, Dataset,
 		[Resource, Value]}, _Sender, State) ->
-    Hs0 = dict:update(Dataset, 
+    Hs0 = dict:update(Dataset,
 		      fun(#sniffle_obj{val=H0} = O) ->
 			      H1 = statebox:modify(
-				     {fun sniffle_dataset_state:attribute/3, 
+				     {fun sniffle_dataset_state:attribute/3,
 				      [Resource, Value]}, H0),
 			      H2 = statebox:expire(?STATEBOX_EXPIRE, H1),
 			      sniffle_obj:update(H2, Coordinator, O)
 		      end, State#state.datasets),
     {reply, {ok, ReqID}, State#state{datasets = Hs0}};
 
-handle_command({attribute, mset, 
-		{ReqID, Coordinator}, Dataset, 
+handle_command({attribute, mset,
+		{ReqID, Coordinator}, Dataset,
 		Resources}, _Sender, State) ->
-    Hs0 = dict:update(Dataset, 
+    Hs0 = dict:update(Dataset,
 		      fun(#sniffle_obj{val=H0} = O) ->
 			      H1 = lists:foldr(
 				     fun ({Resource, Value}, H) ->
 					     statebox:modify(
-					       {fun sniffle_dataset_state:attribute/3, 
+					       {fun sniffle_dataset_state:attribute/3,
 						[Resource, Value]}, H)
 				     end, H0, Resources),
 			      H2 = statebox:expire(?STATEBOX_EXPIRE, H1),
@@ -234,15 +234,16 @@ is_empty(State) ->
     end.
 
 delete(#state{dbref = DBRef} = State) ->
+    {ok, DBLoc} = application:get_env(sniffle, db_path),
     eleveldb:close(DBRef),
-    eleveldb:destroy("datasets."++integer_to_list(State#state.partition)++".ldb",[]),
-    {ok, DBRef1} = eleveldb:open("datasets."++integer_to_list(State#state.partition)++".ldb",
+    eleveldb:destroy(DBLoc ++ "/datasets/"++integer_to_list(State#state.partition)++".ldb",[]),
+    {ok, DBRef1} = eleveldb:open(DBLoc ++ "/datasets/"++integer_to_list(State#state.partition)++".ldb",
 				 [{create_if_missing, true}]),
 
     {ok, State#state{datasets = dict:new(), dbref = DBRef1}}.
 
 handle_coverage({list, ReqID}, _KeySpaces, _Sender, State) ->
-    {reply, 
+    {reply,
      {ok, ReqID, {State#state.partition,State#state.node}, dict:fetch_keys(State#state.datasets)},
      State};
 
@@ -258,7 +259,7 @@ terminate(_Reason, #state{dbref=DBRef} = _State) ->
 
 read_ranges(DBRef) ->
     case eleveldb:get(DBRef, <<"#datasets">>, []) of
-	not_found -> 
+	not_found ->
 	    {[], dict:new()};
 	{ok, Bin} ->
 	    Index = binary_to_term(Bin),
