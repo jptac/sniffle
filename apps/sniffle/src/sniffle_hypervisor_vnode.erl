@@ -168,25 +168,25 @@ handle_command({unregister, {ReqID, _Coordinator}, Hypervisor}, _Sender, State) 
 handle_command({resource, set, 
 		{ReqID, Coordinator}, Hypervisor, 
 		[Resource, Value]}, _Sender, State) ->
-    Hs0 = dict:update(Hypervisor, 
+    Hs0 = dict:update(Hypervisor,
 		      fun(_, #sniffle_obj{val=H0} = O) ->
 			      H1 = statebox:modify(
-				     {fun sniffle_hypervisor_state:resource/3, 
+				     {fun sniffle_hypervisor_state:resource/3,
 				      [Resource, Value]}, H0),
 			      H2 = statebox:expire(?STATEBOX_EXPIRE, H1),
 			      sniffle_obj:update(H2, Coordinator, O)
 		      end, State#state.hypervisors),
     {reply, {ok, ReqID}, State#state{hypervisors = Hs0}};
 
-handle_command({resource, mset, 
-		{ReqID, Coordinator}, Vm, 
+handle_command({resource, mset,
+		{ReqID, Coordinator}, Vm,
 		Resources}, _Sender, State) ->
-    Hs0 = dict:update(Vm, 
+    Hs0 = dict:update(Vm,
 		      fun(#sniffle_obj{val=H0} = O) ->
 			      H1 = lists:foldr(
 				     fun ({Resource, Value}, H) ->
 					     statebox:modify(
-					       {fun sniffle_hypervisor_state:resource/3, 
+					       {fun sniffle_hypervisor_state:resource/3,
 						[Resource, Value]}, H)
 				     end, H0, Resources),
 			      H2 = statebox:expire(?STATEBOX_EXPIRE, H1),
@@ -230,39 +230,22 @@ is_empty(State) ->
 delete(State) ->
     {ok, State#state{hypervisors = dict:new()}}.
 
-
-handle_coverage({list, ReqID, Requiremetns}, _KeySpaces, _Sender, State) ->
-    Server = lists:foldl(fun(#sniffle_obj{val=S0}, []) ->
-				 S1 = statebox:value(S0),
-				 case sniffle_host_matcher:match(S1, Requiremetns) of
-				     true ->
-					 [{S1, dict:fetch(S1#hypervisor.resources, <<"freememory">>)}];
-				     false ->
-					 []
-				 end;
-			    (#sniffle_obj{val=S0}, Cur = [{_, MBest}]) ->
-				 S1 = statebox:value(S0),
-				 case sniffle_host_matcher:match(S1, Requiremetns) of
-				     true ->
-					 case dict:fetch(S1#hypervisor.resources, <<"freememory">>) of
-					     MNew when MBest < MNew ->
-						 [{S1, MNew}];
-					     _ ->
-						 Cur
-					 end;
-				     _ ->
-					 Cur
-				 end
-			    end, undefined, State#state.hypervisors),
-    {reply, 
+handle_coverage({list, ReqID, Requirements}, _KeySpaces, _Sender, State) ->
+    Getter = fun(#sniffle_obj{val=S0}, <<"name">>) ->
+		     Hypervisor = statebox:value(S0),
+		     Hypervisor#hypervisor.name;
+		(#sniffle_obj{val=S0}, Resource) ->
+		     Hypervisor = statebox:value(S0),
+		     dict:fetch(Resource, Hypervisor#hypervisor.resources)
+	     end,
+    Server = sniffle_matcher:match_dict(State#state.hypervisors, Getter, Requirements),
+    {reply,
      {ok, ReqID, {State#state.partition, State#state.node}, Server},
      State};
 
-
-
 handle_coverage({list, ReqID}, _KeySpaces, _Sender, State) ->
-    {reply, 
-     {ok, ReqID, {State#state.partition,State#state.node}, dict:fetch_keys(State#state.hypervisors)},
+    {reply,
+     {ok, ReqID, {State#state.partition, State#state.node}, dict:fetch_keys(State#state.hypervisors)},
      State};
 
 handle_coverage(_Req, _KeySpaces, _Sender, State) ->

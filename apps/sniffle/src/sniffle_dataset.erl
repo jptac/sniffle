@@ -22,7 +22,7 @@ create(Dataset) ->
 	    duplicate
     end.
 
-delete(Dataset) ->    
+delete(Dataset) ->
     do_update(Dataset, delete).
 
 get(Dataset) ->
@@ -37,10 +37,10 @@ list() ->
       list
      ).
 
-list(User) ->
+list(Requirements) ->
     sniffle_entity_coverage_fsm:start(
       {sniffle_dataset_vnode, sniffle_dataset},
-      list, undefined, User
+      list, Requirements
      ).
 
 get_attribute(Dataset) ->

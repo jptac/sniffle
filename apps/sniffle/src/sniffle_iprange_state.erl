@@ -57,7 +57,7 @@ tag(Tag, Iprange) ->
 
 claim_ip(IP, #iprange{current = IP} = Iprange) ->
     Iprange#iprange{current = IP + 1};
-    
+
 claim_ip(IP, Iprange) ->
     Iprange#iprange{free = ordsets:del_element(IP, Iprange#iprange.free)}.
 
@@ -67,7 +67,7 @@ release_ip(IP, #iprange{current = LIP} = Iprange) when
       LIP == IP + 1 ->
     Iprange#iprange{current = IP};
 
-release_ip(IP, Iprange) when 
+release_ip(IP, Iprange) when
       Iprange#iprange.first =< IP andalso
       Iprange#iprange.last >= IP ->
     Iprange#iprange{free = ordsets:add_element(IP, Iprange#iprange.free)}.

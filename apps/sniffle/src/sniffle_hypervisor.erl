@@ -23,7 +23,7 @@ register(Hypervisor, IP, Port) ->
 	    duplicate
     end.
 
-unregister(Hypervisor) ->    
+unregister(Hypervisor) ->
     do_update(Hypervisor, delete).
 
 get(Hypervisor) ->
@@ -39,11 +39,11 @@ list() ->
      ).
 
 list(Requirements) ->
-    sniffle_entity_coverage_fsm:start(
-      {sniffle_hypervisor_vnode, sniffle_hypervisor},
-      list, undefined, Requirements
-     ).
-
+    Res = sniffle_entity_coverage_fsm:start(
+	    {sniffle_hypervisor_vnode, sniffle_hypervisor},
+	    list, Requirements
+	   ),
+    lists:keysort(2, Res).
 
 get_resource(Hypervisor) ->
     case sniffle_hypervisor:get(Hypervisor) of

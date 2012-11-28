@@ -24,7 +24,7 @@ create(Package) ->
 	    duplicate
     end.
 
-delete(Package) ->    
+delete(Package) ->
     do_update(Package, delete).
 
 get(Package) ->
@@ -39,10 +39,10 @@ list() ->
       list
      ).
 
-list(User) ->
+list(Requirements) ->
     sniffle_entity_coverage_fsm:start(
       {sniffle_package_vnode, sniffle_package},
-      list, undefined, User
+      list, Requirements
      ).
 
 get_attribute(Package) ->

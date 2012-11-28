@@ -7,6 +7,7 @@
 	 repair/3,
 	 get/3,
 	 list/2,
+	 list/3,
 	 create/4,
 	 delete/3,
 	 set_attribute/4,
@@ -43,6 +44,7 @@
 	      delete/3,
 	      get/3,
 	      list/2,
+	      list/3,
 	      mset_attribute/4,
 	      repair/3,
 	      set_attribute/4,
@@ -82,6 +84,14 @@ get(Preflist, ReqID, Dataset) ->
 list(Preflist, ReqID) ->
     riak_core_vnode_master:coverage(
       {list, ReqID},
+      Preflist,
+      all,
+      {fsm, undefined, self()},
+      ?MASTER).
+
+list(Preflist, ReqID, Requirements) ->
+    riak_core_vnode_master:coverage(
+      {list, ReqID, Requirements},
       Preflist,
       all,
       {fsm, undefined, self()},
@@ -245,6 +255,19 @@ delete(#state{dbref = DBRef} = State) ->
 handle_coverage({list, ReqID}, _KeySpaces, _Sender, State) ->
     {reply,
      {ok, ReqID, {State#state.partition,State#state.node}, dict:fetch_keys(State#state.datasets)},
+     State};
+
+handle_coverage({list, ReqID, Requirements}, _KeySpaces, _Sender, State) ->
+    Getter = fun(#sniffle_obj{val=S0}, <<"name">>) ->
+		     Dataset = statebox:value(S0),
+		     Dataset#dataset.name;
+		(#sniffle_obj{val=S0}, Resource) ->
+		     Dataset = statebox:value(S0),
+		     dict:fetch(Resource, Dataset#dataset.attributes)
+	     end,
+    Server = sniffle_matcher:match_dict(State#state.datasets, Getter, Requirements),
+    {reply,
+     {ok, ReqID, {State#state.partition, State#state.node}, Server},
      State};
 
 handle_coverage(_Req, _KeySpaces, _Sender, State) ->

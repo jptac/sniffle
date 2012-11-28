@@ -24,14 +24,14 @@
 register(Vm, Hypervisor) ->
     do_write(Vm, register, Hypervisor).
 
-unregister(Vm) ->    
+unregister(Vm) ->
     do_update(Vm, unregister).
 
 create(Package, Dataset, Config) ->
     UUID = list_to_binary(uuid:to_string(uuid:uuid4())),
     do_write(UUID, register, <<"pending">>), %we've to put pending here since undefined will cause a wrong call!
     sniffle_create_fsm:create(UUID, Package, Dataset, Config),
-    {ok, UUID}.    
+    {ok, UUID}.
 
 get(Vm) ->
     sniffle_entity_read_fsm:start(
@@ -45,10 +45,10 @@ list() ->
       list
      ).
 
-list(User) ->
+list(Requirements) ->
     sniffle_entity_coverage_fsm:start(
       {sniffle_vm_vnode, sniffle_vm},
-      list, undefined, User
+      list, Requirements
      ).
 
 delete(Vm) ->

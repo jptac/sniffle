@@ -6,6 +6,7 @@
 -export([repair/3,
 	 get/3,
 	 list/2,
+	 list/3,
 	 register/4,
 	 unregister/3,
 	 set_attribute/4,
@@ -37,6 +38,7 @@
 -ignore_xref([
 	      get/3,
 	      list/2,
+	      list/3,
 	      mset_attribute/4,
 	      register/4,
 	      repair/3,
@@ -79,6 +81,14 @@ get(Preflist, ReqID, Vm) ->
 list(Preflist, ReqID) ->
     riak_core_vnode_master:coverage(
       {list, ReqID},
+      Preflist,
+      all,
+      {fsm, undefined, self()},
+      ?MASTER).
+
+list(Preflist, ReqID, Requirements) ->
+    riak_core_vnode_master:coverage(
+      {list, ReqID, Requirements},
       Preflist,
       all,
       {fsm, undefined, self()},
@@ -139,7 +149,7 @@ handle_command({get, ReqID, Vm}, _Sender, State) ->
 	      {ok, V} ->
 		  {ok, ReqID, NodeIdx, V}
 	  end,
-    {reply, 
+    {reply,
      Res,
      State};
 
@@ -159,28 +169,28 @@ handle_command({unregister, {ReqID, _Coordinator}, Vm}, _Sender, State) ->
     Hs0 = dict:erase(Vm, State#state.vms),
     {reply, {ok, ReqID}, State#state{vms = Hs0}};
 
-handle_command({attribute, set, 
-		{ReqID, Coordinator}, Vm, 
+handle_command({attribute, set,
+		{ReqID, Coordinator}, Vm,
 		[Resource, Value]}, _Sender, State) ->
-    Hs0 = dict:update(Vm, 
+    Hs0 = dict:update(Vm,
 		      fun(#sniffle_obj{val=H0} = O) ->
 			      H1 = statebox:modify(
-				     {fun sniffle_vm_state:attribute/3, 
+				     {fun sniffle_vm_state:attribute/3,
 				      [Resource, Value]}, H0),
 			      H2 = statebox:expire(?STATEBOX_EXPIRE, H1),
 			      sniffle_obj:update(H2, Coordinator, O)
 		      end, State#state.vms),
     {reply, {ok, ReqID}, State#state{vms = Hs0}};
 
-handle_command({attribute, mset, 
-		{ReqID, Coordinator}, Vm, 
+handle_command({attribute, mset,
+		{ReqID, Coordinator}, Vm,
 		Resources}, _Sender, State) ->
-    Hs0 = dict:update(Vm, 
+    Hs0 = dict:update(Vm,
 		      fun(#sniffle_obj{val=H0} = O) ->
 			      H1 = lists:foldr(
 				     fun ({Resource, Value}, H) ->
 					     statebox:modify(
-					       {fun sniffle_vm_state:attribute/3, 
+					       {fun sniffle_vm_state:attribute/3,
 						[Resource, Value]}, H)
 				     end, H0, Resources),
 			      H2 = statebox:expire(?STATEBOX_EXPIRE, H1),
@@ -225,9 +235,26 @@ delete(State) ->
     {ok, State#state{vms = dict:new()}}.
 
 handle_coverage({list, ReqID}, _KeySpaces, _Sender, State) ->
-    {reply, 
+    {reply,
      {ok, ReqID, {State#state.partition,State#state.node}, dict:fetch_keys(State#state.vms)},
      State};
+
+handle_coverage({list, ReqID, Requirements}, _KeySpaces, _Sender, State) ->
+    Getter = fun(#sniffle_obj{val=S0}, <<"uuid">>) ->
+		     Vm = statebox:value(S0),
+		     Vm#vm.uuid;
+		(#sniffle_obj{val=S0}, <<"hypervisor">>) ->
+		     Vm = statebox:value(S0),
+		     Vm#vm.hypervisor;
+		(#sniffle_obj{val=S0}, Resource) ->
+		     Vm = statebox:value(S0),
+		     dict:fetch(Resource, Vm#vm.attributes)
+	     end,
+    Server = sniffle_matcher:match_dict(State#state.vms, Getter, Requirements),
+    {reply,
+     {ok, ReqID, {State#state.partition, State#state.node}, Server},
+     State};
+
 
 handle_coverage(_Req, _KeySpaces, _Sender, State) ->
     {stop, not_implemented, State}.

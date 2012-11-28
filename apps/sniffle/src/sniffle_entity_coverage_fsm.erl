@@ -63,9 +63,9 @@ start(VNodeInfo, Op, User, Val) ->
       [ReqID, VNodeInfo, Op, self(), User, Val]
      ),
     receive
-	{ReqID, ok} -> 
+	{ReqID, ok} ->
 	    ok;
-        {ReqID, ok, Result} -> 
+        {ReqID, ok, Result} ->
 	    {ok, Result}
     after ?DEFAULT_TIMEOUT ->
 	    {error, timeout}
@@ -101,8 +101,6 @@ init([ReqId, {VNode, System}, Op, From, Entity, Val]) ->
                 entity=Entity},
     {ok, prepare, SD, 0}.
 
-
-
 %% @doc Calculate the Preflist.
 prepare(timeout, SD0=#state{system=System,
 			    n=N,
@@ -132,7 +130,6 @@ execute(timeout, SD0=#state{req_id=ReqId,
 		undefined ->
 		    VNode:Op(Prelist, ReqId, Entity);
 		_ ->
-		    
 		    VNode:Op(Prelist, ReqId, Entity, Val)
 	    end
     end,
@@ -146,7 +143,7 @@ waiting({
 	SD0=#state{num_r = NumR0, size=Size, from=From, replies=Replies0, r=R}) ->
     NumR = NumR0 + 1,
     Replies1 = case Replies0 of
-		   [] ->		      
+		   [] ->
 		       dict:new();
 		   _ ->
 		       Replies0
@@ -164,7 +161,7 @@ waiting({
 				      end, [], Replies),
 	    From ! {ReqID, ok, MergedReplies},
 	    {stop, normal, SD};
-        true -> 
+        true ->
 	    {next_state, waiting, SD}
     end.
 

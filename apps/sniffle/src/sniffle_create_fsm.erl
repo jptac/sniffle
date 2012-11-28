@@ -22,7 +22,7 @@
 	 handle_event/3,
 	 handle_sync_event/4,
 	 handle_info/3,
-	 terminate/3, 
+	 terminate/3,
 	 code_change/4
 	]).
 
@@ -161,17 +161,18 @@ get_server(_Event, State = #state{
     Permission = [hypervisor, {<<"res">>, <<"name">>}, create],
     {<<"networks">>, Ns} = lists:keyfind(<<"networks">>, 1, Dataset),
     {<<"type">>, Type} = lists:keyfind(<<"type">>, 1, Dataset),
-    
+
     NicTags = lists:foldl(fun (N, Acc) ->
 			     {<<"nic_tag">>, Tag} = lists:keyfind(<<"nic_tag">>, 1, N),
 			     [Tag | Acc]
 		     end, [], Ns),
-    {ok, [HypervisorID | _]} = 
+    {reply, {ok, Permissions}} = libsnarl:user_cach(Owner),
+    {ok, | [{HypervisorID, _} | _]} =
 	sniffle_hypervisor:list([
-				 {'allowed', Permission, Owner},
-				 {'subset', <<"networks">>, NicTags},
-				 {'element', <<"virtualisation">>, Type},
-				 {'>=', <<"free-memory">>, Ram}
+				 {must, 'allowed', Permission, Permissions},
+				 {must, 'subset', <<"networks">>, NicTags},
+				 {must, 'element', <<"virtualisation">>, Type},
+				 {must, '>=', <<"free-memory">>, Ram}
 				]),
     {ok, #hypervisor{port = Port, host = Host}} = sniffle_hypervisor:get(HypervisorID),
     {next_state, create_permissions, State#state{hypervisor = {Host, Port}}, 0}.

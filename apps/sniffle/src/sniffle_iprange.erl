@@ -22,7 +22,7 @@ create(Iprange, Network, Gateway, Netmask, First, Last, Tag) ->
 	    duplicate
     end.
 
-delete(Iprange) ->    
+delete(Iprange) ->
     do_update(Iprange, delete).
 
 get(Iprange) ->
@@ -37,15 +37,15 @@ list() ->
       list
      ).
 
-list(User) ->
+list(Requirements) ->
     sniffle_entity_coverage_fsm:start(
       {sniffle_iprange_vnode, sniffle_iprange},
-      list, undefined, User
+      list, Requirements
      ).
 
 release_ip(Iprange, IP) ->
     do_update(Iprange, release_ip, IP).
-    
+
 claim_ip(Iprange) ->
     case sniffle_iprange:get(Iprange) of
 	{ok, not_found} ->
@@ -54,7 +54,7 @@ claim_ip(Iprange) ->
 	 #iprange{free=[],
 		  last=Last,
 		  current=FoundIP}} when FoundIP >= Last ->
-	    no_ips_left;	    	    
+	    no_ips_left;
 	{ok,
 	 #iprange{free=[],
 		  current=FoundIP}} ->
