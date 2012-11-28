@@ -167,7 +167,7 @@ get_server(_Event, State = #state{
 			     [Tag | Acc]
 		     end, [], Ns),
     {reply, {ok, Permissions}} = libsnarl:user_cach(Owner),
-    {ok, | [{HypervisorID, _} | _]} =
+    {ok, [{HypervisorID, _} | _]} =
 	sniffle_hypervisor:list([
 				 {must, 'allowed', Permission, Permissions},
 				 {must, 'subset', <<"networks">>, NicTags},
