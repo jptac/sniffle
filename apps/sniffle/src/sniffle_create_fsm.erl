@@ -166,7 +166,7 @@ get_server(_Event, State = #state{
 			     {<<"nic_tag">>, Tag} = lists:keyfind(<<"nic_tag">>, 1, N),
 			     [Tag | Acc]
 		     end, [], Ns),
-    {reply, {ok, Permissions}} = libsnarl:user_cach(Owner),
+    {reply, {ok, Permissions}} = libsnarl:user_cache(Owner),
     {ok, [{HypervisorID, _} | _]} =
 	sniffle_hypervisor:list([
 				 {must, 'allowed', Permission, Permissions},
