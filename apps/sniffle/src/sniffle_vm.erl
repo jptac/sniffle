@@ -56,8 +56,13 @@ delete(Vm) ->
 	{ok, not_found} ->
 	    not_found;
 	{ok, V} ->
-	    {ok, #hypervisor{name = Server, port = Port}} = sniffle_hypervisor:get(V#vm.hypervisor),
-	    libchunter:delete_machine(Server, Port, Vm),
+	    case V#vm.hypervisor of
+		<<"pending">> ->
+		    unregister(Vm);
+		H ->
+		    {ok, #hypervisor{name = Server, port = Port}} = sniffle_hypervisor:get(H),
+		    libchunter:delete_machine(Server, Port, Vm)
+	    end,
 	    ok
     end.
 
@@ -91,7 +96,6 @@ reboot(Vm) ->
 	    libchunter:reboot_machine(Server, Port, Vm),
 	    ok
     end.
-    
 
 get_attribute(Vm) ->
     case sniffle_vm:get(Vm) of

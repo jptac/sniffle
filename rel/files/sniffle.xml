@@ -59,7 +59,7 @@
 	name='restart'
 	type='method'
         exec='/opt/local/sniffle/bin/sniffle %m'
-	timeout_seconds='60'>
+	timeout_seconds='120'>
       <method_context>
 	<method_credential user='sniffle' group='sniffle' />
 	<method_environment>
@@ -73,7 +73,7 @@
 	name='stop'
 	type='method'
         exec='/opt/local/sniffle/bin/sniffle %m'
-	timeout_seconds='60'>
+	timeout_seconds='120'>
       <method_context>
 	<method_credential user='sniffle' group='sniffle' />
 	<method_environment>
