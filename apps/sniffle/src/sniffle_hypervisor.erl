@@ -39,10 +39,10 @@ list() ->
      ).
 
 list(Requirements) ->
-    Res = sniffle_entity_coverage_fsm:start(
-	    {sniffle_hypervisor_vnode, sniffle_hypervisor},
-	    list, Requirements
-	   ),
+    {ok, Res} = sniffle_entity_coverage_fsm:start(
+		  {sniffle_hypervisor_vnode, sniffle_hypervisor},
+		  list, Requirements
+		 ),
     lists:keysort(2, Res).
 
 get_resource(Hypervisor) ->
