@@ -43,7 +43,7 @@ list(Requirements) ->
 		  {sniffle_hypervisor_vnode, sniffle_hypervisor},
 		  list, Requirements
 		 ),
-    lists:keysort(2, Res).
+   {ok,  lists:keysort(2, Res)}.
 
 get_resource(Hypervisor) ->
     case sniffle_hypervisor:get(Hypervisor) of
