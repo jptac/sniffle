@@ -1,11 +1,1 @@
 @pkgdep erlang>=15.1.1
-@exec-add grep "^sniffle:" /etc/group > /dev/null 2>&1 || groupadd sniffle
-@exec-add id sniffle > /dev/null 2>&1 || useradd -g sniffle -d /var/db/snarl -s /bin/false sniffle
-@exec-add mkdir -p /var/db/sniffle/ring
-@exec-add mkdir -p /var/db/sniffle/ipranges
-@exec-add mkdir -p /var/db/sniffle/packages
-@exec-add mkdir -p /var/db/sniffle/datasets
-@exec-add chown -R sniffle:sniffle /var/db/sniffle
-@exec-add mkdir -p /var/log/sniffle/sasl
-@exec-add chown -R sniffle:sniffle /var/log/sniffle
-@unexec-delete svcadm disable network/sniffle

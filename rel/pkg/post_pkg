@@ -1,5 +1,0 @@
-@exec-add svccfg import /opt/local/sniffle/etc/sniffle.xml
-@exec-add IP=`ifconfig net0 | grep inet | awk -e '{print $2}'` sed --in-place=.bak -e "s/127.0.0.1/${IP}/g" /opt/local/sniffle/etc/vm.args
-@exec-add IP=`ifconfig net0 | grep inet | awk -e '{print $2}'` sed --in-place=.bak -e "s/127.0.0.1/${IP}/g" /opt/local/sniffle/etc/app.config
-@unexec-delete svccfg delete network/sniffle
-@exec-update /opt/local/sniffle/bin/sniffle restart
