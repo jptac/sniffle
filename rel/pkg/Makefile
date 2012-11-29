@@ -6,7 +6,7 @@ COMPONENT=sniffle
 package_list:
 	cat pre_pkg > packlist
 	(cd ../$(COMPONENT); find * -type f | sort) >> packlist
-	cat post_pkg > packlist
+	cat post_pkg >> packlist
 
 build_info:
 	pkg_info -X pkg_install | egrep '^(MACHINE_ARCH|OPSYS|OS_VERSION|PKGTOOLS_VERSION)' >build-info
