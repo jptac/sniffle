@@ -1,3 +1,0 @@
-{name, "unpaired_surrogate"}.
-{jsx, {error, badjson}}.
-{json, "unpaired_surrogate.json"}.
