@@ -163,19 +163,23 @@ get_server(_Event, State = #state{
     {<<"type">>, Type} = lists:keyfind(<<"type">>, 1, Dataset),
 
     NicTags = lists:foldl(fun (N, Acc) ->
-			     {<<"nic_tag">>, Tag} = lists:keyfind(<<"nic_tag">>, 1, N),
-			     [Tag | Acc]
-		     end, [], Ns),
-    {reply, {ok, Permissions}} = libsnarl:user_cache(Owner),
-    {ok, [{HypervisorID, _} | _]} =
-	sniffle_hypervisor:list([
-				 {must, 'allowed', Permission, Permissions},
-				 {must, 'subset', <<"networks">>, NicTags},
-				 {must, 'element', <<"virtualisation">>, Type},
-				 {must, '>=', <<"free-memory">>, Ram}
-				]),
-    {ok, #hypervisor{port = Port, host = Host}} = sniffle_hypervisor:get(HypervisorID),
-    {next_state, create_permissions, State#state{hypervisor = {Host, Port}}, 0}.
+				  {<<"nic_tag">>, Tag} = lists:keyfind(<<"nic_tag">>, 1, N),
+				  [Tag | Acc]
+			  end, [], Ns),
+    case libsnarl:user_cache(Owner) of
+	{ok, Permissions} ->
+	    {ok, [{HypervisorID, _} | _]} =
+		sniffle_hypervisor:list([
+					 {must, 'allowed', Permission, Permissions},
+					 {must, 'subset', <<"networks">>, NicTags},
+					 {must, 'element', <<"virtualisation">>, Type},
+					 {must, '>=', <<"free-memory">>, Ram}
+					]),
+	    {ok, #hypervisor{port = Port, host = Host}} = sniffle_hypervisor:get(HypervisorID),
+	    {next_state, create_permissions, State#state{hypervisor = {Host, Port}}, 0};
+	_ ->
+	    {next_state, get_server, State, 10000}
+    end.
 
 create_permissions(_Event, State = #state{
 			     uuid = _UUID,
@@ -257,7 +261,11 @@ handle_info(_Info, StateName, State) ->
 %% @spec terminate(Reason, StateName, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
-terminate(shutdown, StateName = #state{uuid=UUID}, _StateData) ->
+
+terminate(shutdown, create, _StateData) ->
+    ok;
+
+terminate(shutdown, StateName, _StateData = #state{uuid=UUID}) ->
     StateBin = list_to_binary(atom_to_list(StateName)),
     sniffle_vm:set_attribute(UUID, <<"state">>, <<"failed-", StateBin/binary>>),
     ok;

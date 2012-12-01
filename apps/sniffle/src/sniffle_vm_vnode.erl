@@ -9,8 +9,7 @@
 	 list/3,
 	 register/4,
 	 unregister/3,
-	 set_attribute/4,
-	 mset_attribute/4
+	 set_attribute/4
 	]).
 
 -export([start_vnode/1,
@@ -39,7 +38,6 @@
 	      get/3,
 	      list/2,
 	      list/3,
-	      mset_attribute/4,
 	      register/4,
 	      repair/3,
 	      set_attribute/4,
@@ -67,6 +65,8 @@ repair(IdxNode, Vm, Obj) ->
 %%% API - reads
 %%%===================================================================
 
+-spec get(any(), any(), Vm::fifo:uuid()) -> ok.
+
 get(Preflist, ReqID, Vm) ->
     ?PRINT({get, Preflist, ReqID, Vm}),
     riak_core_vnode_master:command(Preflist,
@@ -78,6 +78,8 @@ get(Preflist, ReqID, Vm) ->
 %%% API - coverage
 %%%===================================================================
 
+-spec list(any(), any()) -> ok.
+
 list(Preflist, ReqID) ->
     riak_core_vnode_master:coverage(
       {list, ReqID},
@@ -85,6 +87,8 @@ list(Preflist, ReqID) ->
       all,
       {fsm, undefined, self()},
       ?MASTER).
+
+-spec list(any(), any(), [fifo:matcher()]) -> ok.
 
 list(Preflist, ReqID, Requirements) ->
     riak_core_vnode_master:coverage(
@@ -98,11 +102,15 @@ list(Preflist, ReqID, Requirements) ->
 %%% API - writes
 %%%===================================================================
 
-register(Preflist, ReqID, Vm, Data) ->
+-spec register(any(), any(), fifo:uuid(), binary()) -> ok.
+
+register(Preflist, ReqID, Vm, Hypervisor) ->
     riak_core_vnode_master:command(Preflist,
-				   {register, ReqID, Vm, Data},
+				   {register, ReqID, Vm, Hypervisor},
 				   {fsm, undefined, self()},
 				   ?MASTER).
+
+-spec unregister(any(), any(), fifo:uuid()) -> ok.
 
 unregister(Preflist, ReqID, Vm) ->
     riak_core_vnode_master:command(Preflist,
@@ -110,15 +118,12 @@ unregister(Preflist, ReqID, Vm) ->
 				   {fsm, undefined, self()},
                                    ?MASTER).
 
+
+-spec set_attribute(any(), any(), fifo:uuid(), [{Key::binary(), V::fifo:value()}]) -> ok.
+
 set_attribute(Preflist, ReqID, Vm, Data) ->
     riak_core_vnode_master:command(Preflist,
                                    {attribute, set, ReqID, Vm, Data},
-				   {fsm, undefined, self()},
-                                   ?MASTER).
-
-mset_attribute(Preflist, ReqID, Vm, Data) ->
-    riak_core_vnode_master:command(Preflist,
-                                   {attribute, mset, ReqID, Vm, Data},
 				   {fsm, undefined, self()},
                                    ?MASTER).
 
@@ -132,6 +137,21 @@ init([Partition]) ->
        partition = Partition,
        node = node()
       }}.
+
+-type vm_command() ::
+	ping |
+	{repair, Vm::fifo:uuid(), Obj::any()} |
+	{get, ReqID::any(), Vm::fifo:uuid()} |
+	{get, ReqID::any(), Vm::fifo:uuid()} |
+	{register, {ReqID::any(), Coordinator::any()}, Vm::fifo:uuid(), Hypervisor::binary()} |
+	{unregister, {ReqID::any(), _Coordinator::any()}, Vm::fifo:uuid()} |
+	{attribute, set,
+	 {ReqID::any(), Coordinator::any()}, Vm::fifo:uuid(),
+	 Resources::[{Key::binary(), Value::fifo:value()}]}.
+
+-spec handle_command(vm_command(), any(), any()) ->
+			    {reply, any(), any()} |
+			    {noreply, any()}.
 
 handle_command(ping, _Sender, State) ->
     {reply, {pong, State#state.partition}, State};
@@ -170,19 +190,6 @@ handle_command({unregister, {ReqID, _Coordinator}, Vm}, _Sender, State) ->
     {reply, {ok, ReqID}, State#state{vms = Hs0}};
 
 handle_command({attribute, set,
-		{ReqID, Coordinator}, Vm,
-		[Resource, Value]}, _Sender, State) ->
-    Hs0 = dict:update(Vm,
-		      fun(#sniffle_obj{val=H0} = O) ->
-			      H1 = statebox:modify(
-				     {fun sniffle_vm_state:attribute/3,
-				      [Resource, Value]}, H0),
-			      H2 = statebox:expire(?STATEBOX_EXPIRE, H1),
-			      sniffle_obj:update(H2, Coordinator, O)
-		      end, State#state.vms),
-    {reply, {ok, ReqID}, State#state{vms = Hs0}};
-
-handle_command({attribute, mset,
 		{ReqID, Coordinator}, Vm,
 		Resources}, _Sender, State) ->
     Hs0 = dict:update(Vm,

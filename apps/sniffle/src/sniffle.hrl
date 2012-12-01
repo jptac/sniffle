@@ -20,43 +20,43 @@
 
 -record(hypervisor,
 	{
-	  name :: string(),
-	  host :: string(),
-	  port :: pos_integer(),
+	  name :: binary(),
+	  host :: inet:ip_address() | inet:hostname(),
+	  port :: inet:port_number(),
 	  resources :: dict()
 	}).
 
 -record(vm,
 	{
-	  uuid :: string(),
-	  alias :: string(),
-	  hypervisor :: string(),
+	  uuid :: fifo:uuid(),
+	  alias :: binary(),
+	  hypervisor :: binary(),
 	  attributes :: dict()
 	}).
 
 -record(iprange,
 	{
-	  name :: string(),
+	  name :: binary(),
 	  network :: integer(),
 	  gateway :: integer(),
 	  netmask :: integer(),
 	  first :: integer(),
 	  last :: integer(),
 	  current :: integer(),
-	  tag :: string(),
+	  tag :: binary(),
 	  free :: [integer()]
 	}).
 
 -record(package,
 	{
-	  uuid :: string(),
-	  name :: string(),
+	  uuid :: fifo:uuid(),
+	  name :: binary(),
 	  attributes :: dict()
 	}).
 
 -record(dataset,
 	{
-	  uuid :: string(),
-	  name :: string(),
+	  uuid :: fifo:uuid(),
+	  name :: binary(),
 	  attributes :: dict()
 	}).

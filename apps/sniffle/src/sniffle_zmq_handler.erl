@@ -11,23 +11,26 @@ init([]) ->
 %%%  VM Functions
 %%%===================================================================
 
+-spec message(fifo:sniffle_message(), any()) -> any().
+
 message({vm, register, Vm, Hypervisor}, State) when
-      is_binary(Vm) 
-      andalso is_binary(Hypervisor) ->
-    {reply, 
+      is_binary(Vm),
+      is_binary(Hypervisor) ->
+    {reply,
      sniffle_vm:register(Vm, Hypervisor),
      State};
 
-message({vm, create, Package, Dataset, Config}, State) when 
-      is_binary(Package) 
-      andalso is_binary(Dataset) ->
-    {reply, 
+message({vm, create, Package, Dataset, Config}, State) when
+      is_binary(Package),
+      is_list(Config) ,
+      is_binary(Dataset) ->
+    {reply,
      sniffle_vm:create(Package, Dataset, Config),
      State};
 
 message({vm, unregister, Vm}, State) when
       is_binary(Vm) ->
-    {reply, 
+    {reply,
      sniffle_vm:unregister(Vm),
      State};
 
@@ -68,20 +71,23 @@ message({vm, reboot, Vm}, State) when
      State};
 
 message({vm, attribute, get, Vm, Attribute}, State) when
-      is_binary(Vm) ->
+      is_binary(Vm),
+      is_binary(Attribute) ->
     {reply,
      sniffle_vm:get_attribute(Vm, Attribute),
      State};
 
 message({vm, attribute, set, Vm, Attribute, Value}, State) when
-      is_binary(Vm) ->
+      is_binary(Vm),
+      is_binary(Attribute) ->
     {reply,
      sniffle_vm:set_attribute(Vm, Attribute, Value),
      State};
 
 message({vm, attribute, set, Vm, Attributes}, State) when
-      is_binary(Vm) ->
-    {reply, 
+      is_binary(Vm),
+      is_list(Attributes) ->
+    {reply,
      sniffle_vm:set_attribute(Vm, Attributes),
      State};
 
@@ -90,10 +96,10 @@ message({vm, list}, State) ->
      sniffle_vm:list(),
      State};
 
-message({vm, list, User}, State) when 
-      is_binary(User) ->
+message({vm, list, Requirements}, State) when
+      is_list(Requirements) ->
     {reply,
-     sniffle_vm:list(User),
+     sniffle_vm:list(Requirements),
      State};
 
 
@@ -102,43 +108,54 @@ message({vm, list, User}, State) when
 %%%  Hypervisor Functions
 %%%===================================================================
 
-message({hypervisor, register, Hypervisor, Host, Port}, State) ->
-    {reply, 
-     sniffle_hypervisor:register(ensure_binary(Hypervisor), Host, Port),
+message({hypervisor, register, Hypervisor, Host, Port}, State) when
+      is_binary(Hypervisor),
+      is_integer(Port) ->
+    {reply,
+     sniffle_hypervisor:register(Hypervisor, Host, Port),
      State};
 
-message({hypervisor, unregister, Hypervisor}, State) ->
-    {reply, 
-     sniffle_hypervisor:unregister(ensure_binary(Hypervisor)),
+message({hypervisor, unregister, Hypervisor}, State) when
+      is_binary(Hypervisor) ->
+    {reply,
+     sniffle_hypervisor:unregister(Hypervisor),
      State};
 
-message({hypervisor, resource, get, Hypervisor, Resource}, State) ->
-    {reply, 
-     sniffle_hypervisor:get_resource(ensure_binary(Hypervisor), Resource),
+message({hypervisor, resource, get, Hypervisor, Resource}, State) when
+      is_binary(Hypervisor),
+      is_binary(Resource) ->
+    {reply,
+     sniffle_hypervisor:get_resource(Hypervisor, Resource),
      State};
 
-message({hypervisor, resource, get, Hypervisor}, State) ->
-    {reply, 
-     sniffle_hypervisor:get_resource(ensure_binary(Hypervisor)),
+message({hypervisor, resource, get, Hypervisor}, State) when
+      is_binary(Hypervisor) ->
+    {reply,
+     sniffle_hypervisor:get_resource(Hypervisor),
      State};
 
-message({hypervisor, resource, set, Hypervisor, Resource, Value}, State) ->
-    {reply, 
-     sniffle_hypervisor:set_resource(ensure_binary(Hypervisor), Resource, Value),
+message({hypervisor, resource, set, Hypervisor, Resource, Value}, State) when
+      is_binary(Hypervisor),
+      is_binary(Resource) ->
+    {reply,
+     sniffle_hypervisor:set_resource(Hypervisor, Resource, Value),
      State};
 
-message({hypervisor, resource, set, Hypervisor, Resources}, State) ->
-    {reply, 
-     sniffle_hypervisor:set_resource(ensure_binary(Hypervisor), Resources),
+message({hypervisor, resource, set, Hypervisor, Resources}, State) when
+      is_binary(Hypervisor),
+      is_list(Resources) ->
+    {reply,
+     sniffle_hypervisor:set_resource(Hypervisor, Resources),
      State};
 
 message({hypervisor, list}, State) ->
-    {reply, 
+    {reply,
      sniffle_hypervisor:list(),
      State};
 
-message({hypervisor, list, Requirements}, State) ->
-    {reply, 
+message({hypervisor, list, Requirements}, State) when
+      is_list(Requirements) ->
+    {reply,
      sniffle_hypervisor:list(Requirements),
      State};
 
@@ -146,34 +163,43 @@ message({hypervisor, list, Requirements}, State) ->
 %%%  DATASET Functions
 %%%===================================================================
 
-message({dataset, create, Dataset}, State) ->
-    {reply, 
-     sniffle_dataset:create(ensure_binary(Dataset)),
-     State};
-
-message({dataset, delete, Dataset}, State) ->
-    {reply, 
-     sniffle_dataset:delete(ensure_binary(Dataset)),
-     State};
-
-message({dataset, attribute, get, Dataset}, State) ->
+message({dataset, create, Dataset}, State) when
+      is_binary(Dataset) ->
     {reply,
-     sniffle_dataset:get_attribute(ensure_binary(Dataset)),
+     sniffle_dataset:create(Dataset),
      State};
 
-message({dataset, attribute, get, Dataset, Attribute}, State) ->
+message({dataset, delete, Dataset}, State) when
+      is_binary(Dataset) ->
     {reply,
-     sniffle_dataset:get_attribute(ensure_binary(Dataset), Attribute),
+     sniffle_dataset:delete(Dataset),
      State};
 
-message({dataset, attribute, set, Dataset, Attribute, Value}, State) ->
+message({dataset, attribute, get, Dataset}, State) when
+      is_binary(Dataset) ->
     {reply,
-     sniffle_dataset:set_attribute(ensure_binary(Dataset), Attribute, Value),
+     sniffle_dataset:get_attribute(Dataset),
      State};
 
-message({dataset, attribute, set, Dataset, Attributes}, State) ->
-    {reply, 
-     sniffle_dataset:set_attribute(ensure_binary(Dataset), Attributes),
+message({dataset, attribute, get, Dataset, Attribute}, State) when
+      is_binary(Dataset),
+      is_binary(Attribute) ->
+    {reply,
+     sniffle_dataset:get_attribute(Dataset, Attribute),
+     State};
+
+message({dataset, attribute, set, Dataset, Attribute, Value}, State) when
+      is_binary(Dataset),
+      is_binary(Attribute) ->
+    {reply,
+     sniffle_dataset:set_attribute(Dataset, Attribute, Value),
+     State};
+
+message({dataset, attribute, set, Dataset, Attributes}, State) when
+      is_binary(Dataset),
+      is_list(Attributes) ->
+    {reply,
+     sniffle_dataset:set_attribute(Dataset, Attributes),
      State};
 
 message({dataset, list}, State) ->
@@ -181,38 +207,47 @@ message({dataset, list}, State) ->
      sniffle_dataset:list(),
      State};
 
-message({dataset, list, User}, State) ->
+message({dataset, list, Requirements}, State) when
+      is_list(Requirements) ->
     {reply,
-     sniffle_dataset:list(ensure_binary(User)),
+     sniffle_dataset:list(Requirements),
      State};
 
 %%%===================================================================
 %%%  IPRange Functions
 %%%===================================================================
 
-message({iprange, create, Iprange, Network, Gateway, Netmask, First, Last, Tag}, State) ->
-    {reply, 
-     sniffle_iprange:create(ensure_binary(Iprange), Network, Gateway, Netmask, First, Last, Tag),
-     State};
-
-message({iprange, delete, Iprange}, State) ->
-    {reply, 
-     sniffle_iprange:delete(ensure_binary(Iprange)),
-     State};
-
-message({iprange, get, Iprange}, State) ->
-    {reply, 
-     sniffle_iprange:get(ensure_binary(Iprange)),
-     State};
-
-message({iprange, release, Iprange, Ip}, State) ->
+message({iprange, create, Iprange, Network, Gateway, Netmask, First, Last, Tag}, State) when
+      is_binary(Iprange), is_binary(Tag),
+      is_integer(Network), is_integer(Gateway), is_integer(Netmask),
+      is_integer(First), is_integer(Last) ->
     {reply,
-     sniffle_iprange:release_ip(ensure_binary(Iprange), Ip),
+     sniffle_iprange:create(Iprange, Network, Gateway, Netmask, First, Last, Tag),
      State};
 
-message({iprange, claim, Iprange}, State) ->
+message({iprange, delete, Iprange}, State) when
+      is_binary(Iprange) ->
     {reply,
-     sniffle_iprange:claim_ip(ensure_binary(Iprange)),
+     sniffle_iprange:delete(Iprange),
+     State};
+
+message({iprange, get, Iprange}, State) when
+      is_binary(Iprange) ->
+    {reply,
+     sniffle_iprange:get(Iprange),
+     State};
+
+message({iprange, release, Iprange, Ip}, State) when
+      is_binary(Iprange),
+      is_integer(Ip) ->
+    {reply,
+     sniffle_iprange:release_ip(Iprange, Ip),
+     State};
+
+message({iprange, claim, Iprange}, State) when
+      is_binary(Iprange) ->
+    {reply,
+     sniffle_iprange:claim_ip(Iprange),
      State};
 
 message({iprange, list}, State) ->
@@ -220,47 +255,58 @@ message({iprange, list}, State) ->
      sniffle_iprange:list(),
      State};
 
-message({iprange, list, User}, State) ->
+message({iprange, list, Requirements}, State) when
+      is_list(Requirements)->
     {reply,
-     sniffle_iprange:list(ensure_binary(User)),
+     sniffle_iprange:list(Requirements),
      State};
 
 %%%===================================================================
 %%%  PACKAGE Functions
 %%%===================================================================
 
-message({package, create, Package}, State) when is_binary(Package) ->
-    {reply, 
+message({package, create, Package}, State) when
+      is_binary(Package) ->
+    {reply,
      sniffle_package:create(Package),
      State};
 
-message({package, delete, Package}, State) when is_binary(Package) ->
-    {reply, 
+message({package, delete, Package}, State) when
+      is_binary(Package) ->
+    {reply,
      sniffle_package:delete(Package),
      State};
 
-message({package, get, Package}, State) when is_binary(Package) ->
-    {reply, 
+message({package, get, Package}, State) when
+      is_binary(Package) ->
+    {reply,
      sniffle_package:get(Package),
      State};
 
-message({package, attribute, get, Package}, State) when is_binary(Package) ->
+message({package, attribute, get, Package}, State) when
+      is_binary(Package) ->
     {reply,
      sniffle_package:get_attribute(Package),
      State};
 
-message({package, attribute, get, Package, Attribute}, State) when is_binary(Package) ->
+message({package, attribute, get, Package, Attribute}, State) when
+      is_binary(Package),
+      is_binary(Attribute) ->
     {reply,
      sniffle_package:get_attribute(Package, Attribute),
      State};
 
-message({package, attribute, set, Package, Attribute, Value}, State) when is_binary(Package) ->
+message({package, attribute, set, Package, Attribute, Value}, State) when
+      is_binary(Package),
+      is_binary(Attribute) ->
     {reply,
      sniffle_package:set_attribute(Package, Attribute, Value),
      State};
 
-message({package, attribute, set, Package, Attributes}, State) when is_binary(Package) ->
-    {reply, 
+message({package, attribute, set, Package, Attributes}, State) when
+      is_binary(Package),
+      is_list(Attributes) ->
+    {reply,
      sniffle_package:set_attribute(Package, Attributes),
      State};
 
@@ -269,29 +315,12 @@ message({package, list}, State) ->
      sniffle_package:list(),
      State};
 
-message({package, list, User}, State) when is_binary(User) ->
+message({package, list, Requirements}, State) when
+      is_list(Requirements) ->
     {reply,
-     sniffle_package:list(User),
-     State};
+     sniffle_package:list(Requirements),
+     State}.
 
 %%%===================================================================
 %%%  Internal Functions
 %%%===================================================================
-
-message(Message, State) ->
-    io:format("Unsuppored message: ~p", [Message]),
-    {noreply, State}.
-
-ensure_binary(A) when is_atom(A) ->
-    list_to_binary(atom_to_list(A));
-ensure_binary(L) when is_list(L) ->
-    list_to_binary(L);
-ensure_binary(B) when is_binary(B)->
-    B;
-ensure_binary(I) when is_integer(I) ->
-    list_to_binary(integer_to_list(I));
-ensure_binary(F) when is_float(F) ->
-    list_to_binary(float_to_list(F));
-ensure_binary(T) ->
-    term_to_binary(T).
-

@@ -144,7 +144,7 @@ handle_command({get, ReqID, Hypervisor}, _Sender, State) ->
 	      {ok, V} ->
 		  {ok, ReqID, NodeIdx, V}
 	  end,
-    {reply, 
+    {reply,
      Res,
      State};
 
@@ -165,11 +165,11 @@ handle_command({unregister, {ReqID, _Coordinator}, Hypervisor}, _Sender, State) 
     Hs0 = dict:erase(Hypervisor, State#state.hypervisors),
     {reply, {ok, ReqID}, State#state{hypervisors = Hs0}};
 
-handle_command({resource, set, 
-		{ReqID, Coordinator}, Hypervisor, 
+handle_command({resource, set,
+		{ReqID, Coordinator}, Hypervisor,
 		[Resource, Value]}, _Sender, State) ->
     Hs0 = dict:update(Hypervisor,
-		      fun(_, #sniffle_obj{val=H0} = O) ->
+		      fun(#sniffle_obj{val=H0} = O) ->
 			      H1 = statebox:modify(
 				     {fun sniffle_hypervisor_state:resource/3,
 				      [Resource, Value]}, H0),
