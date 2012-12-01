@@ -33,9 +33,15 @@ case $2 in
 	svccfg import /opt/local/sniffle/etc/sniffle.xml
 	echo Trying to guess configuration ...
 	IP=`ifconfig net0 | grep inet | awk -e '{print $2}'`
-	cp /opt/local/sniffle/etc/vm.args.example /opt/local/sniffle/etc/vm.args
-	cp /opt/local/sniffle/etc/app.config.example /opt/local/sniffle/etc/app.config
-	sed --in-place -e "s/127.0.0.1/${IP}/g" /opt/local/sniffle/etc/vm.args
-	sed --in-place -e "s/127.0.0.1/${IP}/g" /opt/local/sniffle/etc/app.config
+	if [ ! -f /opt/local/sniffle/etc/vm.args ]
+	then
+	    cp /opt/local/sniffle/etc/vm.args.example /opt/local/sniffle/etc/vm.args
+	    sed --in-place -e "s/127.0.0.1/${IP}/g" /opt/local/sniffle/etc/vm.args
+	fi
+	if [ ! -f /opt/local/sniffle/etc/app.config ]
+	then
+	    cp /opt/local/sniffle/etc/app.config.example /opt/local/sniffle/etc/app.config
+	    sed --in-place -e "s/127.0.0.1/${IP}/g" /opt/local/sniffle/etc/app.config
+	fi
 	;;
 esac
