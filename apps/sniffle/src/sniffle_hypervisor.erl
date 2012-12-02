@@ -50,7 +50,7 @@ get_resource(Hypervisor) ->
 	{ok, not_found} ->
 	    not_found;
 	{ok, V} ->
-	    {ok, V#hypervisor.resources}
+	    {ok, dict:to_list(V#hypervisor.resources)}
     end.
 
 get_resource(Hypervisor, Resource) ->
