@@ -48,7 +48,7 @@ get_attribute(Dataset) ->
 	{ok, not_found} ->
 	    not_found;
 	{ok, V} ->
-	    dict:to_list(V#dataset.attributes)
+	    {ok, dict:to_list(V#dataset.attributes)}
     end.
 
 get_attribute(Dataset, Attribute) ->

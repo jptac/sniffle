@@ -50,7 +50,7 @@ get_resource(Hypervisor) ->
 	{ok, not_found} ->
 	    not_found;
 	{ok, V} ->
-	    V#hypervisor.resources
+	    {ok, V#hypervisor.resources}
     end.
 
 get_resource(Hypervisor, Resource) ->

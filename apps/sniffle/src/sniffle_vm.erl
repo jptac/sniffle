@@ -144,7 +144,7 @@ get_attribute(Vm) ->
 	{ok, not_found} ->
 	    not_found;
 	{ok, V} ->
-	    dict:to_list(V#vm.attributes)
+	    {ok, dict:to_list(V#vm.attributes)}
     end.
 
 -spec get_attribute(Vm::fifo:uuid(), Attribute::binary()) ->

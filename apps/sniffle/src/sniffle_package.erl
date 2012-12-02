@@ -50,7 +50,7 @@ get_attribute(Package) ->
 	{ok, not_found} ->
 	    not_found;
 	{ok, V} ->
-	    dict:to_list(V#package.attributes)
+	    {ok, dict:to_list(V#package.attributes)}
     end.
 
 get_attribute(Package, Attribute) ->
