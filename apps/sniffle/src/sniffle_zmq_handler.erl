@@ -319,6 +319,15 @@ message({package, list, Requirements}, State) when
       is_list(Requirements) ->
     {reply,
      sniffle_package:list(Requirements),
+     State};
+
+%%%===================================================================
+%%%  Cloud Functions
+%%%===================================================================
+
+message({cloud, status}, State) ->
+    {reply,
+     sniffle_hypervisor:status(),
      State}.
 
 %%%===================================================================

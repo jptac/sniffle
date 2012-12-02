@@ -248,6 +248,34 @@ handle_coverage({list, ReqID}, _KeySpaces, _Sender, State) ->
      {ok, ReqID, {State#state.partition, State#state.node}, dict:fetch_keys(State#state.hypervisors)},
      State};
 
+
+handle_coverage({status, ReqID}, _KeySpaces, _Sender, State) ->
+    Res = dict:fold(fun(K, #sniffle_obj{val=S0}, {Res, Warnings}) ->
+			    #hypervisor{
+			 resources = R,
+			 host = Host,
+			 port = Port} = statebox:value(S0),
+			    Res1 = update_res(R, <<"free-memory">>,
+					      update_res(R, <<"provisioned-memory">>, Res)),
+			    Res2 = case lists:keytake(<<"hypervisors">>, 1, Res1) of
+				       false ->
+					   [{<<"hypervisors">>, 1}  | Res1];
+				       {value, {<<"hypervisors">>, F0}, ResI} ->
+					   [{<<"hypervisors">>, F0 + 1}  | ResI]
+				   end,
+			    Warnings1 = case libchunter:ping(Host, Port) of
+					    {error,connection_failed} ->
+						[{<<"unreachable">>, K} | Warnings];
+					    pong ->
+						Warnings
+					end,
+			    {Res2, Warnings1}
+		    end, {[], []},
+		    State#state.hypervisors),
+    {reply,
+     {ok, ReqID, {State#state.partition, State#state.node}, [Res]},
+     State};
+
 handle_coverage(_Req, _KeySpaces, _Sender, State) ->
     {stop, not_implemented, State}.
 
@@ -256,3 +284,16 @@ handle_exit(_Pid, _Reason, State) ->
 
 terminate(_Reason, _State) ->
     ok.
+
+update_res(R, Key, Res)->
+    case dict:find(Key, R) of
+	error ->
+	    Res;
+	{ok, F} ->
+	    case lists:keytake(Key, 1, Res) of
+		false ->
+		    [{Key, F}  | Res];
+		{value, {Key, F0}, ResI} ->
+		    [{Key, F + F0}  | ResI]
+	    end
+    end.

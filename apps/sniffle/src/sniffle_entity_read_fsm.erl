@@ -73,11 +73,14 @@ start(VNodeInfo, Op, User, Val) ->
       [ReqID, VNodeInfo, Op, self(), User, Val]
      ),
     receive
-	{ReqID, ok} -> 
+	{ReqID, ok} ->
 	    ok;
-        {ReqID, ok, Result} -> 
-	    {ok, Result}
+        {ReqID, ok, Result} ->
+	    {ok, Result};
+	Other ->
+	    lager:error("[coverage] Bad return: ~p", [Other])
     after ?DEFAULT_TIMEOUT ->
+	    lager:error("[coverage] timeout"),
 	    {error, timeout}
     end.
 
@@ -112,7 +115,7 @@ init([ReqId, {VNode, System}, Op, From, Entity, Val]) ->
     {ok, prepare, SD, 0}.
 
 %% @doc Calculate the Preflist.
-prepare(timeout, SD0=#state{entity=Entity, 
+prepare(timeout, SD0=#state{entity=Entity,
 			    n=N,
 			    system=System}) ->
     Bucket = list_to_binary(atom_to_list(System)),
@@ -137,7 +140,6 @@ execute(timeout, SD0=#state{req_id=ReqId,
 		undefined ->
 		    VNode:Op(Prelist, ReqId, Entity);
 		_ ->
-		    
 		    VNode:Op(Prelist, ReqId, Entity, Val)
 	    end
     end,
@@ -162,13 +164,13 @@ waiting({ok, ReqID, IdxNode, Obj},
 		    Reply = sniffle_obj:val(Merged),
 		    From ! {ReqID, ok, statebox:value(Reply)}
 	    end,
-	    if 
-		NumR =:= N -> 
+	    if
+		NumR =:= N ->
 		    {next_state, finalize, SD, 0};
-	       true -> 
+	       true ->
 		    {next_state, wait_for_n, SD, Timeout}
 	    end;
-        true -> 
+        true ->
 	    {next_state, waiting, SD}
     end.
 
@@ -189,11 +191,12 @@ wait_for_n(timeout, SD) ->
 
 finalize(timeout, SD=#state{
 		    vnode=VNode,
-		    replies=Replies, 
+		    replies=Replies,
 		    entity=Entity}) ->
     MObj = merge(Replies),
     case needs_repair(MObj, Replies) of
 	true ->
+	    lager:error("[read] performing read repair"),
 	    repair(VNode, Entity, MObj, Replies),
 	    {stop, normal, SD};
 	false ->
@@ -231,7 +234,7 @@ merge(Replies) ->
 %% @doc Reconcile conflicts among conflicting values.
 -spec reconcile([A :: statebox:statebox()]) -> A :: statebox:statebox().
 
-reconcile(Vals) -> 
+reconcile(Vals) ->
     statebox:merge(Vals).
 
 %% @pure
@@ -254,7 +257,7 @@ repair(_, _, _, []) -> io;
 
 repair(VNode, StatName, MObj, [{IdxNode,Obj}|T]) ->
     case sniffle_obj:equal(MObj, Obj) of
-        true -> 
+        true ->
 	    repair(VNode, StatName, MObj, T);
         false ->
 	    VNode:repair(IdxNode, StatName, MObj),
@@ -268,5 +271,5 @@ repair(VNode, StatName, MObj, [{IdxNode,Obj}|T]) ->
 unique(L) ->
     sets:to_list(sets:from_list(L)).
 
-mk_reqid() -> 
+mk_reqid() ->
     erlang:phash2(erlang:now()).

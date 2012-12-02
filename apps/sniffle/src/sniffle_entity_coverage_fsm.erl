@@ -66,8 +66,11 @@ start(VNodeInfo, Op, User, Val) ->
 	{ReqID, ok} ->
 	    ok;
         {ReqID, ok, Result} ->
-	    {ok, Result}
+	    {ok, Result};
+	Other ->
+	    lager:error("[coverage] Bad return: ~p", [Other])
     after ?DEFAULT_TIMEOUT ->
+	    lager:error("[coverage] timeout"),
 	    {error, timeout}
     end.
 
@@ -183,5 +186,5 @@ terminate(_Reason, _SN, _SD) ->
 %%% Internal Functions
 %%%===================================================================
 
-mk_reqid() -> 
+mk_reqid() ->
     erlang:phash2(erlang:now()).

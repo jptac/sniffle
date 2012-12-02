@@ -73,17 +73,18 @@ write({VNode, System}, User, Op, Val) ->
     ReqID = mk_reqid(),
     sniffle_entity_write_fsm_sup:start_write_fsm([{VNode, System}, ReqID, self(), User, Op, Val]),
     receive
-	{ReqID, ok} -> 
+	{ReqID, ok} ->
 	    ok;
-        {ReqID, ok, Result} -> 
+        {ReqID, ok, Result} ->
 	    {ok, Result};
-	Other -> 
-	    ?PRINT({yuck, Other})
+	Other ->
+	    lager:error("[write] Bad return: ~p", [Other])
     after ?DEFAULT_TIMEOUT ->
+	    lager:error("[write] timeout"),
 	    {error, timeout}
     end.
 
-mk_reqid() -> 
+mk_reqid() ->
     erlang:phash2(erlang:now()).
 
 %%%===================================================================
@@ -144,7 +145,6 @@ execute(timeout, SD0=#state{req_id=ReqID,
 waiting({ok, ReqID}, SD0=#state{from=From, num_w=NumW0, req_id=ReqID, w=W}) ->
     NumW = NumW0 + 1,
     SD = SD0#state{num_w=NumW},
-    lager:warning("Write(~p) ok", [NumW]),
     if
         NumW =:= W ->
             From ! {ReqID, ok},
@@ -155,7 +155,6 @@ waiting({ok, ReqID}, SD0=#state{from=From, num_w=NumW0, req_id=ReqID, w=W}) ->
 waiting({ok, ReqID, Reply}, SD0=#state{from=From, num_w=NumW0, req_id=ReqID, w=W}) ->
     NumW = NumW0 + 1,
     SD = SD0#state{num_w=NumW},
-    lager:warning("Write(~p) reply: ~p", [NumW, Reply]),
     if
         NumW =:= W ->
             From ! {ReqID, ok, Reply},
@@ -172,7 +171,7 @@ handle_event(_Event, _StateName, StateData) ->
 handle_sync_event(_Event, _From, _StateName, StateData) ->
     {stop,badmsg,StateData}.
 
-code_change(_OldVsn, StateName, State, _Extra) -> 
+code_change(_OldVsn, StateName, State, _Extra) ->
     {ok, StateName, State}.
 
 terminate(_Reason, _SN, _SD) ->
