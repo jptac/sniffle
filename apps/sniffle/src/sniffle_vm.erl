@@ -83,7 +83,7 @@ delete(Vm) ->
 	        undefined ->
 		    sniffle_vm:unregister(Vm);
 		H ->
-		    {ok, #hypervisor{name = Server, port = Port}} = sniffle_hypervisor:get(H),
+		    {ok, #hypervisor{host = Server, port = Port}} = sniffle_hypervisor:get(H),
 		    libchunter:delete_machine(Server, Port, Vm)
 	    end,
 	    ok
@@ -99,7 +99,7 @@ start(Vm) ->
 	{ok, not_found} ->
 	    not_found;
 	{ok, V} ->
-	    {ok, #hypervisor{name = Server, port = Port}} = sniffle_hypervisor:get(V#vm.hypervisor),
+	    {ok, #hypervisor{host = Server, port = Port}} = sniffle_hypervisor:get(V#vm.hypervisor),
 	    libchunter:start_machine(Server, Port, Vm),
 	    ok
     end.
@@ -114,7 +114,7 @@ stop(Vm) ->
 	{ok, not_found} ->
 	    not_found;
 	{ok, V} ->
-	    {ok, #hypervisor{name = Server, port = Port}} = sniffle_hypervisor:get(V#vm.hypervisor),
+	    {ok, #hypervisor{host = Server, port = Port}} = sniffle_hypervisor:get(V#vm.hypervisor),
 	    libchunter:stop_machine(Server, Port, Vm),
 	    ok
     end.
@@ -129,7 +129,7 @@ reboot(Vm) ->
 	{ok, not_found} ->
 	    not_found;
 	{ok, V} ->
-	    {ok, #hypervisor{name = Server, port = Port}} = sniffle_hypervisor:get(V#vm.hypervisor),
+	    {ok, #hypervisor{host = Server, port = Port}} = sniffle_hypervisor:get(V#vm.hypervisor),
 	    libchunter:reboot_machine(Server, Port, Vm),
 	    ok
     end.
