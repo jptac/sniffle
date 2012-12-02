@@ -83,8 +83,16 @@ delete(Vm) ->
 	        undefined ->
 		    sniffle_vm:unregister(Vm);
 		H ->
-		    {ok, #hypervisor{host = Server, port = Port}} = sniffle_hypervisor:get(H),
-		    libchunter:delete_machine(Server, Port, Vm)
+		    case dict:find(<<"state">>, V#vm.attributes) of
+			error ->
+			    not_found;
+			<<"deleting">> ->
+			    sniffle_vm:unregister(Vm);
+			_ ->
+			    {ok, #hypervisor{host = Server, port = Port}} = sniffle_hypervisor:get(H),
+			    set_attribute(Vm, <<"state">>, <<"deleting">>),
+			    libchunter:delete_machine(Server, Port, Vm)
+		    end
 	    end,
 	    ok
     end.
