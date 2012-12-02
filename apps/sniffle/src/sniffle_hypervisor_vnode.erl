@@ -6,6 +6,7 @@
 -export([
 	 repair/3,
 	 get/3,
+	 status/2,
 	 list/2,
 	 list/3,
 	 register/4,
@@ -39,6 +40,7 @@
 	      get/3,
 	      list/2,
 	      list/3,
+	      status/2,
 	      register/4,
 	      repair/3,
 	      set_resource/4,
@@ -80,6 +82,14 @@ get(Preflist, ReqID, Hypervisor) ->
 list(Preflist, ReqID) ->
     riak_core_vnode_master:coverage(
       {list, ReqID},
+      Preflist,
+      all,
+      {fsm, undefined, self()},
+      ?MASTER).
+
+status(Preflist, ReqID) ->
+    riak_core_vnode_master:coverage(
+      {status, ReqID},
       Preflist,
       all,
       {fsm, undefined, self()},
