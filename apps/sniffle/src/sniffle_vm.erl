@@ -86,7 +86,7 @@ delete(Vm) ->
 		    case dict:find(<<"state">>, V#vm.attributes) of
 			error ->
 			    not_found;
-			<<"deleting">> ->
+			{ok, <<"deleting">>} ->
 			    sniffle_vm:unregister(Vm);
 			_ ->
 			    {ok, #hypervisor{host = Server, port = Port}} = sniffle_hypervisor:get(H),
