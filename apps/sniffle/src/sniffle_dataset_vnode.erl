@@ -143,6 +143,10 @@ init([Partition]) ->
 handle_command(ping, _Sender, State) ->
     {reply, {pong, State#state.partition}, State};
 
+handle_command({repair, Dataset, Obj}, _Sender, State) ->
+    Hs0 = dict:store(Dataset, Obj, State#state.datasets),
+    {noreply, State#state{datasets=Hs0}};
+
 handle_command({get, ReqID, Dataset}, _Sender, State) ->
     ?PRINT({handle_command, get, ReqID, Dataset}),
     NodeIdx = {State#state.partition, State#state.node},

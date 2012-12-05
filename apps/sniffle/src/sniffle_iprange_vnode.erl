@@ -143,6 +143,10 @@ init([Partition]) ->
 handle_command(ping, _Sender, State) ->
     {reply, {pong, State#state.partition}, State};
 
+handle_command({repair, Iprange, Obj}, _Sender, State) ->
+    Hs0 = dict:store(Iprange, Obj, State#state.ipranges),
+    {noreply, State#state{ipranges=Hs0}};
+
 handle_command({get, ReqID, Iprange}, _Sender, State) ->
     ?PRINT({handle_command, get, ReqID, Iprange}),
     NodeIdx = {State#state.partition, State#state.node},
@@ -171,7 +175,6 @@ handle_command({create, {ReqID, Coordinator}, Iprange,
 		     {fun sniffle_iprange_state:current/2, [First]},
 		     {fun sniffle_iprange_state:last/2, [Last]},
 		     {fun sniffle_iprange_state:tag/2, [Tag]}]),
-    
     VC0 = vclock:fresh(),
     VC = vclock:increment(Coordinator, VC0),
     HObject = #sniffle_obj{val=I1, vclock=VC},
@@ -180,7 +183,6 @@ handle_command({create, {ReqID, Coordinator}, Iprange,
 
     eleveldb:put(DBRef, <<"#ipranges">>, term_to_binary(dict:fetch_keys(Is0)), []),
     eleveldb:put(DBRef, Iprange, term_to_binary(HObject), []),
-    
     {reply, {ok, ReqID}, State#state{ipranges = Is0}};
 
 handle_command({delete, {ReqID, _Coordinator}, Iprange}, _Sender, #state{dbref = DBRef} = State) ->
@@ -191,7 +193,7 @@ handle_command({delete, {ReqID, _Coordinator}, Iprange}, _Sender, #state{dbref =
 
     {reply, {ok, ReqID}, State#state{ipranges = Is0}};
 
-handle_command({ip, claim, 
+handle_command({ip, claim,
 		{ReqID, Coordinator}, Iprange, IP}, _Sender, State) ->
     Hs0 = dict:update(Iprange,
 		      fun(#sniffle_obj{val=I0} = O) ->

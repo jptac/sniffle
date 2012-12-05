@@ -145,6 +145,10 @@ init([Partition]) ->
 handle_command(ping, _Sender, State) ->
     {reply, {pong, State#state.partition}, State};
 
+handle_command({repair, Hypervisor, Obj}, _Sender, State) ->
+    Hs0 = dict:store(Hypervisor, Obj, State#state.hypervisors),
+    {noreply, State#state{hypervisors=Hs0}};
+
 handle_command({get, ReqID, Hypervisor}, _Sender, State) ->
     ?PRINT({handle_command, get, ReqID, Hypervisor}),
     NodeIdx = {State#state.partition, State#state.node},

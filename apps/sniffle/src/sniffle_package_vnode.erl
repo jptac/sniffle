@@ -143,6 +143,10 @@ init([Partition]) ->
 handle_command(ping, _Sender, State) ->
     {reply, {pong, State#state.partition}, State};
 
+handle_command({repair, Package, Obj}, _Sender, State) ->
+    Hs0 = dict:store(Package, Obj, State#state.packages),
+    {noreply, State#state{packages=Hs0}};
+
 handle_command({get, ReqID, Package}, _Sender, State) ->
     ?PRINT({handle_command, get, ReqID, Package}),
     NodeIdx = {State#state.partition, State#state.node},
@@ -152,7 +156,7 @@ handle_command({get, ReqID, Package}, _Sender, State) ->
 	      {ok, V} ->
 		  {ok, ReqID, NodeIdx, V}
 	  end,
-    {reply, 
+    {reply,
      Res,
      State};
 
@@ -161,7 +165,7 @@ handle_command({create, {ReqID, Coordinator}, Package,
 	       _Sender, #state{dbref = DBRef} = State) ->
     I0 = statebox:new(fun sniffle_package_state:new/0),
     I1 = statebox:modify({fun sniffle_package_state:name/2, [Package]}, I0),
-    
+
     VC0 = vclock:fresh(),
     VC = vclock:increment(Coordinator, VC0),
     HObject = #sniffle_obj{val=I1, vclock=VC},
@@ -170,7 +174,7 @@ handle_command({create, {ReqID, Coordinator}, Package,
 
     eleveldb:put(DBRef, <<"#packages">>, term_to_binary(dict:fetch_keys(Is0)), []),
     eleveldb:put(DBRef, Package, term_to_binary(HObject), []),
-    
+
     {reply, {ok, ReqID}, State#state{packages = Is0}};
 
 handle_command({delete, {ReqID, _Coordinator}, Package}, _Sender, #state{dbref = DBRef} = State) ->
@@ -181,13 +185,13 @@ handle_command({delete, {ReqID, _Coordinator}, Package}, _Sender, #state{dbref =
 
     {reply, {ok, ReqID}, State#state{packages = Is0}};
 
-handle_command({attribute, set, 
-		{ReqID, Coordinator}, Package, 
+handle_command({attribute, set,
+		{ReqID, Coordinator}, Package,
 		[Resource, Value]}, _Sender, State) ->
-    Hs0 = dict:update(Package, 
+    Hs0 = dict:update(Package,
 		      fun(#sniffle_obj{val=H0} = O) ->
 			      H1 = statebox:modify(
-				     {fun sniffle_package_state:attribute/3, 
+				     {fun sniffle_package_state:attribute/3,
 				      [Resource, Value]}, H0),
 			      H2 = statebox:expire(?STATEBOX_EXPIRE, H1),
 			      sniffle_obj:update(H2, Coordinator, O)
@@ -198,15 +202,15 @@ handle_command({attribute, set,
 
     {reply, {ok, ReqID}, State#state{packages = Hs0}};
 
-handle_command({attribute, mset, 
-		{ReqID, Coordinator}, Package, 
+handle_command({attribute, mset,
+		{ReqID, Coordinator}, Package,
 		Resources}, _Sender, State) ->
-    Hs0 = dict:update(Package, 
+    Hs0 = dict:update(Package,
 		      fun(#sniffle_obj{val=H0} = O) ->
 			      H1 = lists:foldr(
 				     fun ({Resource, Value}, H) ->
 					     statebox:modify(
-					       {fun sniffle_package_state:attribute/3, 
+					       {fun sniffle_package_state:attribute/3,
 						[Resource, Value]}, H)
 				     end, H0, Resources),
 			      H2 = statebox:expire(?STATEBOX_EXPIRE, H1),
