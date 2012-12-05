@@ -38,15 +38,21 @@ status() ->
 		   {sniffle_hypervisor_vnode, sniffle_hypervisor},
 		   status
 		  ),
-    Stat1  =lists:foldl(fun ({R, W}, {R0, W0}) ->
-				R1 = lists:foldl(fun ({K, V}, [{K, V0} | Rest]) ->
-							 [{K, V + V0} | Rest];
-						     ({K, V}, Rest) ->
-							 [{K, V} | Rest]
-						 end, [],
-						 lists:keymerge(1, lists:keysort(1, R), R0)),
-				{R1, W ++ W0}
-			end, {[],[]}, Stat),
+    Stat1  = lists:foldl(fun ({R, W}, {R0, W0}) ->
+				 R1 = lists:foldl(fun ({K, V}, [{K, V0} | Rest]) when
+							    is_list(V0),
+							    is_list(V) ->
+							  [{K, V ++ V0} | Rest];
+						      ({K, V}, [{K, V0} | Rest]) when
+							    is_number(V0),
+							    is_number(V) ->
+							  [{K, V + V0} | Rest];
+						      ({K, V}, Rest) ->
+							  [{K, V} | Rest]
+						  end, [],
+						  lists:keymerge(1, lists:keysort(1, R), lists:keysort(1, R0))),
+				 {R1, W ++ W0}
+			 end, {[],[]}, Stat),
     {ok, Stat1}.
 
 

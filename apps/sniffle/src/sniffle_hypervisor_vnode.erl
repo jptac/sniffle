@@ -262,6 +262,7 @@ handle_coverage({list, ReqID}, _KeySpaces, _Sender, State) ->
 handle_coverage({status, ReqID}, _KeySpaces, _Sender, State) ->
     Res = dict:fold(fun(K, #sniffle_obj{val=S0}, {Res, Warnings}) ->
 			    #hypervisor{
+			 name = H,
 			 resources = R,
 			 host = Host,
 			 port = Port} = statebox:value(S0),
@@ -269,9 +270,9 @@ handle_coverage({status, ReqID}, _KeySpaces, _Sender, State) ->
 					      update_res(R, <<"provisioned-memory">>, Res)),
 			    Res2 = case lists:keytake(<<"hypervisors">>, 1, Res1) of
 				       false ->
-					   [{<<"hypervisors">>, 1}  | Res1];
+					   [{<<"hypervisors">>, [H]}  | Res1];
 				       {value, {<<"hypervisors">>, F0}, ResI} ->
-					   [{<<"hypervisors">>, F0 + 1}  | ResI]
+					   [{<<"hypervisors">>, [H | F0]}  | ResI]
 				   end,
 			    Warnings1 = case libchunter:ping(Host, Port) of
 					    {error,connection_failed} ->
