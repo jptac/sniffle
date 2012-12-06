@@ -186,6 +186,12 @@ handle_command({delete, {ReqID, _Coordinator}, Dataset}, _Sender, #state{dbref =
 handle_command({attribute, set,
 		{ReqID, Coordinator}, Dataset,
 		[Resource, Value]}, _Sender, State) ->
+    I0 = statebox:new(fun sniffle_dataset_state:new/0),
+    I1 = statebox:modify({fun sniffle_dataset_state:name/2, [Dataset]}, I0),
+    VC0 = vclock:fresh(),
+    VC = vclock:increment(Coordinator, VC0),
+    HObject = #sniffle_obj{val=I1, vclock=VC},
+
     Hs0 = dict:update(Dataset,
 		      fun(#sniffle_obj{val=H0} = O) ->
 			      H1 = statebox:modify(
@@ -193,12 +199,19 @@ handle_command({attribute, set,
 				      [Resource, Value]}, H0),
 			      H2 = statebox:expire(?STATEBOX_EXPIRE, H1),
 			      sniffle_obj:update(H2, Coordinator, O)
-		      end, State#state.datasets),
+		      end, HObject,
+		      State#state.datasets),
     {reply, {ok, ReqID}, State#state{datasets = Hs0}};
 
 handle_command({attribute, mset,
 		{ReqID, Coordinator}, Dataset,
 		Resources}, _Sender, State) ->
+    I0 = statebox:new(fun sniffle_dataset_state:new/0),
+    I1 = statebox:modify({fun sniffle_dataset_state:name/2, [Dataset]}, I0),
+    VC0 = vclock:fresh(),
+    VC = vclock:increment(Coordinator, VC0),
+    HObject = #sniffle_obj{val=I1, vclock=VC},
+
     Hs0 = dict:update(Dataset,
 		      fun(#sniffle_obj{val=H0} = O) ->
 			      H1 = lists:foldr(
@@ -209,7 +222,7 @@ handle_command({attribute, mset,
 				     end, H0, Resources),
 			      H2 = statebox:expire(?STATEBOX_EXPIRE, H1),
 			      sniffle_obj:update(H2, Coordinator, O)
-		      end, State#state.datasets),
+		      end, HObject, State#state.datasets),
     {reply, {ok, ReqID}, State#state{datasets = Hs0}};
 
 handle_command(Message, _Sender, State) ->
