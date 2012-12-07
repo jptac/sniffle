@@ -60,7 +60,7 @@ start_vnode(I) ->
 
 repair(IdxNode, Iprange, Obj) ->
     riak_core_vnode_master:command(IdxNode,
-                                   {repair, undefined, Iprange, Obj},
+                                   {repair, Iprange, Obj},
                                    ignore,
                                    ?MASTER).
 

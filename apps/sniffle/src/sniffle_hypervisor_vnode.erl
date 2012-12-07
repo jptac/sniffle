@@ -60,7 +60,7 @@ start_vnode(I) ->
 
 repair(IdxNode, Hypervisor, Obj) ->
     riak_core_vnode_master:command(IdxNode,
-                                   {repair, undefined, Hypervisor, Obj},
+                                   {repair, Hypervisor, Obj},
                                    ignore,
                                    ?MASTER).
 

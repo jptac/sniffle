@@ -61,9 +61,8 @@ start_vnode(I) ->
     riak_core_vnode_master:get_vnode_pid(I, ?MODULE).
 
 repair(IdxNode, Dataset, Obj) ->
-    riak_core_vnode_master:command(IdxNode,
-                                   {repair, undefined, Dataset, Obj},
-                                   ignore,
+    riak_core_vnode_master:command([IdxNode],
+                                   {repair, Dataset, Obj},
                                    ?MASTER).
 
 %%%===================================================================
@@ -266,7 +265,6 @@ delete(#state{dbref = DBRef} = State) ->
     eleveldb:destroy(DBLoc ++ "/datasets/"++integer_to_list(State#state.partition)++".ldb",[]),
     {ok, DBRef1} = eleveldb:open(DBLoc ++ "/datasets/"++integer_to_list(State#state.partition)++".ldb",
 				 [{create_if_missing, true}]),
-
     {ok, State#state{datasets = dict:new(), dbref = DBRef1}}.
 
 handle_coverage({list, ReqID}, _KeySpaces, _Sender, State) ->

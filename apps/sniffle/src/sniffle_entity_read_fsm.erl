@@ -196,7 +196,7 @@ finalize(timeout, SD=#state{
     MObj = merge(Replies),
     case needs_repair(MObj, Replies) of
 	true ->
-	    lager:error("[read] performing read repair"),
+	    lager:error("[read] performing read repair."),
 	    repair(VNode, Entity, MObj, Replies),
 	    {stop, normal, SD};
 	false ->

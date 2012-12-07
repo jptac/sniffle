@@ -11,7 +11,7 @@
 -type val() ::  statebox:statebox().
 
 -record(sniffle_obj, {val    :: val(),
-		    vclock :: vclock:vclock()}).
+		      vclock :: vclock:vclock()}).
 
 -type sniffle_obj() :: #sniffle_obj{} | not_found.
 
