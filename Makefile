@@ -49,6 +49,7 @@ stage : rel
 
 
 stagedevrel: dev1 dev2 dev3
+	mkdir -p dev/dev{1,2,3}/data/{ipranges,datasets,packages,ring}
 	$(foreach dev,$^,\
 	  $(foreach dep,$(wildcard deps/* wildcard apps/*), rm -rf dev/$(dev)/lib/$(shell basename $(dep))-* && ln -sf $(abspath $(dep)) dev/$(dev)/lib;))
 
