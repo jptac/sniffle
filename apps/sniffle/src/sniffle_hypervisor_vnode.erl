@@ -263,6 +263,7 @@ handle_coverage({list, ReqID}, _KeySpaces, _Sender, State) ->
      State};
 
 
+
 handle_coverage({status, ReqID}, _KeySpaces, _Sender, State) ->
     Res = dict:fold(fun(K, #sniffle_obj{val=S0}, {Res, Warnings}) ->
 			    #hypervisor{
@@ -278,12 +279,7 @@ handle_coverage({status, ReqID}, _KeySpaces, _Sender, State) ->
 						 <<"l2miss">>,
 						 <<"l2size">>],
 					      Res),
-			    Res2 = case lists:keytake(<<"hypervisors">>, 1, Res1) of
-				       false ->
-					   [{<<"hypervisors">>, [K]}  | Res1];
-				       {value, {<<"hypervisors">>, F0}, ResI} ->
-					   [{<<"hypervisors">>, [K | F0]}  | ResI]
-				   end,
+			    Res2 = update_kv_list(<<"hypervisors">>, K, fun(A,B)-> [A|B] end, K, Res1),
 			    Warnings1 = case libchunter:ping(Host, Port) of
 					    {error,connection_failed} ->
 						[[{category, <<"chunter">>},
@@ -294,7 +290,12 @@ handle_coverage({status, ReqID}, _KeySpaces, _Sender, State) ->
 					    pong ->
 						Warnings
 					end,
-			    {Res2, Warnings1}
+			    case dict:find(<<"pools">>, R) of
+				error ->
+				    {Res2, Warnings1};
+				{ok, Pools} ->
+				    merge_pools(K, Pools, Res2, Warnings1)
+			    end
 		    end, {[], []},
 		    State#state.hypervisors),
     {reply,
@@ -310,6 +311,15 @@ handle_exit(_Pid, _Reason, State) ->
 terminate(_Reason, _State) ->
     ok.
 
+update_kv_list(Key, Value, MergeFn, Default, List) ->
+    case lists:keytake(Key, 1, List) of
+	false ->
+	    [{Key, Default}  | List];
+	{value, {Key, F0}, ListI} ->
+	    [{Key, MergeFn(Value, F0)}  | ListI]
+    end.
+
+
 update_res(_R, [], Res) ->
     Res;
 
@@ -319,10 +329,26 @@ update_res(R, [Key | Keys], Res)->
 	error ->
 	    Res1;
 	{ok, F} ->
-	    case lists:keytake(Key, 1, Res1) of
-		false ->
-		    [{Key, F}  | Res1];
-		{value, {Key, F0}, ResI} ->
-		    [{Key, F + F0}  | ResI]
-	    end
+	    update_kv_list(Key, F, fun(A,B)-> A+B end, F, Res1)
     end.
+
+merge_pools(Name, Pools, Res, Warnings) ->
+    lists:foldl(fun (Pool, {ResAcc, WarningsAcc}) ->
+			Add = fun(A,B)-> A+B end,
+			{<<"name">>, PoolName} = lists:keyfind(<<"name">>, 1, Pool),
+			{<<"size">>, PoolSize} = lists:keyfind(<<"size">>, 1, Pool),
+			{<<"used">>, PoolUsed} = lists:keyfind(<<"used">>, 1, Pool),
+			ResAcc1 =  update_kv_list(<<"size">>, PoolSize, Add, PoolSize, ResAcc),
+			ResAcc2 =  update_kv_list(<<"used">>, PoolUsed, Add, PoolUsed, ResAcc1),
+			case lists:keyfind(<<"health">>, 1, Pool) of
+			    {<<"health">>, <<"ONLINE">>} ->
+				{ResAcc2, WarningsAcc};
+			    {<<"health">>, State} ->
+				{ResAcc2,
+				 [[{category, <<"chunter">>},
+				   {element, Name},
+				   {message,
+				    list_to_binary(io_lib:format("Zpool ~s in state ~s.", [PoolName, State]))}]  |
+				  WarningsAcc]}
+			end
+		end, {Res, Warnings}, Pools).

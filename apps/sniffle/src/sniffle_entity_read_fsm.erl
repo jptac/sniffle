@@ -78,9 +78,9 @@ start(VNodeInfo, Op, User, Val) ->
         {ReqID, ok, Result} ->
 	    {ok, Result};
 	Other ->
-	    lager:error("[coverage] Bad return: ~p", [Other])
+	    lager:error("[read] Bad return: ~p", [Other])
     after ?DEFAULT_TIMEOUT ->
-	    lager:error("[coverage] timeout"),
+	    lager:error("[read] timeout"),
 	    {error, timeout}
     end.
 
@@ -196,7 +196,7 @@ finalize(timeout, SD=#state{
     MObj = merge(Replies),
     case needs_repair(MObj, Replies) of
 	true ->
-	    lager:error("[read] performing read repair."),
+	    lager:error("[read] performing read repair on '~p'.", [Entity]),
 	    repair(VNode, Entity, MObj, Replies),
 	    {stop, normal, SD};
 	false ->
