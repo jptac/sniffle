@@ -9,14 +9,14 @@ case $2 in
 	then
 	    echo "Group already exists, skipping creation."
 	else
-	    echo Creating snarl group ...
+	    echo Creating sniffle group ...
 	    groupadd $GROUP
 	fi
 	if id $USER > /dev/null 2>&1
 	then
 	    echo "User already exists, skipping creation."
 	else
-	    echo Creating snarl user ...
+	    echo Creating sniffle user ...
 	    useradd -g $GROUP -d /var/db/sniffle -s /bin/false $USER
 	fi
 	echo Creating directories ...
@@ -29,8 +29,13 @@ case $2 in
 	chown -R sniffle:sniffle /var/log/sniffle
 	;;
     POST-INSTALL)
-	echo Importing service ...
-	svccfg import /opt/local/sniffle/etc/sniffle.xml
+	if svcs svc:/network/sniffle:default > /dev/null 2&>1
+	then
+	    echo Service already existings ...
+	else
+	    echo Importing service ...
+	    svccfg import /opt/local/sniffle/etc/snarl.xml
+	fi
 	echo Trying to guess configuration ...
 	IP=`ifconfig net0 | grep inet | awk -e '{print $2}'`
 	if [ ! -f /opt/local/sniffle/etc/vm.args ]
