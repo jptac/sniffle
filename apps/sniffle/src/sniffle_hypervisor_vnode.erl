@@ -284,6 +284,7 @@ handle_coverage({status, ReqID}, _KeySpaces, _Sender, State) ->
 					    {error,connection_failed} ->
 						[[{category, <<"chunter">>},
 						  {element, K},
+						  {type, <<"critical">>},
 						  {message,
 						   list_to_binary(io_lib:format("Chunter server ~s down.", [K]))}]  |
 						 Warnings];
@@ -347,6 +348,7 @@ merge_pools(Name, Pools, Res, Warnings) ->
 				{ResAcc2,
 				 [[{category, <<"chunter">>},
 				   {element, Name},
+				   {type, <<"critical">>},
 				   {message,
 				    list_to_binary(io_lib:format("Zpool ~s in state ~s.", [PoolName, State]))}]  |
 				  WarningsAcc]}

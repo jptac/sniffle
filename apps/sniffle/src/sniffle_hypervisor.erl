@@ -44,12 +44,14 @@ status() ->
 		   {[], L} ->
 		       [[{category, <<"sniffle">>},
 			 {element, <<"handoff">>},
+			 {type, <<"info">>},
 			 {message, list_to_binary(io_lib:format("~b handofs pending.", [length(L)]))}]];
 		   {S, []} ->
 		       server_errors(S);
 		   {S, L} ->
 		       [[{category, <<"sniffle">>},
 			 {element, <<"handoff">>},
+			 {type, <<"info">>},
 			 {message, list_to_binary(io_lib:format("~b handofs pending.", [length(L)]))}] |
 			server_errors(S)]
 	       end,
@@ -74,6 +76,7 @@ server_errors(Servers) ->
     lists:map(fun (Server) ->
 		      [{category, <<"sniffle">>},
 		       {element, list_to_binary(atom_to_list(Server))},
+		       {type, <<"critical">>},
 		       {message, list_to_binary(io_lib:format("Sniffle server ~s down.", [Server]))}]
 	      end, Servers).
 
