@@ -3,7 +3,7 @@
 -include("sniffle.hrl").
 -include_lib("riak_core/include/riak_core_vnode.hrl").
 
--export([repair/3,
+-export([repair/4,
 	 get/3,
 	 list/2,
 	 list/3,
@@ -39,7 +39,7 @@
 	      list/2,
 	      list/3,
 	      register/4,
-	      repair/3,
+	      repair/4,
 	      set_attribute/4,
 	      start_vnode/1,
 	      unregister/3
@@ -55,9 +55,9 @@
 start_vnode(I) ->
     riak_core_vnode_master:get_vnode_pid(I, ?MODULE).
 
-repair(IdxNode, Vm, Obj) ->
+repair(IdxNode, Vm, VClock, Obj) ->
     riak_core_vnode_master:command(IdxNode,
-                                   {repair, Vm, Obj},
+                                   {repair, Vm, VClock, Obj},
                                    ignore,
                                    ?MASTER).
 
@@ -156,8 +156,18 @@ init([Partition]) ->
 handle_command(ping, _Sender, State) ->
     {reply, {pong, State#state.partition}, State};
 
-handle_command({repair, Vm, Obj}, _Sender, State) ->
-    Hs0 = dict:store(Vm, Obj, State#state.vms),
+handle_command({repair, Vm, VClock, Obj}, _Sender, State) ->
+    Hs0 = dict:update(Vm,
+		      fun(Obj1) ->
+			      case Obj1#sniffle_obj.vclock of
+				  VClock ->
+				      Obj;
+				  _ ->
+				      lager:error("[vms] Read repair failed, data was updated too recent."),
+				      Obj1
+			      end
+		      end, Obj, State#state.vms),
+
     {noreply, State#state{vms=Hs0}};
 
 handle_command({get, ReqID, Vm}, _Sender, State) ->

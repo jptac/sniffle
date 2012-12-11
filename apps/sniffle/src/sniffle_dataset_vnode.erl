@@ -4,7 +4,7 @@
 -include_lib("riak_core/include/riak_core_vnode.hrl").
 
 -export([
-	 repair/3,
+	 repair/4,
 	 get/3,
 	 list/2,
 	 list/3,
@@ -46,7 +46,7 @@
 	      list/2,
 	      list/3,
 	      mset_attribute/4,
-	      repair/3,
+	      repair/4,
 	      set_attribute/4,
 	      start_vnode/1
 	     ]).
@@ -60,9 +60,9 @@
 start_vnode(I) ->
     riak_core_vnode_master:get_vnode_pid(I, ?MODULE).
 
-repair(IdxNode, Dataset, Obj) ->
+repair(IdxNode, Dataset, VClock, Obj) ->
     riak_core_vnode_master:command([IdxNode],
-                                   {repair, Dataset, Obj},
+                                   {repair, Dataset, VClock, Obj},
                                    ?MASTER).
 
 %%%===================================================================
@@ -142,8 +142,17 @@ init([Partition]) ->
 handle_command(ping, _Sender, State) ->
     {reply, {pong, State#state.partition}, State};
 
-handle_command({repair, Dataset, Obj}, _Sender, State) ->
-    Hs0 = dict:store(Dataset, Obj, State#state.datasets),
+handle_command({repair, Dataset, VClock, Obj}, _Sender, State) ->
+    Hs0 = dict:update(Dataset,
+		      fun(Obj1) ->
+			      case Obj1#sniffle_obj.vclock of
+				  VClock ->
+				      Obj;
+				  _ ->
+				      lager:error("[datasets] Read repair failed, data was updated too recent."),
+				      Obj1
+			      end
+		      end, Obj, State#state.datasets),
     {noreply, State#state{datasets=Hs0}};
 
 handle_command({get, ReqID, Dataset}, _Sender, State) ->
