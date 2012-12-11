@@ -29,7 +29,7 @@ case $2 in
 	chown -R sniffle:sniffle /var/log/sniffle
 	;;
     POST-INSTALL)
-	if svcs svc:/network/sniffle:default > /dev/null 2&>1
+	if svcs svc:/network/sniffle:default > /dev/null 2>&1
 	then
 	    echo Service already existings ...
 	else
