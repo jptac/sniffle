@@ -38,6 +38,21 @@ status() ->
 		   {sniffle_hypervisor_vnode, sniffle_hypervisor},
 		   status
 		  ),
+    Warnings = case riak_core_status:transfers() of
+		   {[], []} ->
+		       [];
+		   {[], L} ->
+		       [[{category, <<"sniffle">>},
+			 {element, <<"handoff">>},
+			 {message, list_to_binary(io_lib:format("~b handofs pending.", [length(L)]))}]];
+		   {S, []} ->
+		       server_errors(S);
+		   {S, L} ->
+		       [[{category, <<"sniffle">>},
+			 {element, <<"handoff">>},
+			 {message, list_to_binary(io_lib:format("~b handofs pending.", [length(L)]))}] |
+			server_errors(S)]
+	       end,
     Stat1  = lists:foldl(fun ({R, W}, {R0, W0}) ->
 				 R1 = lists:foldl(fun ({K, V}, [{K, V0} | Rest]) when
 							    is_list(V0),
@@ -52,8 +67,15 @@ status() ->
 						  end, [],
 						  lists:keymerge(1, lists:keysort(1, R), lists:keysort(1, R0))),
 				 {R1, W ++ W0}
-			 end, {[],[]}, Stat),
+			 end, {[],Warnings}, Stat),
     {ok, Stat1}.
+
+server_errors(Servers) ->
+    lists:map(fun (Server) ->
+		      [{category, <<"sniffle">>},
+		       {element, list_to_binary(atom_to_list(Server))},
+		       {message, list_to_binary(io_lib:format("Sniffle server ~s down.", [Server]))}]
+	      end, Servers).
 
 
 list() ->

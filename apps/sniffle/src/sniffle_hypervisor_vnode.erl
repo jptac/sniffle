@@ -266,21 +266,31 @@ handle_coverage({list, ReqID}, _KeySpaces, _Sender, State) ->
 handle_coverage({status, ReqID}, _KeySpaces, _Sender, State) ->
     Res = dict:fold(fun(K, #sniffle_obj{val=S0}, {Res, Warnings}) ->
 			    #hypervisor{
-			 name = H,
 			 resources = R,
 			 host = Host,
 			 port = Port} = statebox:value(S0),
-			    Res1 = update_res(R, <<"free-memory">>,
-					      update_res(R, <<"provisioned-memory">>, Res)),
+			    Res1 = update_res(R,[<<"free-memory">>,
+						 <<"provisioned-memory">>,
+						 <<"l1hits">>,
+						 <<"l1miss">>,
+						 <<"l1size">>,
+						 <<"l2hits">>,
+						 <<"l2miss">>,
+						 <<"l2size">>],
+					      Res),
 			    Res2 = case lists:keytake(<<"hypervisors">>, 1, Res1) of
 				       false ->
-					   [{<<"hypervisors">>, [H]}  | Res1];
+					   [{<<"hypervisors">>, [K]}  | Res1];
 				       {value, {<<"hypervisors">>, F0}, ResI} ->
-					   [{<<"hypervisors">>, [H | F0]}  | ResI]
+					   [{<<"hypervisors">>, [K | F0]}  | ResI]
 				   end,
 			    Warnings1 = case libchunter:ping(Host, Port) of
 					    {error,connection_failed} ->
-						[{<<"unreachable">>, K} | Warnings];
+						[[{category, <<"chunter">>},
+						  {element, K},
+						  {message,
+						   list_to_binary(io_lib:format("Chunter server ~s down.", [K]))}]  |
+						 Warnings];
 					    pong ->
 						Warnings
 					end,
@@ -300,14 +310,18 @@ handle_exit(_Pid, _Reason, State) ->
 terminate(_Reason, _State) ->
     ok.
 
-update_res(R, Key, Res)->
+update_res(_R, [], Res) ->
+    Res;
+
+update_res(R, [Key | Keys], Res)->
+    Res1 = update_res(R, Keys, Res),
     case dict:find(Key, R) of
 	error ->
-	    Res;
+	    Res1;
 	{ok, F} ->
-	    case lists:keytake(Key, 1, Res) of
+	    case lists:keytake(Key, 1, Res1) of
 		false ->
-		    [{Key, F}  | Res];
+		    [{Key, F}  | Res1];
 		{value, {Key, F0}, ResI} ->
 		    [{Key, F + F0}  | ResI]
 	    end
