@@ -82,7 +82,6 @@ to_bin(IP) ->
 
 -ifdef(TEST).
 
-
 example_setup() ->
     R = new(),
     R1 = network(100, R),
@@ -135,8 +134,5 @@ return_test() ->
     R4 = release_ip(115, R1),
     ?assertEqual(R4#iprange.current, 115),
     ?assertEqual(R4#iprange.free, []).
-
-
-
 
 -endif.
