@@ -288,7 +288,7 @@ handle_coverage({status, ReqID}, _KeySpaces, _Sender, State) ->
 						 <<"l2miss">>,
 						 <<"l2size">>],
 					      Res),
-			    Res2 = update_kv_list(<<"hypervisors">>, K, fun(A,B)-> [A|B] end, K, Res1),
+			    Res2 = update_kv_list(<<"hypervisors">>, K, fun(A,B)-> [A|B] end, [K], Res1),
 			    Warnings1 = case libchunter:ping(Host, Port) of
 					    {error,connection_failed} ->
 						[[{category, <<"chunter">>},
