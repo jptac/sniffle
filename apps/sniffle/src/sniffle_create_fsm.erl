@@ -158,7 +158,7 @@ get_server(_Event, State = #state{
     {<<"owner">>, Owner} = lists:keyfind(<<"owner">>, 1, Config),
     {<<"ram">>, Ram} = lists:keyfind(<<"ram">>, 1, Package),
     sniffle_vm:set_attribute(UUID, <<"state">>, <<"fetching_dataset">>),
-    Permission = [hypervisor, {<<"res">>, <<"name">>}, create],
+    Permission = [<<"hypervisor">>, {<<"res">>, <<"name">>}, <<"create">>],
     {<<"networks">>, Ns} = lists:keyfind(<<"networks">>, 1, Dataset),
     {<<"type">>, Type} = lists:keyfind(<<"type">>, 1, Dataset),
 
