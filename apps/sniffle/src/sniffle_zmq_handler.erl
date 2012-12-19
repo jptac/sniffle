@@ -13,6 +13,13 @@ init([]) ->
 
 -spec message(fifo:sniffle_message(), any()) -> any().
 
+message({vm, log, Vm, Log}, State) when
+      is_binary(Vm) ->
+    {reply,
+     sniffle_vm:log(Vm, Log),
+     State};
+
+
 message({vm, register, Vm, Hypervisor}, State) when
       is_binary(Vm),
       is_binary(Hypervisor) ->
