@@ -32,6 +32,7 @@
 	  uuid :: fifo:uuid(),
 	  alias :: binary(),
 	  hypervisor :: binary(),
+      log :: [fifo:log()],
 	  attributes :: dict()
 	}).
 

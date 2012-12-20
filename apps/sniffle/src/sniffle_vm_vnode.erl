@@ -4,13 +4,14 @@
 -include_lib("riak_core/include/riak_core_vnode.hrl").
 
 -export([repair/4,
-	 get/3,
-	 list/2,
-	 list/3,
-	 register/4,
-	 unregister/3,
-	 set_attribute/4
-	]).
+         get/3,
+         list/2,
+         list/3,
+         log/4,
+         register/4,
+         unregister/3,
+         set_attribute/4
+        ]).
 
 -export([start_vnode/1,
          init/1,
@@ -28,22 +29,23 @@
          handle_exit/3]).
 
 -record(state, {
-	  vms,
-	  partition,
-	  node
-	 }).
+          vms,
+          partition,
+          node
+         }).
 
-% those functions do not get called directly.
+                                                % those functions do not get called directly.
 -ignore_xref([
-	      get/3,
-	      list/2,
-	      list/3,
-	      register/4,
-	      repair/4,
-	      set_attribute/4,
-	      start_vnode/1,
-	      unregister/3
-	      ]).
+              get/3,
+              list/2,
+              list/3,
+              log/4,
+              register/4,
+              repair/4,
+              set_attribute/4,
+              start_vnode/1,
+              unregister/3
+             ]).
 
 
 -define(MASTER, sniffle_vm_vnode_master).
@@ -70,9 +72,9 @@ repair(IdxNode, Vm, VClock, Obj) ->
 get(Preflist, ReqID, Vm) ->
     ?PRINT({get, Preflist, ReqID, Vm}),
     riak_core_vnode_master:command(Preflist,
-				   {get, ReqID, Vm},
-				   {fsm, undefined, self()},
-				   ?MASTER).
+                                   {get, ReqID, Vm},
+                                   {fsm, undefined, self()},
+                                   ?MASTER).
 
 %%%===================================================================
 %%% API - coverage
@@ -106,16 +108,22 @@ list(Preflist, ReqID, Requirements) ->
 
 register(Preflist, ReqID, Vm, Hypervisor) ->
     riak_core_vnode_master:command(Preflist,
-				   {register, ReqID, Vm, Hypervisor},
-				   {fsm, undefined, self()},
-				   ?MASTER).
+                                   {register, ReqID, Vm, Hypervisor},
+                                   {fsm, undefined, self()},
+                                   ?MASTER).
+
+log(Preflist, ReqID, Vm, Log) ->
+    riak_core_vnode_master:command(Preflist,
+                                   {log, ReqID, Vm, Log},
+                                   {fsm, undefined, self()},
+                                   ?MASTER).
 
 -spec unregister(any(), any(), fifo:uuid()) -> ok.
 
 unregister(Preflist, ReqID, Vm) ->
     riak_core_vnode_master:command(Preflist,
                                    {unregister, ReqID, Vm},
-				   {fsm, undefined, self()},
+                                   {fsm, undefined, self()},
                                    ?MASTER).
 
 
@@ -124,7 +132,7 @@ unregister(Preflist, ReqID, Vm) ->
 set_attribute(Preflist, ReqID, Vm, Data) ->
     riak_core_vnode_master:command(Preflist,
                                    {attribute, set, ReqID, Vm, Data},
-				   {fsm, undefined, self()},
+                                   {fsm, undefined, self()},
                                    ?MASTER).
 
 %%%===================================================================
@@ -139,34 +147,35 @@ init([Partition]) ->
       }}.
 
 -type vm_command() ::
-	ping |
-	{repair, Vm::fifo:uuid(), Obj::any()} |
-	{get, ReqID::any(), Vm::fifo:uuid()} |
-	{get, ReqID::any(), Vm::fifo:uuid()} |
-	{register, {ReqID::any(), Coordinator::any()}, Vm::fifo:uuid(), Hypervisor::binary()} |
-	{unregister, {ReqID::any(), _Coordinator::any()}, Vm::fifo:uuid()} |
-	{attribute, set,
-	 {ReqID::any(), Coordinator::any()}, Vm::fifo:uuid(),
-	 Resources::[{Key::binary(), Value::fifo:value()}]}.
+        ping |
+        {repair, Vm::fifo:uuid(), Obj::any()} |
+        {get, ReqID::any(), Vm::fifo:uuid()} |
+        {get, ReqID::any(), Vm::fifo:uuid()} |
+        {log, ReqID::any(), Vm::fifo:uuid(), Log::fifo:log()} |
+        {register, {ReqID::any(), Coordinator::any()}, Vm::fifo:uuid(), Hypervisor::binary()} |
+        {unregister, {ReqID::any(), _Coordinator::any()}, Vm::fifo:uuid()} |
+        {attribute, set,
+         {ReqID::any(), Coordinator::any()}, Vm::fifo:uuid(),
+         Resources::[{Key::binary(), Value::fifo:value()}]}.
 
 -spec handle_command(vm_command(), any(), any()) ->
-			    {reply, any(), any()} |
-			    {noreply, any()}.
+                            {reply, any(), any()} |
+                            {noreply, any()}.
 
 handle_command(ping, _Sender, State) ->
     {reply, {pong, State#state.partition}, State};
 
 handle_command({repair, Vm, VClock, Obj}, _Sender, State) ->
     Hs0 = dict:update(Vm,
-		      fun(Obj1) ->
-			      case Obj1#sniffle_obj.vclock of
-				  VClock ->
-				      Obj;
-				  _ ->
-				      lager:error("[vms] Read repair failed, data was updated too recent."),
-				      Obj1
-			      end
-		      end, Obj, State#state.vms),
+                      fun(Obj1) ->
+                              case Obj1#sniffle_obj.vclock of
+                                  VClock ->
+                                      Obj;
+                                  _ ->
+                                      lager:error("[vms] Read repair failed, data was updated too recent."),
+                                      Obj1
+                              end
+                      end, Obj, State#state.vms),
 
     {noreply, State#state{vms=Hs0}};
 
@@ -174,11 +183,11 @@ handle_command({get, ReqID, Vm}, _Sender, State) ->
     ?PRINT({handle_command, get, ReqID, Vm}),
     NodeIdx = {State#state.partition, State#state.node},
     Res = case dict:find(Vm, State#state.vms) of
-	      error ->
-		  {ok, ReqID, NodeIdx, not_found};
-	      {ok, V} ->
-		  {ok, ReqID, NodeIdx, V}
-	  end,
+              error ->
+                  {ok, ReqID, NodeIdx, not_found};
+              {ok, V} ->
+                  {ok, ReqID, NodeIdx, V}
+          end,
     {reply,
      Res,
      State};
@@ -200,19 +209,32 @@ handle_command({unregister, {ReqID, _Coordinator}, Vm}, _Sender, State) ->
     {reply, {ok, ReqID}, State#state{vms = Hs0}};
 
 handle_command({attribute, set,
-		{ReqID, Coordinator}, Vm,
-		Resources}, _Sender, State) ->
+                {ReqID, Coordinator}, Vm,
+                Resources}, _Sender, State) ->
     Hs0 = dict:update(Vm,
-		      fun(#sniffle_obj{val=H0} = O) ->
-			      H1 = lists:foldr(
-				     fun ({Resource, Value}, H) ->
-					     statebox:modify(
-					       {fun sniffle_vm_state:attribute/3,
-						[Resource, Value]}, H)
-				     end, H0, Resources),
-			      H2 = statebox:expire(?STATEBOX_EXPIRE, H1),
-			      sniffle_obj:update(H2, Coordinator, O)
-		      end, State#state.vms),
+                      fun(#sniffle_obj{val=H0} = O) ->
+                              H1 = lists:foldr(
+                                     fun ({Resource, Value}, H) ->
+                                             statebox:modify(
+                                               {fun sniffle_vm_state:attribute/3,
+                                                [Resource, Value]}, H)
+                                     end, H0, Resources),
+                              H2 = statebox:expire(?STATEBOX_EXPIRE, H1),
+                              sniffle_obj:update(H2, Coordinator, O)
+                      end, State#state.vms),
+    {reply, {ok, ReqID}, State#state{vms = Hs0}};
+
+handle_command({log,
+                {ReqID, Coordinator}, Vm,
+                {Time, Log}}, _Sender, State) ->
+    Hs0 = dict:update(Vm,
+                      fun(#sniffle_obj{val=H0} = O) ->
+                              H1 = statebox:modify(
+                                     {fun sniffle_vm_state:log/3,
+                                      [Time, Log]}, H0),
+                              H2 = statebox:expire(?STATEBOX_EXPIRE, H1),
+                              sniffle_obj:update(H2, Coordinator, O)
+                      end, State#state.vms),
     {reply, {ok, ReqID}, State#state{vms = Hs0}};
 
 handle_command(Message, _Sender, State) ->
@@ -242,10 +264,10 @@ encode_handoff_item(Vm, Data) ->
 
 is_empty(State) ->
     case dict:size(State#state.vms) of
-	0 ->
-	    {true, State};
-	_ ->
-	    {true, State}
+        0 ->
+            {true, State};
+        _ ->
+            {true, State}
     end.
 
 delete(State) ->
@@ -258,15 +280,15 @@ handle_coverage({list, ReqID}, _KeySpaces, _Sender, State) ->
 
 handle_coverage({list, ReqID, Requirements}, _KeySpaces, _Sender, State) ->
     Getter = fun(#sniffle_obj{val=S0}, <<"uuid">>) ->
-		     Vm = statebox:value(S0),
-		     Vm#vm.uuid;
-		(#sniffle_obj{val=S0}, <<"hypervisor">>) ->
-		     Vm = statebox:value(S0),
-		     Vm#vm.hypervisor;
-		(#sniffle_obj{val=S0}, Resource) ->
-		     Vm = statebox:value(S0),
-		     dict:fetch(Resource, Vm#vm.attributes)
-	     end,
+                     Vm = statebox:value(S0),
+                     Vm#vm.uuid;
+                (#sniffle_obj{val=S0}, <<"hypervisor">>) ->
+                     Vm = statebox:value(S0),
+                     Vm#vm.hypervisor;
+                (#sniffle_obj{val=S0}, Resource) ->
+                     Vm = statebox:value(S0),
+                     dict:fetch(Resource, Vm#vm.attributes)
+             end,
     Server = sniffle_matcher:match_dict(State#state.vms, Getter, Requirements),
     {reply,
      {ok, ReqID, {State#state.partition, State#state.node}, Server},

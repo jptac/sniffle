@@ -14,49 +14,49 @@
 
 %% API
 -export([create/4,
-	 start_link/4]).
+         start_link/4]).
 
 %% gen_fsm callbacks
 -export([
-	 init/1,
-	 handle_event/3,
-	 handle_sync_event/4,
-	 handle_info/3,
-	 terminate/3,
-	 code_change/4
-	]).
+         init/1,
+         handle_event/3,
+         handle_sync_event/4,
+         handle_info/3,
+         terminate/3,
+         code_change/4
+        ]).
 
 -export([
-	 get_package/2,
-	 get_dataset/2,
-	 create/2,
-	 get_server/2,
-	 create_permissions/2,
-	 get_ips/2
-	]).
+         get_package/2,
+         get_dataset/2,
+         create/2,
+         get_server/2,
+         create_permissions/2,
+         get_ips/2
+        ]).
 
 -define(SERVER, ?MODULE).
 
 -ignore_xref([
-	      create/2,
-	      get_dataset/2,
-	      get_package/2,
-	      start_link/4,
-	      get_server/2,
-	      create_permissions/2,
-	      get_ips/2
-	     ]).
+              create/2,
+              get_dataset/2,
+              get_package/2,
+              start_link/4,
+              get_server/2,
+              create_permissions/2,
+              get_ips/2
+             ]).
 
 -record(state, {
-	  uuid,
-	  package,
-	  package_name,
-	  dataset,
-	  dataset_name,
-	  config,
-	  type,
-	  hypervisor
-	 }).
+          uuid,
+          package,
+          package_name,
+          dataset,
+          dataset_name,
+          config,
+          type,
+          hypervisor
+         }).
 
 %%%===================================================================
 %%% API
@@ -98,11 +98,11 @@ create(UUID, Package, Dataset, Config) ->
 init([UUID, Package, Dataset, Config]) ->
     process_flag(trap_exit, true),
     {ok, get_package, #state{
-	   uuid = UUID,
-	   package_name = Package,
-	   dataset_name = Dataset,
-	   config = Config
-	  }, 0}.
+           uuid = UUID,
+           package_name = Package,
+           dataset_name = Dataset,
+           config = Config
+          }, 0}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -121,79 +121,98 @@ init([UUID, Package, Dataset, Config]) ->
 %%--------------------------------------------------------------------
 
 get_package(_Event, State = #state{
-		      uuid = UUID,
-		      package_name = PackageName}) ->
+                      uuid = UUID,
+                      package_name = PackageName}) ->
+    sniffle_vm:log(UUID, <<"Fetching package ", PackageName/binary>>),
     sniffle_vm:set_attribute(UUID, <<"state">>, <<"fetching_package">>),
     {ok, Package} = sniffle_package:get_attribute(PackageName),
     {next_state, get_dataset, State#state{package = Package}, 0}.
 
 get_dataset(_Event, State = #state{
-		      uuid = UUID,
-		      dataset_name = DatasetName}) ->
+                      uuid = UUID,
+                      dataset_name = DatasetName}) ->
     sniffle_vm:set_attribute(UUID, <<"state">>, <<"fetching_dataset">>),
+    sniffle_vm:log(UUID, <<"Fetching dataset ", DatasetName/binary>>),
     {ok, Dataset} = sniffle_dataset:get_attribute(DatasetName),
     {next_state, get_ips, State#state{dataset = Dataset}, 0}.
 
 get_ips(_Event, State = #state{config = Config,
-			       dataset = Dataset}) ->
+                               uuid = UUID,
+                               dataset = Dataset}) ->
     {<<"networks">>, On} = lists:keyfind(<<"networks">>, 1, Config),
     {<<"networks">>, Ns} = lists:keyfind(<<"networks">>, 1, Dataset),
     Dataset1 = lists:keydelete(<<"networks">>, 1, Dataset),
     Ns1 = lists:foldl(fun(Nic, NsAcc) ->
-			      {<<"name">>, Name} = lists:keyfind(<<"name">>, 1, Nic),
-			      {Name, NicTag} = lists:keyfind(Name, 1, On),
-			      {ok, {IP, Net, Gw}} = sniffle_iprange:claim_ip(NicTag),
-			      [[{<<"nic_tag">>, NicTag},
-				{<<"ip">>, sniffle_iprange_state:to_bin(IP)},
-				{<<"netmask">>, sniffle_iprange_state:to_bin(Net)},
-				{<<"gateway">>, sniffle_iprange_state:to_bin(Gw)}] | NsAcc]
-		      end, [], Ns),
+                              {<<"name">>, Name} = lists:keyfind(<<"name">>, 1, Nic),
+
+                              {Name, NicTag} = lists:keyfind(Name, 1, On),
+                              sniffle_vm:log(UUID, <<"Fetching network ", NicTag/binary, " for NIC ", Name/binary>>),
+                              {ok, {IP, Net, Gw}} = sniffle_iprange:claim_ip(NicTag),
+                              IPb = sniffle_iprange_state:to_bin(IP),
+                              Netb = sniffle_iprange_state:to_bin(Net),
+                              GWb = sniffle_iprange_state:to_bin(Gw),
+                              sniffle_vm:log(UUID, <<"Assigning IP ", IPb/binary,
+                                                     " netmask ", Netb/binary,
+                                                     " gateway ", GWb/binary>>),
+                              [[{<<"nic_tag">>, NicTag},
+                                {<<"ip">>, IPb},
+                                {<<"netmask">>, Netb},
+                                {<<"gateway">>, GWb}] | NsAcc]
+                      end, [], Ns),
     {next_state, get_server, State#state{dataset = [{<<"networks">>, Ns1} | Dataset1]}, 0}.
 
 get_server(_Event, State = #state{
-		     dataset = Dataset,
-		     uuid = UUID,
-		     config = Config,
-		     package = Package}) ->
+                     dataset = Dataset,
+                     uuid = UUID,
+                     config = Config,
+                     package = Package}) ->
     {<<"owner">>, Owner} = lists:keyfind(<<"owner">>, 1, Config),
+    sniffle_vm:log(UUID, <<"Assigning owner ", Owner/binary>>),
     {<<"ram">>, Ram} = lists:keyfind(<<"ram">>, 1, Package),
-    sniffle_vm:set_attribute(UUID, <<"state">>, <<"fetching_dataset">>),
+    RamB = list_to_binary(integer_to_list(Ram)),
+    sniffle_vm:log(UUID, <<"Assigning memory ", RamB/binary>>),
+    sniffle_vm:set_attribute(UUID, <<"state">>, <<"fetching_server">>),
     Permission = [<<"hypervisor">>, {<<"res">>, <<"name">>}, <<"create">>],
     {<<"networks">>, Ns} = lists:keyfind(<<"networks">>, 1, Dataset),
     {<<"type">>, Type} = lists:keyfind(<<"type">>, 1, Dataset),
 
     NicTags = lists:foldl(fun (N, Acc) ->
-				  {<<"nic_tag">>, Tag} = lists:keyfind(<<"nic_tag">>, 1, N),
-				  [Tag | Acc]
-			  end, [], Ns),
+                                  {<<"nic_tag">>, Tag} = lists:keyfind(<<"nic_tag">>, 1, N),
+                                  [Tag | Acc]
+                          end, [], Ns),
     case libsnarl:user_cache(Owner) of
-	{ok, Permissions} ->
-	    {ok, [{HypervisorID, _} | _]} =
-		sniffle_hypervisor:list([
-					 {must, 'allowed', Permission, Permissions},
-					 {must, 'subset', <<"networks">>, NicTags},
-					 {must, 'element', <<"virtualisation">>, Type},
-					 {must, '>=', <<"free-memory">>, Ram}
-					]),
-	    {ok, #hypervisor{port = Port, host = Host}} = sniffle_hypervisor:get(HypervisorID),
-	    {next_state, create_permissions, State#state{hypervisor = {Host, Port}}, 0};
-	_ ->
-	    {next_state, get_server, State, 10000}
+        {ok, Permissions} ->
+            Conditions = [{must, 'allowed', Permission, Permissions},
+                          {must, 'subset', <<"networks">>, NicTags},
+                          {must, 'element', <<"virtualisation">>, Type},
+                          {must, '>=', <<"free-memory">>, Ram}],
+            CondB = list_to_binary(io_lib:format("~p", [Conditions])),
+            sniffle_vm:log(UUID, <<"Finding hypervisor ", CondB/binary>>),
+
+
+            {ok, [{HypervisorID, _} | _]} = sniffle_hypervisor:list(Conditions),
+            sniffle_vm:log(UUID, <<"Deploying on hypervisor ", HypervisorID/binary>>),
+
+            {ok, #hypervisor{port = Port, host = Host}} = sniffle_hypervisor:get(HypervisorID),
+            {next_state, create_permissions, State#state{hypervisor = {Host, Port}}, 0};
+        _ ->
+            {next_state, get_server, State, 10000}
     end.
 
 create_permissions(_Event, State = #state{
-			     uuid = _UUID,
-			     config = Config}) ->
+                             uuid = _UUID,
+                             config = Config}) ->
     {<<"owner">>, _Owner} = lists:keyfind(<<"owner">>, 1, Config),
 %%% TODO: give permissions!
     {next_state, create, State, 0}.
 
 create(_Event, State = #state{
-		 dataset = Dataset,
-		 package = Package,
-		 uuid = UUID,
-		 config = Config,
-		 hypervisor = {Host, Port}}) ->
+                 dataset = Dataset,
+                 package = Package,
+                 uuid = UUID,
+                 config = Config,
+                 hypervisor = {Host, Port}}) ->
+    sniffle_vm:log(UUID, <<"Handing off to hypervisor.">>),
     sniffle_vm:set_attribute(UUID, <<"state">>, <<"creating">>),
     libchunter:create_machine(Host, Port, UUID, Package, Dataset, Config),
     {stop, normal, State}.
@@ -265,12 +284,12 @@ handle_info(_Info, StateName, State) ->
 terminate(shutdown, create, _StateData) ->
     ok;
 
-terminate(shutdown, StateName, _StateData = #state{uuid=UUID}) ->
-    StateBin = list_to_binary(atom_to_list(StateName)),
-    sniffle_vm:set_attribute(UUID, <<"state">>, <<"failed-", StateBin/binary>>),
+terminate(shutdown, _StateName, _StateData) ->
     ok;
 
-terminate(_Reason, _StateName, _State) ->
+terminate(_Reason, StateName, _State = #state{uuid=UUID}) ->
+    StateBin = list_to_binary(atom_to_list(StateName)),
+    sniffle_vm:set_attribute(UUID, <<"state">>, <<"failed-", StateBin/binary>>),
     ok.
 
 %%--------------------------------------------------------------------

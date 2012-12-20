@@ -16,32 +16,33 @@
 -export([prepare/2, execute/2, waiting/2]).
 
 -ignore_xref([
-	      code_change/4,
-	      execute/2,
-	      handle_event/3,
-	      handle_info/3,
-	      handle_sync_event/4,
-	      init/1,
-	      prepare/2,
-	      start_link/6,
-	      terminate/3,
-	      waiting/2,
-	      start/3
-	     ]).
+              code_change/4,
+              execute/2,
+              handle_event/3,
+              handle_info/3,
+              handle_sync_event/4,
+              init/1,
+              prepare/2,
+              start_link/6,
+              terminate/3,
+              waiting/2,
+              start/3,
+              start/4
+             ]).
 
 -record(state, {req_id,
                 from,
-		entity,
-		op,
-		r,
-		n,
+                entity,
+                op,
+                r,
+                n,
                 preflist,
                 num_r=0,
-		size,
-		timeout=?DEFAULT_TIMEOUT,
-		val,
-		vnode,
-		system,
+                size,
+                timeout=?DEFAULT_TIMEOUT,
+                val,
+                vnode,
+                system,
                 replies=[]}).
 
 %%%===================================================================
@@ -63,15 +64,15 @@ start(VNodeInfo, Op, User, Val) ->
       [ReqID, VNodeInfo, Op, self(), User, Val]
      ),
     receive
-	{ReqID, ok} ->
-	    ok;
+        {ReqID, ok} ->
+            ok;
         {ReqID, ok, Result} ->
-	    {ok, Result};
-	Other ->
-	    lager:error("[coverage] Bad return: ~p", [Other])
+            {ok, Result};
+        Other ->
+            lager:error("[coverage] Bad return: ~p", [Other])
     after ?DEFAULT_TIMEOUT ->
-	    lager:error("[coverage] timeout"),
-	    {error, timeout}
+            lager:error("[coverage] timeout"),
+            {error, timeout}
     end.
 
 %%%===================================================================
@@ -88,30 +89,30 @@ init([ReqId, {VNode, System}, Op, From, Entity]) ->
 init([ReqId, {VNode, System}, Op, From, Entity, Val]) ->
     ?PRINT({init, [Op, ReqId, From, Entity, Val]}),
     {N, R, _W} = case application:get_key(System) of
-		     {ok, Res} ->
-			 Res;
-		     undefined ->
-			 {?N, ?R, ?W}
-		 end,
+                     {ok, Res} ->
+                         Res;
+                     undefined ->
+                         {?N, ?R, ?W}
+                 end,
     SD = #state{req_id=ReqId,
                 from=From,
-		op=Op,
-		val=Val,
-		r=R,
-		n=N,
-		vnode=VNode,
-		system=System,
+                op=Op,
+                val=Val,
+                r=R,
+                n=N,
+                vnode=VNode,
+                system=System,
                 entity=Entity},
     {ok, prepare, SD, 0}.
 
 %% @doc Calculate the Preflist.
 prepare(timeout, SD0=#state{system=System,
-			    n=N,
-			    req_id=ReqId}) ->
+                            n=N,
+                            req_id=ReqId}) ->
     PVC = N,
     {Nodes, _Other} =
-	riak_core_coverage_plan:create_plan(
-	  all, N, PVC, ReqId, System),
+        riak_core_coverage_plan:create_plan(
+          all, N, PVC, ReqId, System),
     {ok, CHash} = riak_core_ring_manager:get_my_ring(),
     {Num, _} = riak_core_ring:chash(CHash),
     SD = SD0#state{preflist=Nodes, size=Num},
@@ -120,51 +121,51 @@ prepare(timeout, SD0=#state{system=System,
 %% @doc Execute the get reqs.
 execute(timeout, SD0=#state{req_id=ReqId,
                             entity=Entity,
-			    op=Op,
-			    val=Val,
-			    vnode=VNode,
+                            op=Op,
+                            val=Val,
+                            vnode=VNode,
                             preflist=Prelist}) ->
     ?PRINT({execute, Entity, Val}),
     case Entity of
-	undefined ->
-	    VNode:Op(Prelist, ReqId);
-	_ ->
-	    case Val of
-		undefined ->
-		    VNode:Op(Prelist, ReqId, Entity);
-		_ ->
-		    VNode:Op(Prelist, ReqId, Entity, Val)
-	    end
+        undefined ->
+            VNode:Op(Prelist, ReqId);
+        _ ->
+            case Val of
+                undefined ->
+                    VNode:Op(Prelist, ReqId, Entity);
+                _ ->
+                    VNode:Op(Prelist, ReqId, Entity, Val)
+            end
     end,
     {next_state, waiting, SD0}.
 
 %% Waiting for returns from coverage replies
 
 waiting({{undefined,{_Partition, _Node} = IdxNode},
-	 {ok,ReqID,IdxNode,Obj}},
-	SD0=#state{num_r = NumR0, size=Size, from=From, replies=Replies0, r=R}) ->
+         {ok,ReqID,IdxNode,Obj}},
+        SD0=#state{num_r = NumR0, size=Size, from=From, replies=Replies0, r=R}) ->
     NumR = NumR0 + 1,
     Replies1 = case Replies0 of
-		   [] ->
-		       dict:new();
-		   _ ->
-		       Replies0
-	       end,
+                   [] ->
+                       dict:new();
+                   _ ->
+                       Replies0
+               end,
     Replies = lists:foldl(fun (Key, D) ->
-				   dict:update_counter(Key, 1, D)
-			   end, Replies1, Obj),
+                                  dict:update_counter(Key, 1, D)
+                          end, Replies1, Obj),
     SD = SD0#state{num_r=NumR,replies=Replies},
     if
         NumR =:= Size ->
-	    MergedReplies = dict:fold(fun(_Key, Count, Keys) when Count < R->
-					      Keys;
-					 (Key, _Count, Keys) ->
-					      [Key | Keys]
-				      end, [], Replies),
-	    From ! {ReqID, ok, MergedReplies},
-	    {stop, normal, SD};
+            MergedReplies = dict:fold(fun(_Key, Count, Keys) when Count < R->
+                                              Keys;
+                                         (Key, _Count, Keys) ->
+                                              [Key | Keys]
+                                      end, [], Replies),
+            From ! {ReqID, ok, MergedReplies},
+            {stop, normal, SD};
         true ->
-	    {next_state, waiting, SD}
+            {next_state, waiting, SD}
     end.
 
 handle_info(_Info, _StateName, StateData) ->

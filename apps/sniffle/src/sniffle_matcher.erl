@@ -18,22 +18,22 @@
 
 match_dict(Dict, Getter, Requirements) ->
     dict:fold(fun(Key, E, []) ->
-		      case match(E, Getter, Requirements) of
-			  false ->
-			      [];
-			  Pts ->
-			      [{Key, Pts}]
-		      end;
-		 (Key, E, Cur = [{_, Best}]) ->
-		      case match(E, Getter, Requirements) of
-			  false ->
-			      Cur;
-			  Pts when Pts > Best ->
-			      [{Key, Pts}];
-			  _ ->
-			      Cur
-		      end
-	      end, [], Dict).
+                      case match(E, Getter, Requirements) of
+                          false ->
+                              [];
+                          Pts ->
+                              [{Key, Pts}]
+                      end;
+                 (Key, E, Cur = [{_, Best}]) ->
+                      case match(E, Getter, Requirements) of
+                          false ->
+                              Cur;
+                          Pts when Pts > Best ->
+                              [{Key, Pts}];
+                          _ ->
+                              Cur
+                      end
+              end, [], Dict).
 
 match(Hypervisor, Getter, [{must, Op, Res, V}]) ->
     match(Hypervisor, Getter, {Op, Res, V}) andalso 0;
@@ -43,10 +43,10 @@ match(Hypervisor, Getter, [{cant, Op, Res, V}]) ->
 
 match(Hypervisor, Getter, [{N, Op, Res, V}]) when is_integer(N) ->
     case match(Hypervisor, Getter, {Op, Res, V}) of
-	true ->
-	    N;
-	false ->
-	    0
+        true ->
+            N;
+        false ->
+            0
     end;
 
 match(Hypervisor, Getter, [{must, Op, Res, V} | R]) ->
@@ -57,15 +57,15 @@ match(Hypervisor, Getter, [{cant, Op, Res, V} | R]) ->
 
 match(Hypervisor, Getter, [{N, Op, Res, V} | R]) when is_integer(N) ->
     case match(Hypervisor, Getter, {Op, Res, V}) of
-	false ->
-	    match(Hypervisor, Getter, R);
-	true ->
-	    case match(Hypervisor, Getter, R) of
-		false ->
-		    false;
-		M when is_integer(M) ->
-		    N + M
-	    end
+        false ->
+            match(Hypervisor, Getter, R);
+        true ->
+            case match(Hypervisor, Getter, R) of
+                false ->
+                    false;
+                M when is_integer(M) ->
+                    N + M
+            end
     end;
 
 match(Hypervisor, Getter, {'>=', Resource, Value}) ->
@@ -122,12 +122,12 @@ create_permission(Hypervisor, Getter, [P | In], Out) ->
 
 test_hypervisort() ->
     #hypervisor{
-	   name = <<"test-hypervisor">>,
-	   resources =
-	       dict:from_list(
-		 [{<<"num-res">>, 1024},
-		  {<<"set-res">>, [1,2,3]},
-		  {<<"str-res">>, <<"str">>}])}.
+                 name = <<"test-hypervisor">>,
+                 resources =
+                     dict:from_list(
+                       [{<<"num-res">>, 1024},
+                        {<<"set-res">>, [1,2,3]},
+                        {<<"str-res">>, <<"str">>}])}.
 
 test_getter(Hypervisor, <<"name">>) ->
     Hypervisor#hypervisor.name;
@@ -185,16 +185,16 @@ multi_must_one_ok_test() ->
 
 multi_must_two_ok_test() ->
     ?assertEqual(0, match(test_hypervisort(), fun test_getter/2,  [{must, '=<', <<"num-res">>, 1024},
-								   {must, '=:=', <<"num-res">>, 1024}])).
+                                                                   {must, '=:=', <<"num-res">>, 1024}])).
 multi_must_one_not_ok_test() ->
     ?assertEqual(false, match(test_hypervisort(), fun test_getter/2,  [{must, '<', <<"num-res">>, 1024}])),
     ?assertEqual(false, match(test_hypervisort(), fun test_getter/2,  [{must, '=/=', <<"num-res">>, 1024}])).
 
 multi_must_two_not_ok_test() ->
     ?assertEqual(false, match(test_hypervisort(), fun test_getter/2,  [{must, '<', <<"num-res">>, 1024},
-								       {must, '=:=', <<"num-res">>, 1024}])),
+                                                                       {must, '=:=', <<"num-res">>, 1024}])),
     ?assertEqual(false, match(test_hypervisort(), fun test_getter/2,  [{must, '=<', <<"num-res">>, 1024},
-								       {must, '=/=', <<"num-res">>, 1024}])).
+                                                                       {must, '=/=', <<"num-res">>, 1024}])).
 
 multi_cant_one_ok_test() ->
     ?assertEqual(false, match(test_hypervisort(), fun test_getter/2,  [{cant, '=<', <<"num-res">>, 1024}])),
@@ -202,27 +202,27 @@ multi_cant_one_ok_test() ->
 
 multi_cant_two_ok_test() ->
     ?assertEqual(false, match(test_hypervisort(), fun test_getter/2,  [{cant, '=<', <<"num-res">>, 1024},
-								       {cant, '=:=', <<"num-res">>, 1024}])).
+                                                                       {cant, '=:=', <<"num-res">>, 1024}])).
 multi_cant_one_not_ok_test() ->
     ?assertEqual(0, match(test_hypervisort(), fun test_getter/2,  [{cant, '<', <<"num-res">>, 1024}])),
     ?assertEqual(0, match(test_hypervisort(), fun test_getter/2,  [{cant, '=/=', <<"num-res">>, 1024}])).
 
 multi_cant_two_not_ok_test() ->
     ?assertEqual(false, match(test_hypervisort(), fun test_getter/2,  [{cant, '<', <<"num-res">>, 1024},
-								       {cant, '=:=', <<"num-res">>, 1024}])),
+                                                                       {cant, '=:=', <<"num-res">>, 1024}])),
     ?assertEqual(false, match(test_hypervisort(), fun test_getter/2,  [{cant, '=<', <<"num-res">>, 1024},
-								       {cant, '=/=', <<"num-res">>, 1024}])).
+                                                                       {cant, '=/=', <<"num-res">>, 1024}])).
 count_test() ->
     ?assertEqual(2, match(test_hypervisort(), fun test_getter/2,  [{1, '<', <<"num-res">>, 1024},
-								   {2, '=:=', <<"num-res">>, 1024}])),
+                                                                   {2, '=:=', <<"num-res">>, 1024}])),
     ?assertEqual(1, match(test_hypervisort(), fun test_getter/2,  [{1, '=<', <<"num-res">>, 1024},
-								   {2, '=/=', <<"num-res">>, 1024}])).
+                                                                   {2, '=/=', <<"num-res">>, 1024}])).
 
 mix_test() ->
     ?assertEqual(false, match(test_hypervisort(), fun test_getter/2,  [{must, '<', <<"num-res">>, 1024},
-								       {2, '=:=', <<"num-res">>, 1024}])),
+                                                                       {2, '=:=', <<"num-res">>, 1024}])),
     ?assertEqual(0, match(test_hypervisort(), fun test_getter/2,  [{1, '<', <<"num-res">>, 1024},
-								   {must, '=:=', <<"num-res">>, 1024}])).
+                                                                   {must, '=:=', <<"num-res">>, 1024}])).
 
 create_permission_test() ->
     ?assertEqual(create_permission(test_hypervisort(), fun test_getter/2, [some, permission], []), [some, permission]),
