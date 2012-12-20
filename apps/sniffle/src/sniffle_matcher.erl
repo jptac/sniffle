@@ -17,21 +17,12 @@
 -export([match/3, match_dict/3]).
 
 match_dict(Dict, Getter, Requirements) ->
-    dict:fold(fun(Key, E, []) ->
+    dict:fold(fun(Key, E, C) ->
                       case match(E, Getter, Requirements) of
                           false ->
-                              [];
+                              C;
                           Pts ->
-                              [{Key, Pts}]
-                      end;
-                 (Key, E, Cur = [{_, Best}]) ->
-                      case match(E, Getter, Requirements) of
-                          false ->
-                              Cur;
-                          Pts when Pts > Best ->
-                              [{Key, Pts}];
-                          _ ->
-                              Cur
+                              [{Key, Pts} | C]
                       end
               end, [], Dict).
 
