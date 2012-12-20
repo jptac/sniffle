@@ -1,6 +1,6 @@
 -module(sniffle_iprange).
 -include("sniffle.hrl").
-%-include_lib("riak_core/include/riak_core_vnode.hrl").
+                                                %-include_lib("riak_core/include/riak_core_vnode.hrl").
 
 -export(
    [
@@ -16,10 +16,10 @@
 
 create(Iprange, Network, Gateway, Netmask, First, Last, Tag) ->
     case sniffle_iprange:get(Iprange) of
-	{ok, not_found} ->
-	    do_write(Iprange, create, [Network, Gateway, Netmask, First, Last, Tag]);
-	{ok, _RangeObj} ->
-	    duplicate
+        {ok, not_found} ->
+            do_write(Iprange, create, [Network, Gateway, Netmask, First, Last, Tag]);
+        {ok, _RangeObj} ->
+            duplicate
     end.
 
 delete(Iprange) ->
@@ -48,20 +48,20 @@ release_ip(Iprange, IP) ->
 
 claim_ip(Iprange) ->
     case sniffle_iprange:get(Iprange) of
-	{ok, not_found} ->
-	    not_found;
-	{ok,
-	 #iprange{free=[],
-		  last=Last,
-		  current=FoundIP}} when FoundIP >= Last ->
-	    no_ips_left;
-	{ok,
-	 #iprange{free=[],
-		  current=FoundIP}} ->
-	    do_write(Iprange, claim_ip, FoundIP);
-	{ok,
-	 #iprange{free=[FoundIP|_]}} ->
-	    do_write(Iprange, claim_ip, FoundIP)
+        {ok, not_found} ->
+            not_found;
+        {ok,
+         #iprange{free=[],
+                  last=Last,
+                  current=FoundIP}} when FoundIP >= Last ->
+            no_ips_left;
+        {ok,
+         #iprange{free=[],
+                  current=FoundIP}} ->
+            do_write(Iprange, claim_ip, FoundIP);
+        {ok,
+         #iprange{free=[FoundIP|_]}} ->
+            do_write(Iprange, claim_ip, FoundIP)
     end.
 
 %%%===================================================================
@@ -71,18 +71,18 @@ claim_ip(Iprange) ->
 
 do_update(Iprange, Op) ->
     case sniffle_iprange:get(Iprange) of
-	{ok, not_found} ->
-	    not_found;
-	{ok, _RangeObj} ->
-	    do_write(Iprange, Op)
+        {ok, not_found} ->
+            not_found;
+        {ok, _RangeObj} ->
+            do_write(Iprange, Op)
     end.
 
 do_update(Iprange, Op, Val) ->
     case sniffle_iprange:get(Iprange) of
-	{ok, not_found} ->
-	    not_found;
-	{ok, _RangeObj} ->
-	    do_write(Iprange, Op, Val)
+        {ok, not_found} ->
+            not_found;
+        {ok, _RangeObj} ->
+            do_write(Iprange, Op, Val)
     end.
 
 do_write(Iprange, Op) ->

@@ -217,7 +217,7 @@ handle_command({ip, claim,
     V1 = statebox:value(V),
     eleveldb:put(State#state.dbref, Iprange, term_to_binary(P), []),
 
-    {reply, {ok, ReqID, {IP, V1#iprange.netmask, V1#iprange.gateway}}, State#state{ipranges = Hs0}};
+    {reply, {ok, ReqID, {V1#iprange.tag, IP, V1#iprange.netmask, V1#iprange.gateway}}, State#state{ipranges = Hs0}};
 
 handle_command({ip, release,
                 {ReqID, Coordinator}, Iprange, IP}, _Sender, #state{dbref = DBRef} = State) ->
