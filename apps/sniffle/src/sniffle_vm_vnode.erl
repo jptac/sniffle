@@ -230,7 +230,7 @@ handle_command({log,
     Hs0 = dict:update(Vm,
                       fun(#sniffle_obj{val=H0} = O) ->
                               H1 = statebox:modify(
-                                     {fun sniffle_vm_state:log/4,
+                                     {fun sniffle_vm_state:log/3,
                                       [Time, Log]}, H0),
                               H2 = statebox:expire(?STATEBOX_EXPIRE, H1),
                               sniffle_obj:update(H2, Coordinator, O)
