@@ -21,7 +21,8 @@
         ]).
 
 new() ->
-    #vm{attributes=dict:new()}.
+    #vm{attributes=dict:new(),
+        log=[]}.
 
 
 uuid(UUID, Vm) ->
