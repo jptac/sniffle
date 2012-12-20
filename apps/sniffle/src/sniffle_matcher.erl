@@ -20,7 +20,7 @@ match_dict(Dict, Getter, Requirements) ->
     dict:fold(fun(Key, E, C) ->
                       case match(E, Getter, Requirements) of
                           false ->
-                              [];
+                              C;
                           Pts ->
                               [{Key, Pts} | C]
                       end
