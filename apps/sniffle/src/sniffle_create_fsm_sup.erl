@@ -1,30 +1,30 @@
 %%%-------------------------------------------------------------------
-%%% @author Heinz N. Gies <heinz@licenser.net>
-%%% @copyright (C) 2011, Heinz N. Gies
+%%% @author Heinz Nikolaus Gies <heinz@licenser.net>
+%%% @copyright (C) 2012, Heinz Nikolaus Gies
 %%% @doc
 %%%
 %%% @end
-%%% Created :  8 May 2011 by Heinz N. Gies <heinz@licenser.net>
+%%% Created :  6 Oct 2012 by Heinz Nikolaus Gies <heinz@licenser.net>
 %%%-------------------------------------------------------------------
--module(sniffle_host_sup).
+-module(sniffle_create_fsm_sup).
 
 -behaviour(supervisor).
 
 %% API
--export([start_link/0, start_child/3]).
+-export([start_link/0]).
 
 %% Supervisor callbacks
 -export([init/1]).
 
+-ignore_xref([start_link/0]).
+
 -define(SERVER, ?MODULE).
+
+-define(CHILD(I, Type), {I, {I, start_link, []}, temporary, 5000, Type, [I]}).
 
 %%%===================================================================
 %%% API functions
 %%%===================================================================
-
-start_child(Dispatcher, UUID, Host) -> 
-    supervisor:start_child(?SERVER, [Dispatcher, UUID, Host]).
-
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -53,9 +53,10 @@ start_link() ->
 %%                     {error, Reason}
 %% @end
 %%--------------------------------------------------------------------
+
 init([]) ->
-    Element = {sniffle_host_srv, {sniffle_host_srv, start_link, []}, 
-	       transient, brutal_kill, worker, [sniffle_host_srv]}, 
-    Children = [Element],
-    RestartStrategy = {simple_one_for_one, 5, 10},
-    {ok, {RestartStrategy, Children}}.
+    {ok, {{simple_one_for_one, 5, 10}, [?CHILD(sniffle_create_fsm, worker)]}}.
+
+%%%===================================================================
+%%% Internal functions
+%%%===================================================================
