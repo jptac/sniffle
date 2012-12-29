@@ -214,6 +214,8 @@ create(_Event, State = #state{
                  hypervisor = {Host, Port}}) ->
     sniffle_vm:log(UUID, <<"Handing off to hypervisor.">>),
     sniffle_vm:set_attribute(UUID, <<"state">>, <<"creating">>),
+    {<<"owner">>, Owner} = lists:keyfind(<<"owner">>, 1, Config),
+    libsnarl:user_grant(Owner, [<<"vms">>, UUID, '...']),
     libchunter:create_machine(Host, Port, UUID, Package, Dataset, Config),
     {stop, normal, State}.
 
