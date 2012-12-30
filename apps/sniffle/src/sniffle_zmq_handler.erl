@@ -2,6 +2,8 @@
 
 -export([init/1, message/2]).
 
+-include("sniffle_version.hrl").
+
 -ignore_xref([init/1, message/2]).
 
 init([]) ->
@@ -12,6 +14,9 @@ init([]) ->
 %%%===================================================================
 
 -spec message(fifo:sniffle_message(), any()) -> any().
+
+message(version, State) ->
+    {reply, ?VERSION, State};
 
 message({vm, log, Vm, Log}, State) when
       is_binary(Vm) ->
