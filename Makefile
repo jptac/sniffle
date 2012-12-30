@@ -1,10 +1,13 @@
 REBAR = $(shell pwd)/rebar
 
-.PHONY: deps rel stagedevrel package
+.PHONY: deps rel stagedevrel package version all
 
 all: deps compile
 
-compile:
+version:
+	echo "-define(VERSION, <<\"$(shell git symbolic-ref HEAD 2> /dev/null | cut -b 12-)-$(shell git log --pretty=format:'%h, %ad' -1)\">>)." > apps/sniffle/src/sniffle_version.hrl
+
+compile: version
 	$(REBAR) compile
 
 deps:
