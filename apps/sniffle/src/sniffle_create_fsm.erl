@@ -185,7 +185,7 @@ get_server(_Event, State = #state{
             Conditions = [{must, 'allowed', Permission, Permissions},
                           {must, 'subset', <<"networks">>, NicTags},
                           {must, 'element', <<"virtualisation">>, Type},
-                          {must, '>=', <<"free-memory">>, Ram}],
+                          {must, '>=', <<"resouroces.free-memory">>, Ram}],
             CondB = list_to_binary(io_lib:format("~p", [Conditions])),
             sniffle_vm:log(UUID, <<"Finding hypervisor ", CondB/binary>>),
 
@@ -193,8 +193,10 @@ get_server(_Event, State = #state{
             {ok, [{HypervisorID, _} | _]} = sniffle_hypervisor:list(Conditions),
             sniffle_vm:log(UUID, <<"Deploying on hypervisor ", HypervisorID/binary>>),
 
-            {ok, #hypervisor{port = Port, host = Host}} = sniffle_hypervisor:get(HypervisorID),
-            {next_state, create_permissions, State#state{hypervisor = {Host, Port}}, 0};
+            {ok, H} = sniffle_hypervisor:get(HypervisorID),
+            {ok, Port} = jsxd:get(<<"port">>, H),
+            {ok, Host} = jsxd:get(<<"host">>, H),
+            {next_state, create_permissions, State#state{hypervisor = {binary_to_list(Host), Port}}, 0};
         _ ->
             {next_state, get_server, State, 10000}
     end.
