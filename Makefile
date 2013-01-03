@@ -93,6 +93,9 @@ dialyzer: deps compile
 	@sleep 1
 	dialyzer -Wno_return --plt $(COMBO_PLT) deps/*/ebin apps/*/ebin | grep -v -f dialyzer.mittigate
 
+typer:
+	typer --plt $(COMBO_PLT) deps/*/ebin apps/*/ebin
+
 cleanplt:
 	@echo
 	@echo "Are you sure?  It takes about 1/2 hour to re-build."

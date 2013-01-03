@@ -248,8 +248,8 @@ do_write(VM, Op) ->
 do_write(VM, Op, Val) ->
     sniffle_entity_write_fsm:write({sniffle_vm_vnode, sniffle_vm}, VM, Op, Val).
 
-get_hypervisor(H) ->
-    HypervisorObj = sniffle_hypervisor:get(H),
+get_hypervisor(Hypervisor) ->
+    {ok, HypervisorObj} = sniffle_hypervisor:get(Hypervisor),
     {ok, Port} = jsxd:get(<<"port">>, HypervisorObj),
     {ok, Host} = jsxd:get(<<"host">>, HypervisorObj),
     {binary_to_list(Host), Port}.

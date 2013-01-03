@@ -26,6 +26,7 @@ new() ->
 
 uuid(UUID, Vm) ->
     jsxd:set(<<"uuid">>, UUID, Vm).
+
 %%alias(Alias, Vm) ->
 %%    Vm#vm{alias = Alias}.
 
