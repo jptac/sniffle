@@ -81,25 +81,27 @@ delete(Vm) ->
         {ok, not_found} ->
             not_found;
         {ok, V} ->
-            case V#vm.hypervisor of
-                <<"pending">> ->
+            case jsxd:get(<<"hypervisor">>, V) of
+                not_found ->
                     sniffle_vm:unregister(Vm);
-                undefined ->
+                {ok, <<"pending">>} ->
                     sniffle_vm:unregister(Vm);
-                H ->
-                    case dict:find(<<"state">>, V#vm.attributes) of
-                        error ->
+                {ok, H} ->
+                    case jsxd:get(<<"state">>, V) of
+                        not_found ->
                             not_found;
                         {ok, <<"deleting">>} ->
                             sniffle_vm:unregister(Vm);
                         _ ->
-                            {ok, #hypervisor{host = Server, port = Port}} = sniffle_hypervisor:get(H),
                             set_attribute(Vm, <<"state">>, <<"deleting">>),
-                            libchunter:delete_machine(Server, Port, Vm)
+                            {Host, Port} = get_hypervisor(H),
+                            libchunter:delete_machine(Host, Port, Vm)
                     end
             end,
             ok
     end.
+
+
 
 -spec start(Vm::fifo:uuid()) ->
                    {error, timeout} | not_found | ok.
@@ -111,7 +113,8 @@ start(Vm) ->
         {ok, not_found} ->
             not_found;
         {ok, V} ->
-            {ok, #hypervisor{host = Server, port = Port}} = sniffle_hypervisor:get(V#vm.hypervisor),
+            {ok, H} = jsxd:get(<<"hypervisor">>, V),
+            {Server, Port} = get_hypervisor(H),
             libchunter:start_machine(Server, Port, Vm),
             ok
     end.
@@ -126,7 +129,8 @@ stop(Vm) ->
         {ok, not_found} ->
             not_found;
         {ok, V} ->
-            {ok, #hypervisor{host = Server, port = Port}} = sniffle_hypervisor:get(V#vm.hypervisor),
+            {ok, H} = jsxd:get(<<"hypervisor">>, V),
+            {Server, Port} = get_hypervisor(H),
             libchunter:stop_machine(Server, Port, Vm),
             ok
     end.
@@ -141,7 +145,8 @@ reboot(Vm) ->
         {ok, not_found} ->
             not_found;
         {ok, V} ->
-            {ok, #hypervisor{host = Server, port = Port}} = sniffle_hypervisor:get(V#vm.hypervisor),
+            {ok, H} = jsxd:get(<<"hypervisor">>, V),
+            {Server, Port} = get_hypervisor(H),
             libchunter:reboot_machine(Server, Port, Vm),
             ok
     end.
@@ -156,7 +161,7 @@ get_attribute(Vm) ->
         {ok, not_found} ->
             not_found;
         {ok, V} ->
-            {ok, dict:to_list(V#vm.attributes)}
+            {ok, jsxd:get(<<"attributes">>, [], V)}
     end.
 
 -spec logs(Vm::fifo:uuid()) ->
@@ -169,14 +174,15 @@ logs(Vm) ->
         {ok, not_found} ->
             not_found;
         {ok, V} ->
-            {ok, V#vm.log}
+            {ok, jsxd:get(<<"log">>, [], V)}
     end.
 
 -spec log(Vm::fifo:uuid(), Log::term()) ->
                  {error, timeout} | not_found | ok.
 
 log(Vm, Log) ->
-    do_update(Vm, log, {now(), Log}).
+    {Mega,Sec,Micro} = erlang:now(),
+    do_update(Vm, log, {(Mega*1000000+Sec)*1000000+Micro, Log}).
 
 -spec get_attribute(Vm::fifo:uuid(), Attribute::binary()) ->
                            {error, timeout} | not_found | fifo:value().
@@ -188,12 +194,7 @@ get_attribute(Vm, Attribute) ->
         {ok, not_found} ->
             not_found;
         {ok, V} ->
-            case dict:find(Attribute, V#vm.attributes) of
-                error ->
-                    not_found;
-                Result ->
-                    Result
-            end
+            jsxd:get([<<"attributes">>, Attribute], V)
     end.
 
 -spec set_attribute(Vm::fifo:uuid(), Attribute::binary(), Value::fifo:value()) ->
@@ -246,3 +247,9 @@ do_write(VM, Op) ->
 
 do_write(VM, Op, Val) ->
     sniffle_entity_write_fsm:write({sniffle_vm_vnode, sniffle_vm}, VM, Op, Val).
+
+get_hypervisor(H) ->
+    HypervisorObj = sniffle_hypervisor:get(H),
+    {ok, Port} = jsxd:get(<<"port">>, HypervisorObj),
+    {ok, Host} = jsxd:get(<<"host">>, HypervisorObj),
+    {binary_to_list(Host), Port}.
