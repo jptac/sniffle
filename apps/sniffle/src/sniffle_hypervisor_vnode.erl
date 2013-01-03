@@ -294,11 +294,11 @@ handle_coverage({status, ReqID}, _KeySpaces, _Sender, State) ->
                                     pong ->
                                         Warnings
                                 end,
-                    case jxsd:get(<<"pools">>, H) of
+                    case jsxd:get(<<"pools">>, H) of
                         not_found ->
                             {Res2, Warnings1};
                         {ok, Pools} ->
-                            jxsd:reduce(
+                            jsxd:reduce(
                               fun (Name, Pool, {ResAcc, WarningsAcc}) ->
                                       Size = jsxd:get(<<"size">>, 0, Pool),
                                       Used = jsxd:get(<<"used">>, 0, Pool),

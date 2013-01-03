@@ -1,6 +1,6 @@
 -module(sniffle_hypervisor).
 -include("sniffle.hrl").
-                                                %-include_lib("riak_core/include/riak_core_vnode.hrl").
+%%-include_lib("riak_core/include/riak_core_vnode.hrl").
 
 -export(
    [

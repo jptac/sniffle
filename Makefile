@@ -20,7 +20,7 @@ clean:
 distclean: clean devclean relclean
 	$(REBAR) delete-deps
 
-test:
+test: xref
 	$(REBAR) skip_deps=true eunit
 
 rel: all
@@ -44,7 +44,7 @@ docs:
 ## Developer targets
 ##
 
-xref:
+xref: all
 	$(REBAR) xref skip_deps=true
 
 stage : rel

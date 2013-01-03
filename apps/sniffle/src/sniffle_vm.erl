@@ -23,6 +23,8 @@
    ]
   ).
 
+-ignore_xref([logs/1]).
+
 -spec register(VM::fifo:uuid(), Hypervisor::binary()) -> ok.
 
 register(Vm, Hypervisor) ->
