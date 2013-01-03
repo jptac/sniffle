@@ -93,7 +93,7 @@ get_resource(Hypervisor) ->
         {ok, not_found} ->
             not_found;
         {ok, V} ->
-            {ok, dict:to_list(V#hypervisor.resources)}
+            {ok, jsxd:get(<<"resources">>, [], V)}
     end.
 
 get_resource(Hypervisor, Resource) ->
@@ -101,12 +101,7 @@ get_resource(Hypervisor, Resource) ->
         {ok, not_found} ->
             not_found;
         {ok, V} ->
-            case dict:find(Resource, V#hypervisor.resources) of
-                error ->
-                    not_found;
-                Result ->
-                    Result
-            end
+            jsxd:get([<<"resources">>, Resource], V)
     end.
 
 set_resource(Hypervisor, Resource, Value) ->
