@@ -282,7 +282,7 @@ handle_coverage({status, ReqID}, _KeySpaces, _Sender, State) ->
                                                            end, Value, Acc)
                                        end, Res, jsxd:get(<<"resources">>, [], H)),
                     Res2 = jsxd:update(<<"hypervisors">>, fun(Current)-> [K|Current] end, [K], Res1),
-                    Warnings1 = case libchunter:ping(Host, Port) of
+                    Warnings1 = case libchunter:ping(binary_to_list(Host), Port) of
                                     {error,connection_failed} ->
                                         [jsxd:from_list(
                                            [{<<"category">>, <<"chunter">>},
