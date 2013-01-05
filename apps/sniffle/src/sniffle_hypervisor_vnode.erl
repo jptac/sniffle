@@ -275,7 +275,7 @@ handle_coverage({status, ReqID}, _KeySpaces, _Sender, State) ->
                     H=statebox:value(S0),
                     {ok, Host} = jsxd:get(<<"host">>, H),
                     {ok, Port} = jsxd:get(<<"port">>, H),
-                    Res1 = jsxd:reduce(fun (Resource, Value, Acc) ->
+                    Res1 = jsxd:fold(fun (Resource, Value, Acc) ->
                                                jsxd:update(Resource,
                                                            fun(Current)->
                                                                    Current + Value
@@ -298,7 +298,7 @@ handle_coverage({status, ReqID}, _KeySpaces, _Sender, State) ->
                         not_found ->
                             {Res2, Warnings1};
                         {ok, Pools} ->
-                            jsxd:reduce(
+                            jsxd:fold(
                               fun (Name, Pool, {ResAcc, WarningsAcc}) ->
                                       Size = jsxd:get(<<"size">>, 0, Pool),
                                       Used = jsxd:get(<<"used">>, 0, Pool),

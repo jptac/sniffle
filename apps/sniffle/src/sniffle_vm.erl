@@ -82,13 +82,13 @@ delete(Vm) ->
             not_found;
         {ok, V} ->
             case jsxd:get(<<"hypervisor">>, V) of
-                not_found ->
+                undefined ->
                     sniffle_vm:unregister(Vm);
                 {ok, <<"pending">>} ->
                     sniffle_vm:unregister(Vm);
                 {ok, H} ->
                     case jsxd:get(<<"state">>, V) of
-                        not_found ->
+                        undefined ->
                             not_found;
                         {ok, <<"deleting">>} ->
                             sniffle_vm:unregister(Vm);
@@ -194,7 +194,7 @@ get_attribute(Vm, Attribute) ->
         {ok, not_found} ->
             not_found;
         {ok, V} ->
-            jsxd:get([<<"attributes">>, Attribute], V)
+            jsxd:get([<<"attributes">>, Attribute], not_found, V)
     end.
 
 -spec set_attribute(Vm::fifo:uuid(), Attribute::binary(), Value::fifo:value()) ->
