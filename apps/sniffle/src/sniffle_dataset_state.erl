@@ -10,19 +10,27 @@
 -include("sniffle.hrl").
 
 -export([
-	 new/0,
-	 name/2,
-	 attribute/3
-	]).
+         new/0,
+         load/1,
+         name/2,
+         attribute/3
+        ]).
+
+load(#dataset{name = Name,
+              attributes = Attributes}) ->
+    jsxd:thread([{set, <<"name">>, Name},
+                 {merge, jsxd:from_list(dict:to_list(Attributes))}],
+                new());
+
+load(Dataset) ->
+    Dataset.
 
 new() ->
-    #dataset{attributes=dict:new()}.
-
+    jsxd:set(<<"version">>, <<"0.1.0">>,
+             jsxd:new()).
 
 name(Name, Dataset) ->
-    Dataset#dataset{name = Name}.
+    jsxd:set(<<"name">>, Name, Dataset).
 
 attribute(Attribute, Value, Dataset) ->
-    Dataset#dataset{
-      attributes = dict:store(Attribute, Value, Dataset#dataset.attributes)
-     }.
+    jsxd:set(Attribute, Value, Dataset).

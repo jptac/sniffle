@@ -1,6 +1,6 @@
 -module(sniffle_package).
 -include("sniffle.hrl").
-%-include_lib("riak_core/include/riak_core_vnode.hrl").
+                                                %-include_lib("riak_core/include/riak_core_vnode.hrl").
 
 -export(
    [
@@ -18,10 +18,10 @@
 
 create(Package) ->
     case sniffle_package:get(Package) of
-	{ok, not_found} ->
-	    do_write(Package, create, []);
-	{ok, _RangeObj} ->
-	    duplicate
+        {ok, not_found} ->
+            do_write(Package, create, []);
+        {ok, _RangeObj} ->
+            duplicate
     end.
 
 delete(Package) ->
@@ -47,23 +47,23 @@ list(Requirements) ->
 
 get_attribute(Package) ->
     case sniffle_package:get(Package) of
-	{ok, not_found} ->
-	    not_found;
-	{ok, V} ->
-	    {ok, dict:to_list(V#package.attributes)}
+        {ok, not_found} ->
+            not_found;
+        {ok, V} ->
+            {ok, jsxd:get(<<"attributes">>, [], V)}
     end.
 
 get_attribute(Package, Attribute) ->
     case sniffle_package:get(Package) of
-	{ok, not_found} ->
-	    not_found;
-	{ok, V} ->
-	    case dict:find(Attribute, V#package.attributes) of
-		error ->
-		    not_found;
-		Result ->
-		    Result
-	    end
+        {ok, not_found} ->
+            not_found;
+        {ok, V} ->
+            case jsxd:get([<<"attributes">>, Attribute], V) of
+                undefined ->
+                    not_found;
+                Result ->
+                    Result
+            end
     end.
 
 set_attribute(Package, Attribute, Value) ->
@@ -81,18 +81,18 @@ set_attribute(Package, Attributes) ->
 
 do_update(Package, Op) ->
     case sniffle_package:get(Package) of
-	{ok, not_found} ->
-	    not_found;
-	{ok, _RangeObj} ->
-	    do_write(Package, Op)
+        {ok, not_found} ->
+            not_found;
+        {ok, _RangeObj} ->
+            do_write(Package, Op)
     end.
 
 do_update(Package, Op, Val) ->
     case sniffle_package:get(Package) of
-	{ok, not_found} ->
-	    not_found;
-	{ok, _RangeObj} ->
-	    do_write(Package, Op, Val)
+        {ok, not_found} ->
+            not_found;
+        {ok, _RangeObj} ->
+            do_write(Package, Op, Val)
     end.
 
 do_write(Package, Op) ->

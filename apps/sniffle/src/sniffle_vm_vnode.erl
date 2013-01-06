@@ -279,15 +279,8 @@ handle_coverage({list, ReqID}, _KeySpaces, _Sender, State) ->
      State};
 
 handle_coverage({list, ReqID, Requirements}, _KeySpaces, _Sender, State) ->
-    Getter = fun(#sniffle_obj{val=S0}, <<"uuid">>) ->
-                     Vm = statebox:value(S0),
-                     Vm#vm.uuid;
-                (#sniffle_obj{val=S0}, <<"hypervisor">>) ->
-                     Vm = statebox:value(S0),
-                     Vm#vm.hypervisor;
-                (#sniffle_obj{val=S0}, Resource) ->
-                     Vm = statebox:value(S0),
-                     dict:fetch(Resource, Vm#vm.attributes)
+    Getter = fun(#sniffle_obj{val=S0}, Resource) ->
+                     jsxd:get(Resource, 0, statebox:value(S0))
              end,
     Server = sniffle_matcher:match_dict(State#state.vms, Getter, Requirements),
     {reply,

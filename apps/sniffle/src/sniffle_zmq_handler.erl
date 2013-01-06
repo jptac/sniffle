@@ -133,6 +133,12 @@ message({hypervisor, unregister, Hypervisor}, State) when
      sniffle_hypervisor:unregister(Hypervisor),
      State};
 
+message({hypervisor, get, Hypervisor}, State) when
+      is_binary(Hypervisor) ->
+    {reply,
+     sniffle_hypervisor:get(Hypervisor),
+     State};
+
 message({hypervisor, resource, get, Hypervisor, Resource}, State) when
       is_binary(Hypervisor),
       is_binary(Resource) ->

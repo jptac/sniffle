@@ -126,6 +126,7 @@ get_package(_Event, State = #state{
     sniffle_vm:log(UUID, <<"Fetching package ", PackageName/binary>>),
     sniffle_vm:set_attribute(UUID, <<"state">>, <<"fetching_package">>),
     {ok, Package} = sniffle_package:get_attribute(PackageName),
+    sniffle_vm:set_attribute(UUID, <<"package">>, PackageName),
     {next_state, get_dataset, State#state{package = Package}, 0}.
 
 get_dataset(_Event, State = #state{
@@ -134,6 +135,7 @@ get_dataset(_Event, State = #state{
     sniffle_vm:set_attribute(UUID, <<"state">>, <<"fetching_dataset">>),
     sniffle_vm:log(UUID, <<"Fetching dataset ", DatasetName/binary>>),
     {ok, Dataset} = sniffle_dataset:get_attribute(DatasetName),
+    sniffle_vm:set_attribute(UUID, <<"dataset">>, DatasetName),
     {next_state, get_ips, State#state{dataset = Dataset}, 0}.
 
 get_ips(_Event, State = #state{config = Config,
@@ -185,7 +187,7 @@ get_server(_Event, State = #state{
             Conditions = [{must, 'allowed', Permission, Permissions},
                           {must, 'subset', <<"networks">>, NicTags},
                           {must, 'element', <<"virtualisation">>, Type},
-                          {must, '>=', <<"free-memory">>, Ram}],
+                          {must, '>=', <<"resouroces.free-memory">>, Ram}],
             CondB = list_to_binary(io_lib:format("~p", [Conditions])),
             sniffle_vm:log(UUID, <<"Finding hypervisor ", CondB/binary>>),
 
@@ -193,8 +195,10 @@ get_server(_Event, State = #state{
             {ok, [{HypervisorID, _} | _]} = sniffle_hypervisor:list(Conditions),
             sniffle_vm:log(UUID, <<"Deploying on hypervisor ", HypervisorID/binary>>),
 
-            {ok, #hypervisor{port = Port, host = Host}} = sniffle_hypervisor:get(HypervisorID),
-            {next_state, create_permissions, State#state{hypervisor = {Host, Port}}, 0};
+            {ok, H} = sniffle_hypervisor:get(HypervisorID),
+            {ok, Port} = jsxd:get(<<"port">>, H),
+            {ok, Host} = jsxd:get(<<"host">>, H),
+            {next_state, create_permissions, State#state{hypervisor = {binary_to_list(Host), Port}}, 0};
         _ ->
             {next_state, get_server, State, 10000}
     end.

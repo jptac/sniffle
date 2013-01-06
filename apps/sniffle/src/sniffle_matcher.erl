@@ -16,6 +16,8 @@
 
 -export([match/3, match_dict/3]).
 
+-ignore_xref([match/3]).
+
 match_dict(Dict, Getter, Requirements) ->
     dict:fold(fun(Key, E, C) ->
                       case match(E, Getter, Requirements) of

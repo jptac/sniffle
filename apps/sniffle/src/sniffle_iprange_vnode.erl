@@ -216,8 +216,10 @@ handle_command({ip, claim,
     #sniffle_obj{val=V} = P = dict:fetch(Iprange, Hs0),
     V1 = statebox:value(V),
     eleveldb:put(State#state.dbref, Iprange, term_to_binary(P), []),
-
-    {reply, {ok, ReqID, {V1#iprange.tag, IP, V1#iprange.netmask, V1#iprange.gateway}}, State#state{ipranges = Hs0}};
+    {reply, {ok, ReqID, {jsxd:get(<<"tag">>, <<"">>, V1),
+                         IP,
+                         jsxd:get(<<"netmask">>, 0, V1),
+                         jsxd:get(<<"gateway">>, 0, V1)}}, State#state{ipranges = Hs0}};
 
 handle_command({ip, release,
                 {ReqID, Coordinator}, Iprange, IP}, _Sender, #state{dbref = DBRef} = State) ->
@@ -280,12 +282,8 @@ delete(#state{dbref = DBRef} = State) ->
     {ok, State#state{ipranges = dict:new(), dbref = DBRef1}}.
 
 handle_coverage({list, ReqID, Requirements}, _KeySpaces, _Sender, State) ->
-    Getter = fun(#sniffle_obj{val=S0}, <<"name">>) ->
-                     IPRange = statebox:value(S0),
-                     IPRange#iprange.name;
-                (#sniffle_obj{val=S0}, <<"tag">>) ->
-                     IPRange = statebox:value(S0),
-                     IPRange#iprange.name
+    Getter = fun(#sniffle_obj{val=S0}, V) ->
+                     jsxd:get(V, 0, statebox:value(S0))
              end,
     Server = sniffle_matcher:match_dict(State#state.ipranges, Getter, Requirements),
     {reply,
@@ -302,8 +300,9 @@ handle_coverage({overlap, ReqID, Start, Stop}, _KeySpaces, _Sender, State) ->
     Res = dict:fold(fun (_, _, true) ->
                             true;
                         (_, #sniffle_obj{val=V0}, false) ->
-                            #iprange{first=Start1,
-                                     last=Stop1} = statebox:value(V0),
+                            V1 = statebox:value(V0),
+                            Start1 = jsxd:get(<<"first">>, 0, V1),
+                            Stop1 = jsxd:get(<<"last">>, 0, V1),
                             (Start1 =< Start andalso
                              Start =< Stop1)
                                 orelse
@@ -333,6 +332,11 @@ read_ranges(DBRef) ->
             {Index,
              lists:foldl(fun (Iprange, Ipranges0) ->
                                  {ok, IpBin} = eleveldb:get(DBRef, Iprange, []),
-                                 dict:store(Iprange, binary_to_term(IpBin), Ipranges0)
+                                 O = binary_to_term(IpBin),
+                                 #sniffle_obj{val=IpR0} = O,
+                                 IpR1 = statebox:modify({fun sniffle_iprange_state:load/1, []}, IpR0),
+                                 IpR2 = statebox:expire(?STATEBOX_EXPIRE, IpR1),
+                                 IpRObj = sniffle_obj:update(IpR2, sniffle_iprange_vnode, O),
+                                 dict:store(Iprange, IpRObj, Ipranges0)
                          end, dict:new(), Index)}
     end.

@@ -14,66 +14,105 @@
 -endif.
 
 -export([
-	 new/0,
-	 name/2,
-	 network/2,
-	 netmask/2,
-	 first/2,
-	 last/2,
-	 current/2,
-	 release_ip/2,
-	 gateway/2,
-	 claim_ip/2,
-	 tag/2,
-	 to_bin/1
-	]).
+         new/0,
+         load/1,
+         name/2,
+         network/2,
+         netmask/2,
+         first/2,
+         last/2,
+         current/2,
+         release_ip/2,
+         gateway/2,
+         claim_ip/2,
+         tag/2,
+         to_bin/1
+        ]).
+
+load(#iprange{name = Name,
+              tag = Tag,
+              network = Net,
+              gateway = GW,
+              netmask = Mask,
+              first = First,
+              last = Last,
+              current = Current,
+              free = Free}) ->
+    jsxd:thread([{set, <<"name">>, Name},
+                 {set, <<"tag">>, Tag},
+                 {set, <<"network">>, Net},
+                 {set, <<"gateway">>, GW},
+                 {set, <<"netmask">>, Mask},
+                 {set, <<"first">>, First},
+                 {set, <<"last">>, Last},
+                 {set, <<"current">>, Current},
+                 {set, <<"free">>, Free}],
+                new());
+
+load(Iprange) ->
+    Iprange.
 
 new() ->
-    #iprange{free=[]}.
+    jsxd:set(<<"version">>, <<"0.1.0">>, jsxd:new()).
+
 
 name(Name, Iprange) ->
-    Iprange#iprange{name = Name}.
+    jsxd:set(<<"name">>, Name, Iprange).
 
 gateway(Gateway, Iprange) ->
-    Iprange#iprange{gateway = Gateway}.
+    jsxd:set(<<"gateway">>, Gateway, Iprange).
 
 network(Network, Iprange) ->
-    Iprange#iprange{network = Network}.
+    jsxd:set(<<"network">>, Network, Iprange).
 
 netmask(Netmask, Iprange) ->
-    Iprange#iprange{netmask = Netmask}.
+    jsxd:set(<<"netmask">>, Netmask, Iprange).
 
 first(First, Iprange) ->
-    Iprange#iprange{first = First}.
+    jsxd:set(<<"first">>, First, Iprange).
 
 last(Last, Iprange) ->
-    Iprange#iprange{last = Last}.
+    jsxd:set(<<"last">>, Last, Iprange).
 
 current(Current, Iprange) ->
-    Iprange#iprange{current = Current}.
+    jsxd:set(<<"current">>, Current, Iprange).
+
 
 tag(Tag, Iprange) ->
-    Iprange#iprange{tag = Tag}.
+    jsxd:set(<<"tag">>, Tag, Iprange).
 
-claim_ip(IP, #iprange{current = IP} = Iprange) ->
-    Iprange#iprange{current = IP + 1};
 
 claim_ip(IP, Iprange) ->
-    Iprange#iprange{free = ordsets:del_element(IP, Iprange#iprange.free)}.
+    case jsxd:get(<<"current">>, Iprange) of
+        {ok, IP} ->
+            jsxd:set(<<"current">>, IP + 1 , Iprange);
+        _ ->
+            jsxd:update(<<"free">>, fun (IPs) ->
+                                            lists:filter(fun(X) -> X =/= IP end, IPs)
+                                    end, Iprange)
+    end.
 
-release_ip(IP, #iprange{current = LIP} = Iprange) when
-      Iprange#iprange.first =< IP,
-      Iprange#iprange.last >= IP,
-      LIP == IP + 1 ->
-    Iprange#iprange{current = IP};
 
-release_ip(IP, Iprange) when
-      Iprange#iprange.first < IP,
-      Iprange#iprange.last > IP,
-      Iprange#iprange.current > IP ->
-    Iprange#iprange{free = ordsets:add_element(IP, Iprange#iprange.free)};
+release_ip(IP, Iprange) ->
+    release_ip(IP,
+               jsxd:get(<<"first">>, 0, Iprange),
+               jsxd:get(<<"current">>, 0, Iprange),
+               jsxd:get(<<"last">>, 0, Iprange),
+               Iprange).
 
-release_ip(_IP, Iprange) ->
+release_ip(IP, First, Current, Last, Iprange) when
+      First =< IP,
+      Last >= IP,
+      Current == IP + 1 ->
+    jsxd:set(<<"current">>, IP, Iprange);
+
+release_ip(IP, First, Current, Last, Iprange) when
+      First < IP,
+      Last > IP,
+      Current > IP ->
+    jsxd:prepend(<<"free">>, IP, Iprange);
+
+release_ip(_IP, _First, _Current, _Last, Iprange) ->
     Iprange.
 
 to_bin(IP) ->
@@ -93,46 +132,47 @@ example_setup() ->
 
 example_setup_test() ->
     R = example_setup(),
-    ?assertEqual(R#iprange.network,  100),
-    ?assertEqual(R#iprange.gateway,  200),
-    ?assertEqual(R#iprange.netmask, 0),
-    ?assertEqual(R#iprange.first, 110),
-    ?assertEqual(R#iprange.current, 110),
-    ?assertEqual(R#iprange.last, 120).
+    ?assertEqual({ok, 100}, jsxd:get(<<"network">>, R)),
+    ?assertEqual({ok, 200}, jsxd:get(<<"gateway">>, R)),
+    ?assertEqual({ok, 0}, jsxd:get(<<"netmask">>, R)),
+    ?assertEqual({ok, 110}, jsxd:get(<<"first">>, R)),
+    ?assertEqual({ok, 110}, jsxd:get(<<"current">>, R)),
+    ?assertEqual({ok, 120}, jsxd:get(<<"last">>, R)).
 
 claim1_test() ->
     R = example_setup(),
     R1 = claim_ip(110, R),
-    ?assertEqual(R1#iprange.first, 110),
-    ?assertEqual(R1#iprange.current, 111),
+    ?assertEqual({ok, 110}, jsxd:get(<<"first">>, R1)),
+    ?assertEqual({ok, 111}, jsxd:get(<<"current">>, R1)),
     R2 = claim_ip(111, R1),
-    ?assertEqual(R2#iprange.current, 112).
+    ?assertEqual({ok, 112}, jsxd:get(<<"current">>, R2)).
 
 claim2_test() ->
     R = example_setup(),
-    R1 = R#iprange{free = [123, 124]},
+    R1 = jsxd:set(<<"free">>, [123, 124], R),
     R2 = claim_ip(123, R1),
-    ?assertEqual(R2#iprange.current, 110),
-    ?assertEqual(R2#iprange.free, [124]),
+    ?assertEqual({ok, 110}, jsxd:get(<<"current">>, R2)),
+    ?assertEqual({ok, [124]}, jsxd:get(<<"free">>, R2)),
     R3 = claim_ip(110, R1),
-    ?assertEqual(R3#iprange.current, 111),
-    ?assertEqual(R3#iprange.free, [123, 124]),
+    ?assertEqual({ok, 111}, jsxd:get(<<"current">>, R3)),
+    ?assertEqual({ok, [123, 124]}, jsxd:get(<<"free">>, R3)),
     R4 = claim_ip(124, R1),
-    ?assertEqual(R4#iprange.current, 110),
-    ?assertEqual(R4#iprange.free, [123]).
+    ?assertEqual({ok, 110}, jsxd:get(<<"current">>, R4)),
+    ?assertEqual({ok, [123]}, jsxd:get(<<"free">>, R4)).
 
 return_test() ->
     R = example_setup(),
-    R1 = R#iprange{free = [],
-		   current = 115},
+    R1 = jsxd:thread([{set, <<"free">>, []},
+                      {set, <<"current">>, 115}],
+                     R),
     R2 = release_ip(114, R1),
-    ?assertEqual(R2#iprange.current, 114),
-    ?assertEqual(R2#iprange.free, []),
+    ?assertEqual({ok, 114}, jsxd:get(<<"current">>, R2)),
+    ?assertEqual({ok, []}, jsxd:get(<<"free">>, R2)),
     R3 = release_ip(113, R1),
-    ?assertEqual(R3#iprange.current, 115),
-    ?assertEqual(R3#iprange.free, [113]),
+    ?assertEqual({ok, 115}, jsxd:get(<<"current">>, R3)),
+    ?assertEqual({ok, [113]}, jsxd:get(<<"free">>, R3)),
     R4 = release_ip(115, R1),
-    ?assertEqual(R4#iprange.current, 115),
-    ?assertEqual(R4#iprange.free, []).
+    ?assertEqual({ok, 115}, jsxd:get(<<"current">>, R4)),
+    ?assertEqual({ok, []}, jsxd:get(<<"free">>, R4)).
 
 -endif.
