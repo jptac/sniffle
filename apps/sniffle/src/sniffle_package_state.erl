@@ -19,7 +19,7 @@
 load(#package{name = Name,
               attributes = Attributes}) ->
     jsxd:thread([{set, <<"name">>, Name},
-                 {set, <<"attributes">>, jsxd:from_list(dict:to_list(Attributes))}],
+                 {merge, jsxd:from_list(dict:to_list(Attributes))}],
                 new());
 
 load(Package) ->
