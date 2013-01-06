@@ -48,7 +48,7 @@ get_attribute(Dataset) ->
         {ok, not_found} ->
             not_found;
         {ok, V} ->
-            {ok, jsxd:get(<<"attributes">>, [], V)}
+            {ok, V}
     end.
 
 get_attribute(Dataset, Attribute) ->
@@ -56,7 +56,7 @@ get_attribute(Dataset, Attribute) ->
         {ok, not_found} ->
             not_found;
         {ok, V} ->
-            case jsxd:get([<<"attributes">>, Attribute], V) of
+            case jsxd:get(Attribute, V) of
                 undefined ->
                     not_found;
                 Result ->
