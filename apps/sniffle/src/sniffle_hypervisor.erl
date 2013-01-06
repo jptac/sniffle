@@ -101,7 +101,7 @@ get_resource(Hypervisor, Resource) ->
         {ok, not_found} ->
             not_found;
         {ok, V} ->
-            jsxd:get([<<"resources">>, Resource], not_found, V) of
+            jsxd:get([<<"resources">>, Resource], not_found, V)
     end.
 
 set_resource(Hypervisor, Resource, Value) ->

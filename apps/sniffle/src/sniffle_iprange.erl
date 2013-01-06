@@ -50,18 +50,15 @@ claim_ip(Iprange) ->
     case sniffle_iprange:get(Iprange) of
         {ok, not_found} ->
             not_found;
-        {ok,
-         #iprange{free=[],
-                  last=Last,
-                  current=FoundIP}} when FoundIP >= Last ->
-            no_ips_left;
-        {ok,
-         #iprange{free=[],
-                  current=FoundIP}} ->
-            do_write(Iprange, claim_ip, FoundIP);
-        {ok,
-         #iprange{free=[FoundIP|_]}} ->
-            do_write(Iprange, claim_ip, FoundIP)
+        {ok, Obj} ->
+            case {jsxd:get(<<"free">>, [], Obj), jsxd:get(<<"current">>, 0, Obj), jsxd:get(<<"last">>, 0, Obj)} of
+                {[], FoundIP, Last} when FoundIP >= Last ->
+                    no_ips_left;
+                {[], FoundIP, _} ->
+                    do_write(Iprange, claim_ip, FoundIP);
+                {[FoundIP|_], _, _} ->
+                    do_write(Iprange, claim_ip, FoundIP)
+            end
     end.
 
 %%%===================================================================

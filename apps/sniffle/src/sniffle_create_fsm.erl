@@ -126,6 +126,7 @@ get_package(_Event, State = #state{
     sniffle_vm:log(UUID, <<"Fetching package ", PackageName/binary>>),
     sniffle_vm:set_attribute(UUID, <<"state">>, <<"fetching_package">>),
     {ok, Package} = sniffle_package:get_attribute(PackageName),
+    sniffle_vm:set_attribute(UUID, <<"package">>, PackageName),
     {next_state, get_dataset, State#state{package = Package}, 0}.
 
 get_dataset(_Event, State = #state{
@@ -134,6 +135,7 @@ get_dataset(_Event, State = #state{
     sniffle_vm:set_attribute(UUID, <<"state">>, <<"fetching_dataset">>),
     sniffle_vm:log(UUID, <<"Fetching dataset ", DatasetName/binary>>),
     {ok, Dataset} = sniffle_dataset:get_attribute(DatasetName),
+    sniffle_vm:set_attribute(UUID, <<"dataset">>, DatasetName),
     {next_state, get_ips, State#state{dataset = Dataset}, 0}.
 
 get_ips(_Event, State = #state{config = Config,
