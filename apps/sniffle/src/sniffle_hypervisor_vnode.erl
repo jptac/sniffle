@@ -295,7 +295,7 @@ handle_coverage({status, ReqID}, _KeySpaces, _Sender, State) ->
                                         Warnings
                                 end,
                     case jsxd:get(<<"pools">>, H) of
-                        not_found ->
+                        undefined ->
                             {Res2, Warnings1};
                         {ok, Pools} ->
                             jsxd:fold(
