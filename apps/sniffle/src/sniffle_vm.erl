@@ -81,15 +81,18 @@ delete(Vm) ->
         {ok, V} ->
             case jsxd:get(<<"hypervisor">>, V) of
                 undefined ->
-                    sniffle_vm:unregister(Vm);
+                    sniffle_vm:unregister(Vm),
+                    libhowl:send(Vm, [{<<"event">>, <<"delete">>}]);
                 {ok, <<"pending">>} ->
-                    sniffle_vm:unregister(Vm);
+                    sniffle_vm:unregister(Vm),
+                    libhowl:send(Vm, [{<<"event">>, <<"delete">>}]);
                 {ok, H} ->
                     case jsxd:get(<<"state">>, V) of
                         undefined ->
                             not_found;
                         {ok, <<"deleting">>} ->
-                            sniffle_vm:unregister(Vm);
+                            sniffle_vm:unregister(Vm),
+                            libhowl:send(Vm, [{<<"event">>, <<"delete">>}]);
                         _ ->
                             set(Vm, <<"state">>, <<"deleting">>),
                             {Host, Port} = get_hypervisor(H),
