@@ -223,7 +223,7 @@ get_server(_Event, State = #state{
             Conditions = [{must, 'allowed', Permission, Permissions},
                           {must, 'subset', <<"networks">>, NicTags},
                           {must, 'element', <<"virtualisation">>, Type},
-                          {must, '>=', <<"resouroces.free-memory">>, Ram}] ++
+                          {must, '>=', <<"resources.free-memory">>, Ram}] ++
                 lists:map(fun(C) -> make_condition(C, Permissions) end, Conditions1),
             CondB = list_to_binary(io_lib:format("~p", [Conditions])),
             sniffle_vm:log(UUID, <<"Finding hypervisor ", CondB/binary>>),
