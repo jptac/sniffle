@@ -8,10 +8,8 @@
          get/1,
          list/0,
          list/1,
-         get_attribute/2,
-         get_attribute/1,
-         set_attribute/2,
-         set_attribute/3
+         set/2,
+         set/3
         ]).
 
 create(Dataset) ->
@@ -43,33 +41,12 @@ list(Requirements) ->
       list, Requirements
      ).
 
-get_attribute(Dataset) ->
-    case sniffle_dataset:get(Dataset) of
-        {ok, not_found} ->
-            not_found;
-        {ok, V} ->
-            {ok, V}
-    end.
-
-get_attribute(Dataset, Attribute) ->
-    case sniffle_dataset:get(Dataset) of
-        {ok, not_found} ->
-            not_found;
-        {ok, V} ->
-            case jsxd:get(Attribute, V) of
-                undefined ->
-                    not_found;
-                Result ->
-                    Result
-            end
-    end.
-
-set_attribute(Dataset, Attribute, Value) ->
-    do_update(Dataset, set_attribute, [Attribute, Value]).
+set(Dataset, Attribute, Value) ->
+    do_update(Dataset, set, [{Attribute, Value}]).
 
 
-set_attribute(Dataset, Attributes) ->
-    do_update(Dataset, mset_attribute, Attributes).
+set(Dataset, Attributes) ->
+    do_update(Dataset, set, Attributes).
 
 
 %%%===================================================================

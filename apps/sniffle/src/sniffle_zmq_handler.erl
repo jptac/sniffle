@@ -52,12 +52,6 @@ message({vm, get, Vm}, State) when
      sniffle_vm:get(Vm),
      State};
 
-message({vm, attribute, get, Vm}, State) when
-      is_binary(Vm) ->
-    {reply,
-     sniffle_vm:get_attribute(Vm),
-     State};
-
 message({vm, start, Vm}, State) when
       is_binary(Vm) ->
     {reply,
@@ -82,25 +76,18 @@ message({vm, reboot, Vm}, State) when
      sniffle_vm:reboot(Vm),
      State};
 
-message({vm, attribute, get, Vm, Attribute}, State) when
+message({vm, set, Vm, Attribute, Value}, State) when
       is_binary(Vm),
       is_binary(Attribute) ->
     {reply,
-     sniffle_vm:get_attribute(Vm, Attribute),
+     sniffle_vm:set(Vm, Attribute, Value),
      State};
 
-message({vm, attribute, set, Vm, Attribute, Value}, State) when
-      is_binary(Vm),
-      is_binary(Attribute) ->
-    {reply,
-     sniffle_vm:set_attribute(Vm, Attribute, Value),
-     State};
-
-message({vm, attribute, set, Vm, Attributes}, State) when
+message({vm, set, Vm, Attributes}, State) when
       is_binary(Vm),
       is_list(Attributes) ->
     {reply,
-     sniffle_vm:set_attribute(Vm, Attributes),
+     sniffle_vm:set(Vm, Attributes),
      State};
 
 message({vm, list}, State) ->
@@ -139,31 +126,18 @@ message({hypervisor, get, Hypervisor}, State) when
      sniffle_hypervisor:get(Hypervisor),
      State};
 
-message({hypervisor, resource, get, Hypervisor, Resource}, State) when
+message({hypervisor, set, Hypervisor, Resource, Value}, State) when
       is_binary(Hypervisor),
       is_binary(Resource) ->
     {reply,
-     sniffle_hypervisor:get_resource(Hypervisor, Resource),
+     sniffle_hypervisor:set(Hypervisor, Resource, Value),
      State};
 
-message({hypervisor, resource, get, Hypervisor}, State) when
-      is_binary(Hypervisor) ->
-    {reply,
-     sniffle_hypervisor:get_resource(Hypervisor),
-     State};
-
-message({hypervisor, resource, set, Hypervisor, Resource, Value}, State) when
-      is_binary(Hypervisor),
-      is_binary(Resource) ->
-    {reply,
-     sniffle_hypervisor:set_resource(Hypervisor, Resource, Value),
-     State};
-
-message({hypervisor, resource, set, Hypervisor, Resources}, State) when
+message({hypervisor, set, Hypervisor, Resources}, State) when
       is_binary(Hypervisor),
       is_list(Resources) ->
     {reply,
-     sniffle_hypervisor:set_resource(Hypervisor, Resources),
+     sniffle_hypervisor:set(Hypervisor, Resources),
      State};
 
 message({hypervisor, list}, State) ->
@@ -178,7 +152,7 @@ message({hypervisor, list, Requirements}, State) when
      State};
 
 %%%===================================================================
-%%%  DATASET Functions
+%%%  Dataset Functions
 %%%===================================================================
 
 message({dataset, create, Dataset}, State) when
@@ -193,31 +167,24 @@ message({dataset, delete, Dataset}, State) when
      sniffle_dataset:delete(Dataset),
      State};
 
-message({dataset, attribute, get, Dataset}, State) when
+message({dataset, get, Dataset}, State) when
       is_binary(Dataset) ->
     {reply,
-     sniffle_dataset:get_attribute(Dataset),
+     sniffle_dataset:get(Dataset),
      State};
 
-message({dataset, attribute, get, Dataset, Attribute}, State) when
+message({dataset, set, Dataset, Attribute, Value}, State) when
       is_binary(Dataset),
       is_binary(Attribute) ->
     {reply,
-     sniffle_dataset:get_attribute(Dataset, Attribute),
-     State};
-
-message({dataset, attribute, set, Dataset, Attribute, Value}, State) when
-      is_binary(Dataset),
-      is_binary(Attribute) ->
-    {reply,
-     sniffle_dataset:set_attribute(Dataset, Attribute, Value),
+     sniffle_dataset:set(Dataset, Attribute, Value),
      State};
 
 message({dataset, attribute, set, Dataset, Attributes}, State) when
       is_binary(Dataset),
       is_list(Attributes) ->
     {reply,
-     sniffle_dataset:set_attribute(Dataset, Attributes),
+     sniffle_dataset:set(Dataset, Attributes),
      State};
 
 message({dataset, list}, State) ->
@@ -301,31 +268,18 @@ message({package, get, Package}, State) when
      sniffle_package:get(Package),
      State};
 
-message({package, attribute, get, Package}, State) when
-      is_binary(Package) ->
-    {reply,
-     sniffle_package:get_attribute(Package),
-     State};
-
-message({package, attribute, get, Package, Attribute}, State) when
+message({package, set, Package, Attribute, Value}, State) when
       is_binary(Package),
       is_binary(Attribute) ->
     {reply,
-     sniffle_package:get_attribute(Package, Attribute),
+     sniffle_package:set(Package, Attribute, Value),
      State};
 
-message({package, attribute, set, Package, Attribute, Value}, State) when
-      is_binary(Package),
-      is_binary(Attribute) ->
-    {reply,
-     sniffle_package:set_attribute(Package, Attribute, Value),
-     State};
-
-message({package, attribute, set, Package, Attributes}, State) when
+message({package, set, Package, Attributes}, State) when
       is_binary(Package),
       is_list(Attributes) ->
     {reply,
-     sniffle_package:set_attribute(Package, Attributes),
+     sniffle_package:set(Package, Attributes),
      State};
 
 message({package, list}, State) ->

@@ -9,10 +9,8 @@
     get/1,
     list/0,
     list/1,
-    get_resource/1,
-    get_resource/2,
-    set_resource/3,
-    set_resource/2,
+    set/3,
+    set/2,
     status/0
    ]).
 
@@ -65,16 +63,6 @@ status() ->
                          end, {[],Warnings}, Stat),
     {ok, Stat1}.
 
-server_errors(Servers) ->
-    lists:map(fun (Server) ->
-                      jsxd:from_list(
-                        [{<<"category">>, <<"sniffle">>},
-                         {<<"element">>, list_to_binary(atom_to_list(Server))},
-                         {<<"type">>, <<"critical">>},
-                         {<<"message">>, bin_fmt("Sniffle server ~s down.", [Server])}])
-              end, Servers).
-
-
 list() ->
     sniffle_entity_coverage_fsm:start(
       {sniffle_hypervisor_vnode, sniffle_hypervisor},
@@ -88,27 +76,11 @@ list(Requirements) ->
                  ),
     {ok,  lists:keysort(2, Res)}.
 
-get_resource(Hypervisor) ->
-    case sniffle_hypervisor:get(Hypervisor) of
-        {ok, not_found} ->
-            not_found;
-        {ok, V} ->
-            {ok, jsxd:get(<<"resources">>, [], V)}
-    end.
+set(Hypervisor, Resource, Value) ->
+    do_update(Hypervisor, set, [{Resource, Value}]).
 
-get_resource(Hypervisor, Resource) ->
-    case sniffle_hypervisor:get(Hypervisor) of
-        {ok, not_found} ->
-            not_found;
-        {ok, V} ->
-            jsxd:get([<<"resources">>, Resource], not_found, V)
-    end.
-
-set_resource(Hypervisor, Resource, Value) ->
-    do_update(Hypervisor, set_resource, [Resource, Value]).
-
-set_resource(Hypervisor, Resources) ->
-    do_update(Hypervisor, mset_resource, Resources).
+set(Hypervisor, Resources) ->
+    do_update(Hypervisor, set, Resources).
 
 %%%===================================================================
 %%% Internal Functions
@@ -139,3 +111,12 @@ do_write(User, Op, Val) ->
 
 bin_fmt(F, L) ->
     list_to_binary(io_lib:format(F, L)).
+
+server_errors(Servers) ->
+    lists:map(fun (Server) ->
+                      jsxd:from_list(
+                        [{<<"category">>, <<"sniffle">>},
+                         {<<"element">>, list_to_binary(atom_to_list(Server))},
+                         {<<"type">>, <<"critical">>},
+                         {<<"message">>, bin_fmt("Sniffle server ~s down.", [Server])}])
+              end, Servers).

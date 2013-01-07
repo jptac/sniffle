@@ -14,7 +14,7 @@
          name/2,
          host/2,
          port/2,
-         resource/3
+         set/3
         ]).
 
 new() ->
@@ -29,5 +29,5 @@ host(Host, Hypervisor) ->
 port(Port, Hypervisor) ->
     jsxd:set(<<"port">>, Port, Hypervisor).
 
-resource(Resource, Value, Hypervisor) ->
-    jsxd:set(re:split(Resource, <<"\\.">>), Value, Hypervisor).
+set(Resource, Value, Hypervisor) ->
+    jsxd:set(Resource, Value, Hypervisor).

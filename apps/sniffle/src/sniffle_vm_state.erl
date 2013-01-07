@@ -17,7 +17,7 @@
          uuid/2,
          log/3,
          hypervisor/2,
-         attribute/3
+         set/3
         ]).
 
 new() ->
@@ -47,5 +47,5 @@ log(Time, Log, Vm) ->
 hypervisor(Hypervisor, Vm) ->
     jsxd:set(<<"hypervisor">>, Hypervisor, Vm).
 
-attribute(Attribute, Value, Vm) ->
+set(Attribute, Value, Vm) ->
     jsxd:set(Attribute, Value, Vm).

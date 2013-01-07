@@ -11,8 +11,7 @@
          list/3,
          register/4,
          unregister/3,
-         set_resource/4,
-         mset_resource/4
+         set/4
         ]).
 
 -export([start_vnode/1,
@@ -43,8 +42,7 @@
               status/2,
               register/4,
               repair/4,
-              set_resource/4,
-              mset_resource/4,
+              set/4,
               start_vnode/1,
               unregister/3
              ]).
@@ -119,15 +117,9 @@ unregister(Preflist, ReqID, Hypervisor) ->
                                    {fsm, undefined, self()},
                                    ?MASTER).
 
-set_resource(Preflist, ReqID, Hypervisor, Data) ->
+set(Preflist, ReqID, Hypervisor, Data) ->
     riak_core_vnode_master:command(Preflist,
-                                   {resource, set, ReqID, Hypervisor, Data},
-                                   {fsm, undefined, self()},
-                                   ?MASTER).
-
-mset_resource(Preflist, ReqID, Hypervisor, Data) ->
-    riak_core_vnode_master:command(Preflist,
-                                   {resource, mset, ReqID, Hypervisor, Data},
+                                   {set, ReqID, Hypervisor, Data},
                                    {fsm, undefined, self()},
                                    ?MASTER).
 
@@ -188,20 +180,7 @@ handle_command({unregister, {ReqID, _Coordinator}, Hypervisor}, _Sender, State) 
     Hs0 = dict:erase(Hypervisor, State#state.hypervisors),
     {reply, {ok, ReqID}, State#state{hypervisors = Hs0}};
 
-handle_command({resource, set,
-                {ReqID, Coordinator}, Hypervisor,
-                [Resource, Value]}, _Sender, State) ->
-    Hs0 = dict:update(Hypervisor,
-                      fun(#sniffle_obj{val=H0} = O) ->
-                              H1 = statebox:modify(
-                                     {fun sniffle_hypervisor_state:resource/3,
-                                      [Resource, Value]}, H0),
-                              H2 = statebox:expire(?STATEBOX_EXPIRE, H1),
-                              sniffle_obj:update(H2, Coordinator, O)
-                      end, State#state.hypervisors),
-    {reply, {ok, ReqID}, State#state{hypervisors = Hs0}};
-
-handle_command({resource, mset,
+handle_command({set,
                 {ReqID, Coordinator}, Vm,
                 Resources}, _Sender, State) ->
     Hs0 = dict:update(Vm,
@@ -209,7 +188,7 @@ handle_command({resource, mset,
                               H1 = lists:foldr(
                                      fun ({Resource, Value}, H) ->
                                              statebox:modify(
-                                               {fun sniffle_hypervisor_state:resource/3,
+                                               {fun sniffle_hypervisor_state:set/3,
                                                 [Resource, Value]}, H)
                                      end, H0, Resources),
                               H2 = statebox:expire(?STATEBOX_EXPIRE, H1),
@@ -255,7 +234,7 @@ delete(State) ->
 
 handle_coverage({list, ReqID, Requirements}, _KeySpaces, _Sender, State) ->
     Getter = fun(#sniffle_obj{val=S0}, Resource) ->
-                     jsxd:get(re:split(Resource, <<"\\.">>), 0, statebox:value(S0))
+                     jsxd:get(Resource, 0, statebox:value(S0))
              end,
     Server = sniffle_matcher:match_dict(State#state.hypervisors, Getter, Requirements),
     {reply,

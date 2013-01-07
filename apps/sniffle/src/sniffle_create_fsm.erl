@@ -124,18 +124,18 @@ get_package(_Event, State = #state{
                       uuid = UUID,
                       package_name = PackageName}) ->
     sniffle_vm:log(UUID, <<"Fetching package ", PackageName/binary>>),
-    sniffle_vm:set_attribute(UUID, <<"state">>, <<"fetching_package">>),
-    {ok, Package} = sniffle_package:get_attribute(PackageName),
-    sniffle_vm:set_attribute(UUID, <<"package">>, PackageName),
+    sniffle_vm:set(UUID, <<"state">>, <<"fetching_package">>),
+    {ok, Package} = sniffle_package:get(PackageName),
+    sniffle_vm:set(UUID, <<"package">>, PackageName),
     {next_state, get_dataset, State#state{package = Package}, 0}.
 
 get_dataset(_Event, State = #state{
                       uuid = UUID,
                       dataset_name = DatasetName}) ->
-    sniffle_vm:set_attribute(UUID, <<"state">>, <<"fetching_dataset">>),
+    sniffle_vm:set(UUID, <<"state">>, <<"fetching_dataset">>),
     sniffle_vm:log(UUID, <<"Fetching dataset ", DatasetName/binary>>),
-    {ok, Dataset} = sniffle_dataset:get_attribute(DatasetName),
-    sniffle_vm:set_attribute(UUID, <<"dataset">>, DatasetName),
+    {ok, Dataset} = sniffle_dataset:get(DatasetName),
+    sniffle_vm:set(UUID, <<"dataset">>, DatasetName),
     {next_state, get_ips, State#state{dataset = Dataset}, 0}.
 
 get_ips(_Event, State = #state{config = Config,
@@ -163,6 +163,40 @@ get_ips(_Event, State = #state{config = Config,
                       end, [], Ns),
     {next_state, get_server, State#state{dataset = [{<<"networks">>, Ns1} | Dataset1]}, 0}.
 
+make_condition(C, Permissions) ->
+    Weight = case jsxd:get(<<"weight">>, <<"must">>, C) of
+                 <<"must">> ->
+                     must;
+                 <<"cant">> ->
+                     cant;
+                 I when is_integer(I) ->
+                     I
+             end,
+    Condition = case jsxd:get(<<"weight">>, <<"=:=">>, C) of
+                    <<">=">> -> '>=';
+                    <<"=<">> -> '=<';
+                    <<"<">> -> '<';
+                    <<">">> -> '>';
+                    <<"=:=">> -> '=:=';
+                    <<"=/=">> -> '=/=';
+                    <<"subset">> -> 'subset';
+                    <<"superset">> -> 'superset';
+                    <<"disjoint">> -> 'disjoint';
+                    <<"element">> -> 'element';
+                    <<"allowed">> -> 'allowed'
+                end,
+    {ok, Attribute} = jsxd:get(<<"attribute">>, C),
+    case Condition of
+        'allowed' ->
+            {Weight, Condition, Attribute, Permissions};
+        _ ->
+            {ok, Value} = jsxd:get(<<"value">>, C),
+            {Weight, Condition, Attribute, Value}
+    end.
+
+
+
+
 get_server(_Event, State = #state{
                      dataset = Dataset,
                      uuid = UUID,
@@ -173,7 +207,7 @@ get_server(_Event, State = #state{
     {<<"ram">>, Ram} = lists:keyfind(<<"ram">>, 1, Package),
     RamB = list_to_binary(integer_to_list(Ram)),
     sniffle_vm:log(UUID, <<"Assigning memory ", RamB/binary>>),
-    sniffle_vm:set_attribute(UUID, <<"state">>, <<"fetching_server">>),
+    sniffle_vm:set(UUID, <<"state">>, <<"fetching_server">>),
     Permission = [<<"hypervisor">>, {<<"res">>, <<"name">>}, <<"create">>],
     {<<"networks">>, Ns} = lists:keyfind(<<"networks">>, 1, Dataset),
     {<<"type">>, Type} = lists:keyfind(<<"type">>, 1, Dataset),
@@ -184,10 +218,13 @@ get_server(_Event, State = #state{
                           end, [], Ns),
     case libsnarl:user_cache(Owner) of
         {ok, Permissions} ->
+            Conditions0 = jsxd:get(<<"requirements">>, [], Package),
+            Conditions1 = Conditions0 ++ jsxd:get(<<"requirements">>, [], Dataset),
             Conditions = [{must, 'allowed', Permission, Permissions},
                           {must, 'subset', <<"networks">>, NicTags},
                           {must, 'element', <<"virtualisation">>, Type},
-                          {must, '>=', <<"resouroces.free-memory">>, Ram}],
+                          {must, '>=', <<"resouroces.free-memory">>, Ram}] ++
+                lists:map(fun(C) -> make_condition(C, Permissions) end, Conditions1),
             CondB = list_to_binary(io_lib:format("~p", [Conditions])),
             sniffle_vm:log(UUID, <<"Finding hypervisor ", CondB/binary>>),
 
@@ -217,7 +254,7 @@ create(_Event, State = #state{
                  config = Config,
                  hypervisor = {Host, Port}}) ->
     sniffle_vm:log(UUID, <<"Handing off to hypervisor.">>),
-    sniffle_vm:set_attribute(UUID, <<"state">>, <<"creating">>),
+    sniffle_vm:set(UUID, <<"state">>, <<"creating">>),
     {<<"owner">>, Owner} = lists:keyfind(<<"owner">>, 1, Config),
     libsnarl:user_grant(Owner, [<<"vms">>, UUID, '...']),
     libchunter:create_machine(Host, Port, UUID, Package, Dataset, Config),
@@ -295,7 +332,7 @@ terminate(shutdown, _StateName, _StateData) ->
 
 terminate(_Reason, StateName, _State = #state{uuid=UUID}) ->
     StateBin = list_to_binary(atom_to_list(StateName)),
-    sniffle_vm:set_attribute(UUID, <<"state">>, <<"failed-", StateBin/binary>>),
+    sniffle_vm:set(UUID, <<"state">>, <<"failed-", StateBin/binary>>),
     ok.
 
 %%--------------------------------------------------------------------

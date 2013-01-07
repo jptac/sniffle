@@ -16,10 +16,8 @@
     stop/1,
     reboot/1,
     delete/1,
-    get_attribute/2,
-    get_attribute/1,
-    set_attribute/2,
-    set_attribute/3
+    set/2,
+    set/3
    ]
   ).
 
@@ -93,7 +91,7 @@ delete(Vm) ->
                         {ok, <<"deleting">>} ->
                             sniffle_vm:unregister(Vm);
                         _ ->
-                            set_attribute(Vm, <<"state">>, <<"deleting">>),
+                            set(Vm, <<"state">>, <<"deleting">>),
                             {Host, Port} = get_hypervisor(H),
                             libchunter:delete_machine(Host, Port, Vm)
                     end
@@ -151,19 +149,6 @@ reboot(Vm) ->
             ok
     end.
 
--spec get_attribute(Vm::fifo:uuid()) ->
-                           not_found | fifo:vm_config().
-
-get_attribute(Vm) ->
-    case sniffle_vm:get(Vm) of
-        {error, timeout} ->
-            {error, timeout};
-        {ok, not_found} ->
-            not_found;
-        {ok, V} ->
-            {ok, jsxd:get(<<"attributes">>, [], V)}
-    end.
-
 -spec logs(Vm::fifo:uuid()) ->
                   not_found | [fifo:log()].
 
@@ -184,31 +169,18 @@ log(Vm, Log) ->
     {Mega,Sec,Micro} = erlang:now(),
     do_update(Vm, log, {(Mega*1000000+Sec)*1000000+Micro, Log}).
 
--spec get_attribute(Vm::fifo:uuid(), Attribute::binary()) ->
-                           {error, timeout} | not_found | fifo:value().
+-spec set(Vm::fifo:uuid(), Attribute::binary(), Value::fifo:value()) ->
+                 {error, timeout} | not_found | ok.
 
-get_attribute(Vm, Attribute) ->
-    case sniffle_vm:get(Vm) of
-        {error, timeout} ->
-            {error, timeout};
-        {ok, not_found} ->
-            not_found;
-        {ok, V} ->
-            jsxd:get([<<"attributes">>, Attribute], not_found, V)
-    end.
-
--spec set_attribute(Vm::fifo:uuid(), Attribute::binary(), Value::fifo:value()) ->
-                           {error, timeout} | not_found | ok.
-
-set_attribute(Vm, Attribute, Value) ->
-    do_update(Vm, set_attribute, [{Attribute, Value}]).
+set(Vm, Attribute, Value) ->
+    do_update(Vm, set, [{Attribute, Value}]).
 
 
--spec set_attribute(Vm::fifo:uuid(), Attributes::fifo:config_list()) ->
-                           {error, timeout} | not_found | ok.
+-spec set(Vm::fifo:uuid(), Attributes::fifo:config_list()) ->
+                 {error, timeout} | not_found | ok.
 
-set_attribute(Vm, Attributes) ->
-    do_update(Vm, set_attribute, Attributes).
+set(Vm, Attributes) ->
+    do_update(Vm, set, Attributes).
 
 %%%===================================================================
 %%% Internal Functions
