@@ -10,8 +10,7 @@
          list/3,
          create/4,
          delete/3,
-         set_attribute/4,
-         mset_attribute/4
+         set/4
         ]).
 
 -export([
@@ -45,9 +44,8 @@
               get/3,
               list/2,
               list/3,
-              mset_attribute/4,
               repair/4,
-              set_attribute/4,
+              set/4,
               start_vnode/1
              ]).
 
@@ -111,15 +109,9 @@ delete(Preflist, ReqID, Dataset) ->
                                    {delete, ReqID, Dataset},
                                    {fsm, undefined, self()},
                                    ?MASTER).
-set_attribute(Preflist, ReqID, Dataset, Data) ->
+set(Preflist, ReqID, Dataset, Data) ->
     riak_core_vnode_master:command(Preflist,
-                                   {attribute, set, ReqID, Dataset, Data},
-                                   {fsm, undefined, self()},
-                                   ?MASTER).
-
-mset_attribute(Preflist, ReqID, Dataset, Data) ->
-    riak_core_vnode_master:command(Preflist,
-                                   {attribute, mset, ReqID, Dataset, Data},
+                                   {set, ReqID, Dataset, Data},
                                    {fsm, undefined, self()},
                                    ?MASTER).
 
@@ -191,27 +183,7 @@ handle_command({delete, {ReqID, _Coordinator}, Dataset}, _Sender, #state{dbref =
 
     {reply, {ok, ReqID}, State#state{datasets = Is0}};
 
-handle_command({attribute, set,
-                {ReqID, Coordinator}, Dataset,
-                [Resource, Value]}, _Sender, State) ->
-    I0 = statebox:new(fun sniffle_dataset_state:new/0),
-    I1 = statebox:modify({fun sniffle_dataset_state:name/2, [Dataset]}, I0),
-    VC0 = vclock:fresh(),
-    VC = vclock:increment(Coordinator, VC0),
-    HObject = #sniffle_obj{val=I1, vclock=VC},
-
-    Hs0 = dict:update(Dataset,
-                      fun(#sniffle_obj{val=H0} = O) ->
-                              H1 = statebox:modify(
-                                     {fun sniffle_dataset_state:attribute/3,
-                                      [Resource, Value]}, H0),
-                              H2 = statebox:expire(?STATEBOX_EXPIRE, H1),
-                              sniffle_obj:update(H2, Coordinator, O)
-                      end, HObject,
-                      State#state.datasets),
-    {reply, {ok, ReqID}, State#state{datasets = Hs0}};
-
-handle_command({attribute, mset,
+handle_command({set,
                 {ReqID, Coordinator}, Dataset,
                 Resources}, _Sender, State) ->
     I0 = statebox:new(fun sniffle_dataset_state:new/0),
@@ -225,7 +197,7 @@ handle_command({attribute, mset,
                               H1 = lists:foldr(
                                      fun ({Resource, Value}, H) ->
                                              statebox:modify(
-                                               {fun sniffle_dataset_state:attribute/3,
+                                               {fun sniffle_dataset_state:set/3,
                                                 [Resource, Value]}, H)
                                      end, H0, Resources),
                               H2 = statebox:expire(?STATEBOX_EXPIRE, H1),

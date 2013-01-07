@@ -101,7 +101,7 @@ init([UUID, Package, Dataset, Config]) ->
            uuid = UUID,
            package_name = Package,
            dataset_name = Dataset,
-           config = Config
+           config = jsxd:from_list(Config)
           }, 0}.
 
 %%--------------------------------------------------------------------
@@ -124,70 +124,73 @@ get_package(_Event, State = #state{
                       uuid = UUID,
                       package_name = PackageName}) ->
     sniffle_vm:log(UUID, <<"Fetching package ", PackageName/binary>>),
-    sniffle_vm:set_attribute(UUID, <<"state">>, <<"fetching_package">>),
-    {ok, Package} = sniffle_package:get_attribute(PackageName),
-    sniffle_vm:set_attribute(UUID, <<"package">>, PackageName),
+    sniffle_vm:set(UUID, <<"state">>, <<"fetching_package">>),
+    {ok, Package} = sniffle_package:get(PackageName),
+    sniffle_vm:set(UUID, <<"package">>, PackageName),
     {next_state, get_dataset, State#state{package = Package}, 0}.
 
 get_dataset(_Event, State = #state{
                       uuid = UUID,
                       dataset_name = DatasetName}) ->
-    sniffle_vm:set_attribute(UUID, <<"state">>, <<"fetching_dataset">>),
+    sniffle_vm:set(UUID, <<"state">>, <<"fetching_dataset">>),
     sniffle_vm:log(UUID, <<"Fetching dataset ", DatasetName/binary>>),
-    {ok, Dataset} = sniffle_dataset:get_attribute(DatasetName),
-    sniffle_vm:set_attribute(UUID, <<"dataset">>, DatasetName),
+    {ok, Dataset} = sniffle_dataset:get(DatasetName),
+    sniffle_vm:set(UUID, <<"dataset">>, DatasetName),
     {next_state, get_ips, State#state{dataset = Dataset}, 0}.
 
 get_ips(_Event, State = #state{config = Config,
                                uuid = UUID,
                                dataset = Dataset}) ->
-    {<<"networks">>, On} = lists:keyfind(<<"networks">>, 1, Config),
-    {<<"networks">>, Ns} = lists:keyfind(<<"networks">>, 1, Dataset),
-    Dataset1 = lists:keydelete(<<"networks">>, 1, Dataset),
-    Ns1 = lists:foldl(fun(Nic, NsAcc) ->
-                              {<<"name">>, Name} = lists:keyfind(<<"name">>, 1, Nic),
-                              {Name, NicTag} = lists:keyfind(Name, 1, On),
-                              sniffle_vm:log(UUID, <<"Fetching network ", NicTag/binary, " for NIC ", Name/binary>>),
-                              {ok, {Tag, IP, Net, Gw}} = sniffle_iprange:claim_ip(NicTag),
-                              IPb = sniffle_iprange_state:to_bin(IP),
-                              Netb = sniffle_iprange_state:to_bin(Net),
-                              GWb = sniffle_iprange_state:to_bin(Gw),
-                              sniffle_vm:log(UUID, <<"Assigning IP ", IPb/binary,
-                                                     " netmask ", Netb/binary,
-                                                     " gateway ", GWb/binary,
-                                                     " tag ", Tag/binary>>),
-                              [[{<<"nic_tag">>, Tag},
-                                {<<"ip">>, IPb},
-                                {<<"netmask">>, Netb},
-                                {<<"gateway">>, GWb}] | NsAcc]
-                      end, [], Ns),
-    {next_state, get_server, State#state{dataset = [{<<"networks">>, Ns1} | Dataset1]}, 0}.
+    Dataset1 = jsxd:update(<<"networks">>,
+                           fun(Nics) ->
+                                   lists:map(
+                                     fun(Nic) ->
+                                             {ok, Name} = jsxd:get(<<"name">>, Nic),
+                                             {ok, NicTag} = jsxd:get([<<"networks">>, Name], Config),
+                                             sniffle_vm:log(UUID, <<"Fetching network ", NicTag/binary, " for NIC ", Name/binary>>),
+                                             {ok, {Tag, IP, Net, Gw}} = sniffle_iprange:claim_ip(NicTag),
+                                             IPb = sniffle_iprange_state:to_bin(IP),
+                                             Netb = sniffle_iprange_state:to_bin(Net),
+                                             GWb = sniffle_iprange_state:to_bin(Gw),
+                                             sniffle_vm:log(UUID, <<"Assigning IP ", IPb/binary,
+                                                                    " netmask ", Netb/binary,
+                                                                    " gateway ", GWb/binary,
+                                                                    " tag ", Tag/binary>>),
+                                             jsxd:from_list([{<<"nic_tag">>, Tag},
+                                                             {<<"ip">>, IPb},
+                                                             {<<"netmask">>, Netb},
+                                                             {<<"gateway">>, GWb}])
+                                     end, Nics)
+                           end, Dataset),
+    {next_state, get_server, State#state{dataset = Dataset1}, 0}.
 
 get_server(_Event, State = #state{
                      dataset = Dataset,
                      uuid = UUID,
                      config = Config,
                      package = Package}) ->
-    {<<"owner">>, Owner} = lists:keyfind(<<"owner">>, 1, Config),
+    {ok, Owner} = jsxd:get(<<"owner">>, Config),
     sniffle_vm:log(UUID, <<"Assigning owner ", Owner/binary>>),
-    {<<"ram">>, Ram} = lists:keyfind(<<"ram">>, 1, Package),
+    {ok, Ram} = jsxd:get(<<"ram">>, Package),
     RamB = list_to_binary(integer_to_list(Ram)),
     sniffle_vm:log(UUID, <<"Assigning memory ", RamB/binary>>),
-    sniffle_vm:set_attribute(UUID, <<"state">>, <<"fetching_server">>),
+    sniffle_vm:set(UUID, <<"state">>, <<"fetching_server">>),
     Permission = [<<"hypervisor">>, {<<"res">>, <<"name">>}, <<"create">>],
-    {<<"networks">>, Ns} = lists:keyfind(<<"networks">>, 1, Dataset),
-    {<<"type">>, Type} = lists:keyfind(<<"type">>, 1, Dataset),
+    {ok, Ns} = jsxd:get(<<"networks">>, Dataset),
+    {ok, Type} = jsxd:get(<<"type">>, Dataset),
 
-    NicTags = lists:foldl(fun (N, Acc) ->
-                                  {<<"nic_tag">>, Tag} = lists:keyfind(<<"nic_tag">>, 1, N),
-                                  [Tag | Acc]
-                          end, [], Ns),
+    NicTags = jsxd:map(fun (_N, E) ->
+                               jsxd:get(<<"nic_tag">>, <<"undefined">>, E)
+                       end, Ns),
     case libsnarl:user_cache(Owner) of
         {ok, Permissions} ->
+            Conditions0 = jsxd:get(<<"requirements">>, [], Package),
+            Conditions1 = Conditions0 ++ jsxd:get(<<"requirements">>, [], Dataset),
             Conditions = [{must, 'allowed', Permission, Permissions},
                           {must, 'subset', <<"networks">>, NicTags},
                           {must, 'element', <<"virtualisation">>, Type},
-                          {must, '>=', <<"resouroces.free-memory">>, Ram}],
+                          {must, '>=', <<"resources.free-memory">>, Ram}] ++
+                lists:map(fun(C) -> make_condition(C, Permissions) end, Conditions1),
             CondB = list_to_binary(io_lib:format("~p", [Conditions])),
             sniffle_vm:log(UUID, <<"Finding hypervisor ", CondB/binary>>),
 
@@ -217,7 +220,7 @@ create(_Event, State = #state{
                  config = Config,
                  hypervisor = {Host, Port}}) ->
     sniffle_vm:log(UUID, <<"Handing off to hypervisor.">>),
-    sniffle_vm:set_attribute(UUID, <<"state">>, <<"creating">>),
+    sniffle_vm:set(UUID, <<"state">>, <<"creating">>),
     {<<"owner">>, Owner} = lists:keyfind(<<"owner">>, 1, Config),
     libsnarl:user_grant(Owner, [<<"vms">>, UUID, '...']),
     libchunter:create_machine(Host, Port, UUID, Package, Dataset, Config),
@@ -295,7 +298,7 @@ terminate(shutdown, _StateName, _StateData) ->
 
 terminate(_Reason, StateName, _State = #state{uuid=UUID}) ->
     StateBin = list_to_binary(atom_to_list(StateName)),
-    sniffle_vm:set_attribute(UUID, <<"state">>, <<"failed-", StateBin/binary>>),
+    sniffle_vm:set(UUID, <<"state">>, <<"failed-", StateBin/binary>>),
     ok.
 
 %%--------------------------------------------------------------------
@@ -313,3 +316,35 @@ code_change(_OldVsn, StateName, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+
+make_condition(C, Permissions) ->
+    Weight = case jsxd:get(<<"weight">>, <<"must">>, C) of
+                 <<"must">> ->
+                     must;
+                 <<"cant">> ->
+                     cant;
+                 I when is_integer(I) ->
+                     I
+             end,
+    Condition = case jsxd:get(<<"weight">>, <<"=:=">>, C) of
+                    <<">=">> -> '>=';
+                    <<"=<">> -> '=<';
+                    <<"<">> -> '<';
+                    <<">">> -> '>';
+                    <<"=:=">> -> '=:=';
+                    <<"=/=">> -> '=/=';
+                    <<"subset">> -> 'subset';
+                    <<"superset">> -> 'superset';
+                    <<"disjoint">> -> 'disjoint';
+                    <<"element">> -> 'element';
+                    <<"allowed">> -> 'allowed'
+                end,
+    {ok, Attribute} = jsxd:get(<<"attribute">>, C),
+    case Condition of
+        'allowed' ->
+            {Weight, Condition, Attribute, Permissions};
+        _ ->
+            {ok, Value} = jsxd:get(<<"value">>, C),
+            {Weight, Condition, Attribute, Value}
+    end.
+

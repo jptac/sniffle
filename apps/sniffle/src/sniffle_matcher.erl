@@ -74,7 +74,7 @@ match(Hypervisor, Getter, {'<', Resource, Value}) ->
     Getter(Hypervisor, Resource) < Value;
 
 match(Hypervisor, Getter, {'=:=', Resource, Value}) ->
-    Getter(Hypervisor, Resource) == Value;
+    Getter(Hypervisor, Resource) =:= Value;
 
 match(Hypervisor, Getter, {'=/=', Resource, Value}) ->
     Getter(Hypervisor, Resource) =/= Value;

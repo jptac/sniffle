@@ -13,7 +13,7 @@
          load/1,
          new/0,
          name/2,
-         attribute/3
+         set/3
         ]).
 
 load(#package{name = Name,
@@ -32,5 +32,5 @@ new() ->
 name(Name, Package) ->
     jsxd:set(<<"name">>, Name, Package).
 
-attribute(Attribute, Value, Package) ->
+set(Attribute, Value, Package) ->
     jsxd:set(Attribute, Value, Package).

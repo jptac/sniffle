@@ -9,10 +9,8 @@
     get/1,
     list/0,
     list/1,
-    get_attribute/2,
-    get_attribute/1,
-    set_attribute/2,
-    set_attribute/3
+    set/2,
+    set/3
    ]
   ).
 
@@ -45,33 +43,12 @@ list(Requirements) ->
       list, Requirements
      ).
 
-get_attribute(Package) ->
-    case sniffle_package:get(Package) of
-        {ok, not_found} ->
-            not_found;
-        {ok, V} ->
-            {ok, jsxd:get(<<"attributes">>, [], V)}
-    end.
-
-get_attribute(Package, Attribute) ->
-    case sniffle_package:get(Package) of
-        {ok, not_found} ->
-            not_found;
-        {ok, V} ->
-            case jsxd:get([<<"attributes">>, Attribute], V) of
-                undefined ->
-                    not_found;
-                Result ->
-                    Result
-            end
-    end.
-
-set_attribute(Package, Attribute, Value) ->
-    do_update(Package, set_attribute, [Attribute, Value]).
+set(Package, Attribute, Value) ->
+    do_update(Package, set, [{Attribute, Value}]).
 
 
-set_attribute(Package, Attributes) ->
-    do_update(Package, mset_attribute, Attributes).
+set(Package, Attributes) ->
+    do_update(Package, set, Attributes).
 
 
 %%%===================================================================

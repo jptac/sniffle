@@ -10,8 +10,7 @@
          list/3,
          create/4,
          delete/3,
-         set_attribute/4,
-         mset_attribute/4
+         set/4
         ]).
 
 -export([start_vnode/1,
@@ -43,9 +42,8 @@
               get/3,
               list/2,
               list/3,
-              mset_attribute/4,
               repair/4,
-              set_attribute/4,
+              set/4,
               start_vnode/1
              ]).
 
@@ -112,15 +110,9 @@ delete(Preflist, ReqID, Package) ->
                                    {fsm, undefined, self()},
                                    ?MASTER).
 
-set_attribute(Preflist, ReqID, Vm, Data) ->
+set(Preflist, ReqID, Vm, Data) ->
     riak_core_vnode_master:command(Preflist,
-                                   {attribute, set, ReqID, Vm, Data},
-                                   {fsm, undefined, self()},
-                                   ?MASTER).
-
-mset_attribute(Preflist, ReqID, Vm, Data) ->
-    riak_core_vnode_master:command(Preflist,
-                                   {attribute, mset, ReqID, Vm, Data},
+                                   {set, ReqID, Vm, Data},
                                    {fsm, undefined, self()},
                                    ?MASTER).
 
@@ -194,24 +186,7 @@ handle_command({delete, {ReqID, _Coordinator}, Package}, _Sender, #state{dbref =
 
     {reply, {ok, ReqID}, State#state{packages = Is0}};
 
-handle_command({attribute, set,
-                {ReqID, Coordinator}, Package,
-                [Resource, Value]}, _Sender, State) ->
-    Hs0 = dict:update(Package,
-                      fun(#sniffle_obj{val=H0} = O) ->
-                              H1 = statebox:modify(
-                                     {fun sniffle_package_state:attribute/3,
-                                      [Resource, Value]}, H0),
-                              H2 = statebox:expire(?STATEBOX_EXPIRE, H1),
-                              sniffle_obj:update(H2, Coordinator, O)
-                      end, State#state.packages),
-
-    P = dict:fetch(Package, Hs0),
-    eleveldb:put(State#state.dbref, Package, term_to_binary(P), []),
-
-    {reply, {ok, ReqID}, State#state{packages = Hs0}};
-
-handle_command({attribute, mset,
+handle_command({set,
                 {ReqID, Coordinator}, Package,
                 Resources}, _Sender, State) ->
     Hs0 = dict:update(Package,
@@ -219,7 +194,7 @@ handle_command({attribute, mset,
                               H1 = lists:foldr(
                                      fun ({Resource, Value}, H) ->
                                              statebox:modify(
-                                               {fun sniffle_package_state:attribute/3,
+                                               {fun sniffle_package_state:set/3,
                                                 [Resource, Value]}, H)
                                      end, H0, Resources),
                               H2 = statebox:expire(?STATEBOX_EXPIRE, H1),

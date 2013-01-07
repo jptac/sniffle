@@ -13,7 +13,7 @@
          new/0,
          load/1,
          name/2,
-         attribute/3
+         set/3
         ]).
 
 load(#dataset{name = Name,
@@ -32,5 +32,5 @@ new() ->
 name(Name, Dataset) ->
     jsxd:set(<<"name">>, Name, Dataset).
 
-attribute(Attribute, Value, Dataset) ->
+set(Attribute, Value, Dataset) ->
     jsxd:set(Attribute, Value, Dataset).

@@ -17,7 +17,7 @@
          uuid/2,
          log/3,
          hypervisor/2,
-         attribute/3
+         set/3
         ]).
 
 new() ->
@@ -31,6 +31,8 @@ uuid(UUID, Vm) ->
 %%    Vm#vm{alias = Alias}.
 
 log(Time, Log, Vm) ->
+    LogEntry = [{<<"date">>, Time},
+                {<<"log">>, Log}],
     jsxd:update(<<"log">>,
                 fun(Log0) ->
                         Log1 = case length(Log0) of
@@ -42,10 +44,10 @@ log(Time, Log, Vm) ->
                                end,
                         ordsets:add_element([{<<"date">>, Time},
                                              {<<"log">>, Log}], Log1)
-                end, Vm).
+                end, [LogEntry], Vm).
 
 hypervisor(Hypervisor, Vm) ->
     jsxd:set(<<"hypervisor">>, Hypervisor, Vm).
 
-attribute(Attribute, Value, Vm) ->
+set(Attribute, Value, Vm) ->
     jsxd:set(Attribute, Value, Vm).

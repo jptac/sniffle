@@ -10,7 +10,7 @@
          log/4,
          register/4,
          unregister/3,
-         set_attribute/4
+         set/4
         ]).
 
 -export([start_vnode/1,
@@ -42,7 +42,7 @@
               log/4,
               register/4,
               repair/4,
-              set_attribute/4,
+              set/4,
               start_vnode/1,
               unregister/3
              ]).
@@ -127,11 +127,11 @@ unregister(Preflist, ReqID, Vm) ->
                                    ?MASTER).
 
 
--spec set_attribute(any(), any(), fifo:uuid(), [{Key::binary(), V::fifo:value()}]) -> ok.
+-spec set(any(), any(), fifo:uuid(), [{Key::binary(), V::fifo:value()}]) -> ok.
 
-set_attribute(Preflist, ReqID, Vm, Data) ->
+set(Preflist, ReqID, Vm, Data) ->
     riak_core_vnode_master:command(Preflist,
-                                   {attribute, set, ReqID, Vm, Data},
+                                   {set, ReqID, Vm, Data},
                                    {fsm, undefined, self()},
                                    ?MASTER).
 
@@ -154,7 +154,7 @@ init([Partition]) ->
         {log, ReqID::any(), Vm::fifo:uuid(), Log::fifo:log()} |
         {register, {ReqID::any(), Coordinator::any()}, Vm::fifo:uuid(), Hypervisor::binary()} |
         {unregister, {ReqID::any(), _Coordinator::any()}, Vm::fifo:uuid()} |
-        {attribute, set,
+        {set,
          {ReqID::any(), Coordinator::any()}, Vm::fifo:uuid(),
          Resources::[{Key::binary(), Value::fifo:value()}]}.
 
@@ -208,7 +208,7 @@ handle_command({unregister, {ReqID, _Coordinator}, Vm}, _Sender, State) ->
     Hs0 = dict:erase(Vm, State#state.vms),
     {reply, {ok, ReqID}, State#state{vms = Hs0}};
 
-handle_command({attribute, set,
+handle_command({set,
                 {ReqID, Coordinator}, Vm,
                 Resources}, _Sender, State) ->
     Hs0 = dict:update(Vm,
@@ -216,7 +216,7 @@ handle_command({attribute, set,
                               H1 = lists:foldr(
                                      fun ({Resource, Value}, H) ->
                                              statebox:modify(
-                                               {fun sniffle_vm_state:attribute/3,
+                                               {fun sniffle_vm_state:set/3,
                                                 [Resource, Value]}, H)
                                      end, H0, Resources),
                               H2 = statebox:expire(?STATEBOX_EXPIRE, H1),
