@@ -180,7 +180,7 @@ message({dataset, set, Dataset, Attribute, Value}, State) when
      sniffle_dataset:set(Dataset, Attribute, Value),
      State};
 
-message({dataset, attribute, set, Dataset, Attributes}, State) when
+message({dataset, set, Dataset, Attributes}, State) when
       is_binary(Dataset),
       is_list(Attributes) ->
     {reply,
