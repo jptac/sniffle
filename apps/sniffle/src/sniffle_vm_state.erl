@@ -17,34 +17,37 @@
          uuid/2,
          log/3,
          hypervisor/2,
-         attribute/3
+         set/3
         ]).
 
 new() ->
-    #vm{attributes=dict:new(),
-        log=[]}.
+    jsxd:new().
 
 
 uuid(UUID, Vm) ->
-    Vm#vm{uuid = UUID}.
+    jsxd:set(<<"uuid">>, UUID, Vm).
 
-                                                %alias(Alias, Vm) ->
-                                                %    Vm#vm{alias = Alias}.
+%%alias(Alias, Vm) ->
+%%    Vm#vm{alias = Alias}.
 
-log(Time, Log, Vm = #vm{log = Log0}) ->
-    Log1 = case length(Log0) of
-               ?LOGLEN ->
-                   [_ | L] = Log0,
-                   L;
-               _ ->
-                   Log0
-           end,
-    Vm#vm{log = ordsets:add_element({Time, Log}, Log1)}.
+log(Time, Log, Vm) ->
+    LogEntry = [{<<"date">>, Time},
+                {<<"log">>, Log}],
+    jsxd:update(<<"log">>,
+                fun(Log0) ->
+                        Log1 = case length(Log0) of
+                                   ?LOGLEN ->
+                                       [_ | L] = Log0,
+                                       L;
+                                   _ ->
+                                       Log0
+                               end,
+                        ordsets:add_element([{<<"date">>, Time},
+                                             {<<"log">>, Log}], Log1)
+                end, [LogEntry], Vm).
 
 hypervisor(Hypervisor, Vm) ->
-    Vm#vm{hypervisor = Hypervisor}.
+    jsxd:set(<<"hypervisor">>, Hypervisor, Vm).
 
-attribute(Attribute, Value, Vm) ->
-    Vm#vm{
-      attributes = dict:store(Attribute, Value, Vm#vm.attributes)
-     }.
+set(Attribute, Value, Vm) ->
+    jsxd:set(Attribute, Value, Vm).

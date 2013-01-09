@@ -1,25 +1,23 @@
 -module(sniffle_dataset).
 -include("sniffle.hrl").
-%-include_lib("riak_core/include/riak_core_vnode.hrl").
+                                                %-include_lib("riak_core/include/riak_core_vnode.hrl").
 
 -export([
-	 create/1,
-	 delete/1,
-	 get/1,
-	 list/0,
-	 list/1,
-	 get_attribute/2,
-	 get_attribute/1,
-	 set_attribute/2,
-	 set_attribute/3
-	]).
+         create/1,
+         delete/1,
+         get/1,
+         list/0,
+         list/1,
+         set/2,
+         set/3
+        ]).
 
 create(Dataset) ->
     case sniffle_dataset:get(Dataset) of
-	{ok, not_found} ->
-	    do_write(Dataset, create, []);
-	{ok, _RangeObj} ->
-	    duplicate
+        {ok, not_found} ->
+            do_write(Dataset, create, []);
+        {ok, _RangeObj} ->
+            duplicate
     end.
 
 delete(Dataset) ->
@@ -43,33 +41,12 @@ list(Requirements) ->
       list, Requirements
      ).
 
-get_attribute(Dataset) ->
-    case sniffle_dataset:get(Dataset) of
-	{ok, not_found} ->
-	    not_found;
-	{ok, V} ->
-	    {ok, dict:to_list(V#dataset.attributes)}
-    end.
-
-get_attribute(Dataset, Attribute) ->
-    case sniffle_dataset:get(Dataset) of
-	{ok, not_found} ->
-	    not_found;
-	{ok, V} ->
-	    case dict:find(Attribute, V#dataset.attributes) of
-		error ->
-		    not_found;
-		Result ->
-		    Result
-	    end
-    end.
-
-set_attribute(Dataset, Attribute, Value) ->
-    do_update(Dataset, set_attribute, [Attribute, Value]).
+set(Dataset, Attribute, Value) ->
+    do_update(Dataset, set, [{Attribute, Value}]).
 
 
-set_attribute(Dataset, Attributes) ->
-    do_update(Dataset, mset_attribute, Attributes).
+set(Dataset, Attributes) ->
+    do_update(Dataset, set, Attributes).
 
 
 %%%===================================================================
@@ -79,18 +56,18 @@ set_attribute(Dataset, Attributes) ->
 
 do_update(Dataset, Op) ->
     case sniffle_dataset:get(Dataset) of
-	{ok, not_found} ->
-	    not_found;
-	{ok, _RangeObj} ->
-	    do_write(Dataset, Op)
+        {ok, not_found} ->
+            not_found;
+        {ok, _RangeObj} ->
+            do_write(Dataset, Op)
     end.
 
 do_update(Dataset, Op, Val) ->
     case sniffle_dataset:get(Dataset) of
-	{ok, not_found} ->
-	    not_found;
-	{ok, _RangeObj} ->
-	    do_write(Dataset, Op, Val)
+        {ok, not_found} ->
+            not_found;
+        {ok, _RangeObj} ->
+            do_write(Dataset, Op, Val)
     end.
 
 do_write(Dataset, Op) ->

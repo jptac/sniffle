@@ -4,16 +4,15 @@
 -include_lib("riak_core/include/riak_core_vnode.hrl").
 
 -export([
-	 repair/4,
-	 get/3,
-	 status/2,
-	 list/2,
-	 list/3,
-	 register/4,
-	 unregister/3,
-	 set_resource/4,
-	 mset_resource/4
-	]).
+         repair/4,
+         get/3,
+         status/2,
+         list/2,
+         list/3,
+         register/4,
+         unregister/3,
+         set/4
+        ]).
 
 -export([start_vnode/1,
          init/1,
@@ -31,23 +30,22 @@
          handle_exit/3]).
 
 -record(state, {
-	  hypervisors,
-	  partition,
-	  node
-	 }).
+          hypervisors,
+          partition,
+          node
+         }).
 
 -ignore_xref([
-	      get/3,
-	      list/2,
-	      list/3,
-	      status/2,
-	      register/4,
-	      repair/4,
-	      set_resource/4,
-	      mset_resource/4,
-	      start_vnode/1,
-	      unregister/3
-	     ]).
+              get/3,
+              list/2,
+              list/3,
+              status/2,
+              register/4,
+              repair/4,
+              set/4,
+              start_vnode/1,
+              unregister/3
+             ]).
 
 -define(MASTER, sniffle_hypervisor_vnode_master).
 
@@ -71,9 +69,9 @@ repair(IdxNode, Hypervisor, VClock, Obj) ->
 get(Preflist, ReqID, Hypervisor) ->
     ?PRINT({get, Preflist, ReqID, Hypervisor}),
     riak_core_vnode_master:command(Preflist,
-				   {get, ReqID, Hypervisor},
-				   {fsm, undefined, self()},
-				   ?MASTER).
+                                   {get, ReqID, Hypervisor},
+                                   {fsm, undefined, self()},
+                                   ?MASTER).
 
 %%%===================================================================
 %%% API - coverage
@@ -109,26 +107,20 @@ list(Preflist, ReqID, Requirements) ->
 
 register(Preflist, ReqID, Hypervisor, Data) ->
     riak_core_vnode_master:command(Preflist,
-				   {register, ReqID, Hypervisor, Data},
-				   {fsm, undefined, self()},
-				   ?MASTER).
+                                   {register, ReqID, Hypervisor, Data},
+                                   {fsm, undefined, self()},
+                                   ?MASTER).
 
 unregister(Preflist, ReqID, Hypervisor) ->
     riak_core_vnode_master:command(Preflist,
                                    {unregister, ReqID, Hypervisor},
-				   {fsm, undefined, self()},
+                                   {fsm, undefined, self()},
                                    ?MASTER).
 
-set_resource(Preflist, ReqID, Hypervisor, Data) ->
+set(Preflist, ReqID, Hypervisor, Data) ->
     riak_core_vnode_master:command(Preflist,
-                                   {resource, set, ReqID, Hypervisor, Data},
-				   {fsm, undefined, self()},
-                                   ?MASTER).
-
-mset_resource(Preflist, ReqID, Hypervisor, Data) ->
-    riak_core_vnode_master:command(Preflist,
-                                   {resource, mset, ReqID, Hypervisor, Data},
-				   {fsm, undefined, self()},
+                                   {set, ReqID, Hypervisor, Data},
+                                   {fsm, undefined, self()},
                                    ?MASTER).
 
 %%%===================================================================
@@ -147,26 +139,26 @@ handle_command(ping, _Sender, State) ->
 
 handle_command({repair, Hypervisor, VClock, Obj}, _Sender, State) ->
     Hs0 = dict:update(Hypervisor,
-		      fun(Obj1) ->
-			      case Obj1#sniffle_obj.vclock of
-				  VClock ->
-				      Obj;
-				  _ ->
-				      lager:error("[hypervisor] Read repair failed, data was updated too recent."),
-				      Obj1
-			      end
-		      end, Obj, State#state.hypervisors),
+                      fun(Obj1) ->
+                              case Obj1#sniffle_obj.vclock of
+                                  VClock ->
+                                      Obj;
+                                  _ ->
+                                      lager:error("[hypervisor] Read repair failed, data was updated too recent."),
+                                      Obj1
+                              end
+                      end, Obj, State#state.hypervisors),
     {noreply, State#state{hypervisors=Hs0}};
 
 handle_command({get, ReqID, Hypervisor}, _Sender, State) ->
     ?PRINT({handle_command, get, ReqID, Hypervisor}),
     NodeIdx = {State#state.partition, State#state.node},
     Res = case dict:find(Hypervisor, State#state.hypervisors) of
-	      error ->
-		  {ok, ReqID, NodeIdx, not_found};
-	      {ok, V} ->
-		  {ok, ReqID, NodeIdx, V}
-	  end,
+              error ->
+                  {ok, ReqID, NodeIdx, not_found};
+              {ok, V} ->
+                  {ok, ReqID, NodeIdx, V}
+          end,
     {reply,
      Res,
      State};
@@ -188,33 +180,20 @@ handle_command({unregister, {ReqID, _Coordinator}, Hypervisor}, _Sender, State) 
     Hs0 = dict:erase(Hypervisor, State#state.hypervisors),
     {reply, {ok, ReqID}, State#state{hypervisors = Hs0}};
 
-handle_command({resource, set,
-		{ReqID, Coordinator}, Hypervisor,
-		[Resource, Value]}, _Sender, State) ->
-    Hs0 = dict:update(Hypervisor,
-		      fun(#sniffle_obj{val=H0} = O) ->
-			      H1 = statebox:modify(
-				     {fun sniffle_hypervisor_state:resource/3,
-				      [Resource, Value]}, H0),
-			      H2 = statebox:expire(?STATEBOX_EXPIRE, H1),
-			      sniffle_obj:update(H2, Coordinator, O)
-		      end, State#state.hypervisors),
-    {reply, {ok, ReqID}, State#state{hypervisors = Hs0}};
-
-handle_command({resource, mset,
-		{ReqID, Coordinator}, Vm,
-		Resources}, _Sender, State) ->
+handle_command({set,
+                {ReqID, Coordinator}, Vm,
+                Resources}, _Sender, State) ->
     Hs0 = dict:update(Vm,
-		      fun(#sniffle_obj{val=H0} = O) ->
-			      H1 = lists:foldr(
-				     fun ({Resource, Value}, H) ->
-					     statebox:modify(
-					       {fun sniffle_hypervisor_state:resource/3,
-						[Resource, Value]}, H)
-				     end, H0, Resources),
-			      H2 = statebox:expire(?STATEBOX_EXPIRE, H1),
-			      sniffle_obj:update(H2, Coordinator, O)
-		      end, State#state.hypervisors),
+                      fun(#sniffle_obj{val=H0} = O) ->
+                              H1 = lists:foldr(
+                                     fun ({Resource, Value}, H) ->
+                                             statebox:modify(
+                                               {fun sniffle_hypervisor_state:set/3,
+                                                [Resource, Value]}, H)
+                                     end, H0, Resources),
+                              H2 = statebox:expire(?STATEBOX_EXPIRE, H1),
+                              sniffle_obj:update(H2, Coordinator, O)
+                      end, State#state.hypervisors),
     {reply, {ok, ReqID}, State#state{hypervisors = Hs0}};
 
 handle_command(Message, _Sender, State) ->
@@ -244,23 +223,19 @@ encode_handoff_item(Hypervisor, Data) ->
 
 is_empty(State) ->
     case dict:size(State#state.hypervisors) of
-	0 ->
-	    {true, State};
-	_ ->
-	    {true, State}
+        0 ->
+            {true, State};
+        _ ->
+            {true, State}
     end.
 
 delete(State) ->
     {ok, State#state{hypervisors = dict:new()}}.
 
 handle_coverage({list, ReqID, Requirements}, _KeySpaces, _Sender, State) ->
-    Getter = fun(#sniffle_obj{val=S0}, <<"name">>) ->
-		     Hypervisor = statebox:value(S0),
-		     Hypervisor#hypervisor.name;
-		(#sniffle_obj{val=S0}, Resource) ->
-		     Hypervisor = statebox:value(S0),
-		     dict:fetch(Resource, Hypervisor#hypervisor.resources)
-	     end,
+    Getter = fun(#sniffle_obj{val=S0}, Resource) ->
+                     jsxd:get(Resource, 0, statebox:value(S0))
+             end,
     Server = sniffle_matcher:match_dict(State#state.hypervisors, Getter, Requirements),
     {reply,
      {ok, ReqID, {State#state.partition, State#state.node}, Server},
@@ -274,40 +249,57 @@ handle_coverage({list, ReqID}, _KeySpaces, _Sender, State) ->
 
 
 handle_coverage({status, ReqID}, _KeySpaces, _Sender, State) ->
-    Res = dict:fold(fun(K, #sniffle_obj{val=S0}, {Res, Warnings}) ->
-			    #hypervisor{
-			 resources = R,
-			 host = Host,
-			 port = Port} = statebox:value(S0),
-			    Res1 = update_res(R,[<<"free-memory">>,
-						 <<"provisioned-memory">>,
-						 <<"l1hits">>,
-						 <<"l1miss">>,
-						 <<"l1size">>,
-						 <<"l2hits">>,
-						 <<"l2miss">>,
-						 <<"l2size">>],
-					      Res),
-			    Res2 = update_kv_list(<<"hypervisors">>, K, fun(A,B)-> [A|B] end, [K], Res1),
-			    Warnings1 = case libchunter:ping(Host, Port) of
-					    {error,connection_failed} ->
-						[[{category, <<"chunter">>},
-						  {element, K},
-						  {type, <<"critical">>},
-						  {message,
-						   list_to_binary(io_lib:format("Chunter server ~s down.", [K]))}]  |
-						 Warnings];
-					    pong ->
-						Warnings
-					end,
-			    case dict:find(<<"pools">>, R) of
-				error ->
-				    {Res2, Warnings1};
-				{ok, Pools} ->
-				    merge_pools(K, Pools, Res2, Warnings1)
-			    end
-		    end, {[], []},
-		    State#state.hypervisors),
+    Res = dict:fold(
+            fun(K, #sniffle_obj{val=S0}, {Res, Warnings}) ->
+                    H=statebox:value(S0),
+                    {ok, Host} = jsxd:get(<<"host">>, H),
+                    {ok, Port} = jsxd:get(<<"port">>, H),
+                    Res1 = jsxd:fold(fun (Resource, Value, Acc) ->
+                                               jsxd:update(Resource,
+                                                           fun(Current)->
+                                                                   Current + Value
+                                                           end, Value, Acc)
+                                       end, Res, jsxd:get(<<"resources">>, [], H)),
+                    Res2 = jsxd:update(<<"hypervisors">>, fun(Current)-> [K|Current] end, [K], Res1),
+                    Warnings1 = case libchunter:ping(binary_to_list(Host), Port) of
+                                    {error,connection_failed} ->
+                                        [jsxd:from_list(
+                                           [{<<"category">>, <<"chunter">>},
+                                            {<<"elementy">>, K},
+                                            {<<"typey">>, <<"critical">>},
+                                            {<<"messagey">>,
+                                             bin_fmt("Chunter server ~s down.", [K])}]) |
+                                         Warnings];
+                                    pong ->
+                                        Warnings
+                                end,
+                    case jsxd:get(<<"pools">>, H) of
+                        undefined ->
+                            {Res2, Warnings1};
+                        {ok, Pools} ->
+                            jsxd:fold(
+                              fun (Name, Pool, {ResAcc, WarningsAcc}) ->
+                                      Size = jsxd:get(<<"size">>, 0, Pool),
+                                      Used = jsxd:get(<<"used">>, 0, Pool),
+                                      ResAcc1 = jsxd:thread([{update, <<"size">>, fun(C) -> C + Size end, Size},
+                                                             {update, <<"used">>, fun(C) -> C + Used end, Used}],
+                                                             ResAcc),
+                                      case jsxd:get(<<"health">>, <<"ONLINE">>, Pool) of
+                                          <<"ONLINE">> ->
+                                              {ResAcc1, WarningsAcc};
+                                          PoolState ->
+                                              {ResAcc1,
+                                               [jsxd:from_list(
+                                                  [{<<"category">>, <<"chunter">>},
+                                                   {<<"element">>, Name},
+                                                   {<<"type">>, <<"critical">>},
+                                                   {<<"message">>,
+                                                    bin_fmt("Zpool ~s in state ~s.", [Name, PoolState])}])|
+                                                WarningsAcc]}
+                                      end
+                              end,{Res2, Warnings1}, Pools)
+                    end
+            end, {[], []}, State#state.hypervisors),
     {reply,
      {ok, ReqID, {State#state.partition, State#state.node}, [Res]},
      State};
@@ -321,45 +313,5 @@ handle_exit(_Pid, _Reason, State) ->
 terminate(_Reason, _State) ->
     ok.
 
-update_kv_list(Key, Value, MergeFn, Default, List) ->
-    case lists:keytake(Key, 1, List) of
-	false ->
-	    [{Key, Default}  | List];
-	{value, {Key, F0}, ListI} ->
-	    [{Key, MergeFn(Value, F0)}  | ListI]
-    end.
-
-
-update_res(_R, [], Res) ->
-    Res;
-
-update_res(R, [Key | Keys], Res)->
-    Res1 = update_res(R, Keys, Res),
-    case dict:find(Key, R) of
-	error ->
-	    Res1;
-	{ok, F} ->
-	    update_kv_list(Key, F, fun(A,B)-> A+B end, F, Res1)
-    end.
-
-merge_pools(Name, Pools, Res, Warnings) ->
-    lists:foldl(fun (Pool, {ResAcc, WarningsAcc}) ->
-			Add = fun(A,B)-> A+B end,
-			{<<"name">>, PoolName} = lists:keyfind(<<"name">>, 1, Pool),
-			{<<"size">>, PoolSize} = lists:keyfind(<<"size">>, 1, Pool),
-			{<<"used">>, PoolUsed} = lists:keyfind(<<"used">>, 1, Pool),
-			ResAcc1 =  update_kv_list(<<"size">>, PoolSize, Add, PoolSize, ResAcc),
-			ResAcc2 =  update_kv_list(<<"used">>, PoolUsed, Add, PoolUsed, ResAcc1),
-			case lists:keyfind(<<"health">>, 1, Pool) of
-			    {<<"health">>, <<"ONLINE">>} ->
-				{ResAcc2, WarningsAcc};
-			    {<<"health">>, State} ->
-				{ResAcc2,
-				 [[{category, <<"chunter">>},
-				   {element, Name},
-				   {type, <<"critical">>},
-				   {message,
-				    list_to_binary(io_lib:format("Zpool ~s in state ~s.", [PoolName, State]))}]  |
-				  WarningsAcc]}
-			end
-		end, {Res, Warnings}, Pools).
+bin_fmt(F, L) ->
+    list_to_binary(io_lib:format(F, L)).

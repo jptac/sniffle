@@ -16,6 +16,8 @@
 
 -export([match/3, match_dict/3]).
 
+-ignore_xref([match/3]).
+
 match_dict(Dict, Getter, Requirements) ->
     dict:fold(fun(Key, E, C) ->
                       case match(E, Getter, Requirements) of
@@ -72,7 +74,7 @@ match(Hypervisor, Getter, {'<', Resource, Value}) ->
     Getter(Hypervisor, Resource) < Value;
 
 match(Hypervisor, Getter, {'=:=', Resource, Value}) ->
-    Getter(Hypervisor, Resource) == Value;
+    Getter(Hypervisor, Resource) =:= Value;
 
 match(Hypervisor, Getter, {'=/=', Resource, Value}) ->
     Getter(Hypervisor, Resource) =/= Value;

@@ -4,15 +4,14 @@
 -include_lib("riak_core/include/riak_core_vnode.hrl").
 
 -export([
-	 repair/4,
-	 get/3,
-	 list/2,
-	 list/3,
-	 create/4,
-	 delete/3,
-	 set_attribute/4,
-	 mset_attribute/4
-	]).
+         repair/4,
+         get/3,
+         list/2,
+         list/3,
+         create/4,
+         delete/3,
+         set/4
+        ]).
 
 -export([start_vnode/1,
          init/1,
@@ -30,24 +29,23 @@
          handle_exit/3]).
 
 -record(state, {
-	  packages,
-	  partition,
-	  node,
-	  dbref,
-	  index
-	 }).
+          packages,
+          partition,
+          node,
+          dbref,
+          index
+         }).
 
 -ignore_xref([
-	      create/4,
-	      delete/3,
-	      get/3,
-	      list/2,
-	      list/3,
-	      mset_attribute/4,
-	      repair/4,
-	      set_attribute/4,
-	      start_vnode/1
-	     ]).
+              create/4,
+              delete/3,
+              get/3,
+              list/2,
+              list/3,
+              repair/4,
+              set/4,
+              start_vnode/1
+             ]).
 
 -define(MASTER, sniffle_package_vnode_master).
 
@@ -71,9 +69,9 @@ repair(IdxNode, Package, VClock, Obj) ->
 get(Preflist, ReqID, Package) ->
     ?PRINT({get, Preflist, ReqID, Package}),
     riak_core_vnode_master:command(Preflist,
-				   {get, ReqID, Package},
-				   {fsm, undefined, self()},
-				   ?MASTER).
+                                   {get, ReqID, Package},
+                                   {fsm, undefined, self()},
+                                   ?MASTER).
 
 %%%===================================================================
 %%% API - coverage
@@ -102,26 +100,20 @@ list(Preflist, ReqID, Requirements) ->
 
 create(Preflist, ReqID, Package, Data) ->
     riak_core_vnode_master:command(Preflist,
-				   {create, ReqID, Package, Data},
-				   {fsm, undefined, self()},
-				   ?MASTER).
+                                   {create, ReqID, Package, Data},
+                                   {fsm, undefined, self()},
+                                   ?MASTER).
 
 delete(Preflist, ReqID, Package) ->
     riak_core_vnode_master:command(Preflist,
                                    {delete, ReqID, Package},
-				   {fsm, undefined, self()},
+                                   {fsm, undefined, self()},
                                    ?MASTER).
 
-set_attribute(Preflist, ReqID, Vm, Data) ->
+set(Preflist, ReqID, Vm, Data) ->
     riak_core_vnode_master:command(Preflist,
-                                   {attribute, set, ReqID, Vm, Data},
-				   {fsm, undefined, self()},
-                                   ?MASTER).
-
-mset_attribute(Preflist, ReqID, Vm, Data) ->
-    riak_core_vnode_master:command(Preflist,
-                                   {attribute, mset, ReqID, Vm, Data},
-				   {fsm, undefined, self()},
+                                   {set, ReqID, Vm, Data},
+                                   {fsm, undefined, self()},
                                    ?MASTER).
 
 %%%===================================================================
@@ -145,33 +137,33 @@ handle_command(ping, _Sender, State) ->
 
 handle_command({repair, Package, VClock, Obj}, _Sender, State) ->
     Hs0 = dict:update(Package,
-		      fun(Obj1) ->
-			      case Obj1#sniffle_obj.vclock of
-				  VClock ->
-				      Obj;
-				  _ ->
-				      lager:error("[packages] Read repair failed, data was updated too recent."),
-				      Obj1
-			      end
-		      end, Obj, State#state.packages),
+                      fun(Obj1) ->
+                              case Obj1#sniffle_obj.vclock of
+                                  VClock ->
+                                      Obj;
+                                  _ ->
+                                      lager:error("[packages] Read repair failed, data was updated too recent."),
+                                      Obj1
+                              end
+                      end, Obj, State#state.packages),
     {noreply, State#state{packages=Hs0}};
 
 handle_command({get, ReqID, Package}, _Sender, State) ->
     ?PRINT({handle_command, get, ReqID, Package}),
     NodeIdx = {State#state.partition, State#state.node},
     Res = case dict:find(Package, State#state.packages) of
-	      error ->
-		  {ok, ReqID, NodeIdx, not_found};
-	      {ok, V} ->
-		  {ok, ReqID, NodeIdx, V}
-	  end,
+              error ->
+                  {ok, ReqID, NodeIdx, not_found};
+              {ok, V} ->
+                  {ok, ReqID, NodeIdx, V}
+          end,
     {reply,
      Res,
      State};
 
 handle_command({create, {ReqID, Coordinator}, Package,
-		[]},
-	       _Sender, #state{dbref = DBRef} = State) ->
+                []},
+               _Sender, #state{dbref = DBRef} = State) ->
     I0 = statebox:new(fun sniffle_package_state:new/0),
     I1 = statebox:modify({fun sniffle_package_state:name/2, [Package]}, I0),
 
@@ -194,37 +186,20 @@ handle_command({delete, {ReqID, _Coordinator}, Package}, _Sender, #state{dbref =
 
     {reply, {ok, ReqID}, State#state{packages = Is0}};
 
-handle_command({attribute, set,
-		{ReqID, Coordinator}, Package,
-		[Resource, Value]}, _Sender, State) ->
+handle_command({set,
+                {ReqID, Coordinator}, Package,
+                Resources}, _Sender, State) ->
     Hs0 = dict:update(Package,
-		      fun(#sniffle_obj{val=H0} = O) ->
-			      H1 = statebox:modify(
-				     {fun sniffle_package_state:attribute/3,
-				      [Resource, Value]}, H0),
-			      H2 = statebox:expire(?STATEBOX_EXPIRE, H1),
-			      sniffle_obj:update(H2, Coordinator, O)
-		      end, State#state.packages),
-
-    P = dict:fetch(Package, Hs0),
-    eleveldb:put(State#state.dbref, Package, term_to_binary(P), []),
-
-    {reply, {ok, ReqID}, State#state{packages = Hs0}};
-
-handle_command({attribute, mset,
-		{ReqID, Coordinator}, Package,
-		Resources}, _Sender, State) ->
-    Hs0 = dict:update(Package,
-		      fun(#sniffle_obj{val=H0} = O) ->
-			      H1 = lists:foldr(
-				     fun ({Resource, Value}, H) ->
-					     statebox:modify(
-					       {fun sniffle_package_state:attribute/3,
-						[Resource, Value]}, H)
-				     end, H0, Resources),
-			      H2 = statebox:expire(?STATEBOX_EXPIRE, H1),
-			      sniffle_obj:update(H2, Coordinator, O)
-		      end, State#state.packages),
+                      fun(#sniffle_obj{val=H0} = O) ->
+                              H1 = lists:foldr(
+                                     fun ({Resource, Value}, H) ->
+                                             statebox:modify(
+                                               {fun sniffle_package_state:set/3,
+                                                [Resource, Value]}, H)
+                                     end, H0, Resources),
+                              H2 = statebox:expire(?STATEBOX_EXPIRE, H1),
+                              sniffle_obj:update(H2, Coordinator, O)
+                      end, State#state.packages),
 
     P = dict:fetch(Package, Hs0),
     eleveldb:put(State#state.dbref, Package, term_to_binary(P), []),
@@ -260,10 +235,10 @@ encode_handoff_item(Package, Data) ->
 
 is_empty(State) ->
     case dict:size(State#state.packages) of
-	0 ->
-	    {true, State};
-	_ ->
-	    {true, State}
+        0 ->
+            {true, State};
+        _ ->
+            {true, State}
     end.
 
 delete(#state{dbref = DBRef} = State) ->
@@ -271,7 +246,7 @@ delete(#state{dbref = DBRef} = State) ->
     eleveldb:close(DBRef),
     eleveldb:destroy(DBLoc ++ "/packages/"++integer_to_list(State#state.partition)++".ldb",[]),
     {ok, DBRef1} = eleveldb:open(DBLoc ++ "/packages/"++integer_to_list(State#state.partition)++".ldb",
-				 [{create_if_missing, true}]),
+                                 [{create_if_missing, true}]),
 
     {ok, State#state{packages = dict:new(), dbref = DBRef1}}.
 
@@ -281,13 +256,9 @@ handle_coverage({list, ReqID}, _KeySpaces, _Sender, State) ->
      State};
 
 handle_coverage({list, ReqID, Requirements}, _KeySpaces, _Sender, State) ->
-    Getter = fun(#sniffle_obj{val=S0}, <<"name">>) ->
-		     Package = statebox:value(S0),
-		     Package#package.name;
-		(#sniffle_obj{val=S0}, Resource) ->
-		     Package = statebox:value(S0),
-		     dict:fetch(Resource, Package#package.attributes)
-	     end,
+    Getter = fun(#sniffle_obj{val=S0}, Resource) ->
+                     jsxd:get(Resource, 0, statebox:value(S0))
+             end,
     Server = sniffle_matcher:match_dict(State#state.packages, Getter, Requirements),
     {reply,
      {ok, ReqID, {State#state.partition, State#state.node}, Server},
@@ -305,13 +276,18 @@ terminate(_Reason, #state{dbref=DBRef} = _State) ->
 
 read_ranges(DBRef) ->
     case eleveldb:get(DBRef, <<"#packages">>, []) of
-	not_found ->
-	    {[], dict:new()};
-	{ok, Bin} ->
-	    Index = binary_to_term(Bin),
-	    {Index,
-	     lists:foldl(fun (Package, Packages0) ->
-				 {ok, IpBin} = eleveldb:get(DBRef, Package, []),
-				 dict:store(Package, binary_to_term(IpBin), Packages0)
-			 end, dict:new(), Index)}
+        not_found ->
+            {[], dict:new()};
+        {ok, Bin} ->
+            Index = binary_to_term(Bin),
+            {Index,
+             lists:foldl(fun (Package, Packages0) ->
+                                 {ok, PackageBin} = eleveldb:get(DBRef, Package, []),
+                                 O = binary_to_term(PackageBin),
+                                 #sniffle_obj{val=Package0} = O,
+                                 Package1 = statebox:modify({fun sniffle_package_state:load/1, []}, Package0),
+                                 Package2 = statebox:expire(?STATEBOX_EXPIRE, Package1),
+                                 PackageObj = sniffle_obj:update(Package2, sniffle_package_vnode, O),
+                                 dict:store(Package, PackageObj, Packages0)
+                         end, dict:new(), Index)}
     end.

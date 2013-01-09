@@ -4,18 +4,17 @@
 -include_lib("riak_core/include/riak_core_vnode.hrl").
 
 -export([
-	 repair/4,
-	 get/3,
-	 list/2,
-	 list/3,
-	 create/4,
-	 delete/3,
-	 set_attribute/4,
-	 mset_attribute/4
-	]).
+         repair/4,
+         get/3,
+         list/2,
+         list/3,
+         create/4,
+         delete/3,
+         set/4
+        ]).
 
 -export([
-	 start_vnode/1,
+         start_vnode/1,
          init/1,
          terminate/2,
          handle_command/3,
@@ -29,27 +28,26 @@
          encode_handoff_item/2,
          handle_coverage/4,
          handle_exit/3
-	]).
+        ]).
 
 -record(state, {
-	  datasets,
-	  partition,
-	  node,
-	  dbref,
-	  index
-	 }).
+          datasets,
+          partition,
+          node,
+          dbref,
+          index
+         }).
 
 -ignore_xref([
-	      create/4,
-	      delete/3,
-	      get/3,
-	      list/2,
-	      list/3,
-	      mset_attribute/4,
-	      repair/4,
-	      set_attribute/4,
-	      start_vnode/1
-	     ]).
+              create/4,
+              delete/3,
+              get/3,
+              list/2,
+              list/3,
+              repair/4,
+              set/4,
+              start_vnode/1
+             ]).
 
 -define(MASTER, sniffle_dataset_vnode_master).
 
@@ -72,9 +70,9 @@ repair(IdxNode, Dataset, VClock, Obj) ->
 get(Preflist, ReqID, Dataset) ->
     ?PRINT({get, Preflist, ReqID, Dataset}),
     riak_core_vnode_master:command(Preflist,
-				   {get, ReqID, Dataset},
-				   {fsm, undefined, self()},
-				   ?MASTER).
+                                   {get, ReqID, Dataset},
+                                   {fsm, undefined, self()},
+                                   ?MASTER).
 
 %%%===================================================================
 %%% API - coverage
@@ -102,25 +100,19 @@ list(Preflist, ReqID, Requirements) ->
 
 create(Preflist, ReqID, Dataset, Data) ->
     riak_core_vnode_master:command(Preflist,
-				   {create, ReqID, Dataset, Data},
-				   {fsm, undefined, self()},
-				   ?MASTER).
+                                   {create, ReqID, Dataset, Data},
+                                   {fsm, undefined, self()},
+                                   ?MASTER).
 
 delete(Preflist, ReqID, Dataset) ->
     riak_core_vnode_master:command(Preflist,
                                    {delete, ReqID, Dataset},
-				   {fsm, undefined, self()},
+                                   {fsm, undefined, self()},
                                    ?MASTER).
-set_attribute(Preflist, ReqID, Dataset, Data) ->
+set(Preflist, ReqID, Dataset, Data) ->
     riak_core_vnode_master:command(Preflist,
-                                   {attribute, set, ReqID, Dataset, Data},
-				   {fsm, undefined, self()},
-                                   ?MASTER).
-
-mset_attribute(Preflist, ReqID, Dataset, Data) ->
-    riak_core_vnode_master:command(Preflist,
-                                   {attribute, mset, ReqID, Dataset, Data},
-				   {fsm, undefined, self()},
+                                   {set, ReqID, Dataset, Data},
+                                   {fsm, undefined, self()},
                                    ?MASTER).
 
 %%%===================================================================
@@ -144,33 +136,33 @@ handle_command(ping, _Sender, State) ->
 
 handle_command({repair, Dataset, VClock, Obj}, _Sender, State) ->
     Hs0 = dict:update(Dataset,
-		      fun(Obj1) ->
-			      case Obj1#sniffle_obj.vclock of
-				  VClock ->
-				      Obj;
-				  _ ->
-				      lager:error("[datasets] Read repair failed, data was updated too recent."),
-				      Obj1
-			      end
-		      end, Obj, State#state.datasets),
+                      fun(Obj1) ->
+                              case Obj1#sniffle_obj.vclock of
+                                  VClock ->
+                                      Obj;
+                                  _ ->
+                                      lager:error("[datasets] Read repair failed, data was updated too recent."),
+                                      Obj1
+                              end
+                      end, Obj, State#state.datasets),
     {noreply, State#state{datasets=Hs0}};
 
 handle_command({get, ReqID, Dataset}, _Sender, State) ->
     ?PRINT({handle_command, get, ReqID, Dataset}),
     NodeIdx = {State#state.partition, State#state.node},
     Res = case dict:find(Dataset, State#state.datasets) of
-	      error ->
-		  {ok, ReqID, NodeIdx, not_found};
-	      {ok, V} ->
-		  {ok, ReqID, NodeIdx, V}
-	  end,
+              error ->
+                  {ok, ReqID, NodeIdx, not_found};
+              {ok, V} ->
+                  {ok, ReqID, NodeIdx, V}
+          end,
     {reply,
      Res,
      State};
 
 handle_command({create, {ReqID, Coordinator}, Dataset,
-		[]},
-	       _Sender, #state{dbref = DBRef} = State) ->
+                []},
+               _Sender, #state{dbref = DBRef} = State) ->
     I0 = statebox:new(fun sniffle_dataset_state:new/0),
     I1 = statebox:modify({fun sniffle_dataset_state:name/2, [Dataset]}, I0),
     VC0 = vclock:fresh(),
@@ -191,9 +183,9 @@ handle_command({delete, {ReqID, _Coordinator}, Dataset}, _Sender, #state{dbref =
 
     {reply, {ok, ReqID}, State#state{datasets = Is0}};
 
-handle_command({attribute, set,
-		{ReqID, Coordinator}, Dataset,
-		[Resource, Value]}, _Sender, State) ->
+handle_command({set,
+                {ReqID, Coordinator}, Dataset,
+                Resources}, _Sender, State) ->
     I0 = statebox:new(fun sniffle_dataset_state:new/0),
     I1 = statebox:modify({fun sniffle_dataset_state:name/2, [Dataset]}, I0),
     VC0 = vclock:fresh(),
@@ -201,36 +193,16 @@ handle_command({attribute, set,
     HObject = #sniffle_obj{val=I1, vclock=VC},
 
     Hs0 = dict:update(Dataset,
-		      fun(#sniffle_obj{val=H0} = O) ->
-			      H1 = statebox:modify(
-				     {fun sniffle_dataset_state:attribute/3,
-				      [Resource, Value]}, H0),
-			      H2 = statebox:expire(?STATEBOX_EXPIRE, H1),
-			      sniffle_obj:update(H2, Coordinator, O)
-		      end, HObject,
-		      State#state.datasets),
-    {reply, {ok, ReqID}, State#state{datasets = Hs0}};
-
-handle_command({attribute, mset,
-		{ReqID, Coordinator}, Dataset,
-		Resources}, _Sender, State) ->
-    I0 = statebox:new(fun sniffle_dataset_state:new/0),
-    I1 = statebox:modify({fun sniffle_dataset_state:name/2, [Dataset]}, I0),
-    VC0 = vclock:fresh(),
-    VC = vclock:increment(Coordinator, VC0),
-    HObject = #sniffle_obj{val=I1, vclock=VC},
-
-    Hs0 = dict:update(Dataset,
-		      fun(#sniffle_obj{val=H0} = O) ->
-			      H1 = lists:foldr(
-				     fun ({Resource, Value}, H) ->
-					     statebox:modify(
-					       {fun sniffle_dataset_state:attribute/3,
-						[Resource, Value]}, H)
-				     end, H0, Resources),
-			      H2 = statebox:expire(?STATEBOX_EXPIRE, H1),
-			      sniffle_obj:update(H2, Coordinator, O)
-		      end, HObject, State#state.datasets),
+                      fun(#sniffle_obj{val=H0} = O) ->
+                              H1 = lists:foldr(
+                                     fun ({Resource, Value}, H) ->
+                                             statebox:modify(
+                                               {fun sniffle_dataset_state:set/3,
+                                                [Resource, Value]}, H)
+                                     end, H0, Resources),
+                              H2 = statebox:expire(?STATEBOX_EXPIRE, H1),
+                              sniffle_obj:update(H2, Coordinator, O)
+                      end, HObject, State#state.datasets),
     {reply, {ok, ReqID}, State#state{datasets = Hs0}};
 
 handle_command(Message, _Sender, State) ->
@@ -262,10 +234,10 @@ encode_handoff_item(Dataset, Data) ->
 
 is_empty(State) ->
     case dict:size(State#state.datasets) of
-	0 ->
-	    {true, State};
-	_ ->
-	    {true, State}
+        0 ->
+            {true, State};
+        _ ->
+            {true, State}
     end.
 
 delete(#state{dbref = DBRef} = State) ->
@@ -273,7 +245,7 @@ delete(#state{dbref = DBRef} = State) ->
     eleveldb:close(DBRef),
     eleveldb:destroy(DBLoc ++ "/datasets/"++integer_to_list(State#state.partition)++".ldb",[]),
     {ok, DBRef1} = eleveldb:open(DBLoc ++ "/datasets/"++integer_to_list(State#state.partition)++".ldb",
-				 [{create_if_missing, true}]),
+                                 [{create_if_missing, true}]),
     {ok, State#state{datasets = dict:new(), dbref = DBRef1}}.
 
 handle_coverage({list, ReqID}, _KeySpaces, _Sender, State) ->
@@ -282,13 +254,9 @@ handle_coverage({list, ReqID}, _KeySpaces, _Sender, State) ->
      State};
 
 handle_coverage({list, ReqID, Requirements}, _KeySpaces, _Sender, State) ->
-    Getter = fun(#sniffle_obj{val=S0}, <<"name">>) ->
-		     Dataset = statebox:value(S0),
-		     Dataset#dataset.name;
-		(#sniffle_obj{val=S0}, Resource) ->
-		     Dataset = statebox:value(S0),
-		     dict:fetch(Resource, Dataset#dataset.attributes)
-	     end,
+    Getter = fun(#sniffle_obj{val=S0}, Resource) ->
+                     jsxd:get(Resource, 0, statebox:value(S0))
+             end,
     Server = sniffle_matcher:match_dict(State#state.datasets, Getter, Requirements),
     {reply,
      {ok, ReqID, {State#state.partition, State#state.node}, Server},
@@ -306,13 +274,18 @@ terminate(_Reason, #state{dbref=DBRef} = _State) ->
 
 read_ranges(DBRef) ->
     case eleveldb:get(DBRef, <<"#datasets">>, []) of
-	not_found ->
-	    {[], dict:new()};
-	{ok, Bin} ->
-	    Index = binary_to_term(Bin),
-	    {Index,
-	     lists:foldl(fun (Dataset, Datasets0) ->
-				 {ok, IpBin} = eleveldb:get(DBRef, Dataset, []),
-				 dict:store(Dataset, binary_to_term(IpBin), Datasets0)
-			 end, dict:new(), Index)}
+        not_found ->
+            {[], dict:new()};
+        {ok, Bin} ->
+            Index = binary_to_term(Bin),
+            {Index,
+             lists:foldl(fun (Dataset, Datasets0) ->
+                                 {ok, DatasetBin} = eleveldb:get(DBRef, Dataset, []),
+                                 O = binary_to_term(DatasetBin),
+                                 #sniffle_obj{val=Dataset0} = O,
+                                 Dataset1 = statebox:modify({fun sniffle_dataset_state:load/1, []}, Dataset0),
+                                 Dataset2 = statebox:expire(?STATEBOX_EXPIRE, Dataset1),
+                                 DatasetObj = sniffle_obj:update(Dataset2, sniffle_dataset_vnode, O),
+                                 dict:store(Dataset, DatasetObj, Datasets0)
+                         end, dict:new(), Index)}
     end.

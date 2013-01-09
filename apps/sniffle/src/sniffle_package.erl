@@ -1,6 +1,6 @@
 -module(sniffle_package).
 -include("sniffle.hrl").
-%-include_lib("riak_core/include/riak_core_vnode.hrl").
+                                                %-include_lib("riak_core/include/riak_core_vnode.hrl").
 
 -export(
    [
@@ -9,19 +9,17 @@
     get/1,
     list/0,
     list/1,
-    get_attribute/2,
-    get_attribute/1,
-    set_attribute/2,
-    set_attribute/3
+    set/2,
+    set/3
    ]
   ).
 
 create(Package) ->
     case sniffle_package:get(Package) of
-	{ok, not_found} ->
-	    do_write(Package, create, []);
-	{ok, _RangeObj} ->
-	    duplicate
+        {ok, not_found} ->
+            do_write(Package, create, []);
+        {ok, _RangeObj} ->
+            duplicate
     end.
 
 delete(Package) ->
@@ -45,33 +43,12 @@ list(Requirements) ->
       list, Requirements
      ).
 
-get_attribute(Package) ->
-    case sniffle_package:get(Package) of
-	{ok, not_found} ->
-	    not_found;
-	{ok, V} ->
-	    {ok, dict:to_list(V#package.attributes)}
-    end.
-
-get_attribute(Package, Attribute) ->
-    case sniffle_package:get(Package) of
-	{ok, not_found} ->
-	    not_found;
-	{ok, V} ->
-	    case dict:find(Attribute, V#package.attributes) of
-		error ->
-		    not_found;
-		Result ->
-		    Result
-	    end
-    end.
-
-set_attribute(Package, Attribute, Value) ->
-    do_update(Package, set_attribute, [Attribute, Value]).
+set(Package, Attribute, Value) ->
+    do_update(Package, set, [{Attribute, Value}]).
 
 
-set_attribute(Package, Attributes) ->
-    do_update(Package, mset_attribute, Attributes).
+set(Package, Attributes) ->
+    do_update(Package, set, Attributes).
 
 
 %%%===================================================================
@@ -81,18 +58,18 @@ set_attribute(Package, Attributes) ->
 
 do_update(Package, Op) ->
     case sniffle_package:get(Package) of
-	{ok, not_found} ->
-	    not_found;
-	{ok, _RangeObj} ->
-	    do_write(Package, Op)
+        {ok, not_found} ->
+            not_found;
+        {ok, _RangeObj} ->
+            do_write(Package, Op)
     end.
 
 do_update(Package, Op, Val) ->
     case sniffle_package:get(Package) of
-	{ok, not_found} ->
-	    not_found;
-	{ok, _RangeObj} ->
-	    do_write(Package, Op, Val)
+        {ok, not_found} ->
+            not_found;
+        {ok, _RangeObj} ->
+            do_write(Package, Op, Val)
     end.
 
 do_write(Package, Op) ->

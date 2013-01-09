@@ -10,27 +10,24 @@
 -include("sniffle.hrl").
 
 -export([
-	 new/0,
-	 name/2,
-	 host/2,
-	 port/2,
-	 resource/3
-	]).
+         new/0,
+         name/2,
+         host/2,
+         port/2,
+         set/3
+        ]).
 
 new() ->
-    #hypervisor{resources = dict:new()}.
-
+    jsxd:set(<<"version">>, <<"0.1.0">>, jsxd:new()).
 
 name(Name, Hypervisor) ->
-    Hypervisor#hypervisor{name = Name}.
+    jsxd:set(<<"name">>, Name, Hypervisor).
 
 host(Host, Hypervisor) ->
-    Hypervisor#hypervisor{host = Host}.
+    jsxd:set(<<"host">>, Host, Hypervisor).
 
 port(Port, Hypervisor) ->
-    Hypervisor#hypervisor{port = Port}.
+    jsxd:set(<<"port">>, Port, Hypervisor).
 
-resource(Resource, Value, Hypervisor) ->
-    Hypervisor#hypervisor{
-      resources = dict:store(Resource, Value, Hypervisor#hypervisor.resources)
-     }.
+set(Resource, Value, Hypervisor) ->
+    jsxd:set(Resource, Value, Hypervisor).

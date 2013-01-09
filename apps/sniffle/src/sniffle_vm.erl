@@ -16,12 +16,12 @@
     stop/1,
     reboot/1,
     delete/1,
-    get_attribute/2,
-    get_attribute/1,
-    set_attribute/2,
-    set_attribute/3
+    set/2,
+    set/3
    ]
   ).
+
+-ignore_xref([logs/1]).
 
 -spec register(VM::fifo:uuid(), Hypervisor::binary()) -> ok.
 
@@ -79,25 +79,30 @@ delete(Vm) ->
         {ok, not_found} ->
             not_found;
         {ok, V} ->
-            case V#vm.hypervisor of
-                <<"pending">> ->
-                    sniffle_vm:unregister(Vm);
+            case jsxd:get(<<"hypervisor">>, V) of
                 undefined ->
-                    sniffle_vm:unregister(Vm);
-                H ->
-                    case dict:find(<<"state">>, V#vm.attributes) of
-                        error ->
+                    sniffle_vm:unregister(Vm),
+                    libhowl:send(Vm, [{<<"event">>, <<"delete">>}]);
+                {ok, <<"pending">>} ->
+                    sniffle_vm:unregister(Vm),
+                    libhowl:send(Vm, [{<<"event">>, <<"delete">>}]);
+                {ok, H} ->
+                    case jsxd:get(<<"state">>, V) of
+                        undefined ->
                             not_found;
                         {ok, <<"deleting">>} ->
-                            sniffle_vm:unregister(Vm);
+                            sniffle_vm:unregister(Vm),
+                            libhowl:send(Vm, [{<<"event">>, <<"delete">>}]);
                         _ ->
-                            {ok, #hypervisor{host = Server, port = Port}} = sniffle_hypervisor:get(H),
-                            set_attribute(Vm, <<"state">>, <<"deleting">>),
-                            libchunter:delete_machine(Server, Port, Vm)
+                            set(Vm, <<"state">>, <<"deleting">>),
+                            {Host, Port} = get_hypervisor(H),
+                            libchunter:delete_machine(Host, Port, Vm)
                     end
             end,
             ok
     end.
+
+
 
 -spec start(Vm::fifo:uuid()) ->
                    {error, timeout} | not_found | ok.
@@ -109,7 +114,8 @@ start(Vm) ->
         {ok, not_found} ->
             not_found;
         {ok, V} ->
-            {ok, #hypervisor{host = Server, port = Port}} = sniffle_hypervisor:get(V#vm.hypervisor),
+            {ok, H} = jsxd:get(<<"hypervisor">>, V),
+            {Server, Port} = get_hypervisor(H),
             libchunter:start_machine(Server, Port, Vm),
             ok
     end.
@@ -124,7 +130,8 @@ stop(Vm) ->
         {ok, not_found} ->
             not_found;
         {ok, V} ->
-            {ok, #hypervisor{host = Server, port = Port}} = sniffle_hypervisor:get(V#vm.hypervisor),
+            {ok, H} = jsxd:get(<<"hypervisor">>, V),
+            {Server, Port} = get_hypervisor(H),
             libchunter:stop_machine(Server, Port, Vm),
             ok
     end.
@@ -139,22 +146,10 @@ reboot(Vm) ->
         {ok, not_found} ->
             not_found;
         {ok, V} ->
-            {ok, #hypervisor{host = Server, port = Port}} = sniffle_hypervisor:get(V#vm.hypervisor),
+            {ok, H} = jsxd:get(<<"hypervisor">>, V),
+            {Server, Port} = get_hypervisor(H),
             libchunter:reboot_machine(Server, Port, Vm),
             ok
-    end.
-
--spec get_attribute(Vm::fifo:uuid()) ->
-                           not_found | fifo:vm_config().
-
-get_attribute(Vm) ->
-    case sniffle_vm:get(Vm) of
-        {error, timeout} ->
-            {error, timeout};
-        {ok, not_found} ->
-            not_found;
-        {ok, V} ->
-            {ok, dict:to_list(V#vm.attributes)}
     end.
 
 -spec logs(Vm::fifo:uuid()) ->
@@ -167,45 +162,28 @@ logs(Vm) ->
         {ok, not_found} ->
             not_found;
         {ok, V} ->
-            {ok, V#vm.log}
+            {ok, jsxd:get(<<"log">>, [], V)}
     end.
 
 -spec log(Vm::fifo:uuid(), Log::term()) ->
                  {error, timeout} | not_found | ok.
 
 log(Vm, Log) ->
-    do_update(Vm, log, {now(), Log}).
+    {Mega,Sec,Micro} = erlang:now(),
+    do_update(Vm, log, {(Mega*1000000+Sec)*1000000+Micro, Log}).
 
--spec get_attribute(Vm::fifo:uuid(), Attribute::binary()) ->
-                           {error, timeout} | not_found | fifo:value().
+-spec set(Vm::fifo:uuid(), Attribute::binary(), Value::fifo:value()) ->
+                 {error, timeout} | not_found | ok.
 
-get_attribute(Vm, Attribute) ->
-    case sniffle_vm:get(Vm) of
-        {error, timeout} ->
-            {error, timeout};
-        {ok, not_found} ->
-            not_found;
-        {ok, V} ->
-            case dict:find(Attribute, V#vm.attributes) of
-                error ->
-                    not_found;
-                Result ->
-                    Result
-            end
-    end.
-
--spec set_attribute(Vm::fifo:uuid(), Attribute::binary(), Value::fifo:value()) ->
-                           {error, timeout} | not_found | ok.
-
-set_attribute(Vm, Attribute, Value) ->
-    do_update(Vm, set_attribute, [{Attribute, Value}]).
+set(Vm, Attribute, Value) ->
+    do_update(Vm, set, [{Attribute, Value}]).
 
 
--spec set_attribute(Vm::fifo:uuid(), Attributes::fifo:config_list()) ->
-                           {error, timeout} | not_found | ok.
+-spec set(Vm::fifo:uuid(), Attributes::fifo:config_list()) ->
+                 {error, timeout} | not_found | ok.
 
-set_attribute(Vm, Attributes) ->
-    do_update(Vm, set_attribute, Attributes).
+set(Vm, Attributes) ->
+    do_update(Vm, set, Attributes).
 
 %%%===================================================================
 %%% Internal Functions
@@ -244,3 +222,9 @@ do_write(VM, Op) ->
 
 do_write(VM, Op, Val) ->
     sniffle_entity_write_fsm:write({sniffle_vm_vnode, sniffle_vm}, VM, Op, Val).
+
+get_hypervisor(Hypervisor) ->
+    {ok, HypervisorObj} = sniffle_hypervisor:get(Hypervisor),
+    {ok, Port} = jsxd:get(<<"port">>, HypervisorObj),
+    {ok, Host} = jsxd:get(<<"host">>, HypervisorObj),
+    {binary_to_list(Host), Port}.

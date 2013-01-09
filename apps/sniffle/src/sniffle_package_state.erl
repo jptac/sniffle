@@ -10,18 +10,27 @@
 -include("sniffle.hrl").
 
 -export([
-	 new/0,
-	 name/2,
-	 attribute/3
-	]).
+         load/1,
+         new/0,
+         name/2,
+         set/3
+        ]).
+
+load(#package{name = Name,
+              attributes = Attributes}) ->
+    jsxd:thread([{set, <<"name">>, Name},
+                 {merge, jsxd:from_list(dict:to_list(Attributes))}],
+                new());
+
+load(Package) ->
+    Package.
 
 new() ->
-    #package{attributes = dict:new()}.
+    jsxd:set(<<"version">>, <<"0.1.0">>,
+             jsxd:new()).
 
 name(Name, Package) ->
-    Package#package{name = Name}.
+    jsxd:set(<<"name">>, Name, Package).
 
-attribute(Attribute, Value, Package) ->
-    Package#package{
-      attributes = dict:store(Attribute, Value, Package#package.attributes)
-     }.
+set(Attribute, Value, Package) ->
+    jsxd:set(Attribute, Value, Package).
