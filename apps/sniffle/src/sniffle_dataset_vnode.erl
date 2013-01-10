@@ -118,7 +118,6 @@ set(Preflist, ReqID, Dataset, Data) ->
 
 init([Partition]) ->
     sniffle_db:start(Partition),
-%%    {Index, Ranges} = read_ranges(DBRef),
     {ok, #state{
        partition = Partition,
        node = node()}}.
@@ -140,9 +139,7 @@ handle_command({repair, Dataset, VClock, Obj}, _Sender, State) ->
 handle_command({get, ReqID, Dataset}, _Sender, State) ->
     Res = sniffle_db:get(State#state.partition, <<"dataset">>, Dataset),
     NodeIdx = {State#state.partition, State#state.node},
-    {reply,
-     {ok, ReqID, NodeIdx, Res},
-     State};
+    {reply, {ok, ReqID, NodeIdx, Res}, State};
 
 handle_command({create, {ReqID, Coordinator}, Dataset, []},
                _Sender, State) ->
@@ -154,15 +151,13 @@ handle_command({create, {ReqID, Coordinator}, Dataset, []},
     sniffle_db:put(State#state.partition, <<"dataset">>, Dataset, HObject),
     {reply, {ok, ReqID}, State};
 
-handle_command({delete, {ReqID, _Coordinator}, Dataset}, _Sender,
-               #state{partition = Partition} = State) ->
-    sniffle_db:delete(Partition, <<"dataset">>, Dataset),
+handle_command({delete, {ReqID, _Coordinator}, Dataset}, _Sender, State) ->
+    sniffle_db:delete(State#state.partition, <<"dataset">>, Dataset),
     {reply, {ok, ReqID}, State};
 
 handle_command({set,
                 {ReqID, Coordinator}, Dataset,
                 Resources}, _Sender, State) ->
-
     case sniffle_db:get(State#state.partition, <<"dataset">>, Dataset) of
         {ok, #sniffle_obj{val=H0} = O} ->
             H1 = statebox:modify({fun sniffle_dataset_state:load/1,[]}, H0),
@@ -198,9 +193,9 @@ handoff_cancelled(State) ->
 handoff_finished(_TargetNode, State) ->
     {ok, State}.
 
-handle_handoff_data(Data, #state{partition = Partition} = State) ->
+handle_handoff_data(Data, State) ->
     {Dataset, HObject} = binary_to_term(Data),
-    sniffle_db:put(Partition, <<"dataset">>, Dataset, HObject),
+    sniffle_db:put(State#state.partition, <<"dataset">>, Dataset, HObject),
     {reply, ok, State}.
 
 encode_handoff_item(Dataset, Data) ->
