@@ -13,6 +13,7 @@
                   libchunter,
                   libhowl,
                   libsnarl,
+                  hanoidb,
                   lager
                  ]},
   {mod, { sniffle_app, []}},
