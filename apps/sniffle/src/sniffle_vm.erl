@@ -30,7 +30,7 @@ register(Vm, Hypervisor) ->
         {ok, not_found} ->
             do_write(Vm, register, Hypervisor);
         {ok, _UserObj} ->
-            duplicate
+            set(Vm, <<"hypervisor">>, Hypervisor)
     end.
 
 -spec unregister(VM::fifo:uuid()) -> ok.
