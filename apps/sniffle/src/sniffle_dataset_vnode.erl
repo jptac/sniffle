@@ -65,7 +65,6 @@ repair(IdxNode, Dataset, VClock, Obj) ->
 %%%===================================================================
 
 get(Preflist, ReqID, Dataset) ->
-    ?PRINT({get, Preflist, ReqID, Dataset}),
     riak_core_vnode_master:command(Preflist,
                                    {get, ReqID, Dataset},
                                    {fsm, undefined, self()},
@@ -185,8 +184,7 @@ handle_command(Message, _Sender, State) ->
     {noreply, State}.
 
 handle_handoff_command(?FOLD_REQ{foldfun=Fun, acc0=Acc0}, _Sender, State) ->
-    Acc = sniffle_db:fold(State#state.partition,
-                          <<"dataset">>, Fun, Acc0),
+    Acc = sniffle_db:fold(State#state.partition, <<"dataset">>, Fun, Acc0),
     {reply, Acc, State}.
 
 handoff_starting(_TargetNode, State) ->
@@ -214,11 +212,11 @@ is_empty(State) ->
                     end, {false, State}).
 
 delete(State) ->
-%%    {ok, DBLoc} = application:get_env(sniffle, db_path),
-%%    eleveldb:close(DBRef),
-%%    eleveldb:destroy(DBLoc ++ "/datasets/"++integer_to_list(State#state.partition)++".ldb",[]),
-%%    {ok, DBRef1} = eleveldb:open(DBLoc ++ "/datasets/"++integer_to_list(State#state.partition)++".ldb",
-%%                                 [{create_if_missing, true}]),
+    sniffle_db:fold(State#state.partition,
+                    <<"dataset">>,
+                    fun (K,_, _) ->
+                            sniffle_db:delete(State#state.partition, <<"dataset">>, K)
+                    end, ok),
     {ok, State}.
 
 handle_coverage({list, ReqID}, _KeySpaces, _Sender, State) ->
@@ -227,7 +225,6 @@ handle_coverage({list, ReqID}, _KeySpaces, _Sender, State) ->
                            fun (K, _, L) ->
                                    [K|L]
                            end, []),
-
     {reply,
      {ok, ReqID, {State#state.partition,State#state.node}, List},
      State};

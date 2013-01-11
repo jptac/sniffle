@@ -11,14 +11,18 @@
 
 -define(LOGLEN, 100).
 
-                                                %    alias/2,
+%%    alias/2,
 -export([
+         load/1,
          new/0,
          uuid/2,
          log/3,
          hypervisor/2,
          set/3
         ]).
+
+load(H) ->
+    H.
 
 new() ->
     jsxd:new().
