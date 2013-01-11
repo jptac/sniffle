@@ -139,7 +139,12 @@ handle_command({repair, Package, VClock, Obj}, _Sender, State) ->
     {noreply, State};
 
 handle_command({get, ReqID, Package}, _Sender, State) ->
-    Res = sniffle_db:get(State#state.partition, <<"package">>, Package),
+    Res = case sniffle_db:get(State#state.partition, <<"package">>, Package) of
+              {ok, R} ->
+                  R;
+              not_found ->
+                  not_found
+          end,
     NodeIdx = {State#state.partition, State#state.node},
     {reply, {ok, ReqID, NodeIdx, Res}, State};
 

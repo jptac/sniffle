@@ -148,11 +148,14 @@ handle_command({repair, Iprange, VClock, Obj}, _Sender, State) ->
     {noreply, State};
 
 handle_command({get, ReqID, Iprange}, _Sender, State) ->
-    Res = sniffle_db:get(State#state.partition, <<"iprange">>, Iprange),
+    Res = case sniffle_db:get(State#state.partition, <<"iprange">>, Iprange) of
+              {ok, R} ->
+                  R;
+              not_found ->
+                  not_found
+          end,
     NodeIdx = {State#state.partition, State#state.node},
-    {reply,
-     {ok, ReqID, NodeIdx, Res},
-     State};
+    {reply, {ok, ReqID, NodeIdx, Res}, State};
 
 handle_command({create, {ReqID, Coordinator}, Iprange,
                 [Network, Gateway, Netmask, First, Last, Tag]},

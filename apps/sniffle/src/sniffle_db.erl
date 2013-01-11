@@ -104,7 +104,7 @@ handle_call({put, Bucket, Key, Value}, _From, State) ->
 handle_call({get, Bucket, Key}, _From, State) ->
     case hanoidb:get(State#state.db, <<Bucket/binary, Key/binary>>) of
         {ok, Bin} ->
-            {reply, binary_to_term(Bin), State};
+            {reply, {ok, binary_to_term(Bin)}, State};
         not_found ->
             {reply, not_found, State}
     end;
@@ -127,7 +127,10 @@ handle_call({fold, Bucket, FoldFn, Acc0}, _From, State) ->
      },
     Rep = hanoidb:fold_range(State#state.db,
                              fun (<<_:Len/binary, Key/binary>>, Value, Acc) ->
-                                     FoldFn(Key, Value, Acc)
+                                     FoldFn(Key, Value, Acc);
+                                 (Key, _, Acc) ->
+                                     lager:error("[db/~p] Unknown fold key '~p'.", [Bucket, Key]),
+                                     Acc
                              end,
                              Acc0,
                              Range),

@@ -137,7 +137,12 @@ handle_command({repair, Dataset, VClock, Obj}, _Sender, State) ->
     {noreply, State};
 
 handle_command({get, ReqID, Dataset}, _Sender, State) ->
-    Res = sniffle_db:get(State#state.partition, <<"dataset">>, Dataset),
+    Res = case sniffle_db:get(State#state.partition, <<"dataset">>, Dataset) of
+              {ok, R} ->
+                  R;
+              not_found ->
+                  not_found
+          end,
     NodeIdx = {State#state.partition, State#state.node},
     {reply, {ok, ReqID, NodeIdx, Res}, State};
 
@@ -170,8 +175,8 @@ handle_command({set,
             H3 = statebox:expire(?STATEBOX_EXPIRE, H2),
             sniffle_db:put(State#state.partition, <<"dataset">>, Dataset,
                            sniffle_obj:update(H3, Coordinator, O));
-        _ ->
-            lager:error("[datasets] tried to write to a non existing dataset.")
+        R ->
+            lager:error("[datasets] tried to write to a non existing dataset: ~p", [R])
     end,
     {reply, {ok, ReqID}, State};
 
