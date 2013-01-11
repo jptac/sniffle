@@ -127,7 +127,7 @@ handle_call({fold, Bucket, FoldFn, Acc0}, _From, State) ->
      },
     Rep = hanoidb:fold_range(State#state.db,
                              fun (<<_:Len/binary, Key/binary>>, Value, Acc) ->
-                                     FoldFn(Key, Value, Acc);
+                                     FoldFn(Key, binary_to_term(Value), Acc);
                                  (Key, _, Acc) ->
                                      lager:error("[db/~p] Unknown fold key '~p'.", [Bucket, Key]),
                                      Acc
