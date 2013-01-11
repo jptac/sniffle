@@ -27,10 +27,10 @@
 
 register(Vm, Hypervisor) ->
     case sniffle_vm:get(Vm) of
-        {ok, _UserObj} ->
-            duplicate;
         {ok, not_found} ->
-            do_write(Vm, register, Hypervisor)
+            do_write(Vm, register, Hypervisor);
+        {ok, _UserObj} ->
+            duplicate
     end.
 
 -spec unregister(VM::fifo:uuid()) -> ok.
