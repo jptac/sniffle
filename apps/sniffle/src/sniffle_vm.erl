@@ -26,7 +26,12 @@
 -spec register(VM::fifo:uuid(), Hypervisor::binary()) -> ok.
 
 register(Vm, Hypervisor) ->
-    do_write(Vm, register, Hypervisor).
+    case sniffle_vm:get(Vm) of
+        {ok, _UserObj} ->
+            duplicate;
+        {ok, not_found} ->
+            do_write(Vm, register, Hypervisor)
+    end.
 
 -spec unregister(VM::fifo:uuid()) -> ok.
 
