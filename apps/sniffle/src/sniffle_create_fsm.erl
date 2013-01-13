@@ -207,11 +207,12 @@ get_server(_Event, State = #state{
     end.
 
 create_permissions(_Event, State = #state{
-                             uuid = _UUID,
+                             uuid = UUID,
                              config = Config}) ->
-    {<<"owner">>, _Owner} = lists:keyfind(<<"owner">>, 1, Config),
-%%% TODO: give permissions!
+    {<<"owner">>, Owner} = lists:keyfind(<<"owner">>, 1, Config),
+    libsnarl:user_grant(Owner, [<<"vms">>, UUID, '...']),
     {next_state, create, State, 0}.
+
 
 create(_Event, State = #state{
                  dataset = Dataset,
@@ -221,11 +222,8 @@ create(_Event, State = #state{
                  hypervisor = {Host, Port}}) ->
     sniffle_vm:log(UUID, <<"Handing off to hypervisor.">>),
     sniffle_vm:set(UUID, <<"state">>, <<"creating">>),
-    {<<"owner">>, Owner} = lists:keyfind(<<"owner">>, 1, Config),
-    libsnarl:user_grant(Owner, [<<"vms">>, UUID, '...']),
     libchunter:create_machine(Host, Port, UUID, Package, Dataset, Config),
     {stop, normal, State}.
-
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
@@ -328,9 +326,9 @@ make_condition(C, Permissions) ->
              end,
     Condition = case jsxd:get(<<"weight">>, <<"=:=">>, C) of
                     <<">=">> -> '>=';
+                    <<">">> -> '>';
                     <<"=<">> -> '=<';
                     <<"<">> -> '<';
-                    <<">">> -> '>';
                     <<"=:=">> -> '=:=';
                     <<"=/=">> -> '=/=';
                     <<"subset">> -> 'subset';

@@ -31,11 +31,8 @@
         ]).
 
 -record(state, {
-          datasets,
           partition,
-          node,
-          dbref,
-          index
+          node
          }).
 
 -ignore_xref([
@@ -68,7 +65,6 @@ repair(IdxNode, Dataset, VClock, Obj) ->
 %%%===================================================================
 
 get(Preflist, ReqID, Dataset) ->
-    ?PRINT({get, Preflist, ReqID, Dataset}),
     riak_core_vnode_master:command(Preflist,
                                    {get, ReqID, Dataset},
                                    {fsm, undefined, self()},
@@ -120,97 +116,75 @@ set(Preflist, ReqID, Dataset, Data) ->
 %%%===================================================================
 
 init([Partition]) ->
-    {ok, DBLoc} = application:get_env(sniffle, db_path),
-    {ok, DBRef} = eleveldb:open(DBLoc ++ "/datasets/"++integer_to_list(Partition)++".ldb", [{create_if_missing, true}]),
-    {Index, Ranges} = read_ranges(DBRef),
+    sniffle_db:start(Partition),
     {ok, #state{
        partition = Partition,
-       index = Index,
-       node = node(),
-       datasets = Ranges,
-       dbref=DBRef
-      }}.
+       node = node()}}.
 
 handle_command(ping, _Sender, State) ->
     {reply, {pong, State#state.partition}, State};
 
 handle_command({repair, Dataset, VClock, Obj}, _Sender, State) ->
-    Hs0 = dict:update(Dataset,
-                      fun(Obj1) ->
-                              case Obj1#sniffle_obj.vclock of
-                                  VClock ->
-                                      Obj;
-                                  _ ->
-                                      lager:error("[datasets] Read repair failed, data was updated too recent."),
-                                      Obj1
-                              end
-                      end, Obj, State#state.datasets),
-    {noreply, State#state{datasets=Hs0}};
+    case sniffle_db:get(State#state.partition, <<"dataset">>, Dataset) of
+        {ok, #sniffle_obj{vclock = VC1}} when VC1 =:= VClock ->
+            sniffle_db:put(State#state.partition, <<"dataset">>, Dataset, Obj);
+        not_found ->
+            sniffle_db:put(State#state.partition, <<"dataset">>, Dataset, Obj);
+        _ ->
+            lager:error("[datasets] Read repair failed, data was updated too recent.")
+    end,
+    {noreply, State};
 
 handle_command({get, ReqID, Dataset}, _Sender, State) ->
-    ?PRINT({handle_command, get, ReqID, Dataset}),
-    NodeIdx = {State#state.partition, State#state.node},
-    Res = case dict:find(Dataset, State#state.datasets) of
-              error ->
-                  {ok, ReqID, NodeIdx, not_found};
-              {ok, V} ->
-                  {ok, ReqID, NodeIdx, V}
+    Res = case sniffle_db:get(State#state.partition, <<"dataset">>, Dataset) of
+              {ok, R} ->
+                  R;
+              not_found ->
+                  not_found
           end,
-    {reply,
-     Res,
-     State};
+    NodeIdx = {State#state.partition, State#state.node},
+    {reply, {ok, ReqID, NodeIdx, Res}, State};
 
-handle_command({create, {ReqID, Coordinator}, Dataset,
-                []},
-               _Sender, #state{dbref = DBRef} = State) ->
+handle_command({create, {ReqID, Coordinator}, Dataset, []},
+               _Sender, State) ->
     I0 = statebox:new(fun sniffle_dataset_state:new/0),
     I1 = statebox:modify({fun sniffle_dataset_state:name/2, [Dataset]}, I0),
     VC0 = vclock:fresh(),
     VC = vclock:increment(Coordinator, VC0),
     HObject = #sniffle_obj{val=I1, vclock=VC},
+    sniffle_db:put(State#state.partition, <<"dataset">>, Dataset, HObject),
+    {reply, {ok, ReqID}, State};
 
-    Is0 = dict:store(Dataset, HObject, State#state.datasets),
-
-    eleveldb:put(DBRef, <<"#datasets">>, term_to_binary(dict:fetch_keys(Is0)), []),
-    eleveldb:put(DBRef, Dataset, term_to_binary(HObject), []),
-    {reply, {ok, ReqID}, State#state{datasets = Is0}};
-
-handle_command({delete, {ReqID, _Coordinator}, Dataset}, _Sender, #state{dbref = DBRef} = State) ->
-    Is0 = dict:erase(Dataset, State#state.datasets),
-
-    eleveldb:put(DBRef, <<"#datasets">>, term_to_binary(dict:fetch_keys(Is0)), []),
-    eleveldb:delete(DBRef, Dataset, []),
-
-    {reply, {ok, ReqID}, State#state{datasets = Is0}};
+handle_command({delete, {ReqID, _Coordinator}, Dataset}, _Sender, State) ->
+    sniffle_db:delete(State#state.partition, <<"dataset">>, Dataset),
+    {reply, {ok, ReqID}, State};
 
 handle_command({set,
                 {ReqID, Coordinator}, Dataset,
                 Resources}, _Sender, State) ->
-    I0 = statebox:new(fun sniffle_dataset_state:new/0),
-    I1 = statebox:modify({fun sniffle_dataset_state:name/2, [Dataset]}, I0),
-    VC0 = vclock:fresh(),
-    VC = vclock:increment(Coordinator, VC0),
-    HObject = #sniffle_obj{val=I1, vclock=VC},
-
-    Hs0 = dict:update(Dataset,
-                      fun(#sniffle_obj{val=H0} = O) ->
-                              H1 = lists:foldr(
-                                     fun ({Resource, Value}, H) ->
-                                             statebox:modify(
-                                               {fun sniffle_dataset_state:set/3,
-                                                [Resource, Value]}, H)
-                                     end, H0, Resources),
-                              H2 = statebox:expire(?STATEBOX_EXPIRE, H1),
-                              sniffle_obj:update(H2, Coordinator, O)
-                      end, HObject, State#state.datasets),
-    {reply, {ok, ReqID}, State#state{datasets = Hs0}};
+    case sniffle_db:get(State#state.partition, <<"dataset">>, Dataset) of
+        {ok, #sniffle_obj{val=H0} = O} ->
+            H1 = statebox:modify({fun sniffle_dataset_state:load/1,[]}, H0),
+            H2 = lists:foldr(
+                   fun ({Resource, Value}, H) ->
+                           statebox:modify(
+                             {fun sniffle_dataset_state:set/3,
+                              [Resource, Value]}, H)
+                   end, H1, Resources),
+            H3 = statebox:expire(?STATEBOX_EXPIRE, H2),
+            sniffle_db:put(State#state.partition, <<"dataset">>, Dataset,
+                           sniffle_obj:update(H3, Coordinator, O));
+        R ->
+            lager:error("[datasets] tried to write to a non existing dataset: ~p", [R])
+    end,
+    {reply, {ok, ReqID}, State};
 
 handle_command(Message, _Sender, State) ->
     ?PRINT({unhandled_command, Message}),
     {noreply, State}.
 
 handle_handoff_command(?FOLD_REQ{foldfun=Fun, acc0=Acc0}, _Sender, State) ->
-    Acc = dict:fold(Fun, Acc0, State#state.datasets),
+    Acc = sniffle_db:fold(State#state.partition, <<"dataset">>, Fun, Acc0),
     {reply, Acc, State}.
 
 handoff_starting(_TargetNode, State) ->
@@ -222,44 +196,55 @@ handoff_cancelled(State) ->
 handoff_finished(_TargetNode, State) ->
     {ok, State}.
 
-handle_handoff_data(Data, #state{dbref = DBRef} = State) ->
+handle_handoff_data(Data, State) ->
     {Dataset, HObject} = binary_to_term(Data),
-    Is0 = dict:store(Dataset, HObject, State#state.datasets),
-    eleveldb:put(DBRef, <<"#datasets">>, term_to_binary(dict:fetch_keys(Is0)), []),
-    eleveldb:put(DBRef, Dataset, term_to_binary(HObject), []),
-    {reply, ok, State#state{datasets = Is0}}.
+    sniffle_db:put(State#state.partition, <<"dataset">>, Dataset, HObject),
+    {reply, ok, State}.
 
 encode_handoff_item(Dataset, Data) ->
     term_to_binary({Dataset, Data}).
 
 is_empty(State) ->
-    case dict:size(State#state.datasets) of
-        0 ->
-            {true, State};
-        _ ->
-            {true, State}
-    end.
+    sniffle_db:fold(State#state.partition,
+                    <<"dataset">>,
+                    fun (_,_, _) ->
+                            {true, State}
+                    end, {false, State}).
 
-delete(#state{dbref = DBRef} = State) ->
-    {ok, DBLoc} = application:get_env(sniffle, db_path),
-    eleveldb:close(DBRef),
-    eleveldb:destroy(DBLoc ++ "/datasets/"++integer_to_list(State#state.partition)++".ldb",[]),
-    {ok, DBRef1} = eleveldb:open(DBLoc ++ "/datasets/"++integer_to_list(State#state.partition)++".ldb",
-                                 [{create_if_missing, true}]),
-    {ok, State#state{datasets = dict:new(), dbref = DBRef1}}.
+delete(State) ->
+    sniffle_db:fold(State#state.partition,
+                    <<"dataset">>,
+                    fun (K,_, _) ->
+                            sniffle_db:delete(State#state.partition, <<"dataset">>, K)
+                    end, ok),
+    {ok, State}.
 
 handle_coverage({list, ReqID}, _KeySpaces, _Sender, State) ->
+    List = sniffle_db:fold(State#state.partition,
+                          <<"dataset">>,
+                           fun (K, _, L) ->
+                                   [K|L]
+                           end, []),
     {reply,
-     {ok, ReqID, {State#state.partition,State#state.node}, dict:fetch_keys(State#state.datasets)},
+     {ok, ReqID, {State#state.partition,State#state.node}, List},
      State};
 
 handle_coverage({list, ReqID, Requirements}, _KeySpaces, _Sender, State) ->
     Getter = fun(#sniffle_obj{val=S0}, Resource) ->
                      jsxd:get(Resource, 0, statebox:value(S0))
              end,
-    Server = sniffle_matcher:match_dict(State#state.datasets, Getter, Requirements),
+    List = sniffle_db:fold(State#state.partition,
+                          <<"dataset">>,
+                           fun (Key, E, C) ->
+                                   case sniffle_matcher:match(E, Getter, Requirements) of
+                                       false ->
+                                           C;
+                                       Pts ->
+                                           [{Key, Pts} | C]
+                                   end
+                           end, []),
     {reply,
-     {ok, ReqID, {State#state.partition, State#state.node}, Server},
+     {ok, ReqID, {State#state.partition, State#state.node}, List},
      State};
 
 handle_coverage(_Req, _KeySpaces, _Sender, State) ->
@@ -268,24 +253,5 @@ handle_coverage(_Req, _KeySpaces, _Sender, State) ->
 handle_exit(_Pid, _Reason, State) ->
     {noreply, State}.
 
-terminate(_Reason, #state{dbref=DBRef} = _State) ->
-    eleveldb:close(DBRef),
+terminate(_Reason,  _State) ->
     ok.
-
-read_ranges(DBRef) ->
-    case eleveldb:get(DBRef, <<"#datasets">>, []) of
-        not_found ->
-            {[], dict:new()};
-        {ok, Bin} ->
-            Index = binary_to_term(Bin),
-            {Index,
-             lists:foldl(fun (Dataset, Datasets0) ->
-                                 {ok, DatasetBin} = eleveldb:get(DBRef, Dataset, []),
-                                 O = binary_to_term(DatasetBin),
-                                 #sniffle_obj{val=Dataset0} = O,
-                                 Dataset1 = statebox:modify({fun sniffle_dataset_state:load/1, []}, Dataset0),
-                                 Dataset2 = statebox:expire(?STATEBOX_EXPIRE, Dataset1),
-                                 DatasetObj = sniffle_obj:update(Dataset2, sniffle_dataset_vnode, O),
-                                 dict:store(Dataset, DatasetObj, Datasets0)
-                         end, dict:new(), Index)}
-    end.

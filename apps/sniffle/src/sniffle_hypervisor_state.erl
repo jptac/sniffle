@@ -10,12 +10,16 @@
 -include("sniffle.hrl").
 
 -export([
+         load/1,
          new/0,
          name/2,
          host/2,
          port/2,
          set/3
         ]).
+
+load(H) ->
+    H.
 
 new() ->
     jsxd:set(<<"version">>, <<"0.1.0">>, jsxd:new()).
