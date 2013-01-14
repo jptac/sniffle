@@ -36,6 +36,16 @@ register(Vm, Hypervisor) ->
 -spec unregister(VM::fifo:uuid()) -> ok.
 
 unregister(Vm) ->
+    case sniffle_vm:get(Vm) of
+        {ok, V} ->
+            lists:map(fun(N) ->
+                              {ok, Net} = jsxd:get(<<"network">>, N),
+                              {ok, Ip} = jsxd:get(<<"ip">>, N),
+                              sniffle_iprange:release_ip(Net, Ip)
+                      end,jsxd:get(<<"network_mappings">>, [], V));
+        _ ->
+            ok
+    end,
     do_update(Vm, unregister).
 
 -spec create(Package::binary(), Dataset::binary(), Config::fifo:config()) ->
