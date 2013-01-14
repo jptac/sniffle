@@ -143,24 +143,37 @@ get_ips(_Event, State = #state{config = Config,
                                dataset = Dataset}) ->
     Dataset1 = jsxd:update(<<"networks">>,
                            fun(Nics) ->
-                                   lists:map(
-                                     fun(Nic) ->
-                                             {ok, Name} = jsxd:get(<<"name">>, Nic),
-                                             {ok, NicTag} = jsxd:get([<<"networks">>, Name], Config),
-                                             sniffle_vm:log(UUID, <<"Fetching network ", NicTag/binary, " for NIC ", Name/binary>>),
-                                             {ok, {Tag, IP, Net, Gw}} = sniffle_iprange:claim_ip(NicTag),
-                                             IPb = sniffle_iprange_state:to_bin(IP),
-                                             Netb = sniffle_iprange_state:to_bin(Net),
-                                             GWb = sniffle_iprange_state:to_bin(Gw),
-                                             sniffle_vm:log(UUID, <<"Assigning IP ", IPb/binary,
-                                                                    " netmask ", Netb/binary,
-                                                                    " gateway ", GWb/binary,
-                                                                    " tag ", Tag/binary>>),
-                                             jsxd:from_list([{<<"nic_tag">>, Tag},
-                                                             {<<"ip">>, IPb},
-                                                             {<<"netmask">>, Netb},
-                                                             {<<"gateway">>, GWb}])
-                                     end, Nics)
+                                   {Nics1, _} =
+                                       jsxd:fold(
+                                         fun(K, Nic, {NicsF, Mappings}) ->
+                                                 {ok, Name} = jsxd:get(<<"name">>, Nic),
+                                                 {ok, NicTag} = jsxd:get([<<"networks">>, Name], Config),
+                                                 sniffle_vm:log(UUID, <<"Fetching network ", NicTag/binary, " for NIC ", Name/binary>>),
+                                                 {ok, {Tag, IP, Net, Gw}} = sniffle_iprange:claim_ip(NicTag),
+                                                 IPb = sniffle_iprange_state:to_bin(IP),
+                                                 Netb = sniffle_iprange_state:to_bin(Net),
+                                                 GWb = sniffle_iprange_state:to_bin(Gw),
+                                                 sniffle_vm:log(UUID, <<"Assigning IP ", IPb/binary,
+                                                                        " netmask ", Netb/binary,
+                                                                        " gateway ", GWb/binary,
+                                                                        " tag ", Tag/binary>>),
+                                                 Mappings1 = jsxd:append(
+                                                               [],
+                                                               jsxd:from_list([{<<"network">>, NicTag},
+                                                                               {<<"ip">>, IP}]),
+                                                               Mappings),
+                                                 sniffle_vm:set(UUID,
+                                                                <<"network_mappings">>,
+                                                                Mappings1),
+                                                 NicsF1 = jsxd:set(K,
+                                                                   jsxd:from_list([{<<"nic_tag">>, Tag},
+                                                                                   {<<"ip">>, IPb},
+                                                                                   {<<"netmask">>, Netb},
+                                                                                   {<<"gateway">>, GWb}]),
+                                                                   NicsF),
+                                                 {NicsF1, Mappings1}
+                                         end, {[], []}, Nics),
+                                   Nics1
                            end, Dataset),
     {next_state, get_server, State#state{dataset = Dataset1}, 0}.
 
@@ -193,11 +206,8 @@ get_server(_Event, State = #state{
                 lists:map(fun(C) -> make_condition(C, Permissions) end, Conditions1),
             CondB = list_to_binary(io_lib:format("~p", [Conditions])),
             sniffle_vm:log(UUID, <<"Finding hypervisor ", CondB/binary>>),
-
-
             {ok, [{HypervisorID, _} | _]} = sniffle_hypervisor:list(Conditions),
             sniffle_vm:log(UUID, <<"Deploying on hypervisor ", HypervisorID/binary>>),
-
             {ok, H} = sniffle_hypervisor:get(HypervisorID),
             {ok, Port} = jsxd:get(<<"port">>, H),
             {ok, Host} = jsxd:get(<<"host">>, H),
@@ -213,7 +223,6 @@ create_permissions(_Event, State = #state{
     libsnarl:user_grant(Owner, [<<"vms">>, UUID, '...']),
     {next_state, create, State, 0}.
 
-
 create(_Event, State = #state{
                  dataset = Dataset,
                  package = Package,
@@ -224,6 +233,7 @@ create(_Event, State = #state{
     sniffle_vm:set(UUID, <<"state">>, <<"creating">>),
     libchunter:create_machine(Host, Port, UUID, Package, Dataset, Config),
     {stop, normal, State}.
+
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
