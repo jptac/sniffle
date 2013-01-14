@@ -159,7 +159,7 @@ get_ips(_Event, State = #state{config = Config,
                                                                         " tag ", Tag/binary>>),
                                                  Mappings1 = jsxd:append(
                                                                [],
-                                                               jsxd:from_list([{<<"network">>, Name},
+                                                               jsxd:from_list([{<<"network">>, NicTag},
                                                                                {<<"ip">>, IP}]),
                                                                Mappings),
                                                  sniffle_vm:set(UUID,
