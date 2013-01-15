@@ -16,14 +16,18 @@
     stop/1,
     reboot/1,
     delete/1,
+    snapshot/2,
+    delete_snapshot/2,
     set/2,
     set/3
    ]
   ).
 
+
 -ignore_xref([logs/1]).
 
 -spec register(VM::fifo:uuid(), Hypervisor::binary()) -> ok.
+
 
 register(Vm, Hypervisor) ->
     case sniffle_vm:get(Vm) of
@@ -186,6 +190,55 @@ logs(Vm) ->
 log(Vm, Log) ->
     {Mega,Sec,Micro} = erlang:now(),
     do_update(Vm, log, {(Mega*1000000+Sec)*1000000+Micro, Log}).
+
+
+snapshot(Vm, Comment) ->
+    case sniffle_vm:get(Vm) of
+        {error, timeout} ->
+            {error, timeout};
+        {ok, not_found} ->
+            not_found;
+        {ok, V} ->
+            {ok, H} = jsxd:get(<<"hypervisor">>, V),
+            {Server, Port} = get_hypervisor(H),
+            UUID = list_to_binary(uuid:to_string(uuid:uuid4())),
+            {Mega,Sec,Micro} = erlang:now(),
+            TimeStamp = (Mega*1000000+Sec)*1000000+Micro,
+            case libchunter:snapshot(Server, Port, Vm, UUID) of
+                {reply,ok} ->
+                    do_write(Vm, set, [{[<<"snapshots">>, UUID, <<"timestamp">>], TimeStamp},
+                                       {[<<"snapshots">>, UUID, <<"comment">>], Comment}]),
+                    log(Vm, <<"Created snapshot ", UUID/binary, ": ", Comment/binary>>),
+                    {ok, UUID};
+                E ->
+                    {error, E}
+            end
+    end.
+
+delete_snapshot(Vm, UUID) ->
+    case sniffle_vm:get(Vm) of
+        {error, timeout} ->
+            {error, timeout};
+        {ok, not_found} ->
+            not_found;
+        {ok, V} ->
+            case jsxd:get([<<"snapshots">>, UUID, <<"timestamp">>], V) of
+                {ok, _} ->
+                    {ok, Snapshots} = jsxd:get(<<"snapshots">>, V),
+                    {ok, H} = jsxd:get(<<"hypervisor">>, V),
+                    {Server, Port} = get_hypervisor(H),
+                    case libchunter:delete_snapshot(Server, Port, Vm, UUID) of
+                        {reply,ok} ->
+                            Snapshots1 = jsxd:delete([<<"snapshots">>, UUID], Snapshots),
+                            do_write(Vm, set, [{[<<"snapshots">>], Snapshots1}]),
+                            log(Vm, <<"Deleted snapshot ", UUID/binary, ".">>),
+                            ok;
+                        E ->
+                            {error, E}
+                    end
+            end
+    end.
+
 
 -spec set(Vm::fifo:uuid(), Attribute::binary(), Value::fifo:value()) ->
                  {error, timeout} | not_found | ok.
