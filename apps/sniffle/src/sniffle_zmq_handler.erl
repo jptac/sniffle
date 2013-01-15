@@ -46,6 +46,13 @@ message({vm, snapshot, delete, Vm, UUID}, State) when
      sniffle_vm:delete_snapshot(Vm, UUID),
      State};
 
+message({vm, snapshot, rollback, Vm, UUID}, State) when
+      is_binary(Vm),
+      is_binary(UUID) ->
+    {reply,
+     sniffle_vm:rollback_snapshot(Vm, UUID),
+     State};
+
 message({vm, create, Package, Dataset, Config}, State) when
       is_binary(Package),
       is_list(Config) ,

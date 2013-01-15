@@ -18,6 +18,7 @@
     delete/1,
     snapshot/2,
     delete_snapshot/2,
+    rollback_snapshot/2,
     set/2,
     set/3
    ]
@@ -236,6 +237,21 @@ delete_snapshot(Vm, UUID) ->
                         E ->
                             {error, E}
                     end
+            end
+    end.
+
+rollback_snapshot(Vm, UUID) ->
+    case sniffle_vm:get(Vm) of
+        {error, timeout} ->
+            {error, timeout};
+        {ok, not_found} ->
+            not_found;
+        {ok, V} ->
+            case jsxd:get([<<"snapshots">>, UUID, <<"timestamp">>], V) of
+                {ok, _} ->
+                    {ok, H} = jsxd:get(<<"hypervisor">>, V),
+                    {Server, Port} = get_hypervisor(H),
+                    libchunter:rollback_snapshot(Server, Port, Vm, UUID)
             end
     end.
 
