@@ -131,7 +131,7 @@ vms(text, ["snapshots", UUID]) ->
     case sniffle_vm:get(list_to_binary(UUID)) of
         {ok, VM} ->
             jsxd:map(fun (SUUID, Snapshot) ->
-                              io:format("~36s ~17p ~s~n",
+                              io:format("~36p ~17s ~s~n",
                                         [jsxd:get(<<"timestamp">>, <<"-">>, Snapshot),
                                          SUUID,
                                          jsxd:get(<<"comment">>, <<"-">>, Snapshot)])
