@@ -21,23 +21,74 @@ vms([C, "-p" | R]) ->
 vms(R) ->
     vms(text, R).
 
+vms(json, ["get", UUID]) ->
+    case sniffle_vm:get(list_to_binary(UUID)) of
+        {ok, VM} ->
+            pp_json(VM),
+            ok;
+        _ ->
+            pp_json([]),
+            ok
+    end;
+
+vms(text, ["get", UUID]) ->
+    io:format("UUID                                 Hypervisor        Name            State~n"),
+    io:format("------------------------------------ ----------------- --------------- ----------~n", []),
+    case sniffle_vm:get(list_to_binary(UUID)) of
+        {ok, VM} ->
+            io:format("~36s ~17s ~10s ~-15s~n",
+                      [UUID,
+                       jsxd:get(<<"hypervisor">>, <<"-">>, VM),
+                       jsxd:get(<<"state">>, <<"-">>, VM),
+                       jsxd:get(<<"config.alias">>, <<"-">>, VM)]),
+            ok;
+        _ ->
+            ok
+    end;
+
+vms(json, ["logs", UUID]) ->
+    case sniffle_vm:get(list_to_binary(UUID)) of
+        {ok, VM} ->
+            pp_json(jsxd:get(<<"logs">>, [], VM)),
+            ok;
+        _ ->
+            pp_json([]),
+            ok
+    end;
+
+vms(text, ["logs", UUID]) ->
+    io:format("Timestamp         Log~n"),
+    io:format("----------------- -------------------------------------------------------------~n", []),
+    case sniffle_vm:get(list_to_binary(UUID)) of
+        {ok, VM} ->
+            lists:map(fun (Log) ->
+                              io:format("~17s ~s~n",
+                                        [jsxd:get(<<"date">>, <<"-">>, Log),
+                                         jsxd:get(<<"log">>, <<"-">>, Log)])
+                      end, jsxd:get(<<"log">>, [], VM)),
+            ok;
+        _ ->
+            ok
+    end;
+
 vms(json, ["list"]) ->
     case sniffle_vm:list() of
         {ok, VMs} ->
-            io:format("~s", jsx:encode(
-                              lists:map(fun (UUID) ->
-                                                {ok, VM} = sniffle_vm:get(UUID),
-                                                VM
-                                        end, VMs))),
+            pp_json(lists:map(fun (UUID) ->
+                                      {ok, VM} = sniffle_vm:get(UUID),
+                                      jsxd:thread([{select, [<<"hypervisor">>, <<"state">>]},
+                                                   {merge, jsxd:get(<<"config">>, [], VM)}],
+                                                  VM)
+                              end, VMs)),
             ok;
         _ ->
-            io:format("[]~n"),
+            pp_json([]),
             ok
     end;
 
 vms(text, ["list"]) ->
-    io:format("UUID                                 Hypervisor        State      Name~n"),
-    io:format("------------------------------------ ----------------- ---------- ---------------~n", []),
+    io:format("UUID                                 Hypervisor        Name            State~n"),
+    io:format("------------------------------------ ----------------- --------------- ----------~n", []),
     case sniffle_vm:list() of
         {ok, VMs} ->
             lists:map(fun (UUID) ->
@@ -115,3 +166,7 @@ ringready([]) ->
             io:format("Ringready failed, see log for details~n"),
             error
     end.
+
+
+pp_json(Obj) ->
+    io:format("~s~n", [jsx:prettify(jsx:encode(Obj))]).
