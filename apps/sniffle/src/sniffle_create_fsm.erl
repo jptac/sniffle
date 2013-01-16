@@ -150,6 +150,7 @@ get_ips(_Event, State = #state{config = Config,
                                                  {ok, NicTag} = jsxd:get([<<"networks">>, Name], Config),
                                                  sniffle_vm:log(UUID, <<"Fetching network ", NicTag/binary, " for NIC ", Name/binary>>),
                                                  {ok, {Tag, IP, Net, Gw}} = sniffle_iprange:claim_ip(NicTag),
+                                                 {ok, Range} = sniffle_iprange:get(NicTag),
                                                  IPb = sniffle_iprange_state:to_bin(IP),
                                                  Netb = sniffle_iprange_state:to_bin(Net),
                                                  GWb = sniffle_iprange_state:to_bin(Gw),
@@ -165,12 +166,17 @@ get_ips(_Event, State = #state{config = Config,
                                                  sniffle_vm:set(UUID,
                                                                 <<"network_mappings">>,
                                                                 Mappings1),
-                                                 NicsF1 = jsxd:set(K,
-                                                                   jsxd:from_list([{<<"nic_tag">>, Tag},
-                                                                                   {<<"ip">>, IPb},
-                                                                                   {<<"netmask">>, Netb},
-                                                                                   {<<"gateway">>, GWb}]),
-                                                                   NicsF),
+                                                 Res = jsxd:from_list([{<<"nic_tag">>, Tag},
+                                                                       {<<"ip">>, IPb},
+                                                                       {<<"netmask">>, Netb},
+                                                                       {<<"gateway">>, GWb}]),
+                                                 Res1 = case jsxd:get(<<"vlan">>, 0, Range) of
+                                                            0 ->
+                                                                Res;
+                                                            VLAN ->
+                                                                jsxd:set(<<"vlan_di">>, VLAN, Res)
+                                                            end,
+                                                 NicsF1 = jsxd:set(K, Res1, NicsF),
                                                  {NicsF1, Mappings1}
                                          end, {[], []}, Nics),
                                    Nics1

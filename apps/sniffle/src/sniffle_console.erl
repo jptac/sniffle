@@ -3,14 +3,32 @@
 -export([join/1,
          leave/1,
          remove/1,
+         vms/1,
          ringready/1]).
 
 -ignore_xref([
-	      join/1,
-	      leave/1,
-	      remove/1,
-	      ringready/1
-	     ]).
+              join/1,
+              leave/1,
+              vms/1,
+              remove/1,
+              ringready/1
+             ]).
+
+
+vms([C, "-p" | R]) ->
+    vms(json, [C | R]);
+
+vms(R) ->
+    vms(text, R).
+
+vms(json, ["list"]) ->
+    case sniffle_vm:list() of
+        {ok, V} ->
+            io:format("~s", jsx:encode(V)),
+            ok;
+        _ ->
+            error
+    end.
 
 join([NodeStr]) ->
     try riak_core:join(NodeStr) of
