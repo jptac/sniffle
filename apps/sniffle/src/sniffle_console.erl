@@ -18,8 +18,49 @@
 vms([C, "-p" | R]) ->
     vms(json, [C | R]);
 
+vms([]) ->
+    io:format("Usage~n"),
+    io:format("list [-p]~n"),
+    io:format("get [-p] <uuid>~n"),
+    io:format("logs [-p] <uuid>~n"),
+    io:format("snapshots [-p] <uuid>~n"),
+    io:format("start <uuid>~n"),
+    io:format("stop <uuid>~n"),
+    io:format("reboot <uuid>~n"),
+    ok;
+
 vms(R) ->
     vms(text, R).
+
+vms(text, ["start", UUID]) ->
+    case sniffle_vm:start(list_to_binary(UUID)) of
+        ok ->
+            io:format("VM ~s starting.~n", [UUID]),
+            ok;
+        E ->
+            io:format("VM ~s did not start (~p).~n", [UUID, E]),
+            ok
+    end;
+
+vms(text, ["stop", UUID]) ->
+    case sniffle_vm:stop(list_to_binary(UUID)) of
+        ok ->
+            io:format("VM ~s stopping.~n", [UUID]),
+            ok;
+        E ->
+            io:format("VM ~s did not stop (~p).~n", [UUID, E]),
+            ok
+    end;
+
+vms(text, ["reboot", UUID]) ->
+    case sniffle_vm:reboot(list_to_binary(UUID)) of
+        ok ->
+            io:format("VM ~s rebooting.~n", [UUID]),
+            ok;
+        E ->
+            io:format("VM ~s did not reboot (~p).~n", [UUID, E]),
+            ok
+    end;
 
 vms(json, ["get", UUID]) ->
     case sniffle_vm:get(list_to_binary(UUID)) of
@@ -51,7 +92,7 @@ vms(text, ["get", UUID]) ->
 vms(json, ["logs", UUID]) ->
     case sniffle_vm:get(list_to_binary(UUID)) of
         {ok, VM} ->
-            pp_json(jsxd:get(<<"logs">>, [], VM)),
+            pp_json(jsxd:get(<<"log">>, [], VM)),
             ok;
         _ ->
             pp_json([]),
@@ -59,8 +100,8 @@ vms(json, ["logs", UUID]) ->
     end;
 
 vms(text, ["logs", UUID]) ->
-    io:format("Timestamp         Log~n"),
-    io:format("----------------- -------------------------------------------------------------~n", []),
+    io:format("Timestamp        Log~n"),
+    io:format("---------------- -------------------------------------------------------------~n", []),
     case sniffle_vm:get(list_to_binary(UUID)) of
         {ok, VM} ->
             lists:map(fun (Log) ->
@@ -73,8 +114,7 @@ vms(text, ["logs", UUID]) ->
             ok
     end;
 
-
-vms(json, ["logssnapshots", UUID]) ->
+vms(json, ["snapshots", UUID]) ->
     case sniffle_vm:get(list_to_binary(UUID)) of
         {ok, VM} ->
             pp_json(jsxd:get(<<"snapshots">>, [], VM)),
@@ -86,8 +126,8 @@ vms(json, ["logssnapshots", UUID]) ->
 
 
 vms(text, ["snapshots", UUID]) ->
-    io:format("UUID                                 Timestamp         Comment~n"),
-    io:format("------------------------------------ ----------------- -----------~n", []),
+    io:format("Timestamp        UUID                                 Comment~n"),
+    io:format("---------------- ------------------------------------ -----------~n", []),
     case sniffle_vm:get(list_to_binary(UUID)) of
         {ok, VM} ->
             jsxd:map(fun (SUUID, Snapshot) ->
@@ -131,7 +171,11 @@ vms(text, ["list"]) ->
                       end, VMs);
         _ ->
             []
-    end.
+    end;
+
+vms(_, C) ->
+    io:format("Unknown parameters: ~p", [C]),
+    error.
 
 join([NodeStr]) ->
     try riak_core:join(NodeStr) of
