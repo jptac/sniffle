@@ -23,11 +23,33 @@ vms(R) ->
 
 vms(json, ["list"]) ->
     case sniffle_vm:list() of
-        {ok, V} ->
-            io:format("~s", jsx:encode(V)),
+        {ok, VMs} ->
+            io:format("~s", jsx:encode(
+                              lists:map(fun (UUID) ->
+                                                {ok, VM} = sniffle_vm:get(UUID),
+                                                VM
+                                        end, VMs))),
             ok;
         _ ->
-            error
+            io:format("[]~n"),
+            ok
+    end;
+
+vms(text, ["list"]) ->
+    io:format("UUID                                 Hypervisor        State      Name~n"),
+    io:format("------------------------------------ ----------------- ---------- ---------------~n", []),
+    case sniffle_vm:list() of
+        {ok, VMs} ->
+            lists:map(fun (UUID) ->
+                              {ok, VM} = sniffle_vm:get(UUID),
+                              io:format("~36s ~17s ~10s ~-15s~n",
+                                        [UUID,
+                                         jsxd:get(<<"hypervisor">>, <<"-">>, VM),
+                                         jsxd:get(<<"state">>, <<"-">>, VM),
+                                         jsxd:get(<<"config.alias">>, <<"-">>, VM)])
+                      end, VMs);
+        _ ->
+            []
     end.
 
 join([NodeStr]) ->
