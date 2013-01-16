@@ -58,7 +58,7 @@ vms(text, ["reboot", UUID]) ->
             io:format("VM ~s rebooting.~n", [UUID]),
             ok;
         E ->
-            io:format("VM ~s did not reboot (~p).~n", [UUID, E]),
+            io:format("VM ~s did not reboot (~p).~n", [UUID]),
             ok
     end;
 
@@ -132,8 +132,8 @@ vms(text, ["snapshots", UUID]) ->
         {ok, VM} ->
             jsxd:map(fun (SUUID, Snapshot) ->
                               io:format("~36s ~17p ~s~n",
-                                        [SUUID,
-                                         jsxd:get(<<"timestamp">>, <<"-">>, Snapshot),
+                                        [jsxd:get(<<"timestamp">>, <<"-">>, Snapshot),
+                                         SUUID,
                                          jsxd:get(<<"comment">>, <<"-">>, Snapshot)])
                       end, jsxd:get(<<"snapshots">>, [], VM)),
             ok;
