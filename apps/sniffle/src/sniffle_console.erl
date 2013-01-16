@@ -58,7 +58,7 @@ vms(text, ["reboot", UUID]) ->
             io:format("VM ~s rebooting.~n", [UUID]),
             ok;
         E ->
-            io:format("VM ~s did not reboot (~p).~n", [UUID]),
+            io:format("VM ~s did not reboot (~p).~n", [UUID, E]),
             ok
     end;
 
