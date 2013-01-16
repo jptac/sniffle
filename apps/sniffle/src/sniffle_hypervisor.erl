@@ -23,7 +23,7 @@ register(Hypervisor, IP, Port) ->
     end.
 
 unregister(Hypervisor) ->
-    do_update(Hypervisor, delete).
+    do_update(Hypervisor, unregister).
 
 get(Hypervisor) ->
     sniffle_entity_read_fsm:start(
