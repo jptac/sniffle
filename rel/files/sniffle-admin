@@ -90,7 +90,7 @@ case "$1" in
         ;;
     hypervisors)
         shift
-        run sniffle_console vms $@
+        run sniffle_console hvs $@
         ;;
     join)
         shift
