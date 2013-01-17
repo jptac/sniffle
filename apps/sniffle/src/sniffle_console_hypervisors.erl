@@ -83,7 +83,7 @@ command(text, ["list"]) ->
                                                   [jsxd:get(<<"resources.provisioned-memory">>, 0, H),
                                                    jsxd:get(<<"resources.total-memory">>, 0, H)]),
                               io:format("~-18s ~-16s ~15s ~-14s~n",
-                                        [ID, Mem, Host, State]),
+                                        [ID, Mem, Host, State])
                       end, Hs);
         _ ->
             []
