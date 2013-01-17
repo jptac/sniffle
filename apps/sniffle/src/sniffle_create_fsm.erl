@@ -340,7 +340,7 @@ make_condition(C, Permissions) ->
                  I when is_integer(I) ->
                      I
              end,
-    Condition = case jsxd:get(<<"weight">>, <<"=:=">>, C) of
+    Condition = case jsxd:get(<<"condition">>, <<"=:=">>, C) of
                     <<">=">> -> '>=';
                     <<">">> -> '>';
                     <<"=<">> -> '=<';
