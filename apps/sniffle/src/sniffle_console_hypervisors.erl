@@ -6,11 +6,6 @@ help() ->
     io:format("Usage~n"),
     io:format("  list [-p]~n"),
     io:format("  get [-p] <uuid>~n"),
-    io:format("  logs [-p] <uuid>~n"),
-    io:format("  snapshots [-p] <uuid>~n"),
-    io:format("  start <uuid>~n"),
-    io:format("  stop <uuid>~n"),
-    io:format("  reboot <uuid>~n"),
     io:format("  delete <uuid>~n").
 
 command(text, ["delete", UUID]) ->
@@ -39,7 +34,7 @@ command(text, ["get", ID]) ->
     case sniffle_hypervisor:get(list_to_binary(ID)) of
         {ok, H} ->
             {ok, Host} = jsxd:get(<<"host">>, H),
-            {ok, Port} = jsxd:get(<<"Port">>, H),
+            {ok, Port} = jsxd:get(<<"port">>, H),
             State = case libchunter:ping(binary_to_list(Host), Port) of
                         pong ->
                             <<"ok">>;
@@ -78,7 +73,7 @@ command(text, ["list"]) ->
             lists:map(fun (ID) ->
                               {ok, H} = sniffle_hypervisor:get(ID),
                               {ok, Host} = jsxd:get(<<"host">>, H),
-                              {ok, Port} = jsxd:get(<<"Port">>, H),
+                              {ok, Port} = jsxd:get(<<"port">>, H),
                               State = case libchunter:ping(binary_to_list(Host), Port) of
                                           pong ->
                                               <<"ok">>;
