@@ -284,9 +284,9 @@ handle_coverage({status, ReqID}, _KeySpaces, _Sender, State) ->
                                     {error,connection_failed} ->
                                         [jsxd:from_list(
                                            [{<<"category">>, <<"chunter">>},
-                                            {<<"elementy">>, K},
-                                            {<<"typey">>, <<"critical">>},
-                                            {<<"messagey">>,
+                                            {<<"element">>, K},
+                                            {<<"type">>, <<"critical">>},
+                                            {<<"message">>,
                                              bin_fmt("Chunter server ~s down.", [K])}]) |
                                          Warnings];
                                     pong ->

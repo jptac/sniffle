@@ -84,6 +84,14 @@ run()
 
 # Check the first argument for instructions
 case "$1" in
+    vms)
+        shift
+        run sniffle_console vms $@
+        ;;
+    hypervisors)
+        shift
+        run sniffle_console vms $@
+        ;;
     join)
         shift
         run sniffle_console join $@

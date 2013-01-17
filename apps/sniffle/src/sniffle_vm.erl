@@ -236,7 +236,9 @@ delete_snapshot(Vm, UUID) ->
                             ok;
                         E ->
                             {error, E}
-                    end
+                    end;
+                undefined ->
+                    {error, not_found}
             end
     end.
 
@@ -247,14 +249,26 @@ rollback_snapshot(Vm, UUID) ->
         {ok, not_found} ->
             not_found;
         {ok, V} ->
-            case jsxd:get([<<"snapshots">>, UUID, <<"timestamp">>], V) of
-                {ok, _} ->
-                    {ok, H} = jsxd:get(<<"hypervisor">>, V),
-                    {Server, Port} = get_hypervisor(H),
-                    libchunter:rollback_snapshot(Server, Port, Vm, UUID)
+            case jsxd:get(<<"state">>, V) of
+                {ok, <<"stopped">>} ->
+                    case jsxd:get([<<"snapshots">>, UUID, <<"timestamp">>], V) of
+                        {ok, _} ->
+                            {ok, H} = jsxd:get(<<"hypervisor">>, V),
+                            {Server, Port} = get_hypervisor(H),
+                            case libchunter:rollback_snapshot(Server, Port, Vm, UUID) of
+                                {reply,ok} ->
+                                    ok;
+                                E ->
+                                    {error, E}
+                            end;
+                        undefined ->
+                            {error, not_found}
+                    end;
+                {ok, State} ->
+                    log(Vm, <<"Not rolled back since state is ", State/binary, ".">>),
+                    {error, not_stopped}
             end
     end.
-
 
 -spec set(Vm::fifo:uuid(), Attribute::binary(), Value::fifo:value()) ->
                  {error, timeout} | not_found | ok.
