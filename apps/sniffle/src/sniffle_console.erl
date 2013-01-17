@@ -4,178 +4,39 @@
          leave/1,
          remove/1,
          vms/1,
+         hvs/1,
+         pp_json/1,
          ringready/1]).
 
 -ignore_xref([
               join/1,
               leave/1,
               vms/1,
+              hvs/1,
               remove/1,
               ringready/1
              ]).
 
 
 vms([C, "-p" | R]) ->
-    vms(json, [C | R]);
+    sniffle_console_vms:command(json, [C | R]);
 
 vms([]) ->
-    io:format("Usage~n"),
-    io:format("list [-p]~n"),
-    io:format("get [-p] <uuid>~n"),
-    io:format("logs [-p] <uuid>~n"),
-    io:format("snapshots [-p] <uuid>~n"),
-    io:format("start <uuid>~n"),
-    io:format("stop <uuid>~n"),
-    io:format("reboot <uuid>~n"),
+    sniffle_console_vms:help(),
     ok;
 
 vms(R) ->
-    vms(text, R).
+    sniffle_console_vms:command(text, R).
 
-vms(text, ["start", UUID]) ->
-    case sniffle_vm:start(list_to_binary(UUID)) of
-        ok ->
-            io:format("VM ~s starting.~n", [UUID]),
-            ok;
-        E ->
-            io:format("VM ~s did not start (~p).~n", [UUID, E]),
-            ok
-    end;
+hvs([C, "-p" | R]) ->
+    sniffle_console_hypervisors:command(json, [C | R]);
 
-vms(text, ["stop", UUID]) ->
-    case sniffle_vm:stop(list_to_binary(UUID)) of
-        ok ->
-            io:format("VM ~s stopping.~n", [UUID]),
-            ok;
-        E ->
-            io:format("VM ~s did not stop (~p).~n", [UUID, E]),
-            ok
-    end;
+hvs([]) ->
+    sniffle_console_hypervisors:help(),
+    ok;
 
-vms(text, ["reboot", UUID]) ->
-    case sniffle_vm:reboot(list_to_binary(UUID)) of
-        ok ->
-            io:format("VM ~s rebooting.~n", [UUID]),
-            ok;
-        E ->
-            io:format("VM ~s did not reboot (~p).~n", [UUID, E]),
-            ok
-    end;
-
-vms(json, ["get", UUID]) ->
-    case sniffle_vm:get(list_to_binary(UUID)) of
-        {ok, VM} ->
-            pp_json(jsxd:thread([{select, [<<"hypervisor">>, <<"state">>]},
-                                 {merge, jsxd:get(<<"config">>, [], VM)}],
-                                VM)),
-            ok;
-        _ ->
-            pp_json([]),
-            ok
-    end;
-
-vms(text, ["get", UUID]) ->
-    io:format("UUID                                 Hypervisor        Name            State~n"),
-    io:format("------------------------------------ ----------------- --------------- ----------~n", []),
-    case sniffle_vm:get(list_to_binary(UUID)) of
-        {ok, VM} ->
-            io:format("~36s ~17s ~10s ~-15s~n",
-                      [UUID,
-                       jsxd:get(<<"hypervisor">>, <<"-">>, VM),
-                       jsxd:get(<<"state">>, <<"-">>, VM),
-                       jsxd:get(<<"config.alias">>, <<"-">>, VM)]),
-            ok;
-        _ ->
-            ok
-    end;
-
-vms(json, ["logs", UUID]) ->
-    case sniffle_vm:get(list_to_binary(UUID)) of
-        {ok, VM} ->
-            pp_json(jsxd:get(<<"log">>, [], VM)),
-            ok;
-        _ ->
-            pp_json([]),
-            ok
-    end;
-
-vms(text, ["logs", UUID]) ->
-    io:format("Timestamp        Log~n"),
-    io:format("---------------- -------------------------------------------------------------~n", []),
-    case sniffle_vm:get(list_to_binary(UUID)) of
-        {ok, VM} ->
-            lists:map(fun (Log) ->
-                              io:format("~17p ~s~n",
-                                        [jsxd:get(<<"date">>, <<"-">>, Log),
-                                         jsxd:get(<<"log">>, <<"-">>, Log)])
-                      end, jsxd:get(<<"log">>, [], VM)),
-            ok;
-        _ ->
-            ok
-    end;
-
-vms(json, ["snapshots", UUID]) ->
-    case sniffle_vm:get(list_to_binary(UUID)) of
-        {ok, VM} ->
-            pp_json(jsxd:get(<<"snapshots">>, [], VM)),
-            ok;
-        _ ->
-            pp_json([]),
-            ok
-    end;
-
-
-vms(text, ["snapshots", UUID]) ->
-    io:format("Timestamp        UUID                                 Comment~n"),
-    io:format("---------------- ------------------------------------ -----------~n", []),
-    case sniffle_vm:get(list_to_binary(UUID)) of
-        {ok, VM} ->
-            jsxd:map(fun (SUUID, Snapshot) ->
-                              io:format("~36p ~17s ~s~n",
-                                        [jsxd:get(<<"timestamp">>, <<"-">>, Snapshot),
-                                         SUUID,
-                                         jsxd:get(<<"comment">>, <<"-">>, Snapshot)])
-                      end, jsxd:get(<<"snapshots">>, [], VM)),
-            ok;
-        _ ->
-            ok
-    end;
-
-vms(json, ["list"]) ->
-    case sniffle_vm:list() of
-        {ok, VMs} ->
-            pp_json(lists:map(fun (UUID) ->
-                                      {ok, VM} = sniffle_vm:get(UUID),
-                                      jsxd:thread([{select, [<<"hypervisor">>, <<"state">>]},
-                                                   {merge, jsxd:get(<<"config">>, [], VM)}],
-                                                  VM)
-                              end, VMs)),
-            ok;
-        _ ->
-            pp_json([]),
-            ok
-    end;
-
-vms(text, ["list"]) ->
-    io:format("UUID                                 Hypervisor        Name            State~n"),
-    io:format("------------------------------------ ----------------- --------------- ----------~n", []),
-    case sniffle_vm:list() of
-        {ok, VMs} ->
-            lists:map(fun (UUID) ->
-                              {ok, VM} = sniffle_vm:get(UUID),
-                              io:format("~36s ~17s ~10s ~-15s~n",
-                                        [UUID,
-                                         jsxd:get(<<"hypervisor">>, <<"-">>, VM),
-                                         jsxd:get(<<"state">>, <<"-">>, VM),
-                                         jsxd:get(<<"config.alias">>, <<"-">>, VM)])
-                      end, VMs);
-        _ ->
-            []
-    end;
-
-vms(_, C) ->
-    io:format("Unknown parameters: ~p", [C]),
-    error.
+hvs(R) ->
+    sniffle_console_hypervisors:command(text, R).
 
 join([NodeStr]) ->
     try riak_core:join(NodeStr) of
