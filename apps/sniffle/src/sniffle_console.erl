@@ -5,6 +5,7 @@
          remove/1,
          vms/1,
          hvs/1,
+         pkgs/1,
          pp_json/1,
          ringready/1]).
 
@@ -13,12 +14,13 @@
               leave/1,
               vms/1,
               hvs/1,
+              pkgs/1,
               remove/1,
               ringready/1
              ]).
 
 
-vms([C, "-p" | R]) ->
+vms([C, "-j" | R]) ->
     sniffle_console_vms:command(json, [C | R]);
 
 vms([]) ->
@@ -28,7 +30,7 @@ vms([]) ->
 vms(R) ->
     sniffle_console_vms:command(text, R).
 
-hvs([C, "-p" | R]) ->
+hvs([C, "-j" | R]) ->
     sniffle_console_hypervisors:command(json, [C | R]);
 
 hvs([]) ->
@@ -37,6 +39,16 @@ hvs([]) ->
 
 hvs(R) ->
     sniffle_console_hypervisors:command(text, R).
+
+pkgs([C, "-j" | R]) ->
+    sniffle_console_packages:command(json, [C | R]);
+
+pkgs([]) ->
+    sniffle_console_packages:help(),
+    ok;
+
+pkgs(R) ->
+    sniffle_console_packages:command(text, R).
 
 join([NodeStr]) ->
     try riak_core:join(NodeStr) of
