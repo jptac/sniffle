@@ -29,11 +29,11 @@ command(json, ["get", UUID]) ->
     end;
 
 command(text, ["get", ID]) ->
-    io:format("Name            Ram      Quota  CPU Cap~n"),
-    io:format("--------------- -------- ------ -------~n", []),
+    io:format("Name            Ram       Quota   CPU Cap~n"),
+    io:format("--------------- --------- ------- -------~n", []),
     case sniffle_package:get(list_to_binary(ID)) of
         {ok, P} ->
-            io:format("~-15s ~-6pMB ~-7pGB ~-5s%~n",
+            io:format("~-15s ~6B MB ~7B GB ~5B%~n",
                       [ID,
                        jsxd:get(<<"ram">>, 0, P),
                        jsxd:get(<<"quota">>, 0, P),
@@ -57,13 +57,13 @@ command(json, ["list"]) ->
     end;
 
 command(text, ["list"]) ->
-    io:format("Name            Ram      Quota  CPU Cap~n"),
-    io:format("--------------- -------- ------ -------~n", []),
+    io:format("Name            Ram       Quota   CPU Cap~n"),
+    io:format("--------------- --------- ------- -------~n", []),
     case sniffle_package:list() of
         {ok, Ps} ->
             lists:map(fun (ID) ->
-                              {ok, P} = sniffle_package:get(list_to_binary(ID)),
-                              io:format("~-15s ~-6pMB ~-7pGB ~-5s%~n",
+                              {ok, P} = sniffle_package:get(ID),
+                              io:format("~-15s ~6B MB ~7B GB ~5B%~n",
                                         [ID,
                                          jsxd:get(<<"ram">>, 0, P),
                                          jsxd:get(<<"quota">>, 0, P),
