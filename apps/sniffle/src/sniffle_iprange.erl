@@ -4,7 +4,7 @@
 
 -export(
    [
-    create/7,
+    create/8,
     delete/1,
     get/1,
     list/0,
@@ -14,10 +14,10 @@
    ]
   ).
 
-create(Iprange, Network, Gateway, Netmask, First, Last, Tag) ->
+create(Iprange, Network, Gateway, Netmask, First, Last, Tag, Vlan) ->
     case sniffle_iprange:get(Iprange) of
         {ok, not_found} ->
-            do_write(Iprange, create, [Network, Gateway, Netmask, First, Last, Tag]);
+            do_write(Iprange, create, [Network, Gateway, Netmask, First, Last, Tag, Vlan]);
         {ok, _RangeObj} ->
             duplicate
     end.
