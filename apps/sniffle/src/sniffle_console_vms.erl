@@ -115,14 +115,13 @@ command(json, ["snapshots", UUID]) ->
             ok
     end;
 
-
 command(text, ["snapshots", UUID]) ->
     io:format("Timestamp        UUID                                 Comment~n"),
     io:format("---------------- ------------------------------------ -----------~n", []),
     case sniffle_vm:get(list_to_binary(UUID)) of
         {ok, VM} ->
             jsxd:map(fun (SUUID, Snapshot) ->
-                              io:format("~36p ~17s ~s~n",
+                              io:format("~16p ~36s ~s~n",
                                         [jsxd:get(<<"timestamp">>, <<"-">>, Snapshot),
                                          SUUID,
                                          jsxd:get(<<"comment">>, <<"-">>, Snapshot)])
