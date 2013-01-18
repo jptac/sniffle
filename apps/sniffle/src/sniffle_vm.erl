@@ -24,7 +24,6 @@
    ]
   ).
 
-
 -ignore_xref([logs/1]).
 
 -spec register(VM::fifo:uuid(), Hypervisor::binary()) -> ok.
@@ -122,8 +121,6 @@ delete(Vm) ->
             ok
     end.
 
-
-
 -spec start(Vm::fifo:uuid()) ->
                    {error, timeout} | not_found | ok.
 
@@ -190,7 +187,17 @@ logs(Vm) ->
 
 log(Vm, Log) ->
     {Mega,Sec,Micro} = erlang:now(),
-    do_update(Vm, log, {(Mega*1000000+Sec)*1000000+Micro, Log}).
+    Timestamp = (Mega*1000000+Sec)*1000000+Micro,
+    case do_update(Vm, log, {Timestamp, Log}) of
+        ok ->
+            libhowl:send(Vm, [{<<"event">>, <<"log">>},
+                              {<<"data">>,
+                               [{<<"log">>, Log},
+                                {<<"date">>, Timestamp}]}]),
+            ok;
+        R ->
+            R
+    end.
 
 
 snapshot(Vm, Comment) ->
