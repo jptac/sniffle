@@ -4,10 +4,10 @@
 
 help() ->
     io:format("Usage~n"),
-    io:format("  list [-p]~n"),
-    io:format("  get [-p] <uuid>~n"),
-    io:format("  logs [-p] <uuid>~n"),
-    io:format("  snapshots [-p] <uuid>~n"),
+    io:format("  list [-j]~n"),
+    io:format("  get [-j] <uuid>~n"),
+    io:format("  logs [-j] <uuid>~n"),
+    io:format("  snapshots [-j] <uuid>~n"),
     io:format("  start <uuid>~n"),
     io:format("  stop <uuid>~n"),
     io:format("  reboot <uuid>~n"),

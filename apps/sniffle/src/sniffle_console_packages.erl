@@ -4,8 +4,8 @@
 
 help() ->
     io:format("Usage~n"),
-    io:format("  list [-p]~n"),
-    io:format("  get [-p] <uuid>~n"),
+    io:format("  list [-j]~n"),
+    io:format("  get [-j] <uuid>~n"),
     io:format("  delete <uuid>~n").
 
 command(text, ["delete", ID]) ->
