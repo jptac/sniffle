@@ -35,10 +35,10 @@ command(text, ["get", ID]) ->
         {ok, D} ->
             io:format("~36s ~7s ~15s ~8s ~s~n",
                       [ID,
-                       jsxd:get(<<"os">>, <<"-">>, P),
-                       jsxd:get(<<"name">>, <<"-">>, P),
-                       jsxd:get(<<"version">>, <<"-">>, P),
-                       jsxd:get(<<"description">>, <<"-">>, P)]),
+                       jsxd:get(<<"os">>, <<"-">>, D),
+                       jsxd:get(<<"name">>, <<"-">>, D),
+                       jsxd:get(<<"version">>, <<"-">>, D),
+                       jsxd:get(<<"description">>, <<"-">>, D)]),
             ok;
         _ ->
             error

@@ -6,6 +6,7 @@
          vms/1,
          hvs/1,
          pkgs/1,
+         ds/1,
          pp_json/1,
          ringready/1]).
 
@@ -13,6 +14,7 @@
               join/1,
               leave/1,
               vms/1,
+              ds/1,
               hvs/1,
               pkgs/1,
               remove/1,
