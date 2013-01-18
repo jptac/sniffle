@@ -50,6 +50,17 @@ pkgs([]) ->
 pkgs(R) ->
     sniffle_console_packages:command(text, R).
 
+ds([C, "-j" | R]) ->
+    sniffle_console_datasets:command(json, [C | R]);
+
+ds([]) ->
+    sniffle_console_datasets:help(),
+    ok;
+
+ds(R) ->
+    sniffle_console_datasets:command(text, R).
+
+
 join([NodeStr]) ->
     try riak_core:join(NodeStr) of
         ok ->

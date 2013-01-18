@@ -96,6 +96,10 @@ case "$1" in
         shift
         run sniffle_console pkgs $@
         ;;
+    datasets)
+        shift
+        run sniffle_console ds $@
+        ;;
     join)
         shift
         run sniffle_console join $@
@@ -178,7 +182,8 @@ case "$1" in
     *)
         echo "Usage: $SCRIPT { join | leave | reip | ringready | remove |"
         echo "                 services | wait-for-service | member_status |"
-        echo "                 ring_status | vms | hypervisors | packages }"
+        echo "                 ring_status | vms | hypervisors | packages |"
+        echo "                 datasets }"
         exit 1
         ;;
 esac
