@@ -69,7 +69,7 @@ command(text, ["list"]) ->
                                          jsxd:get(<<"os">>, <<"-">>, D),
                                          jsxd:get(<<"name">>, <<"-">>, D),
                                          jsxd:get(<<"version">>, <<"-">>, D),
-                                         jsxd:get(<<"description">>, <<"-">>, D)]),
+                                         jsxd:get(<<"description">>, <<"-">>, D)])
                       end, Ds);
         _ ->
             []
