@@ -29,8 +29,8 @@ command(json, ["get", UUID]) ->
     end;
 
 command(text, ["get", ID]) ->
-    io:format("Hypervisor         IP               Memory          State~n"),
-    io:format("------------------ ---------------- --------------- -------------~n", []),
+    io:format("Hypervisor         IP               Memory             State~n"),
+    io:format("------------------ ---------------- ------------------ -------------~n", []),
     case sniffle_hypervisor:get(list_to_binary(ID)) of
         {ok, H} ->
             {ok, Host} = jsxd:get(<<"host">>, H),
@@ -41,7 +41,7 @@ command(text, ["get", ID]) ->
                         _ ->
                             <<"disconnected">>
                     end,
-            Mem = io_lib:format("~p/~p",
+            Mem = io_lib:format("~p/~p MB",
                                 [jsxd:get(<<"resources.provisioned-memory">>, 0, H),
                                  jsxd:get(<<"resources.total-memory">>, 0, H)]),
             io:format("~-18s ~-16s ~15s ~-14s~n",

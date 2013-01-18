@@ -158,7 +158,7 @@ handle_command({get, ReqID, Iprange}, _Sender, State) ->
     {reply, {ok, ReqID, NodeIdx, Res}, State};
 
 handle_command({create, {ReqID, Coordinator}, Iprange,
-                [Network, Gateway, Netmask, First, Last, Tag]},
+                [Network, Gateway, Netmask, First, Last, Tag, Vlan]},
                _Sender, State) ->
     I0 = statebox:new(fun sniffle_iprange_state:new/0),
     I1 = lists:foldl(
@@ -171,7 +171,8 @@ handle_command({create, {ReqID, Coordinator}, Iprange,
                      {fun sniffle_iprange_state:first/2, [First]},
                      {fun sniffle_iprange_state:current/2, [First]},
                      {fun sniffle_iprange_state:last/2, [Last]},
-                     {fun sniffle_iprange_state:tag/2, [Tag]}]),
+                     {fun sniffle_iprange_state:tag/2, [Tag]},
+                     {fun sniffle_iprange_state:vlan/2, [Vlan]}]),
     VC0 = vclock:fresh(),
     VC = vclock:increment(Coordinator, VC0),
     HObject = #sniffle_obj{val=I1, vclock=VC},

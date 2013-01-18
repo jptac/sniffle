@@ -26,35 +26,15 @@
          gateway/2,
          claim_ip/2,
          tag/2,
+         vlan/2,
          to_bin/1
         ]).
-
-load(#iprange{name = Name,
-              tag = Tag,
-              network = Net,
-              gateway = GW,
-              netmask = Mask,
-              first = First,
-              last = Last,
-              current = Current,
-              free = Free}) ->
-    jsxd:thread([{set, <<"name">>, Name},
-                 {set, <<"tag">>, Tag},
-                 {set, <<"network">>, Net},
-                 {set, <<"gateway">>, GW},
-                 {set, <<"netmask">>, Mask},
-                 {set, <<"first">>, First},
-                 {set, <<"last">>, Last},
-                 {set, <<"current">>, Current},
-                 {set, <<"free">>, Free}],
-                new());
 
 load(Iprange) ->
     Iprange.
 
 new() ->
     jsxd:set(<<"version">>, <<"0.1.0">>, jsxd:new()).
-
 
 name(Name, Iprange) ->
     jsxd:set(<<"name">>, Name, Iprange).
@@ -77,10 +57,11 @@ last(Last, Iprange) ->
 current(Current, Iprange) ->
     jsxd:set(<<"current">>, Current, Iprange).
 
-
 tag(Tag, Iprange) ->
     jsxd:set(<<"tag">>, Tag, Iprange).
 
+vlan(Vlan, Iprange) ->
+    jsxd:set(<<"vlan">>, Vlan, Iprange).
 
 claim_ip(IP, Iprange) ->
     case jsxd:get(<<"current">>, Iprange) of
