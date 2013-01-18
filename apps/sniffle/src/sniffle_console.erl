@@ -6,6 +6,7 @@
          vms/1,
          hvs/1,
          pkgs/1,
+         ds/1,
          pp_json/1,
          ringready/1]).
 
@@ -13,6 +14,7 @@
               join/1,
               leave/1,
               vms/1,
+              ds/1,
               hvs/1,
               pkgs/1,
               remove/1,
@@ -49,6 +51,17 @@ pkgs([]) ->
 
 pkgs(R) ->
     sniffle_console_packages:command(text, R).
+
+ds([C, "-j" | R]) ->
+    sniffle_console_datasets:command(json, [C | R]);
+
+ds([]) ->
+    sniffle_console_datasets:help(),
+    ok;
+
+ds(R) ->
+    sniffle_console_datasets:command(text, R).
+
 
 join([NodeStr]) ->
     try riak_core:join(NodeStr) of
