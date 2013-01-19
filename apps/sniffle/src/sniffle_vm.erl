@@ -258,15 +258,20 @@ rollback_snapshot(Vm, UUID) ->
             case jsxd:get(<<"state">>, V) of
                 {ok, <<"stopped">>} ->
                     case jsxd:get([<<"snapshots">>, UUID, <<"timestamp">>], V) of
-                        {ok, _} ->
+                        {ok, T} ->
                             {ok, H} = jsxd:get(<<"hypervisor">>, V),
                             {Server, Port} = get_hypervisor(H),
                             case libchunter:rollback_snapshot(Server, Port, Vm, UUID) of
                                 {reply,ok} ->
-                                    jsxd:fold(fun (K, _, _) ->
-                                                      delete_snapshot(Vm, K),
-                                                      ok
-                                                  end, ok, jsxd:get(<<"snapshots">>, [], V)),
+                                    Snapshots1 = jsxd:fold(fun (SUUID, Sn, A) ->
+                                                                   case jsxd:get(<<"timestamp">>, 0, Sn) of
+                                                                       X when X < T ->
+                                                                           A;
+                                                                       _ ->
+                                                                           jsxd:set(SUUID, Sn, A)
+                                                      end
+                                                           end, [], jsxd:get(<<"snapshots">>, [], V)),
+                                    do_write(Vm, set, [{[<<"snapshots">>], Snapshots1}]),
                                     ok;
                                 E ->
                                     {error, E}
