@@ -199,7 +199,6 @@ log(Vm, Log) ->
             R
     end.
 
-
 snapshot(Vm, Comment) ->
     case sniffle_vm:get(Vm) of
         {error, timeout} ->
@@ -264,6 +263,10 @@ rollback_snapshot(Vm, UUID) ->
                             {Server, Port} = get_hypervisor(H),
                             case libchunter:rollback_snapshot(Server, Port, Vm, UUID) of
                                 {reply,ok} ->
+                                    jsxd:fold(fun (K, _, _) ->
+                                                      delete_snapshot(Vm, K),
+                                                      ok
+                                                  end, ok, jsxd:get(<<"snapshots">>, [], V)),
                                     ok;
                                 E ->
                                     {error, E}
