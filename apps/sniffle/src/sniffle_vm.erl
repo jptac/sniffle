@@ -265,7 +265,7 @@ rollback_snapshot(Vm, UUID) ->
                                 {reply,ok} ->
                                     Snapshots1 = jsxd:fold(fun (SUUID, Sn, A) ->
                                                                    case jsxd:get(<<"timestamp">>, 0, Sn) of
-                                                                       X when X < T ->
+                                                                       X when X > T ->
                                                                            A;
                                                                        _ ->
                                                                            jsxd:set(SUUID, Sn, A)
