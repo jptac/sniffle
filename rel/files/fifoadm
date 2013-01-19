@@ -19,7 +19,11 @@ case $1 in
             exit 1
         fi
         ;;
-    help
+    help|?)
+        cat <<EOF
+fifoadm administers snarl and sniffle.
+EOF
+        ;;
     *)
         echo "Unknown command $1, valid are: "
         echo "  snarl:   groups, users"
