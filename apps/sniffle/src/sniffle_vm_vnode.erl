@@ -167,10 +167,13 @@ handle_command(ping, _Sender, State) ->
 handle_command({repair, Vm, VClock, Obj}, _Sender, State) ->
     case sniffle_db:get(State#state.partition, <<"vm">>, Vm) of
         {ok, #sniffle_obj{vclock = VC1}} when VC1 =:= VClock ->
+            estatsd:increment("sniffle.vms.readrepair.success"),
             sniffle_db:put(State#state.partition, <<"vm">>, Vm, Obj);
         not_found ->
+            estatsd:increment("sniffle.vms.readrepair.success"),
             sniffle_db:put(State#state.partition, <<"vm">>, Vm, Obj);
         _ ->
+            estatsd:increment("sniffle.vms.readrepair.failed"),
             lager:error("[vms] Read repair failed, data was updated too recent.")
     end,
     {noreply, State};
@@ -178,14 +181,17 @@ handle_command({repair, Vm, VClock, Obj}, _Sender, State) ->
 handle_command({get, ReqID, Vm}, _Sender, State) ->
     Res = case sniffle_db:get(State#state.partition, <<"vm">>, Vm) of
               {ok, R} ->
+                  estatsd:increment("sniffle.vms.read.success"),
                   R;
               not_found ->
+                  estatsd:increment("sniffle.vms.read.failed"),
                   not_found
           end,
     NodeIdx = {State#state.partition, State#state.node},
     {reply, {ok, ReqID, NodeIdx, Res}, State};
 
 handle_command({register, {ReqID, Coordinator}, Vm, Hypervisor}, _Sender, State) ->
+    estatsd:increment("sniffle.vms.register"),
     H0 = statebox:new(fun sniffle_vm_state:new/0),
     H1 = statebox:modify({fun sniffle_vm_state:uuid/2, [Vm]}, H0),
     H2 = statebox:modify({fun sniffle_vm_state:hypervisor/2, [Hypervisor]}, H1),
@@ -197,6 +203,7 @@ handle_command({register, {ReqID, Coordinator}, Vm, Hypervisor}, _Sender, State)
     {reply, {ok, ReqID}, State};
 
 handle_command({unregister, {ReqID, _Coordinator}, Vm}, _Sender, State) ->
+    estatsd:increment("sniffle.vms.unregister"),
     sniffle_db:delete(State#state.partition, <<"vm">>, Vm),
     {reply, {ok, ReqID}, State};
 
@@ -205,6 +212,7 @@ handle_command({set,
                 Resources}, _Sender, State) ->
     case sniffle_db:get(State#state.partition, <<"vm">>, Vm) of
         {ok, #sniffle_obj{val=H0} = O} ->
+            estatsd:increment("sniffle.vms.write.success"),
             H1 = statebox:modify({fun sniffle_vm_state:load/1,[]}, H0),
             H2 = lists:foldr(
                    fun ({Resource, Value}, H) ->
@@ -216,6 +224,7 @@ handle_command({set,
             sniffle_db:put(State#state.partition, <<"vm">>, Vm,
                            sniffle_obj:update(H3, Coordinator, O));
         R ->
+            estatsd:increment("sniffle.vms.write.failed"),
             lager:error("[vms] tried to write to a non existing vm: ~p", [R])
     end,
     {reply, {ok, ReqID}, State};
@@ -225,17 +234,21 @@ handle_command({log,
                 {Time, Log}}, _Sender, State) ->
     case sniffle_db:get(State#state.partition, <<"vm">>, Vm) of
         {ok, #sniffle_obj{val=H0} = O} ->
+            estatsd:increment("sniffle.vms.write.success"),
             H1 = statebox:modify({fun sniffle_vm_state:load/1,[]}, H0),
             H2 = statebox:modify({fun sniffle_vm_state:log/3, [Time, Log]}, H1),
             H3 = statebox:expire(?STATEBOX_EXPIRE, H2),
             sniffle_db:put(State#state.partition, <<"vm">>, Vm,
                            sniffle_obj:update(H3, Coordinator, O));
         R ->
+            estatsd:increment("sniffle.vms.write.failed"),
             lager:error("[vms] tried to write to a non existing vm: ~p", [R])
     end,
     {reply, {ok, ReqID}, State};
 
-handle_command(_Message, _Sender, State) ->
+handle_command(Message, _Sender, State) ->
+    estatsd:increment("sniffle.vms.unknown_command"),
+    lager:error("[vms] Unknown command: ~p", [Message]),
     {noreply, State}.
 
 handle_handoff_command(?FOLD_REQ{foldfun=Fun, acc0=Acc0}, _Sender, State) ->
@@ -243,12 +256,15 @@ handle_handoff_command(?FOLD_REQ{foldfun=Fun, acc0=Acc0}, _Sender, State) ->
     {reply, Acc, State}.
 
 handoff_starting(_TargetNode, State) ->
+    estatsd:increment("sniffle.vms.handoff.started"),
     {true, State}.
 
 handoff_cancelled(State) ->
+    estatsd:increment("sniffle.vms.handoff.cancled"),
     {ok, State}.
 
 handoff_finished(_TargetNode, State) ->
+    estatsd:increment("sniffle.vms.handoff.finished"),
     {ok, State}.
 
 handle_handoff_data(Data, State) ->
@@ -275,6 +291,7 @@ delete(State) ->
     {ok, State}.
 
 handle_coverage({list, ReqID}, _KeySpaces, _Sender, State) ->
+    estatsd:increment("sniffle.vms.list"),
     List = sniffle_db:fold(State#state.partition,
                           <<"vm">>,
                            fun (K, _, L) ->
@@ -285,6 +302,7 @@ handle_coverage({list, ReqID}, _KeySpaces, _Sender, State) ->
      State};
 
 handle_coverage({list, ReqID, Requirements}, _KeySpaces, _Sender, State) ->
+    estatsd:increment("sniffle.vms.select"),
     Getter = fun(#sniffle_obj{val=S0}, Resource) ->
                      jsxd:get(Resource, 0, statebox:value(S0))
              end,

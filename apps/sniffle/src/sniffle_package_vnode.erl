@@ -140,10 +140,13 @@ handle_command(ping, _Sender, State) ->
 handle_command({repair, Package, VClock, Obj}, _Sender, State) ->
     case sniffle_db:get(State#state.partition, <<"package">>, Package) of
         {ok, #sniffle_obj{vclock = VC1}} when VC1 =:= VClock ->
+            estatsd:increment("sniffle.packages.readrepair.success"),
             sniffle_db:put(State#state.partition, <<"package">>, Package, Obj);
         not_found ->
+            estatsd:increment("sniffle.packages.readrepair.success"),
             sniffle_db:put(State#state.partition, <<"package">>, Package, Obj);
         _ ->
+            estatsd:increment("sniffle.packages.readrepair.failed"),
             lager:error("[packages] Read repair failed, data was updated too recent.")
     end,
     {noreply, State};
@@ -151,8 +154,10 @@ handle_command({repair, Package, VClock, Obj}, _Sender, State) ->
 handle_command({get, ReqID, Package}, _Sender, State) ->
     Res = case sniffle_db:get(State#state.partition, <<"package">>, Package) of
               {ok, R} ->
+                  estatsd:increment("sniffle.packages.readrepair.success"),
                   R;
               not_found ->
+                  estatsd:increment("sniffle.packages.readrepair.failed"),
                   not_found
           end,
     NodeIdx = {State#state.partition, State#state.node},
@@ -160,6 +165,7 @@ handle_command({get, ReqID, Package}, _Sender, State) ->
 
 handle_command({create, {ReqID, Coordinator}, UUID, [Package]},
                _Sender, State) ->
+    estatsd:increment("sniffle.packages.create"),
     I0 = statebox:new(fun sniffle_package_state:new/0),
     I1 = statebox:modify({fun sniffle_package_state:uuid/2, [UUID]}, I0),
     I2 = statebox:modify({fun sniffle_package_state:name/2, [Package]}, I1),
@@ -170,6 +176,7 @@ handle_command({create, {ReqID, Coordinator}, UUID, [Package]},
     {reply, {ok, ReqID}, State};
 
 handle_command({delete, {ReqID, _Coordinator}, Package}, _Sender, State) ->
+    estatsd:increment("sniffle.packages.delete"),
     sniffle_db:delete(State#state.partition, <<"package">>, Package),
     {reply, {ok, ReqID}, State};
 
@@ -178,6 +185,7 @@ handle_command({set,
                 Resources}, _Sender, State) ->
     case sniffle_db:get(State#state.partition, <<"package">>, Package) of
         {ok, #sniffle_obj{val=H0} = O} ->
+            estatsd:increment("sniffle.packages.write.success"),
             H1 = statebox:modify({fun sniffle_package_state:load/1,[]}, H0),
             H2 = lists:foldr(
                    fun ({Resource, Value}, H) ->
@@ -189,12 +197,14 @@ handle_command({set,
             sniffle_db:put(State#state.partition, <<"package">>, Package,
                            sniffle_obj:update(H3, Coordinator, O));
         _ ->
+            estatsd:increment("sniffle.packages.write.failed"),
             lager:error("[packages] tried to write to a non existing package.")
     end,
     {reply, {ok, ReqID}, State};
 
 handle_command(Message, _Sender, State) ->
-    ?PRINT({unhandled_command, Message}),
+    estatsd:increment("sniffle.packages.unknown_command"),
+    lager:error("[packages] Unknown command: ~p", [Message]),
     {noreply, State}.
 
 handle_handoff_command(?FOLD_REQ{foldfun=Fun, acc0=Acc0}, _Sender, State) ->
@@ -203,12 +213,15 @@ handle_handoff_command(?FOLD_REQ{foldfun=Fun, acc0=Acc0}, _Sender, State) ->
     {reply, Acc, State}.
 
 handoff_starting(_TargetNode, State) ->
+    estatsd:increment("sniffle.packages.handoff.started"),
     {true, State}.
 
 handoff_cancelled(State) ->
+    estatsd:increment("sniffle.packages.handoff.cancelled"),
     {ok, State}.
 
 handoff_finished(_TargetNode, State) ->
+    estatsd:increment("sniffle.packages.handoff.finished"),
     {ok, State}.
 
 handle_handoff_data(Data, State) ->
@@ -227,14 +240,15 @@ is_empty(State) ->
                     end, {false, State}).
 
 delete(State) ->
-%    {ok, DBLoc} = application:get_env(sniffle, db_path),
-%    eleveldb:close(DBRef),
-%    eleveldb:destroy(DBLoc ++ "/packages/"++integer_to_list(State#state.partition)++".ldb",[]),
-%    {ok, DBRef1} = eleveldb:open(DBLoc ++ "/packages/"++integer_to_list(State#state.partition)++".ldb",
-%                                 [{create_if_missing, true}]),
+    sniffle_db:fold(State#state.partition,
+                    <<"package">>,
+                    fun (K,_, _) ->
+                            sniffle_db:delete(State#state.partition, <<"dataset">>, K)
+                    end, ok),
     {ok, State}.
 
 handle_coverage({lookup, ReqID, Name}, _KeySpaces, _Sender, State) ->
+    estatsd:increment("sniffle.vms.lookup"),
     Res = sniffle_db:fold(State#state.partition,
                           <<"package">>,
                           fun (_U, #sniffle_obj{val=SB}, Res) ->
@@ -251,6 +265,7 @@ handle_coverage({lookup, ReqID, Name}, _KeySpaces, _Sender, State) ->
      State};
 
 handle_coverage({list, ReqID}, _KeySpaces, _Sender, State) ->
+    estatsd:increment("sniffle.vms.list"),
     List = sniffle_db:fold(State#state.partition,
                           <<"package">>,
                            fun (K, _, L) ->
@@ -262,6 +277,7 @@ handle_coverage({list, ReqID}, _KeySpaces, _Sender, State) ->
      State};
 
 handle_coverage({list, ReqID, Requirements}, _KeySpaces, _Sender, State) ->
+    estatsd:increment("sniffle.vms.select"),
     Getter = fun(#sniffle_obj{val=S0}, Resource) ->
                      jsxd:get(Resource, 0, statebox:value(S0))
              end,

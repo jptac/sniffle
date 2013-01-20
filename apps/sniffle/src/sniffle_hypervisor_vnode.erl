@@ -139,10 +139,13 @@ handle_command(ping, _Sender, State) ->
 handle_command({repair, Hypervisor, VClock, Obj}, _Sender, State) ->
     case sniffle_db:get(State#state.partition, <<"hypervisor">>, Hypervisor) of
         {ok, #sniffle_obj{vclock = VC1}} when VC1 =:= VClock ->
+            estatsd:increment("sniffle.hypervisors.readrepair.success"),
             sniffle_db:put(State#state.partition, <<"hypervisor">>, Hypervisor, Obj);
         not_found ->
+            estatsd:increment("sniffle.hypervisors.readrepair.success"),
             sniffle_db:put(State#state.partition, <<"hypervisor">>, Hypervisor, Obj);
         _ ->
+            estatsd:increment("sniffle.hypervisors.readrepair.failire"),
             lager:error("[hypervisors] Read repair failed, data was updated too recent.")
     end,
     {noreply, State};
@@ -150,14 +153,17 @@ handle_command({repair, Hypervisor, VClock, Obj}, _Sender, State) ->
 handle_command({get, ReqID, Hypervisor}, _Sender, State) ->
     Res = case sniffle_db:get(State#state.partition, <<"hypervisor">>, Hypervisor) of
               {ok, R} ->
+                  estatsd:increment("sniffle.hypervisors.read.failire"),
                   R;
               not_found ->
+                  estatsd:increment("sniffle.hypervisors.read.success"),
                   not_found
           end,
     NodeIdx = {State#state.partition, State#state.node},
     {reply, {ok, ReqID, NodeIdx, Res}, State};
 
 handle_command({register, {ReqID, Coordinator}, Hypervisor, [Ip, Port]}, _Sender, State) ->
+    estatsd:increment("sniffle.hypervisors.register"),
     H0 = statebox:new(fun sniffle_hypervisor_state:new/0),
     H1 = statebox:modify({fun sniffle_hypervisor_state:name/2, [Hypervisor]}, H0),
     H2 = statebox:modify({fun sniffle_hypervisor_state:host/2, [Ip]}, H1),
@@ -171,15 +177,16 @@ handle_command({register, {ReqID, Coordinator}, Hypervisor, [Ip, Port]}, _Sender
     {reply, {ok, ReqID}, State};
 
 handle_command({unregister, {ReqID, _Coordinator}, Hypervisor}, _Sender, State) ->
+    estatsd:increment("sniffle.hypervisors.unregister"),
     sniffle_db:delete(State#state.partition, <<"hypervisor">>, Hypervisor),
     {reply, {ok, ReqID}, State};
 
 handle_command({set,
                 {ReqID, Coordinator}, Hypervisor,
                 Resources}, _Sender, State) ->
-
     case sniffle_db:get(State#state.partition, <<"hypervisor">>, Hypervisor) of
         {ok, #sniffle_obj{val=H0} = O} ->
+            estatsd:increment("sniffle.hypervisors.write.success"),
             H1 = statebox:modify({fun sniffle_hypervisor_state:load/1,[]}, H0),
             H2 = lists:foldr(
                    fun ({Resource, Value}, H) ->
@@ -191,12 +198,14 @@ handle_command({set,
             sniffle_db:put(State#state.partition, <<"hypervisor">>, Hypervisor,
                            sniffle_obj:update(H3, Coordinator, O));
         R ->
+            estatsd:increment("sniffle.hypervisors.write.failed"),
             lager:error("[hypervisors] tried to write to a non existing hypervisor: ~p", [R])
     end,
     {reply, {ok, ReqID}, State};
 
 handle_command(Message, _Sender, State) ->
-    ?PRINT({unhandled_command, Message}),
+    estatsd:increment("sniffle.hypervisors.unknown_command"),
+    lager:error("[hypervisors] Unknown command: ~p", [Message]),
     {noreply, State}.
 
 handle_handoff_command(?FOLD_REQ{foldfun=Fun, acc0=Acc0}, _Sender, State) ->
@@ -205,12 +214,15 @@ handle_handoff_command(?FOLD_REQ{foldfun=Fun, acc0=Acc0}, _Sender, State) ->
     {reply, Acc, State}.
 
 handoff_starting(_TargetNode, State) ->
+    estatsd:increment("sniffle.hypervisors.handoff.started"),
     {true, State}.
 
 handoff_cancelled(State) ->
+    estatsd:increment("sniffle.hypervisors.handoff.cancled"),
     {ok, State}.
 
 handoff_finished(_TargetNode, State) ->
+    estatsd:increment("sniffle.hypervisors.handoff.finished"),
     {ok, State}.
 
 handle_handoff_data(Data, State) ->
@@ -237,6 +249,7 @@ delete(State) ->
     {ok, State}.
 
 handle_coverage({list, ReqID, Requirements}, _KeySpaces, _Sender, State) ->
+    estatsd:increment("sniffle.hypervisors.select"),
     Getter = fun(#sniffle_obj{val=S0}, Resource) ->
                      jsxd:get(Resource, 0, statebox:value(S0))
              end,
@@ -255,6 +268,7 @@ handle_coverage({list, ReqID, Requirements}, _KeySpaces, _Sender, State) ->
      State};
 
 handle_coverage({list, ReqID}, _KeySpaces, _Sender, State) ->
+    estatsd:increment("sniffle.hypervisors.list"),
     List = sniffle_db:fold(State#state.partition,
                           <<"hypervisor">>,
                            fun (K, _, L) ->
@@ -267,6 +281,7 @@ handle_coverage({list, ReqID}, _KeySpaces, _Sender, State) ->
 
 
 handle_coverage({status, ReqID}, _KeySpaces, _Sender, State) ->
+    estatsd:increment("sniffle.hypervisors.status"),
     Res = sniffle_db:fold(
             State#state.partition, <<"hypervisor">>,
             fun(K, #sniffle_obj{val=S0}, {Res, Warnings}) ->
