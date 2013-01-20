@@ -226,7 +226,7 @@ create_permissions(_Event, State = #state{
                              uuid = UUID,
                              config = Config}) ->
     {<<"owner">>, Owner} = lists:keyfind(<<"owner">>, 1, Config),
-    libsnarl:user_grant(Owner, [<<"vms">>, UUID, '...']),
+    libsnarl:user_grant(Owner, [<<"vms">>, UUID, <<"...">>]),
     {next_state, create, State, 0}.
 
 create(_Event, State = #state{

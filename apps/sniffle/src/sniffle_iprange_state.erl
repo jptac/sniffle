@@ -17,6 +17,7 @@
          new/0,
          load/1,
          name/2,
+         uuid/2,
          network/2,
          netmask/2,
          first/2,
@@ -38,6 +39,9 @@ new() ->
 
 name(Name, Iprange) ->
     jsxd:set(<<"name">>, Name, Iprange).
+
+uuid(Name, Iprange) ->
+    jsxd:set(<<"uuid">>, Name, Iprange).
 
 gateway(Gateway, Iprange) ->
     jsxd:set(<<"gateway">>, Gateway, Iprange).

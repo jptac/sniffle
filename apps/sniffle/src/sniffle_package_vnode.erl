@@ -9,6 +9,7 @@
          list/2,
          list/3,
          create/4,
+         lookup/3,
          delete/3,
          set/4
         ]).
@@ -37,6 +38,7 @@
               create/4,
               delete/3,
               get/3,
+              lookup/3,
               list/2,
               list/3,
               repair/4,
@@ -70,6 +72,14 @@ get(Preflist, ReqID, Package) ->
                                    {fsm, undefined, self()},
                                    ?MASTER).
 
+lookup(Preflist, ReqID, Name) ->
+    riak_core_vnode_master:coverage(
+      {lookup, ReqID, Name},
+      Preflist,
+      all,
+      {fsm, undefined, self()},
+      ?MASTER).
+
 %%%===================================================================
 %%% API - coverage
 %%%===================================================================
@@ -95,9 +105,9 @@ list(Preflist, ReqID, Requirements) ->
 %%% API - writes
 %%%===================================================================
 
-create(Preflist, ReqID, Package, Data) ->
+create(Preflist, ReqID, UUID, Data) ->
     riak_core_vnode_master:command(Preflist,
-                                   {create, ReqID, Package, Data},
+                                   {create, ReqID, UUID, Data},
                                    {fsm, undefined, self()},
                                    ?MASTER).
 
@@ -148,14 +158,15 @@ handle_command({get, ReqID, Package}, _Sender, State) ->
     NodeIdx = {State#state.partition, State#state.node},
     {reply, {ok, ReqID, NodeIdx, Res}, State};
 
-handle_command({create, {ReqID, Coordinator}, Package, []},
+handle_command({create, {ReqID, Coordinator}, UUID, [Package]},
                _Sender, State) ->
     I0 = statebox:new(fun sniffle_package_state:new/0),
-    I1 = statebox:modify({fun sniffle_package_state:name/2, [Package]}, I0),
+    I1 = statebox:modify({fun sniffle_package_state:uuid/2, [UUID]}, I0),
+    I2 = statebox:modify({fun sniffle_package_state:name/2, [Package]}, I1),
     VC0 = vclock:fresh(),
     VC = vclock:increment(Coordinator, VC0),
-    HObject = #sniffle_obj{val=I1, vclock=VC},
-    sniffle_db:put(State#state.partition, <<"package">>, Package, HObject),
+    HObject = #sniffle_obj{val=I2, vclock=VC},
+    sniffle_db:put(State#state.partition, <<"package">>, UUID, HObject),
     {reply, {ok, ReqID}, State};
 
 handle_command({delete, {ReqID, _Coordinator}, Package}, _Sender, State) ->
@@ -222,6 +233,22 @@ delete(State) ->
 %    {ok, DBRef1} = eleveldb:open(DBLoc ++ "/packages/"++integer_to_list(State#state.partition)++".ldb",
 %                                 [{create_if_missing, true}]),
     {ok, State}.
+
+handle_coverage({lookup, ReqID, Name}, _KeySpaces, _Sender, State) ->
+    Res = sniffle_db:fold(State#state.partition,
+                          <<"package">>,
+                          fun (_U, #sniffle_obj{val=SB}, Res) ->
+                                  V = statebox:value(SB),
+                                  case jsxd:get(<<"name">>, V) of
+                                      {ok, Name} ->
+                                          V;
+                                      _ ->
+                                          Res
+                                  end
+                          end, not_found),
+    {reply,
+     {ok, ReqID, {State#state.partition,State#state.node}, [Res]},
+     State};
 
 handle_coverage({list, ReqID}, _KeySpaces, _Sender, State) ->
     List = sniffle_db:fold(State#state.partition,
