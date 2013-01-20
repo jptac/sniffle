@@ -10,6 +10,7 @@
          list/3,
          create/4,
          delete/3,
+         lookup/3,
          claim_ip/4,
          release_ip/4
         ]).
@@ -37,6 +38,7 @@
 -ignore_xref([
               release_ip/4,
               create/4,
+              lookup/3,
               delete/3,
               get/3,
               claim_ip/4,
@@ -73,6 +75,14 @@ get(Preflist, ReqID, Iprange) ->
                                    {fsm, undefined, self()},
                                    ?MASTER).
 
+lookup(Preflist, ReqID, Name) ->
+    riak_core_vnode_master:coverage(
+      {lookup, ReqID, Name},
+      Preflist,
+      all,
+      {fsm, undefined, self()},
+      ?MASTER).
+
 %%%===================================================================
 %%% API - coverage
 %%%===================================================================
@@ -98,9 +108,9 @@ list(Preflist, ReqID, Requirements) ->
 %%% API - writes
 %%%===================================================================
 
-create(Preflist, ReqID, Iprange, Data) ->
+create(Preflist, ReqID, UUID, Data) ->
     riak_core_vnode_master:command(Preflist,
-                                   {create, ReqID, Iprange, Data},
+                                   {create, ReqID, UUID, Data},
                                    {fsm, undefined, self()},
                                    ?MASTER).
 
@@ -157,14 +167,15 @@ handle_command({get, ReqID, Iprange}, _Sender, State) ->
     NodeIdx = {State#state.partition, State#state.node},
     {reply, {ok, ReqID, NodeIdx, Res}, State};
 
-handle_command({create, {ReqID, Coordinator}, Iprange,
-                [Network, Gateway, Netmask, First, Last, Tag, Vlan]},
+handle_command({create, {ReqID, Coordinator}, UUID,
+                [Iprange, Network, Gateway, Netmask, First, Last, Tag, Vlan]},
                _Sender, State) ->
     I0 = statebox:new(fun sniffle_iprange_state:new/0),
     I1 = lists:foldl(
            fun (OP, SB) ->
                    statebox:modify(OP, SB)
-           end, I0, [{fun sniffle_iprange_state:name/2, [Iprange]},
+           end, I0, [{fun sniffle_iprange_state:uuid/2, [UUID]},
+                     {fun sniffle_iprange_state:name/2, [Iprange]},
                      {fun sniffle_iprange_state:network/2, [Network]},
                      {fun sniffle_iprange_state:gateway/2, [Gateway]},
                      {fun sniffle_iprange_state:netmask/2, [Netmask]},
@@ -176,7 +187,7 @@ handle_command({create, {ReqID, Coordinator}, Iprange,
     VC0 = vclock:fresh(),
     VC = vclock:increment(Coordinator, VC0),
     HObject = #sniffle_obj{val=I1, vclock=VC},
-    sniffle_db:put(State#state.partition, <<"iprange">>, Iprange, HObject),
+    sniffle_db:put(State#state.partition, <<"iprange">>, UUID, HObject),
     {reply, {ok, ReqID}, State};
 
 handle_command({delete, {ReqID, _Coordinator}, Iprange}, _Sender, State) ->
@@ -251,12 +262,28 @@ is_empty(State) ->
 delete(State) ->
     {ok, State}.
 
+handle_coverage({lookup, ReqID, Name}, _KeySpaces, _Sender, State) ->
+    Res = sniffle_db:fold(State#state.partition,
+                          <<"iprange">>,
+                          fun (_U, #sniffle_obj{val=SB}, Res) ->
+                                  V = statebox:value(SB),
+                                  case jsxd:get(<<"name">>, V) of
+                                      {ok, Name} ->
+                                          V;
+                                      _ ->
+                                          Res
+                                  end
+                          end, not_found),
+    {reply,
+     {ok, ReqID, {State#state.partition,State#state.node}, [Res]},
+     State};
+
 handle_coverage({list, ReqID, Requirements}, _KeySpaces, _Sender, State) ->
     Getter = fun(#sniffle_obj{val=S0}, V) ->
                      jsxd:get(V, 0, statebox:value(S0))
              end,
     List = sniffle_db:fold(State#state.partition,
-                          <<"iprange">>,
+                           <<"iprange">>,
                            fun (Key, E, C) ->
                                    case sniffle_matcher:match(E, Getter, Requirements) of
                                        false ->
@@ -272,7 +299,7 @@ handle_coverage({list, ReqID, Requirements}, _KeySpaces, _Sender, State) ->
 
 handle_coverage({list, ReqID}, _KeySpaces, _Sender, State) ->
     List = sniffle_db:fold(State#state.partition,
-                          <<"iprange">>,
+                           <<"iprange">>,
                            fun (K, _, L) ->
                                    [K|L]
                            end, []),

@@ -2,22 +2,34 @@
 -include("sniffle.hrl").
                                                 %-include_lib("riak_core/include/riak_core_vnode.hrl").
 
--export(
-   [
-    create/8,
-    delete/1,
-    get/1,
-    list/0,
-    list/1,
-    claim_ip/1,
-    release_ip/2
-   ]
-  ).
+-export([
+         create/8,
+         delete/1,
+         get/1,
+         lookup/1,
+         list/0,
+         list/1,
+         claim_ip/1,
+         release_ip/2
+        ]).
+
+lookup(User) ->
+    {ok, Res} = sniffle_entity_coverage_fsm:start(
+                  {sniffle_iprange_vnode, sniffle_iprange},
+                  lookup, User),
+    Res1 = lists:foldl(fun (not_found, Acc) ->
+                               Acc;
+                           (R, _) ->
+                               R
+                       end, not_found, Res),
+    {ok, Res1}.
 
 create(Iprange, Network, Gateway, Netmask, First, Last, Tag, Vlan) ->
-    case sniffle_iprange:get(Iprange) of
+    UUID = list_to_binary(uuid:to_string(uuid:uuid4())),
+    case sniffle_iprange:lookup(Iprange) of
         {ok, not_found} ->
-            do_write(Iprange, create, [Network, Gateway, Netmask, First, Last, Tag, Vlan]);
+            ok = do_write(UUID, create, [Iprange, Network, Gateway, Netmask, First, Last, Tag, Vlan]),
+            {ok, UUID};
         {ok, _RangeObj} ->
             duplicate
     end.
@@ -28,20 +40,17 @@ delete(Iprange) ->
 get(Iprange) ->
     sniffle_entity_read_fsm:start(
       {sniffle_iprange_vnode, sniffle_iprange},
-      get, Iprange
-     ).
+      get, Iprange).
 
 list() ->
     sniffle_entity_coverage_fsm:start(
       {sniffle_iprange_vnode, sniffle_iprange},
-      list
-     ).
+      list).
 
 list(Requirements) ->
     sniffle_entity_coverage_fsm:start(
       {sniffle_iprange_vnode, sniffle_iprange},
-      list, Requirements
-     ).
+      list, Requirements).
 
 release_ip(Iprange, IP) ->
     do_update(Iprange, release_ip, IP).
