@@ -222,12 +222,13 @@ handle_command({set,
                    end, H1, Resources),
             H3 = statebox:expire(?STATEBOX_EXPIRE, H2),
             sniffle_db:put(State#state.partition, <<"vm">>, Vm,
-                           sniffle_obj:update(H3, Coordinator, O));
+                           sniffle_obj:update(H3, Coordinator, O)),
+            {reply, {ok, ReqID}, State};
         R ->
             estatsd:increment("sniffle.vms.write.failed"),
-            lager:error("[vms] tried to write to a non existing vm: ~p", [R])
-    end,
-    {reply, {ok, ReqID}, State};
+            lager:error("[vms] tried to write to a non existing vm: ~p", [R]),
+            {reply, {ok, ReqID, not_found}, State}
+    end;
 
 handle_command({log,
                 {ReqID, Coordinator}, Vm,
@@ -239,12 +240,13 @@ handle_command({log,
             H2 = statebox:modify({fun sniffle_vm_state:log/3, [Time, Log]}, H1),
             H3 = statebox:expire(?STATEBOX_EXPIRE, H2),
             sniffle_db:put(State#state.partition, <<"vm">>, Vm,
-                           sniffle_obj:update(H3, Coordinator, O));
+                           sniffle_obj:update(H3, Coordinator, O)),
+            {reply, {ok, ReqID}, State};
         R ->
             estatsd:increment("sniffle.vms.write.failed"),
-            lager:error("[vms] tried to write to a non existing vm: ~p", [R])
-    end,
-    {reply, {ok, ReqID}, State};
+            lager:error("[vms] tried to write to a non existing vm: ~p", [R]),
+            {reply, {ok, ReqID, not_found}, State}
+    end;
 
 handle_command(Message, _Sender, State) ->
     estatsd:increment("sniffle.vms.unknown_command"),
