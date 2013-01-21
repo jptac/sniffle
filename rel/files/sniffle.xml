@@ -47,7 +47,7 @@
       exec='/opt/local/sniffle/bin/sniffle %m'
       timeout_seconds='30'>
       <method_context>
-	<method_credential user='sniffle' group='sniffle' />
+	<!--method_credential user='sniffle' group='sniffle' /-->
 	<method_environment>
 	  <envvar name='PATH' value='/opt/local/gnu/bin:/opt/local/bin:/opt/local/sbin:/usr/bin:/usr/sbin'/>
 	  <envvar name='HOME' value='/var/db/sniffle'/>
@@ -61,7 +61,7 @@
         exec='/opt/local/sniffle/bin/sniffle %m'
 	timeout_seconds='120'>
       <method_context>
-	<method_credential user='sniffle' group='sniffle' />
+	<!--method_credential user='sniffle' group='sniffle' /-->
 	<method_environment>
 	  <envvar name='PATH' value='/opt/local/gnu/bin:/opt/local/bin:/opt/local/sbin:/usr/bin:/usr/sbin'/>
 	  <envvar name='HOME' value='/var/db/sniffle'/>
@@ -75,7 +75,7 @@
         exec='/opt/local/sniffle/bin/sniffle %m'
 	timeout_seconds='120'>
       <method_context>
-	<method_credential user='sniffle' group='sniffle' />
+	<!--method_credential user='sniffle' group='sniffle' /-->
 	<method_environment>
 	  <envvar name='PATH' value='/opt/local/gnu/bin:/opt/local/bin:/opt/local/sbin:/usr/bin:/usr/sbin'/>
 	  <envvar name='HOME' value='/var/db/sniffle'/>
@@ -86,7 +86,7 @@
     <template>
       <common_name>
         <loctext xml:lang='C'>
-          Project FiFo's AAA Server.
+          Project FiFo's Central Server.
         </loctext>
       </common_name>
     </template>
