@@ -30,31 +30,31 @@
 %% num_w: The number of successful write replies.
 -record(state, {req_id :: pos_integer(),
                 from :: pid(),
-		entity :: string(),
+                entity :: string(),
                 op :: atom(),
-		n,
-		w,
-		vnode,
-		system,
+                n,
+                w,
+                vnode,
+                system,
                 cordinator :: node(),
                 val = undefined :: term() | undefined,
                 preflist :: riak_core_apl:preflist2(),
                 num_w = 0 :: non_neg_integer()}).
 
 -ignore_xref([
-	      code_change/4,
-	      execute/2,
-	      handle_event/3,
-	      handle_info/3,
-	      handle_sync_event/4,
-	      init/1,
-	      mk_reqid/0,
-	      prepare/2,
-	      start_link/5,
-	      start_link/6,
-	      terminate/3,
-	      waiting/2
-	     ]).
+              code_change/4,
+              execute/2,
+              handle_event/3,
+              handle_info/3,
+              handle_sync_event/4,
+              init/1,
+              mk_reqid/0,
+              prepare/2,
+              start_link/5,
+              start_link/6,
+              terminate/3,
+              waiting/2
+             ]).
 
 %%%===================================================================
 %%% API
@@ -73,15 +73,15 @@ write({VNode, System}, User, Op, Val) ->
     ReqID = mk_reqid(),
     sniffle_entity_write_fsm_sup:start_write_fsm([{VNode, System}, ReqID, self(), User, Op, Val]),
     receive
-	{ReqID, ok} ->
-	    ok;
+        {ReqID, ok} ->
+            ok;
         {ReqID, ok, Result} ->
-	    {ok, Result};
-	Other ->
-	    lager:error("[write] Bad return: ~p", [Other])
+            {ok, Result};
+        Other ->
+            lager:error("[write] Bad return: ~p", [Other])
     after ?DEFAULT_TIMEOUT ->
-	    lager:error("[write] timeout"),
-	    {error, timeout}
+            lager:error("[write] timeout"),
+            {error, timeout}
     end.
 
 mk_reqid() ->
@@ -95,29 +95,29 @@ mk_reqid() ->
 init([{VNode, System}, ReqID, From, Entity, Op, Val]) ->
     ?PRINT({init, {VNode, System}, ReqID}),
     {N, _R, W} = case application:get_key(System) of
-		     {ok, Res} ->
-			 Res;
-		     undefined ->
-			 {?N, ?R, ?W}
-		 end,
+                     {ok, Res} ->
+                         Res;
+                     undefined ->
+                         {?N, ?R, ?W}
+                 end,
     SD = #state{req_id=ReqID,
                 from=From,
-		w=W,
-		n=N,
+                w=W,
+                n=N,
                 entity=Entity,
                 op=Op,
-		vnode=VNode,
-		system=System,
+                vnode=VNode,
+                system=System,
                 cordinator=node(),
                 val=Val},
     {ok, prepare, SD, 0}.
 
 %% @doc Prepare the write by calculating the _preference list_.
 prepare(timeout, SD0=#state{
-		   entity=Entity,
-		   system=System,
-		   n=N
-		  }) ->
+                   entity=Entity,
+                   system=System,
+                   n=N
+                  }) ->
     Bucket = list_to_binary(atom_to_list(System)),
     DocIdx = riak_core_util:chash_key({Bucket, term_to_binary(Entity)}),
     Preflist = riak_core_apl:get_apl(DocIdx, N, System),
@@ -130,7 +130,7 @@ execute(timeout, SD0=#state{req_id=ReqID,
                             entity=Entity,
                             op=Op,
                             val=Val,
-			    vnode=VNode,
+                            vnode=VNode,
                             cordinator=Cordinator,
                             preflist=Preflist}) ->
     case Val of
@@ -180,4 +180,3 @@ terminate(_Reason, _SN, _SD) ->
 %%%===================================================================
 %%% Internal Functions
 %%%===================================================================
-

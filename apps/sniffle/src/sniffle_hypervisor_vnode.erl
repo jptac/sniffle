@@ -196,12 +196,13 @@ handle_command({set,
                    end, H1, Resources),
             H3 = statebox:expire(?STATEBOX_EXPIRE, H2),
             sniffle_db:put(State#state.partition, <<"hypervisor">>, Hypervisor,
-                           sniffle_obj:update(H3, Coordinator, O));
+                           sniffle_obj:update(H3, Coordinator, O)),
+            {reply, {ok, ReqID}, State};
         R ->
             estatsd:increment("sniffle.hypervisors.write.failed"),
-            lager:error("[hypervisors] tried to write to a non existing hypervisor: ~p", [R])
-    end,
-    {reply, {ok, ReqID}, State};
+            lager:error("[hypervisors] tried to write to a non existing hypervisor: ~p", [R]),
+            {reply, {ok, ReqID, not_found}, State}
+    end;
 
 handle_command(Message, _Sender, State) ->
     estatsd:increment("sniffle.hypervisors.unknown_command"),
