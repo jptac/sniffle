@@ -21,7 +21,7 @@ create(Dataset) ->
     end.
 
 delete(Dataset) ->
-    do_update(Dataset, delete).
+    do_write(Dataset, delete).
 
 get(Dataset) ->
     sniffle_entity_read_fsm:start(
@@ -42,36 +42,29 @@ list(Requirements) ->
      ).
 
 set(Dataset, Attribute, Value) ->
-    do_update(Dataset, set, [{Attribute, Value}]).
+    do_write(Dataset, set, [{Attribute, Value}]).
 
 
 set(Dataset, Attributes) ->
-    do_update(Dataset, set, Attributes).
+    do_write(Dataset, set, Attributes).
 
 
 %%%===================================================================
 %%% Internal Functions
 %%%===================================================================
 
-
-do_update(Dataset, Op) ->
-    case sniffle_dataset:get(Dataset) of
-        {ok, not_found} ->
-            not_found;
-        {ok, _RangeObj} ->
-            do_write(Dataset, Op)
-    end.
-
-do_update(Dataset, Op, Val) ->
-    case sniffle_dataset:get(Dataset) of
-        {ok, not_found} ->
-            not_found;
-        {ok, _RangeObj} ->
-            do_write(Dataset, Op, Val)
-    end.
-
 do_write(Dataset, Op) ->
-    sniffle_entity_write_fsm:write({sniffle_dataset_vnode, sniffle_dataset}, Dataset, Op).
+    case sniffle_entity_write_fsm:write({sniffle_dataset_vnode, sniffle_dataset}, Dataset, Op) of
+        {ok, not_found} ->
+            not_found;
+        R ->
+            R
+    end.
 
 do_write(Dataset, Op, Val) ->
-    sniffle_entity_write_fsm:write({sniffle_dataset_vnode, sniffle_dataset}, Dataset, Op, Val).
+    case sniffle_entity_write_fsm:write({sniffle_dataset_vnode, sniffle_dataset}, Dataset, Op, Val) of
+        {ok, not_found} ->
+            not_found;
+        R ->
+            R
+    end.

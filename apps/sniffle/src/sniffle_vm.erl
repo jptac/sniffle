@@ -50,7 +50,7 @@ unregister(Vm) ->
         _ ->
             ok
     end,
-    do_update(Vm, unregister).
+    do_write(Vm, unregister).
 
 -spec create(Package::binary(), Dataset::binary(), Config::fifo:config()) ->
                     {ok, fifo:uuid()}.
@@ -188,7 +188,7 @@ logs(Vm) ->
 log(Vm, Log) ->
     {Mega,Sec,Micro} = erlang:now(),
     Timestamp = (Mega*1000000+Sec)*1000000+Micro,
-    case do_update(Vm, log, {Timestamp, Log}) of
+    case do_write(Vm, log, {Timestamp, Log}) of
         ok ->
             libhowl:send(Vm, [{<<"event">>, <<"log">>},
                               {<<"data">>,
@@ -289,52 +289,38 @@ rollback_snapshot(Vm, UUID) ->
                  {error, timeout} | not_found | ok.
 
 set(Vm, Attribute, Value) ->
-    do_update(Vm, set, [{Attribute, Value}]).
+    do_write(Vm, set, [{Attribute, Value}]).
 
 
 -spec set(Vm::fifo:uuid(), Attributes::fifo:config_list()) ->
                  {error, timeout} | not_found | ok.
 
 set(Vm, Attributes) ->
-    do_update(Vm, set, Attributes).
+    do_write(Vm, set, Attributes).
 
 %%%===================================================================
 %%% Internal Functions
 %%%===================================================================
 
--spec do_update(VM::fifo:uuid(), Op::atom()) -> not_found | ok.
-
-do_update(VM, Op) ->
-    case sniffle_vm:get(VM) of
-        {error, timeout} ->
-            {error, timeout};
-        {ok, not_found} ->
-            not_found;
-        {ok, _Obj} ->
-            do_write(VM, Op)
-    end.
-
--spec do_update(VM::fifo:uuid(), Op::atom(), Val::term()) -> not_found | ok.
-
-do_update(VM, Op, Val) ->
-    case sniffle_vm:get(VM) of
-        {error, timeout} ->
-            {error, timeout};
-        {ok, not_found} ->
-            not_found;
-        {ok, _Obj} ->
-            do_write(VM, Op, Val)
-    end.
-
 -spec do_write(VM::fifo:uuid(), Op::atom()) -> not_found | ok.
 
 do_write(VM, Op) ->
-    sniffle_entity_write_fsm:write({sniffle_vm_vnode, sniffle_vm}, VM, Op).
+    case sniffle_entity_write_fsm:write({sniffle_vm_vnode, sniffle_vm}, VM, Op) of
+        {ok, not_found} ->
+            not_found;
+        R ->
+            R
+    end.
 
 -spec do_write(VM::fifo:uuid(), Op::atom(), Val::term()) -> not_found | ok.
 
 do_write(VM, Op, Val) ->
-    sniffle_entity_write_fsm:write({sniffle_vm_vnode, sniffle_vm}, VM, Op, Val).
+    case sniffle_entity_write_fsm:write({sniffle_vm_vnode, sniffle_vm}, VM, Op, Val) of
+        {ok, not_found} ->
+            not_found;
+        R ->
+            R
+    end.
 
 get_hypervisor(Hypervisor) ->
     {ok, HypervisorObj} = sniffle_hypervisor:get(Hypervisor),

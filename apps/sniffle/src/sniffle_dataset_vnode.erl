@@ -179,12 +179,13 @@ handle_command({set,
                    end, H1, Resources),
             H3 = statebox:expire(?STATEBOX_EXPIRE, H2),
             sniffle_db:put(State#state.partition, <<"dataset">>, Dataset,
-                           sniffle_obj:update(H3, Coordinator, O));
+                           sniffle_obj:update(H3, Coordinator, O)),
+            {reply, {ok, ReqID}, State};
         R ->
             estatsd:increment("sniffle.datasets.write.failed"),
-            lager:error("[datasets] tried to write to a non existing dataset: ~p", [R])
-    end,
-    {reply, {ok, ReqID}, State};
+            lager:error("[datasets] tried to write to a non existing dataset: ~p", [R]),
+            {reply, {ok, ReqID, not_found}, State}
+    end;
 
 handle_command(Message, _Sender, State) ->
     ?PRINT({unhandled_command, Message}),
