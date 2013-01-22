@@ -97,7 +97,7 @@ create(UUID, Package, Dataset, Config) ->
 %%--------------------------------------------------------------------
 init([UUID, Package, Dataset, Config]) ->
     process_flag(trap_exit, true),
-    {ok, get_package, #state{
+    {ok, create_permissions, #state{
            uuid = UUID,
            package_name = Package,
            dataset_name = Dataset,
@@ -119,6 +119,12 @@ init([UUID, Package, Dataset, Config]) ->
 %%                   {stop, Reason, NewState}
 %% @end
 %%--------------------------------------------------------------------
+create_permissions(_Event, State = #state{
+                             uuid = UUID,
+                             config = Config}) ->
+    {<<"owner">>, Owner} = lists:keyfind(<<"owner">>, 1, Config),
+    libsnarl:user_grant(Owner, [<<"vms">>, UUID, <<"...">>]),
+    {next_state, get_package, State, 0}.
 
 get_package(_Event, State = #state{
                       uuid = UUID,
@@ -217,17 +223,10 @@ get_server(_Event, State = #state{
             {ok, H} = sniffle_hypervisor:get(HypervisorID),
             {ok, Port} = jsxd:get(<<"port">>, H),
             {ok, Host} = jsxd:get(<<"host">>, H),
-            {next_state, create_permissions, State#state{hypervisor = {binary_to_list(Host), Port}}, 0};
+            {next_state, create, State#state{hypervisor = {binary_to_list(Host), Port}}, 0};
         _ ->
             {next_state, get_server, State, 10000}
     end.
-
-create_permissions(_Event, State = #state{
-                             uuid = UUID,
-                             config = Config}) ->
-    {<<"owner">>, Owner} = lists:keyfind(<<"owner">>, 1, Config),
-    libsnarl:user_grant(Owner, [<<"vms">>, UUID, <<"...">>]),
-    {next_state, create, State, 0}.
 
 create(_Event, State = #state{
                  dataset = Dataset,
