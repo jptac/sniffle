@@ -194,7 +194,7 @@ get_server(_Event, State = #state{
     RamB = list_to_binary(integer_to_list(Ram)),
     sniffle_vm:log(UUID, <<"Assigning memory ", RamB/binary>>),
     sniffle_vm:set(UUID, <<"state">>, <<"fetching_server">>),
-    Permission = [<<"hypervisor">>, {<<"res">>, <<"name">>}, <<"create">>],
+    Permission = [<<"hypervisors">>, {<<"res">>, <<"name">>}, <<"create">>],
     {ok, Ns} = jsxd:get(<<"networks">>, Dataset),
     {ok, Type} = jsxd:get(<<"type">>, Dataset),
 
