@@ -46,10 +46,10 @@ command(text, ["reboot", UUID]) ->
 command(text, ["delete", UUID]) ->
     case sniffle_vm:delete(list_to_binary(UUID)) of
         ok ->
-            io:format("VM ~s rebooting.~n", [UUID]),
+            io:format("VM ~s deleted.~n", [UUID]),
             ok;
         E ->
-            io:format("VM ~s did not reboot (~p).~n", [UUID, E]),
+            io:format("VM ~s did not delete (~p).~n", [UUID, E]),
             ok
     end;
 
