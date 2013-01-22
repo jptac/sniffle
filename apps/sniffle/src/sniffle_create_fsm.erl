@@ -124,6 +124,7 @@ create_permissions(_Event, State = #state{
                              config = Config}) ->
     {<<"owner">>, Owner} = lists:keyfind(<<"owner">>, 1, Config),
     libsnarl:user_grant(Owner, [<<"vms">>, UUID, <<"...">>]),
+    libsnarl:user_grant(Owner, [<<"channels">>, UUID, <<"join">>]),
     {next_state, get_package, State, 0}.
 
 get_package(_Event, State = #state{

@@ -191,14 +191,22 @@ handle_command({get, ReqID, Vm}, _Sender, State) ->
     {reply, {ok, ReqID, NodeIdx, Res}, State};
 
 handle_command({register, {ReqID, Coordinator}, Vm, Hypervisor}, _Sender, State) ->
-    estatsd:increment("sniffle.vms.register"),
-    H0 = statebox:new(fun sniffle_vm_state:new/0),
-    H1 = statebox:modify({fun sniffle_vm_state:uuid/2, [Vm]}, H0),
-    H2 = statebox:modify({fun sniffle_vm_state:hypervisor/2, [Hypervisor]}, H1),
-
-    VC0 = vclock:fresh(),
-    VC = vclock:increment(Coordinator, VC0),
-    HObject = #sniffle_obj{val=H2, vclock=VC},
+    HObject = case sniffle_db:get(State#state.partition, <<"vm">>, Vm) of
+                  not_found ->
+                      estatsd:increment("sniffle.vms.register"),
+                      H0 = statebox:new(fun sniffle_vm_state:new/0),
+                      H1 = statebox:modify({fun sniffle_vm_state:uuid/2, [Vm]}, H0),
+                      H2 = statebox:modify({fun sniffle_vm_state:hypervisor/2, [Hypervisor]}, H1),
+                      VC0 = vclock:fresh(),
+                      VC = vclock:increment(Coordinator, VC0),
+                      #sniffle_obj{val=H2, vclock=VC};
+                  {ok, #sniffle_obj{val=H0} = O} ->
+                      estatsd:increment("sniffle.vms.write.success"),
+                      H1 = statebox:modify({fun sniffle_vm_state:load/1,[]}, H0),
+                      H2 = statebox:modify({fun sniffle_vm_state:hypervisor/3, [Coordinator, Log]}, H1),
+                      H3 = statebox:expire(?STATEBOX_EXPIRE, H2),
+                      sniffle_obj:update(H3, Coordinator, O)
+              end,
     sniffle_db:put(State#state.partition, <<"vm">>, Vm, HObject),
     {reply, {ok, ReqID}, State};
 
