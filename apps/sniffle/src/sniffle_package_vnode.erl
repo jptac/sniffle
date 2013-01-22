@@ -30,6 +30,7 @@
          handle_exit/3]).
 
 -record(state, {
+          db,
           partition,
           node
          }).
@@ -128,8 +129,10 @@ set(Preflist, ReqID, Vm, Data) ->
 %%%===================================================================
 
 init([Partition]) ->
-    sniffle_db:start(Partition),
+    DB = list_to_atom(integer_to_list(Partition)),
+    sniffle_db:start(DB),
     {ok, #state{
+       db = DB,
        partition = Partition,
        node = node()
       }}.
@@ -138,13 +141,13 @@ handle_command(ping, _Sender, State) ->
     {reply, {pong, State#state.partition}, State};
 
 handle_command({repair, Package, VClock, Obj}, _Sender, State) ->
-    case sniffle_db:get(State#state.partition, <<"package">>, Package) of
+    case sniffle_db:get(State#state.db, <<"package">>, Package) of
         {ok, #sniffle_obj{vclock = VC1}} when VC1 =:= VClock ->
             estatsd:increment("sniffle.packages.readrepair.success"),
-            sniffle_db:put(State#state.partition, <<"package">>, Package, Obj);
+            sniffle_db:put(State#state.db, <<"package">>, Package, Obj);
         not_found ->
             estatsd:increment("sniffle.packages.readrepair.success"),
-            sniffle_db:put(State#state.partition, <<"package">>, Package, Obj);
+            sniffle_db:put(State#state.db, <<"package">>, Package, Obj);
         _ ->
             estatsd:increment("sniffle.packages.readrepair.failed"),
             lager:error("[packages] Read repair failed, data was updated too recent.")
@@ -152,7 +155,7 @@ handle_command({repair, Package, VClock, Obj}, _Sender, State) ->
     {noreply, State};
 
 handle_command({get, ReqID, Package}, _Sender, State) ->
-    Res = case sniffle_db:get(State#state.partition, <<"package">>, Package) of
+    Res = case sniffle_db:get(State#state.db, <<"package">>, Package) of
               {ok, R} ->
                   estatsd:increment("sniffle.packages.readrepair.success"),
                   R;
@@ -172,18 +175,18 @@ handle_command({create, {ReqID, Coordinator}, UUID, [Package]},
     VC0 = vclock:fresh(),
     VC = vclock:increment(Coordinator, VC0),
     HObject = #sniffle_obj{val=I2, vclock=VC},
-    sniffle_db:put(State#state.partition, <<"package">>, UUID, HObject),
+    sniffle_db:put(State#state.db, <<"package">>, UUID, HObject),
     {reply, {ok, ReqID}, State};
 
 handle_command({delete, {ReqID, _Coordinator}, Package}, _Sender, State) ->
     estatsd:increment("sniffle.packages.delete"),
-    sniffle_db:delete(State#state.partition, <<"package">>, Package),
+    sniffle_db:delete(State#state.db, <<"package">>, Package),
     {reply, {ok, ReqID}, State};
 
 handle_command({set,
                 {ReqID, Coordinator}, Package,
                 Resources}, _Sender, State) ->
-    case sniffle_db:get(State#state.partition, <<"package">>, Package) of
+    case sniffle_db:get(State#state.db, <<"package">>, Package) of
         {ok, #sniffle_obj{val=H0} = O} ->
             estatsd:increment("sniffle.packages.write.success"),
             H1 = statebox:modify({fun sniffle_package_state:load/1,[]}, H0),
@@ -194,7 +197,7 @@ handle_command({set,
                               [Resource, Value]}, H)
                    end, H1, Resources),
             H3 = statebox:expire(?STATEBOX_EXPIRE, H2),
-            sniffle_db:put(State#state.partition, <<"package">>, Package,
+            sniffle_db:put(State#state.db, <<"package">>, Package,
                            sniffle_obj:update(H3, Coordinator, O));
         _ ->
             estatsd:increment("sniffle.packages.write.failed"),
@@ -208,7 +211,7 @@ handle_command(Message, _Sender, State) ->
     {noreply, State}.
 
 handle_handoff_command(?FOLD_REQ{foldfun=Fun, acc0=Acc0}, _Sender, State) ->
-    Acc = sniffle_db:fold(State#state.partition,
+    Acc = sniffle_db:fold(State#state.db,
                           <<"package">>, Fun, Acc0),
     {reply, Acc, State}.
 
@@ -226,30 +229,31 @@ handoff_finished(_TargetNode, State) ->
 
 handle_handoff_data(Data, State) ->
     {Package, HObject} = binary_to_term(Data),
-    sniffle_db:put(State#state.partition, <<"package">>, Package, HObject),
+    sniffle_db:put(State#state.db, <<"package">>, Package, HObject),
     {reply, ok, State}.
 
 encode_handoff_item(Package, Data) ->
     term_to_binary({Package, Data}).
 
 is_empty(State) ->
-    sniffle_db:fold(State#state.partition,
+    sniffle_db:fold(State#state.db,
                     <<"package">>,
                     fun (_,_, _) ->
-                            {true, State}
-                    end, {false, State}).
+                            {false, State}
+                    end, {true, State}).
 
 delete(State) ->
-    sniffle_db:fold(State#state.partition,
-                    <<"package">>,
-                    fun (K,_, _) ->
-                            sniffle_db:delete(State#state.partition, <<"dataset">>, K)
-                    end, ok),
+    Trans = sniffle_db:fold(State#state.db,
+                            <<"package">>,
+                            fun (K,_, A) ->
+                                    [{delete, K} | A]
+                            end, []),
+    sniffle_db:transact(State#state.db, Trans),
     {ok, State}.
 
 handle_coverage({lookup, ReqID, Name}, _KeySpaces, _Sender, State) ->
     estatsd:increment("sniffle.vms.lookup"),
-    Res = sniffle_db:fold(State#state.partition,
+    Res = sniffle_db:fold(State#state.db,
                           <<"package">>,
                           fun (_U, #sniffle_obj{val=SB}, Res) ->
                                   V = statebox:value(SB),
@@ -266,7 +270,7 @@ handle_coverage({lookup, ReqID, Name}, _KeySpaces, _Sender, State) ->
 
 handle_coverage({list, ReqID}, _KeySpaces, _Sender, State) ->
     estatsd:increment("sniffle.vms.list"),
-    List = sniffle_db:fold(State#state.partition,
+    List = sniffle_db:fold(State#state.db,
                           <<"package">>,
                            fun (K, _, L) ->
                                    [K|L]
@@ -281,7 +285,7 @@ handle_coverage({list, ReqID, Requirements}, _KeySpaces, _Sender, State) ->
     Getter = fun(#sniffle_obj{val=S0}, Resource) ->
                      jsxd:get(Resource, 0, statebox:value(S0))
              end,
-    List = sniffle_db:fold(State#state.partition,
+    List = sniffle_db:fold(State#state.db,
                           <<"package">>,
                            fun (Key, E, C) ->
                                    case sniffle_matcher:match(E, Getter, Requirements) of
