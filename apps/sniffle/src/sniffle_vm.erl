@@ -30,12 +30,7 @@
 
 
 register(Vm, Hypervisor) ->
-    case sniffle_vm:get(Vm) of
-        {ok, not_found} ->
-            do_write(Vm, register, Hypervisor);
-        {ok, _UserObj} ->
-            set(Vm, <<"hypervisor">>, Hypervisor)
-    end.
+    do_write(Vm, register, Hypervisor).
 
 -spec unregister(VM::fifo:uuid()) -> ok.
 
