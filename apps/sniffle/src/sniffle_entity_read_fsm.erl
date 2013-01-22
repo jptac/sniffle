@@ -260,6 +260,7 @@ repair(VNode, StatName, MObj, [{IdxNode,Obj}|T]) ->
         true ->
             repair(VNode, StatName, MObj, T);
         false ->
+            io:format("~p~n", [Obj]),
             VNode:repair(IdxNode, StatName, Obj#sniffle_obj.vclock, MObj),
             repair(VNode, StatName, MObj, T)
     end.

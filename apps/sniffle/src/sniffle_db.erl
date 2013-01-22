@@ -14,6 +14,7 @@
 -export([start/1,
          start_link/1,
          get/3,
+         transact/2,
          delete/3,
          put/4,
          fold/4]).
@@ -33,24 +34,27 @@
 %%%===================================================================
 
 start(Partition) ->
-    case global:whereis_name({db, node(), Partition}) of
+    case erlang:whereis(Partition) of
         undefined ->
             sniffle_db_sup:start_child(Partition);
         _ ->
             ok
     end.
 
+transact(Partition, Transaction) ->
+    gen_server:call(Partition, {transact, Transaction}).
+
 put(Partition, Bucket, Key, Value) ->
-    gen_server:call({global, {db, node(), Partition}}, {put, Bucket, Key, Value}).
+    gen_server:call(Partition, {put, Bucket, Key, Value}).
 
 get(Partition, Bucket, Key) ->
-    gen_server:call({global, {db, node(), Partition}}, {get, Bucket, Key}).
+    gen_server:call(Partition, {get, Bucket, Key}).
 
 delete(Partition, Bucket, Key) ->
-    gen_server:call({global, {db, node(), Partition}}, {delete, Bucket, Key}).
+    gen_server:call(Partition, {delete, Bucket, Key}).
 
 fold(Partition, Bucket, FoldFn, Acc0) ->
-    gen_server:call({global, {db, node(), Partition}}, {fold, Bucket, FoldFn, Acc0}).
+    gen_server:call(Partition, {fold, Bucket, FoldFn, Acc0}).
 
 
 %%--------------------------------------------------------------------
@@ -61,7 +65,7 @@ fold(Partition, Bucket, FoldFn, Acc0) ->
 %% @end
 %%--------------------------------------------------------------------
 start_link(Partition) ->
-    gen_server:start_link({global, {db, node(), Partition}}, ?MODULE, [Partition], []).
+    gen_server:start_link({local, Partition}, ?MODULE, [Partition], []).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -80,7 +84,7 @@ start_link(Partition) ->
 %%--------------------------------------------------------------------
 init([Partition]) ->
     {ok, DBLoc} = application:get_env(sniffle, db_path),
-    {ok, Db} = hanoidb:open(DBLoc ++ "/" ++ integer_to_list(Partition)),
+    {ok, Db} = hanoidb:open(DBLoc ++ "/" ++ atom_to_list(Partition)),
     {ok, #state{db = Db}}.
 
 %%--------------------------------------------------------------------
@@ -99,6 +103,10 @@ init([Partition]) ->
 %%--------------------------------------------------------------------
 handle_call({put, Bucket, Key, Value}, _From, State) ->
     hanoidb:put(State#state.db, <<Bucket/binary, Key/binary>>, term_to_binary(Value)),
+    {reply, ok, State};
+
+handle_call({transact, Transaction}, _From, State) ->
+    hanoidb:transact(State#state.db, Transaction),
     {reply, ok, State};
 
 handle_call({get, Bucket, Key}, _From, State) ->

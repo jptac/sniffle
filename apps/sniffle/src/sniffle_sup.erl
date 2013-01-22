@@ -32,6 +32,14 @@ init(_Args) ->
       sniffle_iprange_vnode_master,
       { riak_core_vnode_master, start_link, [sniffle_iprange_vnode]},
       permanent, 5000, worker, [sniffle_iprange_vnode_master]},
+    VDataset = {
+      sniffle_dataset_vnode_master,
+      { riak_core_vnode_master, start_link, [sniffle_dataset_vnode]},
+      permanent, 5000, worker, [sniffle_dataset_vnode_master]},
+    VPackage = {
+      sniffle_package_vnode_master,
+      { riak_core_vnode_master, start_link, [sniffle_package_vnode]},
+      permanent, 5000, worker, [sniffle_package_vnode_master]},
     WriteFSMs = {
       sniffle_entity_write_fsm_sup,
       { sniffle_entity_write_fsm_sup, start_link, []},
@@ -55,6 +63,6 @@ init(_Args) ->
 
     { ok,
       { {one_for_one, 5, 10},
-        [VHypervisor, VVM, VIprange,
+        [VHypervisor, VVM, VIprange, VDataset, VPackage,
          WriteFSMs, ReadFSMs, CoverageFSMs,
          CreateFSMs, DB]}}.
