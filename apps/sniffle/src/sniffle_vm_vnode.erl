@@ -203,7 +203,7 @@ handle_command({register, {ReqID, Coordinator}, Vm, Hypervisor}, _Sender, State)
                   {ok, #sniffle_obj{val=H0} = O} ->
                       estatsd:increment("sniffle.vms.write.success"),
                       H1 = statebox:modify({fun sniffle_vm_state:load/1,[]}, H0),
-                      H2 = statebox:modify({fun sniffle_vm_state:hypervisor/3, [Coordinator, Log]}, H1),
+                      H2 = statebox:modify({fun sniffle_vm_state:hypervisor/2, [Hypervisor]}, H1),
                       H3 = statebox:expire(?STATEBOX_EXPIRE, H2),
                       sniffle_obj:update(H3, Coordinator, O)
               end,
