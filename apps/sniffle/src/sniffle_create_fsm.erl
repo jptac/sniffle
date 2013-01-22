@@ -303,7 +303,7 @@ handle_info(_Info, StateName, State) ->
 %% @end
 %%--------------------------------------------------------------------
 
-terminate(shutdown, create, _StateData) ->
+terminate(_, create, _StateData) ->
     ok;
 
 terminate(shutdown, _StateName, _StateData) ->
