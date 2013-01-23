@@ -190,7 +190,7 @@ handle_command({get, ReqID, Vm}, _Sender, State) ->
                   estatsd:increment("sniffle.vms.read.failed"),
                   not_found
           end,
-    NodeIdx = {State#state.db, State#state.node},
+    NodeIdx = {State#state.partition, State#state.node},
     {reply, {ok, ReqID, NodeIdx, Res}, State};
 
 handle_command({register, {ReqID, Coordinator}, Vm, Hypervisor}, _Sender, State) ->
