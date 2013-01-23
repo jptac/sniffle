@@ -301,7 +301,7 @@ handle_coverage({lookup, ReqID, Name}, _KeySpaces, _Sender, State) ->
                                   end
                           end, not_found),
     {reply,
-     {ok, ReqID, {State#state.db,State#state.node}, [Res]},
+     {ok, ReqID, {State#state.partition, State#state.node}, [Res]},
      State};
 
 handle_coverage({list, ReqID, Requirements}, _KeySpaces, _Sender, State) ->
@@ -338,7 +338,7 @@ handle_coverage({list, ReqID}, _KeySpaces, _Sender, State) ->
 
 handle_coverage({overlap, ReqID, _Start, _Stop}, _KeySpaces, _Sender, State) ->
     {reply,
-     {ok, ReqID, {State#state.partition,State#state.node}},
+     {ok, ReqID, {State#state.partition, State#state.node}},
      State};
 
 handle_coverage(_Req, _KeySpaces, _Sender, State) ->
