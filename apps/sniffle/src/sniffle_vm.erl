@@ -103,7 +103,8 @@ delete(Vm) ->
                 {ok, H} ->
                     case jsxd:get(<<"state">>, V) of
                         undefined ->
-                            not_found;
+                            sniffle_vm:unregister(Vm),
+                            libhowl:send(Vm, [{<<"event">>, <<"delete">>}]);
                         {ok, <<"deleting">>} ->
                             sniffle_vm:unregister(Vm),
                             libhowl:send(Vm, [{<<"event">>, <<"delete">>}]);
