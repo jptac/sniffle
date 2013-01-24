@@ -48,5 +48,6 @@ case $2 in
 	    cp /opt/local/sniffle/etc/app.config.example /opt/local/sniffle/etc/app.config
 	    sed --in-place -e "s/127.0.0.1/${IP}/g" /opt/local/sniffle/etc/app.config
 	fi
+	cp /opt/local/sniffle/bin/fifoadm /opt/local/sbin
 	;;
 esac

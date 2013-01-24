@@ -14,19 +14,7 @@
 -include_lib("eunit/include/eunit.hrl").
 -endif.
 
--export([match/3, match_dict/3]).
-
--ignore_xref([match/3]).
-
-match_dict(Dict, Getter, Requirements) ->
-    dict:fold(fun(Key, E, C) ->
-                      case match(E, Getter, Requirements) of
-                          false ->
-                              C;
-                          Pts ->
-                              [{Key, Pts} | C]
-                      end
-              end, [], Dict).
+-export([match/3]).
 
 match(Hypervisor, Getter, [{must, Op, Res, V}]) ->
     match(Hypervisor, Getter, {Op, Res, V}) andalso 0;

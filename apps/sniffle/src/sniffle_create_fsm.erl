@@ -97,7 +97,7 @@ create(UUID, Package, Dataset, Config) ->
 %%--------------------------------------------------------------------
 init([UUID, Package, Dataset, Config]) ->
     process_flag(trap_exit, true),
-    {ok, get_package, #state{
+    {ok, create_permissions, #state{
            uuid = UUID,
            package_name = Package,
            dataset_name = Dataset,
@@ -119,6 +119,13 @@ init([UUID, Package, Dataset, Config]) ->
 %%                   {stop, Reason, NewState}
 %% @end
 %%--------------------------------------------------------------------
+create_permissions(_Event, State = #state{
+                             uuid = UUID,
+                             config = Config}) ->
+    {<<"owner">>, Owner} = lists:keyfind(<<"owner">>, 1, Config),
+    libsnarl:user_grant(Owner, [<<"vms">>, UUID, <<"...">>]),
+    libsnarl:user_grant(Owner, [<<"channels">>, UUID, <<"join">>]),
+    {next_state, get_package, State, 0}.
 
 get_package(_Event, State = #state{
                       uuid = UUID,
@@ -143,24 +150,43 @@ get_ips(_Event, State = #state{config = Config,
                                dataset = Dataset}) ->
     Dataset1 = jsxd:update(<<"networks">>,
                            fun(Nics) ->
-                                   lists:map(
-                                     fun(Nic) ->
-                                             {ok, Name} = jsxd:get(<<"name">>, Nic),
-                                             {ok, NicTag} = jsxd:get([<<"networks">>, Name], Config),
-                                             sniffle_vm:log(UUID, <<"Fetching network ", NicTag/binary, " for NIC ", Name/binary>>),
-                                             {ok, {Tag, IP, Net, Gw}} = sniffle_iprange:claim_ip(NicTag),
-                                             IPb = sniffle_iprange_state:to_bin(IP),
-                                             Netb = sniffle_iprange_state:to_bin(Net),
-                                             GWb = sniffle_iprange_state:to_bin(Gw),
-                                             sniffle_vm:log(UUID, <<"Assigning IP ", IPb/binary,
-                                                                    " netmask ", Netb/binary,
-                                                                    " gateway ", GWb/binary,
-                                                                    " tag ", Tag/binary>>),
-                                             jsxd:from_list([{<<"nic_tag">>, Tag},
-                                                             {<<"ip">>, IPb},
-                                                             {<<"netmask">>, Netb},
-                                                             {<<"gateway">>, GWb}])
-                                     end, Nics)
+                                   {Nics1, _} =
+                                       jsxd:fold(
+                                         fun(K, Nic, {NicsF, Mappings}) ->
+                                                 {ok, Name} = jsxd:get(<<"name">>, Nic),
+                                                 {ok, NicTag} = jsxd:get([<<"networks">>, Name], Config),
+                                                 sniffle_vm:log(UUID, <<"Fetching network ", NicTag/binary, " for NIC ", Name/binary>>),
+                                                 {ok, {Tag, IP, Net, Gw}} = sniffle_iprange:claim_ip(NicTag),
+                                                 {ok, Range} = sniffle_iprange:get(NicTag),
+                                                 IPb = sniffle_iprange_state:to_bin(IP),
+                                                 Netb = sniffle_iprange_state:to_bin(Net),
+                                                 GWb = sniffle_iprange_state:to_bin(Gw),
+                                                 sniffle_vm:log(UUID, <<"Assigning IP ", IPb/binary,
+                                                                        " netmask ", Netb/binary,
+                                                                        " gateway ", GWb/binary,
+                                                                        " tag ", Tag/binary>>),
+                                                 Mappings1 = jsxd:append(
+                                                               [],
+                                                               jsxd:from_list([{<<"network">>, NicTag},
+                                                                               {<<"ip">>, IP}]),
+                                                               Mappings),
+                                                 sniffle_vm:set(UUID,
+                                                                <<"network_mappings">>,
+                                                                Mappings1),
+                                                 Res = jsxd:from_list([{<<"nic_tag">>, Tag},
+                                                                       {<<"ip">>, IPb},
+                                                                       {<<"netmask">>, Netb},
+                                                                       {<<"gateway">>, GWb}]),
+                                                 Res1 = case jsxd:get(<<"vlan">>, 0, Range) of
+                                                            0 ->
+                                                                Res;
+                                                            VLAN ->
+                                                                jsxd:set(<<"vlan_di">>, VLAN, Res)
+                                                            end,
+                                                 NicsF1 = jsxd:set(K, Res1, NicsF),
+                                                 {NicsF1, Mappings1}
+                                         end, {[], []}, Nics),
+                                   Nics1
                            end, Dataset),
     {next_state, get_server, State#state{dataset = Dataset1}, 0}.
 
@@ -175,7 +201,7 @@ get_server(_Event, State = #state{
     RamB = list_to_binary(integer_to_list(Ram)),
     sniffle_vm:log(UUID, <<"Assigning memory ", RamB/binary>>),
     sniffle_vm:set(UUID, <<"state">>, <<"fetching_server">>),
-    Permission = [<<"hypervisor">>, {<<"res">>, <<"name">>}, <<"create">>],
+    Permission = [<<"hypervisors">>, {<<"res">>, <<"name">>}, <<"create">>],
     {ok, Ns} = jsxd:get(<<"networks">>, Dataset),
     {ok, Type} = jsxd:get(<<"type">>, Dataset),
 
@@ -193,25 +219,15 @@ get_server(_Event, State = #state{
                 lists:map(fun(C) -> make_condition(C, Permissions) end, Conditions1),
             CondB = list_to_binary(io_lib:format("~p", [Conditions])),
             sniffle_vm:log(UUID, <<"Finding hypervisor ", CondB/binary>>),
-
-
             {ok, [{HypervisorID, _} | _]} = sniffle_hypervisor:list(Conditions),
             sniffle_vm:log(UUID, <<"Deploying on hypervisor ", HypervisorID/binary>>),
-
             {ok, H} = sniffle_hypervisor:get(HypervisorID),
             {ok, Port} = jsxd:get(<<"port">>, H),
             {ok, Host} = jsxd:get(<<"host">>, H),
-            {next_state, create_permissions, State#state{hypervisor = {binary_to_list(Host), Port}}, 0};
+            {next_state, create, State#state{hypervisor = {binary_to_list(Host), Port}}, 0};
         _ ->
             {next_state, get_server, State, 10000}
     end.
-
-create_permissions(_Event, State = #state{
-                             uuid = _UUID,
-                             config = Config}) ->
-    {<<"owner">>, _Owner} = lists:keyfind(<<"owner">>, 1, Config),
-%%% TODO: give permissions!
-    {next_state, create, State, 0}.
 
 create(_Event, State = #state{
                  dataset = Dataset,
@@ -221,8 +237,6 @@ create(_Event, State = #state{
                  hypervisor = {Host, Port}}) ->
     sniffle_vm:log(UUID, <<"Handing off to hypervisor.">>),
     sniffle_vm:set(UUID, <<"state">>, <<"creating">>),
-    {<<"owner">>, Owner} = lists:keyfind(<<"owner">>, 1, Config),
-    libsnarl:user_grant(Owner, [<<"vms">>, UUID, '...']),
     libchunter:create_machine(Host, Port, UUID, Package, Dataset, Config),
     {stop, normal, State}.
 
@@ -290,7 +304,7 @@ handle_info(_Info, StateName, State) ->
 %% @end
 %%--------------------------------------------------------------------
 
-terminate(shutdown, create, _StateData) ->
+terminate(_, create, _StateData) ->
     ok;
 
 terminate(shutdown, _StateName, _StateData) ->
@@ -326,11 +340,11 @@ make_condition(C, Permissions) ->
                  I when is_integer(I) ->
                      I
              end,
-    Condition = case jsxd:get(<<"weight">>, <<"=:=">>, C) of
+    Condition = case jsxd:get(<<"condition">>, <<"=:=">>, C) of
                     <<">=">> -> '>=';
+                    <<">">> -> '>';
                     <<"=<">> -> '=<';
                     <<"<">> -> '<';
-                    <<">">> -> '>';
                     <<"=:=">> -> '=:=';
                     <<"=/=">> -> '=/=';
                     <<"subset">> -> 'subset';

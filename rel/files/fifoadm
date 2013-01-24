@@ -1,0 +1,34 @@
+#!/usr/bin/env bash
+
+case $1 in
+    groups|users)
+        if [ -f /opt/local/snarl/bin/snarl-admin ]
+        then
+            /opt/local/snarl/bin/snarl-admin $@
+        else
+            echo "Snarl is not installed. Sorry!"
+            exit 1
+        fi
+        ;;
+    vms|hypervisors|packages|datasets|networks)
+        if [ -f /opt/local/sniffle/bin/sniffle-admin ]
+        then
+            /opt/local/sniffle/bin/sniffle-admin $@
+        else
+            echo "Sniffle is not installed. Sorry!"
+            exit 1
+        fi
+        ;;
+    help|?)
+        cat <<EOF
+fifoadm administers snarl and sniffle.
+EOF
+        ;;
+    *)
+        echo "Unknown command $1, valid are: "
+        echo "  snarl:   groups, users"
+        echo "  sniffle: vms, hypervisors, pacakges, datasets, networks"
+        echo "  general: help"
+        exit 1
+        ;;
+esac

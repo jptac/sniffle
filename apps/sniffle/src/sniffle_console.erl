@@ -3,14 +3,65 @@
 -export([join/1,
          leave/1,
          remove/1,
+         vms/1,
+         hvs/1,
+         pkgs/1,
+         ds/1,
+         pp_json/1,
          ringready/1]).
 
 -ignore_xref([
-	      join/1,
-	      leave/1,
-	      remove/1,
-	      ringready/1
-	     ]).
+              join/1,
+              leave/1,
+              vms/1,
+              ds/1,
+              hvs/1,
+              pkgs/1,
+              remove/1,
+              ringready/1
+             ]).
+
+
+vms([C, "-j" | R]) ->
+    sniffle_console_vms:command(json, [C | R]);
+
+vms([]) ->
+    sniffle_console_vms:help(),
+    ok;
+
+vms(R) ->
+    sniffle_console_vms:command(text, R).
+
+hvs([C, "-j" | R]) ->
+    sniffle_console_hypervisors:command(json, [C | R]);
+
+hvs([]) ->
+    sniffle_console_hypervisors:help(),
+    ok;
+
+hvs(R) ->
+    sniffle_console_hypervisors:command(text, R).
+
+pkgs([C, "-j" | R]) ->
+    sniffle_console_packages:command(json, [C | R]);
+
+pkgs([]) ->
+    sniffle_console_packages:help(),
+    ok;
+
+pkgs(R) ->
+    sniffle_console_packages:command(text, R).
+
+ds([C, "-j" | R]) ->
+    sniffle_console_datasets:command(json, [C | R]);
+
+ds([]) ->
+    sniffle_console_datasets:help(),
+    ok;
+
+ds(R) ->
+    sniffle_console_datasets:command(text, R).
+
 
 join([NodeStr]) ->
     try riak_core:join(NodeStr) of
@@ -75,3 +126,7 @@ ringready([]) ->
             io:format("Ringready failed, see log for details~n"),
             error
     end.
+
+
+pp_json(Obj) ->
+    io:format("~s~n", [jsx:prettify(jsx:encode(Obj))]).

@@ -24,12 +24,33 @@ message({vm, log, Vm, Log}, State) when
      sniffle_vm:log(Vm, Log),
      State};
 
-
 message({vm, register, Vm, Hypervisor}, State) when
       is_binary(Vm),
       is_binary(Hypervisor) ->
     {reply,
      sniffle_vm:register(Vm, Hypervisor),
+     State};
+
+
+message({vm, snapshot, Vm, Comment}, State) when
+      is_binary(Vm),
+      is_binary(Comment) ->
+    {reply,
+     sniffle_vm:snapshot(Vm, Comment),
+     State};
+
+message({vm, snapshot, delete, Vm, UUID}, State) when
+      is_binary(Vm),
+      is_binary(UUID) ->
+    {reply,
+     sniffle_vm:delete_snapshot(Vm, UUID),
+     State};
+
+message({vm, snapshot, rollback, Vm, UUID}, State) when
+      is_binary(Vm),
+      is_binary(UUID) ->
+    {reply,
+     sniffle_vm:rollback_snapshot(Vm, UUID),
      State};
 
 message({vm, create, Package, Dataset, Config}, State) when
@@ -202,12 +223,13 @@ message({dataset, list, Requirements}, State) when
 %%%  IPRange Functions
 %%%===================================================================
 
-message({iprange, create, Iprange, Network, Gateway, Netmask, First, Last, Tag}, State) when
+message({iprange, create, Iprange, Network, Gateway, Netmask, First, Last, Tag, Vlan}, State) when
       is_binary(Iprange), is_binary(Tag),
       is_integer(Network), is_integer(Gateway), is_integer(Netmask),
-      is_integer(First), is_integer(Last) ->
+      is_integer(First), is_integer(Last),
+      is_integer(Vlan)->
     {reply,
-     sniffle_iprange:create(Iprange, Network, Gateway, Netmask, First, Last, Tag),
+     sniffle_iprange:create(Iprange, Network, Gateway, Netmask, First, Last, Tag, Vlan),
      State};
 
 message({iprange, delete, Iprange}, State) when

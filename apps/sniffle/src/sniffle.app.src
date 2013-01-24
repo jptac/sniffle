@@ -2,17 +2,19 @@
 {application, sniffle,
  [
   {description, "Project FiFo's central management server."},
-  {vsn, "0.3.1"},
+  {vsn, "0.3.2"},
   {registered, []},
   {applications, [
                   kernel,
                   stdlib,
                   riak_core,
-                  mdns_server_lib,
                   uuid,
+                  estatsd,
+                  mdns_server_lib,
                   libchunter,
                   libhowl,
                   libsnarl,
+                  hanoidb,
                   lager
                  ]},
   {mod, { sniffle_app, []}},

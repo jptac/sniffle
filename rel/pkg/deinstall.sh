@@ -11,5 +11,6 @@ case $2 in
 	echo "If you don't need them any more remove the directories:"
 	echo " /var/log/sniffle"
 	echo " /var/db/sniffle"
+        rm /opt/local/sbin/fifoadm
 	;;
 esac

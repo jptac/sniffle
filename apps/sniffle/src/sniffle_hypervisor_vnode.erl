@@ -30,7 +30,7 @@
          handle_exit/3]).
 
 -record(state, {
-          hypervisors,
+          db,
           partition,
           node
          }).
@@ -128,8 +128,10 @@ set(Preflist, ReqID, Hypervisor, Data) ->
 %%%===================================================================
 
 init([Partition]) ->
+    DB = list_to_atom(integer_to_list(Partition)),
+    sniffle_db:start(DB),
     {ok, #state{
-       hypervisors = dict:new(),
+       db = DB,
        partition = Partition,
        node = node()
       }}.
@@ -138,32 +140,33 @@ handle_command(ping, _Sender, State) ->
     {reply, {pong, State#state.partition}, State};
 
 handle_command({repair, Hypervisor, VClock, Obj}, _Sender, State) ->
-    Hs0 = dict:update(Hypervisor,
-                      fun(Obj1) ->
-                              case Obj1#sniffle_obj.vclock of
-                                  VClock ->
-                                      Obj;
-                                  _ ->
-                                      lager:error("[hypervisor] Read repair failed, data was updated too recent."),
-                                      Obj1
-                              end
-                      end, Obj, State#state.hypervisors),
-    {noreply, State#state{hypervisors=Hs0}};
+    case sniffle_db:get(State#state.db, <<"hypervisor">>, Hypervisor) of
+        {ok, #sniffle_obj{vclock = VC1}} when VC1 =:= VClock ->
+            estatsd:increment("sniffle.hypervisors.readrepair.success"),
+            sniffle_db:put(State#state.db, <<"hypervisor">>, Hypervisor, Obj);
+        not_found ->
+            estatsd:increment("sniffle.hypervisors.readrepair.success"),
+            sniffle_db:put(State#state.db, <<"hypervisor">>, Hypervisor, Obj);
+        _ ->
+            estatsd:increment("sniffle.hypervisors.readrepair.failire"),
+            lager:error("[hypervisors] Read repair failed, data was updated too recent.")
+    end,
+    {noreply, State};
 
 handle_command({get, ReqID, Hypervisor}, _Sender, State) ->
-    ?PRINT({handle_command, get, ReqID, Hypervisor}),
-    NodeIdx = {State#state.partition, State#state.node},
-    Res = case dict:find(Hypervisor, State#state.hypervisors) of
-              error ->
-                  {ok, ReqID, NodeIdx, not_found};
-              {ok, V} ->
-                  {ok, ReqID, NodeIdx, V}
+    Res = case sniffle_db:get(State#state.db, <<"hypervisor">>, Hypervisor) of
+              {ok, R} ->
+                  estatsd:increment("sniffle.hypervisors.read.failire"),
+                  R;
+              not_found ->
+                  estatsd:increment("sniffle.hypervisors.read.success"),
+                  not_found
           end,
-    {reply,
-     Res,
-     State};
+    NodeIdx = {State#state.partition, State#state.node},
+    {reply, {ok, ReqID, NodeIdx, Res}, State};
 
 handle_command({register, {ReqID, Coordinator}, Hypervisor, [Ip, Port]}, _Sender, State) ->
+    estatsd:increment("sniffle.hypervisors.register"),
     H0 = statebox:new(fun sniffle_hypervisor_state:new/0),
     H1 = statebox:modify({fun sniffle_hypervisor_state:name/2, [Hypervisor]}, H0),
     H2 = statebox:modify({fun sniffle_hypervisor_state:host/2, [Ip]}, H1),
@@ -173,101 +176,137 @@ handle_command({register, {ReqID, Coordinator}, Hypervisor, [Ip, Port]}, _Sender
     VC = vclock:increment(Coordinator, VC0),
     HObject = #sniffle_obj{val=H3, vclock=VC},
 
-    Hs0 = dict:store(Hypervisor, HObject, State#state.hypervisors),
-    {reply, {ok, ReqID}, State#state{hypervisors = Hs0}};
+    sniffle_db:put(State#state.db, <<"hypervisor">>, Hypervisor, HObject),
+    {reply, {ok, ReqID}, State};
 
 handle_command({unregister, {ReqID, _Coordinator}, Hypervisor}, _Sender, State) ->
-    Hs0 = dict:erase(Hypervisor, State#state.hypervisors),
-    {reply, {ok, ReqID}, State#state{hypervisors = Hs0}};
+    estatsd:increment("sniffle.hypervisors.unregister"),
+    sniffle_db:delete(State#state.db, <<"hypervisor">>, Hypervisor),
+    {reply, {ok, ReqID}, State};
 
 handle_command({set,
-                {ReqID, Coordinator}, Vm,
+                {ReqID, Coordinator}, Hypervisor,
                 Resources}, _Sender, State) ->
-    Hs0 = dict:update(Vm,
-                      fun(#sniffle_obj{val=H0} = O) ->
-                              H1 = lists:foldr(
-                                     fun ({Resource, Value}, H) ->
-                                             statebox:modify(
-                                               {fun sniffle_hypervisor_state:set/3,
-                                                [Resource, Value]}, H)
-                                     end, H0, Resources),
-                              H2 = statebox:expire(?STATEBOX_EXPIRE, H1),
-                              sniffle_obj:update(H2, Coordinator, O)
-                      end, State#state.hypervisors),
-    {reply, {ok, ReqID}, State#state{hypervisors = Hs0}};
+    case sniffle_db:get(State#state.db, <<"hypervisor">>, Hypervisor) of
+        {ok, #sniffle_obj{val=H0} = O} ->
+            estatsd:increment("sniffle.hypervisors.write.success"),
+            H1 = statebox:modify({fun sniffle_hypervisor_state:load/1,[]}, H0),
+            H2 = lists:foldr(
+                   fun ({Resource, Value}, H) ->
+                           statebox:modify(
+                             {fun sniffle_hypervisor_state:set/3,
+                              [Resource, Value]}, H)
+                   end, H1, Resources),
+            H3 = statebox:expire(?STATEBOX_EXPIRE, H2),
+            sniffle_db:put(State#state.db, <<"hypervisor">>, Hypervisor,
+                           sniffle_obj:update(H3, Coordinator, O)),
+            {reply, {ok, ReqID}, State};
+        R ->
+            estatsd:increment("sniffle.hypervisors.write.failed"),
+            lager:error("[hypervisors] tried to write to a non existing hypervisor: ~p", [R]),
+            {reply, {ok, ReqID, not_found}, State}
+    end;
 
 handle_command(Message, _Sender, State) ->
-    ?PRINT({unhandled_command, Message}),
+    estatsd:increment("sniffle.hypervisors.unknown_command"),
+    lager:error("[hypervisors] Unknown command: ~p", [Message]),
     {noreply, State}.
 
 handle_handoff_command(?FOLD_REQ{foldfun=Fun, acc0=Acc0}, _Sender, State) ->
-    Acc = dict:fold(Fun, Acc0, State#state.hypervisors),
+    Acc = sniffle_db:fold(State#state.db,
+                          <<"hypervisor">>, Fun, Acc0),
     {reply, Acc, State}.
 
 handoff_starting(_TargetNode, State) ->
+    estatsd:increment("sniffle.hypervisors.handoff.started"),
     {true, State}.
 
 handoff_cancelled(State) ->
+    estatsd:increment("sniffle.hypervisors.handoff.cancled"),
     {ok, State}.
 
 handoff_finished(_TargetNode, State) ->
+    estatsd:increment("sniffle.hypervisors.handoff.finished"),
     {ok, State}.
 
 handle_handoff_data(Data, State) ->
     {Hypervisor, HObject} = binary_to_term(Data),
-    Hs0 = dict:store(Hypervisor, HObject, State#state.hypervisors),
-    {reply, ok, State#state{hypervisors = Hs0}}.
+    sniffle_db:put(State#state.db, <<"hypervisor">>, Hypervisor, HObject),
+    {reply, ok, State}.
 
 encode_handoff_item(Hypervisor, Data) ->
     term_to_binary({Hypervisor, Data}).
 
 is_empty(State) ->
-    case dict:size(State#state.hypervisors) of
-        0 ->
-            {true, State};
-        _ ->
-            {true, State}
-    end.
+    sniffle_db:fold(State#state.db,
+                    <<"hypervisor">>,
+                    fun (_,_, _) ->
+                            {false, State}
+                    end, {true, State}).
 
 delete(State) ->
-    {ok, State#state{hypervisors = dict:new()}}.
+    Trans = sniffle_db:fold(State#state.db,
+                            <<"hypervisor">>,
+                            fun (K,_, A) ->
+                                    [{delete, K} | A]
+                            end, []),
+    sniffle_db:transact(State#state.db, Trans),
+    {ok, State}.
 
 handle_coverage({list, ReqID, Requirements}, _KeySpaces, _Sender, State) ->
+    estatsd:increment("sniffle.hypervisors.select"),
     Getter = fun(#sniffle_obj{val=S0}, Resource) ->
                      jsxd:get(Resource, 0, statebox:value(S0))
              end,
-    Server = sniffle_matcher:match_dict(State#state.hypervisors, Getter, Requirements),
+    List = sniffle_db:fold(State#state.db,
+                          <<"hypervisor">>,
+                           fun (Key, E, C) ->
+                                   case sniffle_matcher:match(E, Getter, Requirements) of
+                                       false ->
+                                           C;
+                                       Pts ->
+                                           [{Key, Pts} | C]
+                                   end
+                           end, []),
     {reply,
-     {ok, ReqID, {State#state.partition, State#state.node}, Server},
+     {ok, ReqID, {State#state.partition, State#state.node}, List},
      State};
 
 handle_coverage({list, ReqID}, _KeySpaces, _Sender, State) ->
+    estatsd:increment("sniffle.hypervisors.list"),
+    List = sniffle_db:fold(State#state.db,
+                          <<"hypervisor">>,
+                           fun (K, _, L) ->
+                                   [K|L]
+                           end, []),
     {reply,
-     {ok, ReqID, {State#state.partition, State#state.node}, dict:fetch_keys(State#state.hypervisors)},
+     {ok, ReqID, {State#state.partition, State#state.node}, List},
      State};
 
 
 
 handle_coverage({status, ReqID}, _KeySpaces, _Sender, State) ->
-    Res = dict:fold(
+    estatsd:increment("sniffle.hypervisors.status"),
+    Res = sniffle_db:fold(
+            State#state.db, <<"hypervisor">>,
             fun(K, #sniffle_obj{val=S0}, {Res, Warnings}) ->
                     H=statebox:value(S0),
                     {ok, Host} = jsxd:get(<<"host">>, H),
                     {ok, Port} = jsxd:get(<<"port">>, H),
                     Res1 = jsxd:fold(fun (Resource, Value, Acc) ->
-                                               jsxd:update(Resource,
-                                                           fun(Current)->
-                                                                   Current + Value
-                                                           end, Value, Acc)
-                                       end, Res, jsxd:get(<<"resources">>, [], H)),
+                                             jsxd:update(Resource,
+                                                         fun(Current)->
+                                                                 Current + Value
+                                                         end, Value, Acc)
+                                     end, Res, jsxd:get(<<"resources">>, [], H)),
                     Res2 = jsxd:update(<<"hypervisors">>, fun(Current)-> [K|Current] end, [K], Res1),
                     Warnings1 = case libchunter:ping(binary_to_list(Host), Port) of
                                     {error,connection_failed} ->
                                         [jsxd:from_list(
                                            [{<<"category">>, <<"chunter">>},
-                                            {<<"elementy">>, K},
-                                            {<<"typey">>, <<"critical">>},
-                                            {<<"messagey">>,
+                                            {<<"element">>, K},
+                                            {<<"type">>, <<"critical">>},
+                                            {<<"message">>,
                                              bin_fmt("Chunter server ~s down.", [K])}]) |
                                          Warnings];
                                     pong ->
@@ -283,7 +322,7 @@ handle_coverage({status, ReqID}, _KeySpaces, _Sender, State) ->
                                       Used = jsxd:get(<<"used">>, 0, Pool),
                                       ResAcc1 = jsxd:thread([{update, <<"size">>, fun(C) -> C + Size end, Size},
                                                              {update, <<"used">>, fun(C) -> C + Used end, Used}],
-                                                             ResAcc),
+                                                            ResAcc),
                                       case jsxd:get(<<"health">>, <<"ONLINE">>, Pool) of
                                           <<"ONLINE">> ->
                                               {ResAcc1, WarningsAcc};
@@ -299,7 +338,7 @@ handle_coverage({status, ReqID}, _KeySpaces, _Sender, State) ->
                                       end
                               end,{Res2, Warnings1}, Pools)
                     end
-            end, {[], []}, State#state.hypervisors),
+            end, {[], []}),
     {reply,
      {ok, ReqID, {State#state.partition, State#state.node}, [Res]},
      State};

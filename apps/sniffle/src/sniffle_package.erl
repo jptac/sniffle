@@ -2,22 +2,34 @@
 -include("sniffle.hrl").
                                                 %-include_lib("riak_core/include/riak_core_vnode.hrl").
 
--export(
-   [
-    create/1,
-    delete/1,
-    get/1,
-    list/0,
-    list/1,
-    set/2,
-    set/3
-   ]
-  ).
+-export([
+         create/1,
+         delete/1,
+         get/1,
+         lookup/1,
+         list/0,
+         list/1,
+         set/2,
+         set/3
+        ]).
+
+lookup(User) ->
+    {ok, Res} = sniffle_entity_coverage_fsm:start(
+                  {sniffle_package_vnode, sniffle_package},
+                  lookup, User),
+    Res1 = lists:foldl(fun (not_found, Acc) ->
+                               Acc;
+                           (R, _) ->
+                               R
+                       end, not_found, Res),
+    {ok, Res1}.
 
 create(Package) ->
-    case sniffle_package:get(Package) of
+    UUID = list_to_binary(uuid:to_string(uuid:uuid4())),
+    case sniffle_package:lookup(Package) of
         {ok, not_found} ->
-            do_write(Package, create, []);
+            ok = do_write(UUID, create, [Package]),
+            {ok, UUID};
         {ok, _RangeObj} ->
             duplicate
     end.
@@ -28,20 +40,17 @@ delete(Package) ->
 get(Package) ->
     sniffle_entity_read_fsm:start(
       {sniffle_package_vnode, sniffle_package},
-      get, Package
-     ).
+      get, Package).
 
 list() ->
     sniffle_entity_coverage_fsm:start(
       {sniffle_package_vnode, sniffle_package},
-      list
-     ).
+      list).
 
 list(Requirements) ->
     sniffle_entity_coverage_fsm:start(
       {sniffle_package_vnode, sniffle_package},
-      list, Requirements
-     ).
+      list, Requirements).
 
 set(Package, Attribute, Value) ->
     do_update(Package, set, [{Attribute, Value}]).

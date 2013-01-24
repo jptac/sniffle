@@ -23,7 +23,7 @@ register(Hypervisor, IP, Port) ->
     end.
 
 unregister(Hypervisor) ->
-    do_update(Hypervisor, delete).
+    do_write(Hypervisor, unregister).
 
 get(Hypervisor) ->
     sniffle_entity_read_fsm:start(
@@ -77,31 +77,20 @@ list(Requirements) ->
     {ok,  lists:keysort(2, Res)}.
 
 set(Hypervisor, Resource, Value) ->
-    do_update(Hypervisor, set, [{Resource, Value}]).
+    set(Hypervisor, set, [{Resource, Value}]).
 
 set(Hypervisor, Resources) ->
-    do_update(Hypervisor, set, Resources).
+    case do_write(Hypervisor, set, Resources) of
+        {ok, not_found} ->
+            not_found;
+        R ->
+            R
+    end.
+
 
 %%%===================================================================
 %%% Internal Functions
 %%%===================================================================
-
-
-do_update(User, Op) ->
-    case sniffle_hypervisor:get(User) of
-        {ok, not_found} ->
-            not_found;
-        {ok, _UserObj} ->
-            do_write(User, Op)
-    end.
-
-do_update(User, Op, Val) ->
-    case sniffle_hypervisor:get(User) of
-        {ok, not_found} ->
-            not_found;
-        {ok, _UserObj} ->
-            do_write(User, Op, Val)
-    end.
 
 do_write(User, Op) ->
     sniffle_entity_write_fsm:write({sniffle_hypervisor_vnode, sniffle_hypervisor}, User, Op).

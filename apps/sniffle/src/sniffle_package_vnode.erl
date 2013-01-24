@@ -9,6 +9,7 @@
          list/2,
          list/3,
          create/4,
+         lookup/3,
          delete/3,
          set/4
         ]).
@@ -29,17 +30,16 @@
          handle_exit/3]).
 
 -record(state, {
-          packages,
+          db,
           partition,
-          node,
-          dbref,
-          index
+          node
          }).
 
 -ignore_xref([
               create/4,
               delete/3,
               get/3,
+              lookup/3,
               list/2,
               list/3,
               repair/4,
@@ -73,6 +73,14 @@ get(Preflist, ReqID, Package) ->
                                    {fsm, undefined, self()},
                                    ?MASTER).
 
+lookup(Preflist, ReqID, Name) ->
+    riak_core_vnode_master:coverage(
+      {lookup, ReqID, Name},
+      Preflist,
+      all,
+      {fsm, undefined, self()},
+      ?MASTER).
+
 %%%===================================================================
 %%% API - coverage
 %%%===================================================================
@@ -98,9 +106,9 @@ list(Preflist, ReqID, Requirements) ->
 %%% API - writes
 %%%===================================================================
 
-create(Preflist, ReqID, Package, Data) ->
+create(Preflist, ReqID, UUID, Data) ->
     riak_core_vnode_master:command(Preflist,
-                                   {create, ReqID, Package, Data},
+                                   {create, ReqID, UUID, Data},
                                    {fsm, undefined, self()},
                                    ?MASTER).
 
@@ -121,147 +129,174 @@ set(Preflist, ReqID, Vm, Data) ->
 %%%===================================================================
 
 init([Partition]) ->
-    {ok, DBLoc} = application:get_env(sniffle, db_path),
-    {ok, DBRef} = eleveldb:open(DBLoc ++ "/packages/"++integer_to_list(Partition)++".ldb", [{create_if_missing, true}]),
-    {Index, Ranges} = read_ranges(DBRef),
+    DB = list_to_atom(integer_to_list(Partition)),
+    sniffle_db:start(DB),
     {ok, #state{
+       db = DB,
        partition = Partition,
-       index = Index,
-       node = node(),
-       packages = Ranges,
-       dbref=DBRef
+       node = node()
       }}.
 
 handle_command(ping, _Sender, State) ->
     {reply, {pong, State#state.partition}, State};
 
 handle_command({repair, Package, VClock, Obj}, _Sender, State) ->
-    Hs0 = dict:update(Package,
-                      fun(Obj1) ->
-                              case Obj1#sniffle_obj.vclock of
-                                  VClock ->
-                                      Obj;
-                                  _ ->
-                                      lager:error("[packages] Read repair failed, data was updated too recent."),
-                                      Obj1
-                              end
-                      end, Obj, State#state.packages),
-    {noreply, State#state{packages=Hs0}};
+    case sniffle_db:get(State#state.db, <<"package">>, Package) of
+        {ok, #sniffle_obj{vclock = VC1}} when VC1 =:= VClock ->
+            estatsd:increment("sniffle.packages.readrepair.success"),
+            sniffle_db:put(State#state.db, <<"package">>, Package, Obj);
+        not_found ->
+            estatsd:increment("sniffle.packages.readrepair.success"),
+            sniffle_db:put(State#state.db, <<"package">>, Package, Obj);
+        _ ->
+            estatsd:increment("sniffle.packages.readrepair.failed"),
+            lager:error("[packages] Read repair failed, data was updated too recent.")
+    end,
+    {noreply, State};
 
 handle_command({get, ReqID, Package}, _Sender, State) ->
-    ?PRINT({handle_command, get, ReqID, Package}),
-    NodeIdx = {State#state.partition, State#state.node},
-    Res = case dict:find(Package, State#state.packages) of
-              error ->
-                  {ok, ReqID, NodeIdx, not_found};
-              {ok, V} ->
-                  {ok, ReqID, NodeIdx, V}
+    Res = case sniffle_db:get(State#state.db, <<"package">>, Package) of
+              {ok, R} ->
+                  estatsd:increment("sniffle.packages.readrepair.success"),
+                  R;
+              not_found ->
+                  estatsd:increment("sniffle.packages.readrepair.failed"),
+                  not_found
           end,
-    {reply,
-     Res,
-     State};
+    NodeIdx = {State#state.partition, State#state.node},
+    {reply, {ok, ReqID, NodeIdx, Res}, State};
 
-handle_command({create, {ReqID, Coordinator}, Package,
-                []},
-               _Sender, #state{dbref = DBRef} = State) ->
+handle_command({create, {ReqID, Coordinator}, UUID, [Package]},
+               _Sender, State) ->
+    estatsd:increment("sniffle.packages.create"),
     I0 = statebox:new(fun sniffle_package_state:new/0),
-    I1 = statebox:modify({fun sniffle_package_state:name/2, [Package]}, I0),
-
+    I1 = statebox:modify({fun sniffle_package_state:uuid/2, [UUID]}, I0),
+    I2 = statebox:modify({fun sniffle_package_state:name/2, [Package]}, I1),
     VC0 = vclock:fresh(),
     VC = vclock:increment(Coordinator, VC0),
-    HObject = #sniffle_obj{val=I1, vclock=VC},
+    HObject = #sniffle_obj{val=I2, vclock=VC},
+    sniffle_db:put(State#state.db, <<"package">>, UUID, HObject),
+    {reply, {ok, ReqID}, State};
 
-    Is0 = dict:store(Package, HObject, State#state.packages),
-
-    eleveldb:put(DBRef, <<"#packages">>, term_to_binary(dict:fetch_keys(Is0)), []),
-    eleveldb:put(DBRef, Package, term_to_binary(HObject), []),
-
-    {reply, {ok, ReqID}, State#state{packages = Is0}};
-
-handle_command({delete, {ReqID, _Coordinator}, Package}, _Sender, #state{dbref = DBRef} = State) ->
-    Is0 = dict:erase(Package, State#state.packages),
-
-    eleveldb:put(DBRef, <<"#packages">>, term_to_binary(dict:fetch_keys(Is0)), []),
-    eleveldb:delete(DBRef, Package, []),
-
-    {reply, {ok, ReqID}, State#state{packages = Is0}};
+handle_command({delete, {ReqID, _Coordinator}, Package}, _Sender, State) ->
+    estatsd:increment("sniffle.packages.delete"),
+    sniffle_db:delete(State#state.db, <<"package">>, Package),
+    {reply, {ok, ReqID}, State};
 
 handle_command({set,
                 {ReqID, Coordinator}, Package,
                 Resources}, _Sender, State) ->
-    Hs0 = dict:update(Package,
-                      fun(#sniffle_obj{val=H0} = O) ->
-                              H1 = lists:foldr(
-                                     fun ({Resource, Value}, H) ->
-                                             statebox:modify(
-                                               {fun sniffle_package_state:set/3,
-                                                [Resource, Value]}, H)
-                                     end, H0, Resources),
-                              H2 = statebox:expire(?STATEBOX_EXPIRE, H1),
-                              sniffle_obj:update(H2, Coordinator, O)
-                      end, State#state.packages),
-
-    P = dict:fetch(Package, Hs0),
-    eleveldb:put(State#state.dbref, Package, term_to_binary(P), []),
-
-    {reply, {ok, ReqID}, State#state{packages = Hs0}};
+    case sniffle_db:get(State#state.db, <<"package">>, Package) of
+        {ok, #sniffle_obj{val=H0} = O} ->
+            estatsd:increment("sniffle.packages.write.success"),
+            H1 = statebox:modify({fun sniffle_package_state:load/1,[]}, H0),
+            H2 = lists:foldr(
+                   fun ({Resource, Value}, H) ->
+                           statebox:modify(
+                             {fun sniffle_package_state:set/3,
+                              [Resource, Value]}, H)
+                   end, H1, Resources),
+            H3 = statebox:expire(?STATEBOX_EXPIRE, H2),
+            sniffle_db:put(State#state.db, <<"package">>, Package,
+                           sniffle_obj:update(H3, Coordinator, O));
+        _ ->
+            estatsd:increment("sniffle.packages.write.failed"),
+            lager:error("[packages] tried to write to a non existing package.")
+    end,
+    {reply, {ok, ReqID}, State};
 
 handle_command(Message, _Sender, State) ->
-    ?PRINT({unhandled_command, Message}),
+    estatsd:increment("sniffle.packages.unknown_command"),
+    lager:error("[packages] Unknown command: ~p", [Message]),
     {noreply, State}.
 
 handle_handoff_command(?FOLD_REQ{foldfun=Fun, acc0=Acc0}, _Sender, State) ->
-    Acc = dict:fold(Fun, Acc0, State#state.packages),
+    Acc = sniffle_db:fold(State#state.db,
+                          <<"package">>, Fun, Acc0),
     {reply, Acc, State}.
 
 handoff_starting(_TargetNode, State) ->
+    estatsd:increment("sniffle.packages.handoff.started"),
     {true, State}.
 
 handoff_cancelled(State) ->
+    estatsd:increment("sniffle.packages.handoff.cancelled"),
     {ok, State}.
 
 handoff_finished(_TargetNode, State) ->
+    estatsd:increment("sniffle.packages.handoff.finished"),
     {ok, State}.
 
-handle_handoff_data(Data, #state{dbref = DBRef} = State) ->
+handle_handoff_data(Data, State) ->
     {Package, HObject} = binary_to_term(Data),
-    Is0 = dict:store(Package, HObject, State#state.packages),
-    eleveldb:put(DBRef, <<"#packages">>, term_to_binary(dict:fetch_keys(Is0)), []),
-    eleveldb:put(DBRef, Package, term_to_binary(HObject), []),
-    {reply, ok, State#state{packages = Is0}}.
+    sniffle_db:put(State#state.db, <<"package">>, Package, HObject),
+    {reply, ok, State}.
 
 encode_handoff_item(Package, Data) ->
     term_to_binary({Package, Data}).
 
 is_empty(State) ->
-    case dict:size(State#state.packages) of
-        0 ->
-            {true, State};
-        _ ->
-            {true, State}
-    end.
+    sniffle_db:fold(State#state.db,
+                    <<"package">>,
+                    fun (_,_, _) ->
+                            {false, State}
+                    end, {true, State}).
 
-delete(#state{dbref = DBRef} = State) ->
-    {ok, DBLoc} = application:get_env(sniffle, db_path),
-    eleveldb:close(DBRef),
-    eleveldb:destroy(DBLoc ++ "/packages/"++integer_to_list(State#state.partition)++".ldb",[]),
-    {ok, DBRef1} = eleveldb:open(DBLoc ++ "/packages/"++integer_to_list(State#state.partition)++".ldb",
-                                 [{create_if_missing, true}]),
+delete(State) ->
+    Trans = sniffle_db:fold(State#state.db,
+                            <<"package">>,
+                            fun (K,_, A) ->
+                                    [{delete, K} | A]
+                            end, []),
+    sniffle_db:transact(State#state.db, Trans),
+    {ok, State}.
 
-    {ok, State#state{packages = dict:new(), dbref = DBRef1}}.
+handle_coverage({lookup, ReqID, Name}, _KeySpaces, _Sender, State) ->
+    estatsd:increment("sniffle.vms.lookup"),
+    Res = sniffle_db:fold(State#state.db,
+                          <<"package">>,
+                          fun (_U, #sniffle_obj{val=SB}, Res) ->
+                                  V = statebox:value(SB),
+                                  case jsxd:get(<<"name">>, V) of
+                                      {ok, Name} ->
+                                          V;
+                                      _ ->
+                                          Res
+                                  end
+                          end, not_found),
+    {reply,
+     {ok, ReqID, {State#state.partition,State#state.node}, [Res]},
+     State};
 
 handle_coverage({list, ReqID}, _KeySpaces, _Sender, State) ->
+    estatsd:increment("sniffle.vms.list"),
+    List = sniffle_db:fold(State#state.db,
+                          <<"package">>,
+                           fun (K, _, L) ->
+                                   [K|L]
+                           end, []),
+
     {reply,
-     {ok, ReqID, {State#state.partition,State#state.node}, dict:fetch_keys(State#state.packages)},
+     {ok, ReqID, {State#state.partition,State#state.node}, List},
      State};
 
 handle_coverage({list, ReqID, Requirements}, _KeySpaces, _Sender, State) ->
+    estatsd:increment("sniffle.vms.select"),
     Getter = fun(#sniffle_obj{val=S0}, Resource) ->
                      jsxd:get(Resource, 0, statebox:value(S0))
              end,
-    Server = sniffle_matcher:match_dict(State#state.packages, Getter, Requirements),
+    List = sniffle_db:fold(State#state.db,
+                          <<"package">>,
+                           fun (Key, E, C) ->
+                                   case sniffle_matcher:match(E, Getter, Requirements) of
+                                       false ->
+                                           C;
+                                       Pts ->
+                                           [{Key, Pts} | C]
+                                   end
+                           end, []),
     {reply,
-     {ok, ReqID, {State#state.partition, State#state.node}, Server},
+     {ok, ReqID, {State#state.partition, State#state.node}, List},
      State};
 
 handle_coverage(_Req, _KeySpaces, _Sender, State) ->
@@ -270,24 +305,5 @@ handle_coverage(_Req, _KeySpaces, _Sender, State) ->
 handle_exit(_Pid, _Reason, State) ->
     {noreply, State}.
 
-terminate(_Reason, #state{dbref=DBRef} = _State) ->
-    eleveldb:close(DBRef),
+terminate(_Reason, _State) ->
     ok.
-
-read_ranges(DBRef) ->
-    case eleveldb:get(DBRef, <<"#packages">>, []) of
-        not_found ->
-            {[], dict:new()};
-        {ok, Bin} ->
-            Index = binary_to_term(Bin),
-            {Index,
-             lists:foldl(fun (Package, Packages0) ->
-                                 {ok, PackageBin} = eleveldb:get(DBRef, Package, []),
-                                 O = binary_to_term(PackageBin),
-                                 #sniffle_obj{val=Package0} = O,
-                                 Package1 = statebox:modify({fun sniffle_package_state:load/1, []}, Package0),
-                                 Package2 = statebox:expire(?STATEBOX_EXPIRE, Package1),
-                                 PackageObj = sniffle_obj:update(Package2, sniffle_package_vnode, O),
-                                 dict:store(Package, PackageObj, Packages0)
-                         end, dict:new(), Index)}
-    end.
