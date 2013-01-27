@@ -13,6 +13,42 @@ help() ->
     io:format("  reboot <uuid>~n"),
     io:format("  delete <uuid>~n").
 
+
+console_read(Console) ->
+    case io:get_chars("", 1) of
+        eof ->
+            console_loop(Console);
+        Data ->
+            libchunter_console_server:send(Console, list_to_binary(Data)),
+            console_read(Console)
+    end.
+
+console_loop(Console) ->
+    receive
+        {data, D} ->
+            io:format("~s", [D])
+    after
+        50 ->
+            ok
+    end,
+    console_read(Console).
+
+command(text, ["console", UUID]) ->
+    case sniffle_vm:get(list_to_binary(UUID)) of
+        {ok, VM} ->
+            {ok, HID} = jsxd:get(<<"hypervisor">>, VM),
+            {ok, H} = sniffle_hypervisor:get(HID),
+            {ok, HostBin} = jsxd:get(<<"host">>, H),
+            Host = binary_to_list(HostBin),
+            {ok, Port} = jsxd:get(<<"host">>, H),
+            {ok, Console} = libchunter:console_open(Host, Port, UUID, self()),
+            console_loop(Console);
+        _ ->
+            io:format("VM not found."),
+            error
+    end;
+
+
 command(text, ["start", UUID]) ->
     case sniffle_vm:start(list_to_binary(UUID)) of
         ok ->
