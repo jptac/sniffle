@@ -40,7 +40,7 @@ command(text, ["console", UUID]) ->
             {ok, H} = sniffle_hypervisor:get(HID),
             {ok, HostBin} = jsxd:get(<<"host">>, H),
             Host = binary_to_list(HostBin),
-            {ok, Port} = jsxd:get(<<"host">>, H),
+            {ok, Port} = jsxd:get(<<"port">>, H),
             {ok, Console} = libchunter:console_open(Host, Port, UUID, self()),
             console_loop(Console);
         _ ->
