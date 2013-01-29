@@ -61,7 +61,7 @@ claim_ip(Iprange) ->
             not_found;
         {ok, Obj} ->
             case {jsxd:get(<<"free">>, [], Obj), jsxd:get(<<"current">>, 0, Obj), jsxd:get(<<"last">>, 0, Obj)} of
-                {[], FoundIP, Last} when FoundIP >= Last ->
+                {[], FoundIP, Last} when FoundIP > Last ->
                     no_ips_left;
                 {[], FoundIP, _} ->
                     do_write(Iprange, claim_ip, FoundIP);
