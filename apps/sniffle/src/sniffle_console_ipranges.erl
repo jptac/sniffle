@@ -57,7 +57,7 @@ command(_, C) ->
 print(N) ->
     io:format("~-36s ~10s ~8s " ++
                   "~15s ~15s ~15s " ++
-                  "~15s ~15s ~-4p ~n",
+                  "~15s ~15s ~-4b ~n",
               [jsxd:get(<<"uuid">>, <<"-">>, N),
                jsxd:get(<<"name">>, <<"-">>, N),
                jsxd:get(<<"tag">>, <<"-">>, N),
