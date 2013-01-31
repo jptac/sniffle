@@ -33,21 +33,7 @@ command(text, ["get", ID]) ->
     io:format("------------------ ---------------- ------------------ ------------- -------------~n", []),
     case sniffle_hypervisor:get(list_to_binary(ID)) of
         {ok, H} ->
-            {ok, Host} = jsxd:get(<<"host">>, H),
-            {ok, Port} = jsxd:get(<<"port">>, H),
-            State = case libchunter:ping(binary_to_list(Host), Port) of
-                        pong ->
-                            <<"ok">>;
-                        _ ->
-                            <<"disconnected">>
-                    end,
-            Mem = io_lib:format("~p/~p MB",
-                                [jsxd:get(<<"resources.provisioned-memory">>, 0, H),
-                                 jsxd:get(<<"resources.total-memory">>, 0, H)]),
-            io:format("~-18s ~-16s ~15s ~14s ~-14s~n",
-                      [ID, Host, Mem,
-                       jsxd:get(<<"version">>, <<"-">>, H),
-                       State]),
+            print(H),
             ok;
         _ ->
             error
@@ -67,27 +53,13 @@ command(json, ["list"]) ->
     end;
 
 command(text, ["list"]) ->
-    io:format("Hypervisor         IP               Memory             Version       State~n"),
+    io:format("Hypervisor         IP               Memory             State         Version~n"),
     io:format("------------------ ---------------- ------------------ ------------- -------------~n", []),
     case sniffle_hypervisor:list() of
         {ok, Hs} ->
             lists:map(fun (ID) ->
                               {ok, H} = sniffle_hypervisor:get(ID),
-                              {ok, Host} = jsxd:get(<<"host">>, H),
-                              {ok, Port} = jsxd:get(<<"port">>, H),
-                              State = case libchunter:ping(binary_to_list(Host), Port) of
-                                          pong ->
-                                              <<"ok">>;
-                                          _ ->
-                                              <<"disconnected">>
-                                      end,
-                              Mem = io_lib:format("~p/~p",
-                                                  [jsxd:get(<<"resources.provisioned-memory">>, 0, H),
-                                                   jsxd:get(<<"resources.total-memory">>, 0, H)]),
-                              io:format("~-18s ~16s ~18s ~14s ~-14s~n",
-                                        [ID, Host, Mem,
-                                         jsxd:get(<<"version">>, <<"-">>, H),
-                                         State])
+                              print(H)
                       end, Hs);
         _ ->
             []
@@ -96,3 +68,21 @@ command(text, ["list"]) ->
 command(_, C) ->
     io:format("Unknown parameters: ~p", [C]),
     error.
+
+
+print(H) ->
+    {ok, ID} = jsxd:get(<<"name">>, H),
+    {ok, Host} = jsxd:get(<<"host">>, H),
+    {ok, Port} = jsxd:get(<<"port">>, H),
+    State = case libchunter:ping(binary_to_list(Host), Port) of
+                pong ->
+                    <<"ok">>;
+                _ ->
+                    <<"disconnected">>
+            end,
+    Mem = io_lib:format("~p/~p",
+                        [jsxd:get(<<"resources.provisioned-memory">>, 0, H),
+                         jsxd:get(<<"resources.total-memory">>, 0, H)]),
+    io:format("~-18s ~16s ~18s ~-14s ~s~n",
+              [ID, Host, Mem, State,
+               jsxd:get(<<"version">>, <<"-">>, H)]).

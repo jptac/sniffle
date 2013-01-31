@@ -27,18 +27,7 @@ command(text, ["get", ID]) ->
                   "--------------- --------------- ----~n"),
     case sniffle_iprange:get(list_to_binary(ID)) of
         {ok, N} ->
-            io:format("~-36s ~10s ~8s " ++
-                          "~15s ~15s ~15s " ++
-                          "~15s ~15s ~-4s ~n",
-                      [jsxd:get(<<"uuid">>, <<"-">>, N),
-                       jsxd:get(<<"name">>, <<"-">>, N),
-                       jsxd:get(<<"tag">>, <<"-">>, N),
-                       sniffle_iprange_state:to_bin(jsxd:get(<<"first">>, 0, N)),
-                       sniffle_iprange_state:to_bin(jsxd:get(<<"current">>, 0, N)),
-                       sniffle_iprange_state:to_bin(jsxd:get(<<"last">>, 0, N)),
-                       sniffle_iprange_state:to_bin(jsxd:get(<<"netmask">>, 0, N)),
-                       sniffle_iprange_state:to_bin(jsxd:get(<<"gateway">>, 0, N)),
-                       jsxd:get(<<"vlan">>, 0, N)]),
+            print(N),
             ok;
         _ ->
             error
@@ -55,18 +44,7 @@ command(text, ["list"]) ->
         {ok, Hs} ->
             lists:map(fun (ID) ->
                               {ok, N} = sniffle_iprange:get(ID),
-                              io:format("~-36s ~10s ~8s " ++
-                                            "~15s ~15s ~15s " ++
-                                            "~15s ~15s ~-4s ~n",
-                                        [jsxd:get(<<"uuid">>, <<"-">>, N),
-                                         jsxd:get(<<"name">>, <<"-">>, N),
-                                         jsxd:get(<<"tag">>, <<"-">>, N),
-                                         sniffle_iprange_state:to_bin(jsxd:get(<<"first">>, 0, N)),
-                                         sniffle_iprange_state:to_bin(jsxd:get(<<"current">>, 0, N)),
-                                         sniffle_iprange_state:to_bin(jsxd:get(<<"last">>, 0, N)),
-                                         sniffle_iprange_state:to_bin(jsxd:get(<<"netmask">>, 0, N)),
-                                         sniffle_iprange_state:to_bin(jsxd:get(<<"gateway">>, 0, N)),
-                                         jsxd:get(<<"vlan">>, 0, N)])
+                              print(N)
                       end, Hs);
         _ ->
             []
@@ -75,3 +53,17 @@ command(text, ["list"]) ->
 command(_, C) ->
     io:format("Unknown parameters: ~p", [C]),
     error.
+
+print(N) ->
+    io:format("~-36s ~10s ~8s " ++
+                  "~15s ~15s ~15s " ++
+                  "~15s ~15s ~-4p ~n",
+              [jsxd:get(<<"uuid">>, <<"-">>, N),
+               jsxd:get(<<"name">>, <<"-">>, N),
+               jsxd:get(<<"tag">>, <<"-">>, N),
+               sniffle_iprange_state:to_bin(jsxd:get(<<"first">>, 0, N)),
+               sniffle_iprange_state:to_bin(jsxd:get(<<"current">>, 0, N)),
+               sniffle_iprange_state:to_bin(jsxd:get(<<"last">>, 0, N)),
+               sniffle_iprange_state:to_bin(jsxd:get(<<"netmask">>, 0, N)),
+               sniffle_iprange_state:to_bin(jsxd:get(<<"gateway">>, 0, N)),
+               jsxd:get(<<"vlan">>, 0, N)]).
