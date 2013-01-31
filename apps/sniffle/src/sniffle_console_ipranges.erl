@@ -54,7 +54,7 @@ command(text, ["list"]) ->
     case sniffle_iprange:list() of
         {ok, Hs} ->
             lists:map(fun (ID) ->
-                              {ok, N} = sniffle_iprange:get(list_to_binary(ID)),
+                              {ok, N} = sniffle_iprange:get(ID),
                               io:format("~-36s ~10s ~8s " ++
                                             "~15s ~15s ~15s " ++
                                             "~15s ~15s ~-4s ~n",

@@ -84,7 +84,7 @@ command(text, ["list"]) ->
                               Mem = io_lib:format("~p/~p",
                                                   [jsxd:get(<<"resources.provisioned-memory">>, 0, H),
                                                    jsxd:get(<<"resources.total-memory">>, 0, H)]),
-                              io:format("~-18s ~-16s ~15s  ~14s ~-14s~n",
+                              io:format("~-18s ~16s ~18s ~14s ~-14s~n",
                                         [ID, Host, Mem,
                                          jsxd:get(<<"version">>, <<"-">>, H),
                                          State])
