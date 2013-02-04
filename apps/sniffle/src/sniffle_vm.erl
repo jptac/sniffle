@@ -43,7 +43,7 @@ update(Vm, Package, Config) ->
                     case jsxd:get([<<"resources">>, <<"free-memory">>], HypervisorObj) of
                         {ok, Ram} when
                               Ram > (NewRam - OrigRam) ->
-                            libchunter:update_machine(Host, Port, Vm, Package, Config);
+                            libchunter:update_machine(Host, Port, Vm, P, Config);
                         _ ->
                             {error, not_enough_resources}
                     end;
