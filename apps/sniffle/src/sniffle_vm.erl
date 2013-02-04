@@ -27,7 +27,6 @@
 
 -ignore_xref([logs/1]).
 
-
 update(Vm, Package, Config) ->
     case sniffle_vm:get(Vm) of
         {ok, V} ->
@@ -37,19 +36,24 @@ update(Vm, Package, Config) ->
             {ok, HostB} = jsxd:get(<<"host">>, HypervisorObj),
             Host = binary_to_list(HostB),
             {ok, OrigRam} = jsxd:get([<<"config">>, <<"ram">>], V),
-            case sniffle_package:get(Package) of
-                {ok, P} ->
-                    {ok, NewRam} = jsxd:get(<<"ram">>, P),
-                    case jsxd:get([<<"resources">>, <<"free-memory">>], HypervisorObj) of
-                        {ok, Ram} when
-                              Ram > (NewRam - OrigRam) ->
-                            sniffle_vm:set(Vm, [<<"package">>, Package]),
-                            libchunter:update_machine(Host, Port, Vm, P, Config);
-                        _ ->
-                            {error, not_enough_resources}
-                    end;
-                E2 ->
-                    E2
+            case Package of
+                undefiend ->
+                    libchunter:update_machine(Host, Port, Vm, [], Config);
+                _ ->
+                    case sniffle_package:get(Package) of
+                        {ok, P} ->
+                            {ok, NewRam} = jsxd:get(<<"ram">>, P),
+                            case jsxd:get([<<"resources">>, <<"free-memory">>], HypervisorObj) of
+                                {ok, Ram} when
+                                      Ram > (NewRam - OrigRam) ->
+                                    set(Vm, <<"package">>, Package),
+                                    libchunter:update_machine(Host, Port, Vm, P, Config);
+                                _ ->
+                                    {error, not_enough_resources}
+                            end;
+                        E2 ->
+                            E2
+                    end
             end;
         E ->
             E
