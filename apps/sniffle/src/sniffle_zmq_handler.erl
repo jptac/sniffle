@@ -55,10 +55,18 @@ message({vm, snapshot, rollback, Vm, UUID}, State) when
 
 message({vm, create, Package, Dataset, Config}, State) when
       is_binary(Package),
-      is_list(Config) ,
+      is_list(Config),
       is_binary(Dataset) ->
     {reply,
      sniffle_vm:create(Package, Dataset, Config),
+     State};
+
+message({vm, update, Vm, Package, Config}, State) when
+      is_binary(Vm),
+      is_binary(Package),
+      is_list(Config) ->
+    {reply,
+     sniffle_vm:update(Vm, Package, Config),
      State};
 
 message({vm, unregister, Vm}, State) when
