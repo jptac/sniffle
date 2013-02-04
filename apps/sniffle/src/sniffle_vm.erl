@@ -36,7 +36,7 @@ update(Vm, Package, Config) ->
             {ok, Port} = jsxd:get(<<"port">>, HypervisorObj),
             {ok, HostB} = jsxd:get(<<"host">>, HypervisorObj),
             Host = binary_to_list(HostB),
-            {ok, OrigRam} = jsxd:get(<<"ram">>, V),
+            {ok, OrigRam} = jsxd:get([<<"config">>, <<"ram">>], V),
             case sniffle_package:get(Package) of
                 {ok, P} ->
                     {ok, NewRam} = jsxd:get(<<"ram">>, P),
