@@ -29,15 +29,11 @@ command(json, ["get", UUID]) ->
     end;
 
 command(text, ["get", ID]) ->
-    io:format("Name            Ram       Quota   CPU Cap~n"),
-    io:format("--------------- --------- ------- -------~n", []),
+    io:format("UUID                                 Name            Ram       Quota   CPU Cap~n"),
+    io:format("------------------------------------ --------------- --------- ------- -------~n", []),
     case sniffle_package:get(list_to_binary(ID)) of
         {ok, P} ->
-            io:format("~-15s ~6B MB ~4B GB ~5B%~n",
-                      [ID,
-                       jsxd:get(<<"ram">>, 0, P),
-                       jsxd:get(<<"quota">>, 0, P),
-                       jsxd:get(<<"cpu_cap">>, 0, P)]),
+            print(P),
             ok;
         _ ->
             error
@@ -57,17 +53,13 @@ command(json, ["list"]) ->
     end;
 
 command(text, ["list"]) ->
-    io:format("Name            Ram       Quota   CPU Cap~n"),
-    io:format("--------------- --------- ------- -------~n", []),
+    io:format("UUID                                 Name            Ram       Quota   CPU Cap~n"),
+    io:format("------------------------------------ --------------- --------- ------- -------~n", []),
     case sniffle_package:list() of
         {ok, Ps} ->
             lists:map(fun (ID) ->
                               {ok, P} = sniffle_package:get(ID),
-                              io:format("~-15s ~6B MB ~4B GB ~5B%~n",
-                                        [ID,
-                                         jsxd:get(<<"ram">>, 0, P),
-                                         jsxd:get(<<"quota">>, 0, P),
-                                         jsxd:get(<<"cpu_cap">>, 0, P)])
+                              print(P)
                       end, Ps);
         _ ->
             []
@@ -76,3 +68,11 @@ command(text, ["list"]) ->
 command(_, C) ->
     io:format("Unknown parameters: ~p", [C]),
     error.
+
+print(P) ->
+    io:format("~36s ~-15s ~6B MB ~4B GB ~5B%~n",
+              [jsxd:get(<<"uuid">>, 0, P),
+               jsxd:get(<<"name">>, 0, P),
+               jsxd:get(<<"ram">>, 0, P),
+               jsxd:get(<<"quota">>, 0, P),
+               jsxd:get(<<"cpu_cap">>, 0, P)]).
