@@ -1,3 +1,4 @@
+*.version
 apps/sniffle/src/sniffle_version.hrl
 rel/pkg/packlist
 rel/pkg/*.tgz

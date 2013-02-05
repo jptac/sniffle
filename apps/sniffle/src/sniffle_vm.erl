@@ -36,6 +36,7 @@ update(Vm, Package, Config) ->
             {ok, HostB} = jsxd:get(<<"host">>, HypervisorObj),
             Host = binary_to_list(HostB),
             {ok, OrigRam} = jsxd:get([<<"config">>, <<"ram">>], V),
+            OrigPkg = jsxd:get(<<"package">>, <<"custom">>, V),
             case Package of
                 undefiend ->
                     libchunter:update_machine(Host, Port, Vm, [], Config);
@@ -47,6 +48,9 @@ update(Vm, Package, Config) ->
                                 {ok, Ram} when
                                       Ram > (NewRam - OrigRam) ->
                                     set(Vm, <<"package">>, Package),
+                                    log(Vm, <<"Updating VM from package '",
+                                              OrigPkg/binary, "' to '",
+                                              Package/binary, "'.">>),
                                     libchunter:update_machine(Host, Port, Vm, P, Config);
                                 _ ->
                                     {error, not_enough_resources}
