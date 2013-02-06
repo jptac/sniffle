@@ -12,7 +12,8 @@
          delete/3,
          lookup/3,
          claim_ip/4,
-         release_ip/4
+         release_ip/4,
+         set/4
         ]).
 
 -export([start_vnode/1,
@@ -42,6 +43,7 @@
               lookup/3,
               delete/3,
               get/3,
+              set/4,
               claim_ip/4,
               list/2,
               list/3,
@@ -133,6 +135,12 @@ release_ip(Preflist, ReqID, Iprange, IP) ->
                                    {fsm, undefined, self()},
                                    ?MASTER).
 
+set(Preflist, ReqID, Hypervisor, Data) ->
+    riak_core_vnode_master:command(Preflist,
+                                   {set, ReqID, Hypervisor, Data},
+                                   {fsm, undefined, self()},
+                                   ?MASTER).
+
 %%%===================================================================
 %%% VNode
 %%%===================================================================
@@ -221,7 +229,30 @@ handle_command({ip, claim,
                                  jsxd:get(<<"gateway">>, 0, V1)}}, State};
         _ ->
             estatsd:increment("sniffle.ipranges.claim.failed"),
-            {reply, {ok, ReqID, failed}, State}
+            {reply, {ok, ReqID, not_found}, State}
+    end;
+
+handle_command({set,
+                {ReqID, Coordinator}, Iprange,
+                Resources}, _Sender, State) ->
+    case sniffle_db:get(State#state.db, <<"iprange">>, Iprange) of
+        {ok, #sniffle_obj{val=H0} = O} ->
+            estatsd:increment("sniffle.iprange.write.success"),
+            H1 = statebox:modify({fun sniffle_iprange_state:load/1,[]}, H0),
+            H2 = lists:foldr(
+                   fun ({Resource, Value}, H) ->
+                           statebox:modify(
+                             {fun sniffle_iprange_state:set/3,
+                              [Resource, Value]}, H)
+                   end, H1, Resources),
+            H3 = statebox:expire(?STATEBOX_EXPIRE, H2),
+            sniffle_db:put(State#state.db, <<"iprange">>, Iprange,
+                           sniffle_obj:update(H3, Coordinator, O)),
+            {reply, {ok, ReqID}, State};
+        R ->
+            estatsd:increment("sniffle.iprange.write.failed"),
+            lager:error("[hypervisors] tried to write to a non existing hypervisor: ~p", [R]),
+            {reply, {ok, ReqID, not_found}, State}
     end;
 
 handle_command({ip, release,
@@ -234,12 +265,13 @@ handle_command({ip, release,
             H2 = statebox:modify({fun sniffle_iprange_state:release_ip/2,[IP]}, H1),
             H3 = statebox:expire(?STATEBOX_EXPIRE, H2),
             sniffle_db:put(State#state.db, <<"iprange">>, Iprange,
-                           sniffle_obj:update(H3, Coordinator, O));
+                           sniffle_obj:update(H3, Coordinator, O)),
+            {reply, {ok, ReqID}, State};
+
         _ ->
             estatsd:increment("sniffle.ipranges.release.failed"),
-            ok
-    end,
-    {reply, {ok, ReqID}, State};
+            {reply, {ok, ReqID, not_found}, State}
+    end;
 
 handle_command(Message, _Sender, State) ->
     estatsd:increment("sniffle.ipranges.unknown_command"),

@@ -106,8 +106,7 @@ message({vm, reboot, Vm}, State) when
      State};
 
 message({vm, set, Vm, Attribute, Value}, State) when
-      is_binary(Vm),
-      is_binary(Attribute) ->
+      is_binary(Vm) ->
     {reply,
      sniffle_vm:set(Vm, Attribute, Value),
      State};
@@ -202,8 +201,7 @@ message({dataset, get, Dataset}, State) when
      State};
 
 message({dataset, set, Dataset, Attribute, Value}, State) when
-      is_binary(Dataset),
-      is_binary(Attribute) ->
+      is_binary(Dataset) ->
     {reply,
      sniffle_dataset:set(Dataset, Attribute, Value),
      State};
@@ -275,6 +273,20 @@ message({iprange, list, Requirements}, State) when
      sniffle_iprange:list(Requirements),
      State};
 
+message({iprange, set, Iprange, Attribute, Value}, State) when
+      is_binary(Iprange) ->
+    {reply,
+     sniffle_iprange:set(Iprange, Attribute, Value),
+     State};
+
+message({iprange, set, Iprange, Attributes}, State) when
+      is_binary(Iprange),
+      is_list(Attributes) ->
+    {reply,
+     sniffle_iprange:set(Iprange, Attributes),
+     State};
+
+
 %%%===================================================================
 %%%  PACKAGE Functions
 %%%===================================================================
@@ -298,8 +310,7 @@ message({package, get, Package}, State) when
      State};
 
 message({package, set, Package, Attribute, Value}, State) when
-      is_binary(Package),
-      is_binary(Attribute) ->
+      is_binary(Package) ->
     {reply,
      sniffle_package:set(Package, Attribute, Value),
      State};

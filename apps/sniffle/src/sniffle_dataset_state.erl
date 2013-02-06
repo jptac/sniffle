@@ -32,5 +32,8 @@ new() ->
 name(Name, Dataset) ->
     jsxd:set(<<"name">>, Name, Dataset).
 
+set(Attribute, delete, Dataset) ->
+    jsxd:delete(Attribute, Dataset);
+
 set(Attribute, Value, Dataset) ->
     jsxd:set(Attribute, Value, Dataset).
