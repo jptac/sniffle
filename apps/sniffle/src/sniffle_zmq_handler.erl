@@ -156,8 +156,7 @@ message({hypervisor, get, Hypervisor}, State) when
      State};
 
 message({hypervisor, set, Hypervisor, Resource, Value}, State) when
-      is_binary(Hypervisor),
-      is_binary(Resource) ->
+      is_binary(Hypervisor) ->
     {reply,
      sniffle_hypervisor:set(Hypervisor, Resource, Value),
      State};

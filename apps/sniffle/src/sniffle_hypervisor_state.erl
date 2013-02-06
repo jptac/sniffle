@@ -33,5 +33,8 @@ host(Host, Hypervisor) ->
 port(Port, Hypervisor) ->
     jsxd:set(<<"port">>, Port, Hypervisor).
 
+set(Resource, delete, Hypervisor) ->
+    jsxd:delete(Resource, Hypervisor);
+
 set(Resource, Value, Hypervisor) ->
     jsxd:set(Resource, Value, Hypervisor).
