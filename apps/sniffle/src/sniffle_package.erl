@@ -35,7 +35,7 @@ create(Package) ->
     end.
 
 delete(Package) ->
-    do_update(Package, delete).
+    do_write(Package, delete).
 
 get(Package) ->
     sniffle_entity_read_fsm:start(
@@ -53,33 +53,16 @@ list(Requirements) ->
       list, Requirements).
 
 set(Package, Attribute, Value) ->
-    do_update(Package, set, [{Attribute, Value}]).
+    set(Package, [{Attribute, Value}]).
 
 
 set(Package, Attributes) ->
-    do_update(Package, set, Attributes).
+    do_write(Package, set, Attributes).
 
 
 %%%===================================================================
 %%% Internal Functions
 %%%===================================================================
-
-
-do_update(Package, Op) ->
-    case sniffle_package:get(Package) of
-        {ok, not_found} ->
-            not_found;
-        {ok, _RangeObj} ->
-            do_write(Package, Op)
-    end.
-
-do_update(Package, Op, Val) ->
-    case sniffle_package:get(Package) of
-        {ok, not_found} ->
-            not_found;
-        {ok, _RangeObj} ->
-            do_write(Package, Op, Val)
-    end.
 
 do_write(Package, Op) ->
     sniffle_entity_write_fsm:write({sniffle_package_vnode, sniffle_package}, Package, Op).

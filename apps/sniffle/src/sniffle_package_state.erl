@@ -36,5 +36,8 @@ name(Name, Package) ->
 uuid(UUID, Package) ->
     jsxd:set(<<"uuid">>, UUID, Package).
 
+set(Attribute, delete, Package) ->
+    jsxd:delete(Attribute, Package);
+
 set(Attribute, Value, Package) ->
     jsxd:set(Attribute, Value, Package).
