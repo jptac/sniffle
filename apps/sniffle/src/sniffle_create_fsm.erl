@@ -58,6 +58,8 @@
           hypervisor
          }).
 
+
+-define(TESTPHRASE, "I am fully ware that disabling the memory check is dangerouse. I will not report any problems with it. I know exactly what I am doing. If I run in a problem I will write an at least 1000 (thousand) word long apology letter to Licenser and realize that I will be made public so everyone can laugh at me. The fourty second prime number is: 181. I will not compain that this option doesn't work since when I am not able to set it correctly I am not understanding the system well enough to make the decision to set it in the first place.\n").
 %%%===================================================================
 %%% API
 %%%===================================================================
@@ -212,11 +214,17 @@ get_server(_Event, State = #state{
         {ok, Permissions} ->
             Conditions0 = jsxd:get(<<"requirements">>, [], Package),
             Conditions1 = Conditions0 ++ jsxd:get(<<"requirements">>, [], Dataset),
-            Conditions = [{must, 'allowed', Permission, Permissions},
+            Conditions2 = [{must, 'allowed', Permission, Permissions},
                           {must, 'subset', <<"networks">>, NicTags},
-                          {must, 'element', <<"virtualisation">>, Type},
-                          {must, '>=', <<"resources.free-memory">>, Ram}] ++
+                          {must, 'element', <<"virtualisation">>, Type}] ++
                 lists:map(fun(C) -> make_condition(C, Permissions) end, Conditions1),
+            TestPhrase = ?TESTPHRASE ++ os:cmd("uname -a | digest -a md5"),
+            Conditions = case application:get_env(sniffle, i_do_not_care_about_overcomissioning_memory_even_so_licenser_told_me_otherwise) of
+                             {ok, TestPhrase} ->
+                                 Conditions2;
+                             _ ->
+                                 Conditions2 ++ [{must, '>=', <<"resources.free-memory">>, Ram}]
+                         end,
             CondB = list_to_binary(io_lib:format("~p", [Conditions])),
             sniffle_vm:log(UUID, <<"Finding hypervisor ", CondB/binary>>),
             {ok, [{HypervisorID, _} | _]} = sniffle_hypervisor:list(Conditions),
