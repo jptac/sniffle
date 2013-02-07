@@ -9,12 +9,12 @@ help() ->
     io:format("  delete <uuid>~n").
 
 command(text, ["delete", ID]) ->
-    case sniffle_package:delete(list_to_binary(ID)) of
+    case sniffle_dataset:delete(list_to_binary(ID)) of
         ok ->
-            io:format("Package ~s delete.~n", [ID]),
+            io:format("Dataset ~s delete.~n", [ID]),
             ok;
         E ->
-            io:format("Package ~s not deleted (~p).~n", [ID, E]),
+            io:format("Dataset ~s not deleted (~p).~n", [ID, E]),
             ok
     end;
 
@@ -29,16 +29,10 @@ command(json, ["get", UUID]) ->
     end;
 
 command(text, ["get", ID]) ->
-    io:format("UUID                                 OS      Name            Version  Desc~n"),
-    io:format("------------------------------------ ------- --------------- -------- --------------~n", []),
+    header(),
     case sniffle_dataset:get(list_to_binary(ID)) of
         {ok, D} ->
-            io:format("~36s ~7s ~15s ~8s ~s~n",
-                      [ID,
-                       jsxd:get(<<"os">>, <<"-">>, D),
-                       jsxd:get(<<"name">>, <<"-">>, D),
-                       jsxd:get(<<"version">>, <<"-">>, D),
-                       jsxd:get(<<"description">>, <<"-">>, D)]),
+            print(D),
             ok;
         _ ->
             error
@@ -58,18 +52,12 @@ command(json, ["list"]) ->
     end;
 
 command(text, ["list"]) ->
-    io:format("UUID                                 OS      Name            Version  Desc~n"),
-    io:format("------------------------------------ ------- --------------- -------- --------------~n", []),
+    header(),
     case sniffle_dataset:list() of
         {ok, Ds} ->
             lists:map(fun (ID) ->
                               {ok, D} = sniffle_dataset:get(ID),
-                              io:format("~36s ~7s ~15s ~8s ~s~n",
-                                        [ID,
-                                         jsxd:get(<<"os">>, <<"-">>, D),
-                                         jsxd:get(<<"name">>, <<"-">>, D),
-                                         jsxd:get(<<"version">>, <<"-">>, D),
-                                         jsxd:get(<<"description">>, <<"-">>, D)])
+                              print(D)
                       end, Ds);
         _ ->
             []
@@ -78,3 +66,15 @@ command(text, ["list"]) ->
 command(_, C) ->
     io:format("Unknown parameters: ~p", [C]),
     error.
+
+header() ->
+    io:format("UUID                                 OS      Name            Version  Desc~n"),
+    io:format("------------------------------------ ------- --------------- -------- --------------~n", []).
+
+print(D) ->
+    io:format("~36s ~7s ~15s ~8s ~s~n",
+              [jsxd:get(<<"dataset">>, <<"-">>, D),
+               jsxd:get(<<"os">>, <<"-">>, D),
+               jsxd:get(<<"name">>, <<"-">>, D),
+               jsxd:get(<<"version">>, <<"-">>, D),
+               jsxd:get(<<"description">>, <<"-">>, D)]).
