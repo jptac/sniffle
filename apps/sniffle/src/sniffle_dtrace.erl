@@ -31,7 +31,7 @@ add(Name, Script) ->
 -spec do_write(VM::fifo:uuid(), Op::atom(), Val::term()) -> not_found | ok.
 
 do_write(VM, Op, Val) ->
-    case sniffle_entity_write_fsm:write({sniffle_vm_vnode, sniffle_vm}, VM, Op, Val) of
+    case sniffle_entity_write_fsm:write({sniffle_dtrace_vnode, sniffle_dtrace}, VM, Op, Val) of
         {ok, not_found} ->
             not_found;
         R ->
