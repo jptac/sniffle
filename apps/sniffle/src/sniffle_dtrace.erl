@@ -39,7 +39,7 @@ delete(UUID) ->
 -spec do_write(VM::fifo:uuid(), Op::atom()) -> not_found | ok.
 
 do_write(VM, Op) ->
-    case sniffle_entity_write_fsm:write({sniffle_vm_vnode, sniffle_vm}, VM, Op) of
+    case sniffle_entity_write_fsm:write({sniffle_dtrace_vnode, sniffle_dtrace}, VM, Op) of
         {ok, not_found} ->
             not_found;
         R ->
