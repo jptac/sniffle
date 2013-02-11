@@ -63,7 +63,6 @@ message({vm, create, Package, Dataset, Config}, State) when
 
 message({vm, update, Vm, Package, Config}, State) when
       is_binary(Vm),
-      is_binary(Package),
       is_list(Config) ->
     {reply,
      sniffle_vm:update(Vm, Package, Config),
