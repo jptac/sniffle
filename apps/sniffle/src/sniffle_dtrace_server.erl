@@ -20,7 +20,9 @@
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
          terminate/2, code_change/3]).
 
--ignore_xref([start_link/1]).
+-ignore_xref([
+              start_link/1,
+             run/3]).
 
 -record(state, {data = [],
                 servers,
@@ -82,6 +84,7 @@ init([ID, Servers, Listener]) ->
     Runners = [libchunter_dtrace_server:dtrace(Host, Port, Script)
                || {Host, Port} <- Servers1],
     erlang:monitor(process, Listener),
+    timer:send_interval(1000, tick),
     {ok, #state{runners = Runners, servers = Servers1, listeners = [Listener]}}.
 
 %%--------------------------------------------------------------------
@@ -131,6 +134,16 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_info(tick, State) ->
+    lists:foldr(fun(S, Data) ->
+                        case libchunter_dtrace_server:walk(S) of
+                            ok ->
+                                Data;
+                            {ok, R} ->
+                                jsxd:merge(fun merge_fn/3, Data, to_jsxd(R))
+                        end
+                end, [], State#state.runners),
+    {noreply, State};
 handle_info({'DOWN', _Ref, process, _Pid, _Reason}, State = #state{ listeners = []}) ->
     {stop, normal, State};
 
@@ -172,3 +185,30 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+
+merge_fn(_, A, B) when is_integer(A),
+                       is_integer(B) ->
+    A + B;
+
+merge_fn(_, A, B) when is_list(A),
+                       is_list(B) ->
+    jsxd:merge(fun merge_fn/3, A, B);
+
+merge_fn(_, A, _B) when is_list(A) ->
+    A;
+
+merge_fn(_, _A, B) when is_list(B) ->
+    B.
+
+to_jsxd(Data) ->
+    lists:foldr(fun ({_, Path, Vals}, Obj) ->
+                        BPath = lists:map(fun(B) when is_binary(B) ->
+                                                  B;
+                                             (N) when is_number(N) ->
+                                                  list_to_binary(integer_to_list(N))
+                                          end, Path),
+                        lists:foldr(fun({{Start, End}, Value}, Obj1) ->
+                                            B = list_to_binary(io_lib:format("~p-~p", [Start, End])),
+                                            jsxd:set(BPath ++ [B], Value, Obj1)
+                                    end, Obj, Vals)
+                end, [], Data).
