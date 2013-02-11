@@ -38,7 +38,7 @@ update(Vm, Package, Config) ->
             {ok, OrigRam} = jsxd:get([<<"config">>, <<"ram">>], V),
             OrigPkg = jsxd:get(<<"package">>, <<"custom">>, V),
             case Package of
-                undefiend ->
+                undefined ->
                     libchunter:update_machine(Host, Port, Vm, [], Config);
                 _ ->
                     case sniffle_package:get(Package) of
