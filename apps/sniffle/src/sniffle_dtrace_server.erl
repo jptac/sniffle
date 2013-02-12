@@ -27,6 +27,7 @@
 
 -record(state, {data = [],
                 servers,
+                script,
                 runners,
                 listeners = []}).
 
@@ -82,11 +83,14 @@ init([ID, Servers, Listener]) ->
     Servers1 = [{binary_to_list(jsxd:get(<<"host">>, <<"">>, S1)),
                  jsxd:get(<<"port">>, 4200, S1)}
                 || {ok, S1} <- [sniffle_hypervisor:get(S0) || S0 <- Servers]],
-    Runners = [ L || {ok, L} <- [libchunter_dtrace_server:dtrace(Host, Port, Script)
+    Runners = [ {L, Host, Port} || {{ok, L}, Host, Port} <- [{libchunter_dtrace_server:dtrace(Host, Port, Script), Host, Port}
                                  || {Host, Port} <- Servers1]],
     erlang:monitor(process, Listener),
     timer:send_interval(1000, tick),
-    {ok, #state{runners = Runners, servers = Servers1, listeners = [Listener]}}.
+    {ok, #state{runners = Runners,
+                servers = Servers1,
+                listeners = [Listener],
+                script = Script}}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -136,18 +140,21 @@ handle_cast(_Msg, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_info(tick, State) ->
-    Composed = lists:foldr(fun(S, Data) ->
+    {Composed, Runners} = lists:foldr(fun({S, Host, Port} = D, {Data, RunA}) ->
                                    case libchunter_dtrace_server:walk(S) of
                                        ok ->
-                                           Data;
+                                           {Data, [D | RunA]};
                                        {ok, R} ->
-                                           jsxd:merge(fun merge_fn/3, Data, to_jsxd(R));
+                                           {jsxd:merge(fun merge_fn/3, Data, to_jsxd(R)), [D | RunA]};
                                        E ->
-                                           lager:error("DTrace host (~p) died with: ~p.", [S, E])
+                                           lager:error("DTrace host (~p) died with: ~p.", [S, E]),
+                                           libchunter_dtrace_server:close(S),
+                                           {ok, S1} = libchunter_dtrace_server:dtrace(Host, Port, State#state.script),
+                                           {Data, [{S1, Host, Port} | RunA]}
                                    end
                            end, [], State#state.runners),
     [Pid ! {dtrace, Composed} || Pid <- State#state.listeners],
-    {noreply, State};
+    {noreply, State#state{runners = Runners}};
 handle_info({'DOWN', _Ref, process, _Pid, _Reason}, State = #state{ listeners = []}) ->
     {stop, normal, State};
 
