@@ -169,8 +169,8 @@ handle_info(_Info, State) ->
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
-terminate(_Reason, #state{servers = Servers} = _State) ->
-    [ libchunter_dtrace_server:close(S) || S <- Servers],
+terminate(_Reason, #state{runners = Runners} = _State) ->
+    [ libchunter_dtrace_server:close(R) || R <- Runners],
     ok.
 
 %%--------------------------------------------------------------------
