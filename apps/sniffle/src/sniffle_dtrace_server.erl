@@ -22,7 +22,8 @@
 
 -ignore_xref([
               start_link/1,
-             run/3]).
+              run/3
+             ]).
 
 -record(state, {data = [],
                 servers,
@@ -135,14 +136,15 @@ handle_cast(_Msg, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_info(tick, State) ->
-    lists:foldr(fun(S, Data) ->
-                        case libchunter_dtrace_server:walk(S) of
-                            ok ->
-                                Data;
-                            {ok, R} ->
-                                jsxd:merge(fun merge_fn/3, Data, to_jsxd(R))
-                        end
-                end, [], State#state.runners),
+    Composed = lists:foldr(fun(S, Data) ->
+                                   case libchunter_dtrace_server:walk(S) of
+                                       ok ->
+                                           Data;
+                                       {ok, R} ->
+                                           jsxd:merge(fun merge_fn/3, Data, to_jsxd(R))
+                                   end
+                           end, [], State#state.runners),
+    [Pid ! {dtrace, Composed} || Pid <- State#state.listeners],
     {noreply, State};
 handle_info({'DOWN', _Ref, process, _Pid, _Reason}, State = #state{ listeners = []}) ->
     {stop, normal, State};

@@ -1,17 +1,32 @@
 -module(sniffle_tcp_handler).
 
--export([init/2, message/2]).
+-export([init/2, message/2, raw/2]).
 
 -include("sniffle_version.hrl").
 
--ignore_xref([init/1, message/2]).
+-ignore_xref([init/2, message/2, raw/2]).
 
+
+-record(state, {port}).
 
 init(Prot, []) ->
-    {ok, Prot}.
+    {ok, #state{port = Prot}}.
 
 %%%===================================================================
-%%%  VM Functions
+%%%  RAW Functions
+%%%===================================================================
+
+
+raw({dtrace, _} = R, State) ->
+    State#state.port ! {data, R},
+    {ok, State};
+
+raw(_Data, State) ->
+    {ok, State}.
+
+
+%%%===================================================================
+%%%  General Functions
 %%%===================================================================
 
 -spec message(fifo:sniffle_message(), any()) -> any().
@@ -19,6 +34,42 @@ init(Prot, []) ->
 message(version, State) ->
     {stop, normal, ?VERSION, State};
 
+%%%===================================================================
+%%%  DTrace Functions
+%%%===================================================================
+
+message({dtrace, add, Name, Script}, State) ->
+    {stop, normal,
+     sniffle_dtrace:add(Name, Script),
+     State};
+
+message({dtrace, delete, ID}, State) ->
+    {stop, normal,
+     sniffle_dtrace:delete(ID),
+     State};
+
+message({dtrace, get, ID}, State) ->
+    {stop, normal,
+     sniffle_dtrace:get(ID),
+     State};
+
+message({dtrace, list}, State) ->
+    {stop, normal,
+     {ok, []},
+     State};
+
+message({dtrace, list, _Requreiments}, State) ->
+    {stop, normal,
+     {ok, []},
+     State};
+
+message({dtrace, run, ID, Servers}, State) ->
+    {ok, _Pid} = sniffle_dtrace_server:run(ID, Servers, self()),
+    {claim, State};
+
+%%%===================================================================
+%%%  VM Functions
+%%%===================================================================
 
 message({vm, log, Vm, Log}, State) when
       is_binary(Vm) ->
