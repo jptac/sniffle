@@ -141,7 +141,9 @@ handle_info(tick, State) ->
                                        ok ->
                                            Data;
                                        {ok, R} ->
-                                           jsxd:merge(fun merge_fn/3, Data, to_jsxd(R))
+                                           jsxd:merge(fun merge_fn/3, Data, to_jsxd(R));
+                                       E ->
+                                           lager:error("DTrace host (~p) died with: ~p.", [S, E])
                                    end
                            end, [], State#state.runners),
     [Pid ! {dtrace, Composed} || Pid <- State#state.listeners],
