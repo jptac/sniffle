@@ -206,7 +206,9 @@ merge_fn(_, _A, B) when is_list(B) ->
 
 to_jsxd(Data) ->
     lists:foldr(fun ({_, Path, Vals}, Obj) ->
-                        BPath = lists:map(fun(B) when is_binary(B) ->
+                        BPath = lists:map(fun(L) when is_list(L) ->
+                                                  list_to_binary(L);
+                                             (B) when is_binary(B) ->
                                                   B;
                                              (N) when is_number(N) ->
                                                   list_to_binary(integer_to_list(N))
