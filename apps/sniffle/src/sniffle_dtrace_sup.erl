@@ -65,8 +65,8 @@ init([]) ->
     Shutdown = 2000,
     Type = worker,
 
-    AChild = {sniffle_dtrace, {sniffle_dtrace, start_link, []},
-              Restart, Shutdown, Type, [sniffle_dtrace]},
+    AChild = {sniffle_dtrace_server, {sniffle_dtrace_server, start_link, []},
+              Restart, Shutdown, Type, [sniffle_dtrace_server]},
 
     {ok, {SupFlags, [AChild]}}.
 
