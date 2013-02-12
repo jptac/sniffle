@@ -152,9 +152,10 @@ handle_info(tick, State) ->
                                            {ok, S1} = libchunter_dtrace_server:dtrace(Host, Port, State#state.script),
                                            {Data, [{S1, Host, Port} | RunA]}
                                    end
-                           end, [], State#state.runners),
+                           end, {[], []}, State#state.runners),
     [Pid ! {dtrace, Composed} || Pid <- State#state.listeners],
     {noreply, State#state{runners = Runners}};
+
 handle_info({'DOWN', _Ref, process, _Pid, _Reason}, State = #state{ listeners = []}) ->
     {stop, normal, State};
 
