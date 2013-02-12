@@ -179,7 +179,8 @@ handle_info(_Info, State) ->
 %% @end
 %%--------------------------------------------------------------------
 terminate(_Reason, #state{runners = Runners} = _State) ->
-    [ libchunter_dtrace_server:close(R) || R <- Runners],
+
+    [ libchunter_dtrace_server:close(R) || {R, _,_} <- Runners],
     ok.
 
 %%--------------------------------------------------------------------
