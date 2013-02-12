@@ -82,8 +82,8 @@ init([ID, Servers, Listener]) ->
     Servers1 = [{binary_to_list(jsxd:get(<<"host">>, <<"">>, S1)),
                  jsxd:get(<<"port">>, 4200, S1)}
                 || {ok, S1} <- [sniffle_hypervisor:get(S0) || S0 <- Servers]],
-    Runners = [libchunter_dtrace_server:dtrace(Host, Port, Script)
-               || {Host, Port} <- Servers1],
+    Runners = [ L || {ok, L} <- [libchunter_dtrace_server:dtrace(Host, Port, Script)
+                                 || {Host, Port} <- Servers1]],
     erlang:monitor(process, Listener),
     timer:send_interval(1000, tick),
     {ok, #state{runners = Runners, servers = Servers1, listeners = [Listener]}}.
