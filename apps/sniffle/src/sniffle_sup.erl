@@ -68,7 +68,6 @@ init(_Args) ->
       sniffle_dtrace_sup,
       {sniffle_dtrace_sup, start_link, []},
       permanent, infinity, supervisor, [sniffle_dtrace_sup]},
-
     { ok,
       { {one_for_one, 5, 10},
         [VHypervisor, VVM, VIprange, VDataset, VPackage,

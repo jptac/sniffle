@@ -3,17 +3,20 @@
 -behaviour(supervisor).
 
 %% API
--export([start_link/0]).
+-export([start_link/0, start_child/1]).
 
 %% Supervisor callbacks
 -export([init/1]).
 
-%% Helper macro for declaring children of supervisor
--define(CHILD(I, Type), {I, {I, start_link, []}, temporary, 5000, Type, [I]}).
+
+-ignore_xref([start_link/0]).
 
 %% ===================================================================
 %% API functions
 %% ===================================================================
+
+start_child(UUID) ->
+    supervisor:start_child(?MODULE, [UUID]).
 
 start_link() ->
     supervisor:start_link({local, ?MODULE}, ?MODULE, []).
@@ -23,4 +26,7 @@ start_link() ->
 %% ===================================================================
 
 init([]) ->
-    {ok, {{simple_one_for_one, 5, 10}, [?CHILD(sniffle_dtrace_server, worker)]}}.
+    {ok, {{simple_one_for_one, 5, 10},
+          [{sniffle_dtrace_server,
+            {sniffle_dtrace_server, start_link, []},
+            temporary, 5000, worker, [sniffle_dtrace_server]}]}}.
