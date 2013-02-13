@@ -28,6 +28,7 @@
 -record(state, {data = [],
                 servers,
                 script,
+                compiled,
                 runners,
                 listeners = []}).
 
@@ -37,10 +38,10 @@
 %%% API
 %%%===================================================================
 
-run(ID, Servers, Listener) ->
+run(ID, Config, Listener) ->
     case global:whereis_name({dtrace, ID}) of
         undefined ->
-            sniffle_dtrace_sup:start_child([ID, Servers, Listener]);
+            sniffle_dtrace_sup:start_child([ID, Config, Listener]);
         Pid ->
             gen_server:cast(Pid, {listen, Listener}),
             {ok, Pid}
@@ -54,8 +55,8 @@ run(ID, Servers, Listener) ->
 %% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
 %% @end
 %%--------------------------------------------------------------------
-start_link([ID, Servers, Listener]) ->
-    gen_server:start_link({global, {dtrace, ID}}, ?MODULE, [ID, Servers, Listener], []).
+start_link([ID, Config, Listener]) ->
+    gen_server:start_link({global, {dtrace, ID}}, ?MODULE, [ID, Config, Listener], []).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -72,7 +73,7 @@ start_link([ID, Servers, Listener]) ->
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
-init([ID, Servers, Listener]) ->
+init([ID, Config, Listener]) ->
     {ok, ScriptObj} = sniffle_dtrace:get(ID),
     Script = case jsxd:get(<<"script">>, ScriptObj) of
                  {ok, S} when is_binary(S) ->
@@ -80,17 +81,25 @@ init([ID, Servers, Listener]) ->
                  {ok, S} when is_list(S) ->
                      S
              end,
+    Config0 = jsxd:get(<<"config">>, [], ScriptObj),
+    Config1 = jsxd:merge(Config, Config0),
+    {ok, Script1} = sgte:compile(Script),
+    Script2 = sgte:render_str(Script1, Config1),
+    {ok, Servers} = jsxd:get(<<"servers">>, Config),
     Servers1 = [{binary_to_list(jsxd:get(<<"host">>, <<"">>, S1)),
                  jsxd:get(<<"port">>, 4200, S1)}
                 || {ok, S1} <- [sniffle_hypervisor:get(S0) || S0 <- Servers]],
-    Runners = [ {L, Host, Port} || {{ok, L}, Host, Port} <- [{libchunter_dtrace_server:dtrace(Host, Port, Script), Host, Port}
-                                 || {Host, Port} <- Servers1]],
+    Runners = [ {L, Host, Port} ||
+                  {{ok, L}, Host, Port} <-
+                      [{libchunter_dtrace_server:dtrace(Host, Port, Script2), Host, Port}
+                       || {Host, Port} <- Servers1]],
     erlang:monitor(process, Listener),
     timer:send_interval(1000, tick),
     {ok, #state{runners = Runners,
                 servers = Servers1,
                 listeners = [Listener],
-                script = Script}}.
+                script = Script,
+                compiled = Script2}}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -149,7 +158,7 @@ handle_info(tick, State) ->
                                        E ->
                                            lager:error("DTrace host (~p) died with: ~p.", [S, E]),
                                            libchunter_dtrace_server:close(S),
-                                           {ok, S1} = libchunter_dtrace_server:dtrace(Host, Port, State#state.script),
+                                           {ok, S1} = libchunter_dtrace_server:dtrace(Host, Port, State#state.compiled),
                                            {Data, [{S1, Host, Port} | RunA]}
                                    end
                            end, {[], []}, State#state.runners),

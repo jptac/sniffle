@@ -6,6 +6,10 @@
    [
     get/1,
     add/2,
+    set/2,
+    set/3,
+    list/0,
+    list/1,
     delete/1
    ]
   ).
@@ -14,6 +18,10 @@
    [
     get/1,
     add/2,
+    set/2,
+    set/3,
+    list/0,
+    list/1,
     delete/1
    ]
   ).
@@ -31,6 +39,26 @@ get(UUID) ->
 
 delete(UUID) ->
     do_write(UUID, delete).
+
+list() ->
+    sniffle_entity_coverage_fsm:start(
+      {sniffle_dtrace_vnode, sniffle_dtrace},
+      list
+     ).
+
+list(Requirements) ->
+    sniffle_entity_coverage_fsm:start(
+      {sniffle_dtrace_vnode, sniffle_dtrace},
+      list, Requirements
+     ).
+
+
+set(Script, Attribute, Value) ->
+    do_write(Script, set, [{Attribute, Value}]).
+
+
+set(Script, Attributes) ->
+    do_write(Script, set, Attributes).
 
 %%%===================================================================
 %%% Internal Functions
