@@ -55,12 +55,12 @@ message({dtrace, get, ID}, State) ->
 
 message({dtrace, list}, State) ->
     {stop, normal,
-     {ok, []},
+     sniffle_dtrace:list(),
      State};
 
-message({dtrace, list, _Requreiments}, State) ->
+message({dtrace, list, Requreiments}, State) ->
     {stop, normal,
-     {ok, []},
+     sniffle_dtrace:list(Requreiments),
      State};
 
 message({dtrace, run, ID, Servers}, State) ->
