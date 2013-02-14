@@ -63,6 +63,19 @@ message({dtrace, list, Requreiments}, State) ->
      sniffle_dtrace:list(Requreiments),
      State};
 
+message({dtrace, set, ID, Attribute, Value}, State) when
+      is_binary(ID) ->
+    {stop, normal,
+     sniffle_dtrace:set(ID, Attribute, Value),
+     State};
+
+message({dtrace, set, ID, Attributes}, State) when
+      is_binary(ID),
+      is_list(Attributes) ->
+    {stop, normal,
+     sniffle_dtrace:set(ID, Attributes),
+     State};
+
 message({dtrace, run, ID, Servers}, State) ->
     {ok, _Pid} = sniffle_dtrace_server:run(ID, Servers, self()),
     {claim, State};

@@ -52,10 +52,8 @@ list(Requirements) ->
       list, Requirements
      ).
 
-
 set(Script, Attribute, Value) ->
     do_write(Script, set, [{Attribute, Value}]).
-
 
 set(Script, Attributes) ->
     do_write(Script, set, Attributes).
