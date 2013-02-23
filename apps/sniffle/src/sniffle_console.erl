@@ -7,6 +7,7 @@
          hvs/1,
          pkgs/1,
          ds/1,
+         ips/1,
          pp_json/1,
          ringready/1]).
 
@@ -15,6 +16,7 @@
               leave/1,
               vms/1,
               ds/1,
+              ips/1,
               hvs/1,
               pkgs/1,
               remove/1,
@@ -61,6 +63,13 @@ ds([]) ->
 
 ds(R) ->
     sniffle_console_datasets:command(text, R).
+
+ips([]) ->
+    sniffle_console_ipranges:help(),
+    ok;
+
+ips(R) ->
+    sniffle_console_ipranges:command(text, R).
 
 
 join([NodeStr]) ->

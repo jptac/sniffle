@@ -53,5 +53,8 @@ log(Time, Log, Vm) ->
 hypervisor(Hypervisor, Vm) ->
     jsxd:set(<<"hypervisor">>, Hypervisor, Vm).
 
+set(Attribute, delete, Vm) ->
+    jsxd:delete(Attribute, Vm);
+
 set(Attribute, Value, Vm) ->
     jsxd:set(Attribute, Value, Vm).

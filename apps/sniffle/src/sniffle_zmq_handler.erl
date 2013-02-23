@@ -55,10 +55,17 @@ message({vm, snapshot, rollback, Vm, UUID}, State) when
 
 message({vm, create, Package, Dataset, Config}, State) when
       is_binary(Package),
-      is_list(Config) ,
+      is_list(Config),
       is_binary(Dataset) ->
     {reply,
      sniffle_vm:create(Package, Dataset, Config),
+     State};
+
+message({vm, update, Vm, Package, Config}, State) when
+      is_binary(Vm),
+      is_list(Config) ->
+    {reply,
+     sniffle_vm:update(Vm, Package, Config),
      State};
 
 message({vm, unregister, Vm}, State) when
@@ -98,8 +105,7 @@ message({vm, reboot, Vm}, State) when
      State};
 
 message({vm, set, Vm, Attribute, Value}, State) when
-      is_binary(Vm),
-      is_binary(Attribute) ->
+      is_binary(Vm) ->
     {reply,
      sniffle_vm:set(Vm, Attribute, Value),
      State};
@@ -148,8 +154,7 @@ message({hypervisor, get, Hypervisor}, State) when
      State};
 
 message({hypervisor, set, Hypervisor, Resource, Value}, State) when
-      is_binary(Hypervisor),
-      is_binary(Resource) ->
+      is_binary(Hypervisor) ->
     {reply,
      sniffle_hypervisor:set(Hypervisor, Resource, Value),
      State};
@@ -195,8 +200,7 @@ message({dataset, get, Dataset}, State) when
      State};
 
 message({dataset, set, Dataset, Attribute, Value}, State) when
-      is_binary(Dataset),
-      is_binary(Attribute) ->
+      is_binary(Dataset) ->
     {reply,
      sniffle_dataset:set(Dataset, Attribute, Value),
      State};
@@ -268,6 +272,20 @@ message({iprange, list, Requirements}, State) when
      sniffle_iprange:list(Requirements),
      State};
 
+message({iprange, set, Iprange, Attribute, Value}, State) when
+      is_binary(Iprange) ->
+    {reply,
+     sniffle_iprange:set(Iprange, Attribute, Value),
+     State};
+
+message({iprange, set, Iprange, Attributes}, State) when
+      is_binary(Iprange),
+      is_list(Attributes) ->
+    {reply,
+     sniffle_iprange:set(Iprange, Attributes),
+     State};
+
+
 %%%===================================================================
 %%%  PACKAGE Functions
 %%%===================================================================
@@ -291,8 +309,7 @@ message({package, get, Package}, State) when
      State};
 
 message({package, set, Package, Attribute, Value}, State) when
-      is_binary(Package),
-      is_binary(Attribute) ->
+      is_binary(Package) ->
     {reply,
      sniffle_package:set(Package, Attribute, Value),
      State};

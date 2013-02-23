@@ -77,7 +77,7 @@ list(Requirements) ->
     {ok,  lists:keysort(2, Res)}.
 
 set(Hypervisor, Resource, Value) ->
-    set(Hypervisor, set, [{Resource, Value}]).
+    set(Hypervisor, [{Resource, Value}]).
 
 set(Hypervisor, Resources) ->
     case do_write(Hypervisor, set, Resources) of

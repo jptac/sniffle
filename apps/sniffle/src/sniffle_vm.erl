@@ -7,6 +7,7 @@
     register/2,
     unregister/1,
     create/3,
+    update/3,
     get/1,
     list/0,
     list/1,
@@ -26,8 +27,43 @@
 
 -ignore_xref([logs/1]).
 
--spec register(VM::fifo:uuid(), Hypervisor::binary()) -> ok.
+update(Vm, Package, Config) ->
+    case sniffle_vm:get(Vm) of
+        {ok, V} ->
+            {ok, Hypervisor} = jsxd:get(<<"hypervisor">>, V),
+            {ok, HypervisorObj} = sniffle_hypervisor:get(Hypervisor),
+            {ok, Port} = jsxd:get(<<"port">>, HypervisorObj),
+            {ok, HostB} = jsxd:get(<<"host">>, HypervisorObj),
+            Host = binary_to_list(HostB),
+            {ok, OrigRam} = jsxd:get([<<"config">>, <<"ram">>], V),
+            OrigPkg = jsxd:get(<<"package">>, <<"custom">>, V),
+            case Package of
+                undefined ->
+                    libchunter:update_machine(Host, Port, Vm, [], Config);
+                _ ->
+                    case sniffle_package:get(Package) of
+                        {ok, P} ->
+                            {ok, NewRam} = jsxd:get(<<"ram">>, P),
+                            case jsxd:get([<<"resources">>, <<"free-memory">>], HypervisorObj) of
+                                {ok, Ram} when
+                                      Ram > (NewRam - OrigRam) ->
+                                    set(Vm, <<"package">>, Package),
+                                    log(Vm, <<"Updating VM from package '",
+                                              OrigPkg/binary, "' to '",
+                                              Package/binary, "'.">>),
+                                    libchunter:update_machine(Host, Port, Vm, P, Config);
+                                _ ->
+                                    {error, not_enough_resources}
+                            end;
+                        E2 ->
+                            E2
+                    end
+            end;
+        E ->
+            E
+    end.
 
+-spec register(VM::fifo:uuid(), Hypervisor::binary()) -> ok.
 
 register(Vm, Hypervisor) ->
     do_write(Vm, register, Hypervisor).

@@ -198,12 +198,14 @@ handle_command({set,
                    end, H1, Resources),
             H3 = statebox:expire(?STATEBOX_EXPIRE, H2),
             sniffle_db:put(State#state.db, <<"package">>, Package,
-                           sniffle_obj:update(H3, Coordinator, O));
+                           sniffle_obj:update(H3, Coordinator, O)),
+            {reply, {ok, ReqID}, State};
         _ ->
             estatsd:increment("sniffle.packages.write.failed"),
-            lager:error("[packages] tried to write to a non existing package.")
-    end,
-    {reply, {ok, ReqID}, State};
+            lager:error("[packages] tried to write to a non existing package."),
+                        {reply, {ok, ReqID, not_found}, State}
+
+    end;
 
 handle_command(Message, _Sender, State) ->
     estatsd:increment("sniffle.packages.unknown_command"),

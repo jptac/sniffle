@@ -5,9 +5,12 @@ REBAR = $(shell pwd)/rebar
 all: deps compile
 
 version:
-	echo "-define(VERSION, <<\"$(shell git symbolic-ref HEAD 2> /dev/null | cut -b 12-)-$(shell git log --pretty=format:'%h, %ad' -1)\">>)." > apps/sniffle/src/sniffle_version.hrl
+	echo "$(shell git symbolic-ref HEAD 2> /dev/null | cut -b 12-)-$(shell git log --pretty=format:'%h, %ad' -1)" > sniffle.version
 
-compile: version
+version_header: version
+	echo "-define(VERSION, <<\"$(shell cat sniffle.version)\">>)." > apps/sniffle/src/sniffle_version.hrl
+
+compile: version_header
 	$(REBAR) compile
 
 deps:

@@ -28,6 +28,7 @@
          claim_ip/2,
          tag/2,
          vlan/2,
+         set/3,
          to_bin/1
         ]).
 
@@ -103,6 +104,13 @@ release_ip(_IP, _First, _Current, _Last, Iprange) ->
 to_bin(IP) ->
     <<A, B, C, D>> = <<IP:32>>,
     list_to_binary(io_lib:format("~p.~p.~p.~p", [A, B, C, D])).
+
+set(Resource, delete, Iprange) ->
+    jsxd:delete(Resource, Iprange);
+
+set(Resource, Value, Iprange) ->
+    jsxd:set(Resource, Value, Iprange).
+
 
 -ifdef(TEST).
 
