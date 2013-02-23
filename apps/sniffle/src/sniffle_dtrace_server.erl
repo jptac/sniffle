@@ -10,6 +10,10 @@
 
 -behaviour(gen_server).
 
+-ifdef(TEST).
+-include_lib("eunit/include/eunit.hrl").
+-endif.
+
 %% API
 -export([
          run/3,
@@ -75,31 +79,22 @@ start_link([ID, Config, Listener]) ->
 %%--------------------------------------------------------------------
 init([ID, Config, Listener]) ->
     {ok, ScriptObj} = sniffle_dtrace:get(ID),
-    Script = case jsxd:get(<<"script">>, ScriptObj) of
-                 {ok, S} when is_binary(S) ->
-                     binary_to_list(S);
-                 {ok, S} when is_list(S) ->
-                     S
-             end,
-    Config0 = jsxd:get(<<"config">>, [], ScriptObj),
-    Config1 = jsxd:merge(Config, Config0),
-    {ok, Script1} = sgte:compile(Script),
-    Script2 = sgte:render_str(Script1, Config1),
     {ok, Servers} = jsxd:get(<<"servers">>, Config),
+    {ok, Script} = generate_script(ScriptObj, Config),
     Servers1 = [{binary_to_list(jsxd:get(<<"host">>, <<"">>, S1)),
                  jsxd:get(<<"port">>, 4200, S1)}
                 || {ok, S1} <- [sniffle_hypervisor:get(S0) || S0 <- Servers]],
     Runners = [ {L, Host, Port} ||
                   {{ok, L}, Host, Port} <-
-                      [{libchunter_dtrace_server:dtrace(Host, Port, Script2), Host, Port}
+                      [{libchunter_dtrace_server:dtrace(Host, Port, Script), Host, Port}
                        || {Host, Port} <- Servers1]],
     erlang:monitor(process, Listener),
     timer:send_interval(1000, tick),
     {ok, #state{runners = Runners,
                 servers = Servers1,
                 listeners = [Listener],
-                script = Script,
-                compiled = Script2}}.
+                script = ScriptObj,
+                compiled = Script}}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -236,3 +231,133 @@ to_jsxd(Data) ->
                                             jsxd:set(BPath ++ [B], Value, Obj1)
                                     end, Obj, Vals)
                 end, [], Data).
+
+
+generate_script(ScriptObj, Config) ->
+    Script = case jsxd:get(<<"script">>, ScriptObj) of
+                 {ok, S} when is_binary(S) ->
+                     binary_to_list(S);
+                 {ok, S} when is_list(S) ->
+                     S
+             end,
+    Config0 = jsxd:get(<<"config">>, [], ScriptObj),
+    Config1 = jsxd:merge(Config, Config0),
+
+    Filter = jsxd:update(<<"filter">>, [], Config1),
+    Config2 = case compile_filters(Filter) of
+                  <<>> ->
+                      jsxd:thread([{set, <<"filter">>, <<>>},
+                                   {set, <<"partial_filter">>, <<"1==1">>}],
+                                  Config1);
+                  F ->
+                      jsxd:thread([{set, <<"filter">>, <<"/", F/binary, "/">>},
+                                   {set, <<"partial_filter">>, F}],
+                                  Config1)
+              end,
+    {ok, Script1} = sgte:compile(Script),
+    Script2 = sgte:render_str(Script1, Config2),
+    {ok, Script2}.
+
+compile_filters(Filters) ->
+    Fs0 = lists:map(fun filter_matcher/1, Filters),
+    case join_filter(Fs0, <<"&&">>) of
+        [] ->
+            <<>>;
+        Fs1 ->
+            Fs2 = iolist_to_binary(Fs1),
+            Fs2
+    end.
+
+join_filter([_] = L, _) ->
+    L;
+
+join_filter([], _) ->
+    [];
+
+join_filter([E | R], S) ->
+    [E, S | join_filter(R, S)].
+
+
+filter_matcher({E, [V]}) ->
+    filter_matcher({E, [<<"==">>, V]});
+
+filter_matcher({<<"args">> = E, [I, V]}) when is_integer(I) ->
+    filter_matcher({E, [I, <<"==">>, V]});
+
+filter_matcher({<<"arg">> = E, [I, V]}) when is_integer(I) ->
+    filter_matcher({E, [I, <<"==">>, V]});
+
+filter_matcher({<<"pid">>, [Cmp, P]}) when is_number(P)->
+    [<<"pid">>, Cmp, format_value(P)];
+
+filter_matcher({<<"execname">>, [Cmp, P]}) when is_binary(P)->
+    [<<"execname">>, Cmp,  format_value(P)];
+
+filter_matcher({<<"provider">>, [Cmp, P]}) when is_binary(P)->
+    [<<"probeprov">>, Cmp,  format_value(P)];
+
+filter_matcher({<<"module">>, [Cmp, P]}) when is_binary(P)->
+    [<<"probemod">>, Cmp,  format_value(P)];
+
+filter_matcher({<<"probe">>, [Cmp, P]}) when is_binary(P)->
+    [<<"probename">>, Cmp,  format_value(P)];
+
+filter_matcher({<<"zonename">>, [Cmp, P]}) when is_binary(P)->
+    [<<"zonename">>, Cmp,  format_value(P)];
+
+filter_matcher({<<"args">>, [I, Cmp, V]}) when is_integer(I) ->
+    [<<"args[">>, format_value(I), "]", Cmp, format_value(V)];
+
+filter_matcher({<<"arg">>, [I, Cmp, V]}) when is_integer(I),
+                                       I >= 0,
+                                       I =< 9->
+    [<<"arg">>, format_value(I), Cmp, format_value(V)];
+
+filter_matcher({<<"custom">>, C}) when is_binary(C)->
+    C.
+
+format_value(V) when is_integer(V) ->
+    integer_to_list(V);
+
+format_value(V) when is_float(V) ->
+    io_lib:format("~p", [V]);
+
+format_value(V) when is_binary(V) ->
+    <<"\"", V/binary, "\"">>.
+
+-ifdef(TEST).
+
+join_filter_test() ->
+    ?assertEqual([], join_filter([], s)),
+    ?assertEqual([a], join_filter([a], s)),
+    ?assertEqual([a, s, b], join_filter([a, b], s)),
+    ?assertEqual([a, s, b, s, c], join_filter([a, b, c], s)).
+
+iolist_test() ->
+    ?assertEqual(<<"a&&b">>, iolist_to_binary([<<"a">>, <<"&&">>, <<"b">>])).
+
+compile_filters_test() ->
+    ?assertEqual(<<>>, compile_filters([])),
+    ?assertEqual(<<"a==1">>, compile_filters([{<<"custom">>, <<"a==1">>}])),
+    ?assertEqual(<<"a==1&&b==2">>, compile_filters([{<<"custom">>, <<"a==1">>}, {<<"custom">>, <<"b==2">>}])).
+
+fmt_h(V) ->
+    R =format_value(V),
+    iolist_to_binary(R).
+
+format_value_test() ->
+    ?assertEqual(<<"1">>, fmt_h(1)),
+    ?assertEqual(<<"1.0">>, fmt_h(1.0)),
+    ?assertEqual(<<"\"1\"">>, fmt_h(<<"1">>)).
+
+fm_helper(F) ->
+    R = filter_matcher(F),
+    io:format("~p->~p~n", [F, R]),
+
+    iolist_to_binary(R).
+
+filter_matcher_correct_test() ->
+    ?assertEqual(<<"pid==1">>, fm_helper({<<"pid">>, [1]})),
+    ok.
+
+-endif.
