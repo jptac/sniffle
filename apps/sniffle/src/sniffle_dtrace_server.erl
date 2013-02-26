@@ -243,7 +243,7 @@ generate_script(ScriptObj, Config) ->
     Config0 = jsxd:get(<<"config">>, [], ScriptObj),
     Config1 = jsxd:merge(Config, Config0),
 
-    Filter = jsxd:update(<<"filter">>, [], Config1),
+    Filter = jsxd:get(<<"filter">>, [], Config1),
     Config2 = case compile_filters(Filter) of
                   <<>> ->
                       jsxd:thread([{set, <<"filter">>, <<>>},
