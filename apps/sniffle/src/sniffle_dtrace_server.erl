@@ -256,6 +256,7 @@ generate_script(ScriptObj, Config) ->
               end,
     {ok, Script1} = sgte:compile(Script),
     Script2 = sgte:render_str(Script1, Config2),
+    io:format("===Script===~n~s~n============~n", [Script2]),
     {ok, Script2}.
 
 
@@ -375,8 +376,6 @@ format_value_test() ->
 
 fm_helper(F) ->
     R = filter_matcher(F),
-    io:format("~p->~p~n", [F, R]),
-
     iolist_to_binary(R).
 
 filter_matcher_correct_test() ->
