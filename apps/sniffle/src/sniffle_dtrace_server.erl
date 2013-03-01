@@ -258,15 +258,20 @@ generate_script(ScriptObj, Config) ->
     Script2 = sgte:render_str(Script1, Config2),
     {ok, Script2}.
 
-compile_filters(Filters) ->
-    Fs0 = lists:map(fun filter_matcher/1, Filters),
-    case join_filter(Fs0, <<"&&">>) of
-        [] ->
-            <<>>;
-        Fs1 ->
-            Fs2 = iolist_to_binary(Fs1),
-            Fs2
-    end.
+
+compile_filters(F) ->
+    iolist_to_binary(compile_filters_(F)).
+
+compile_filters_([{<<"or">>,  Filters}]) ->
+    Fs0 = compile_filters_(Filters),
+    [<<"(">>, join_filter(Fs0, <<"||">>), <<")">>];
+
+compile_filters_([{<<"and">>,  Filters}]) ->
+    Fs0 = compile_filters_(Filters),
+    [<<"(">>, join_filter(Fs0, <<"&&">>), <<")">>];
+
+compile_filters_(Filters) ->
+    lists:map(fun filter_matcher/1, Filters).
 
 join_filter([_] = L, _) ->
     L;
@@ -277,49 +282,61 @@ join_filter([], _) ->
 join_filter([E | R], S) ->
     [E, S | join_filter(R, S)].
 
+filter_matcher([{_, _}] = F) ->
+    compile_filters(F);
 
-filter_matcher({E, [V]}) ->
-    filter_matcher({E, [<<"==">>, V]});
+filter_matcher([<<"custom">>, C]) when is_binary(C)->
+    C;
 
-filter_matcher({<<"args">> = E, [I, V]}) when is_integer(I) ->
-    filter_matcher({E, [I, <<"==">>, V]});
+filter_matcher([E, V]) ->
+    filter_matcher([E, <<"==">>, V]);
 
-filter_matcher({<<"arg">> = E, [I, V]}) when is_integer(I) ->
-    filter_matcher({E, [I, <<"==">>, V]});
+filter_matcher([<<"args">> = E, I, V]) when is_integer(I) ->
+    filter_matcher([E, I, <<"==">>, V]);
 
-filter_matcher({<<"pid">>, [Cmp, P]}) when is_number(P)->
+filter_matcher([<<"arg">> = E, I, V]) when is_integer(I) ->
+    filter_matcher([E, I, <<"==">>, V]);
+
+filter_matcher([<<"pid">>, Cmp, P]) when is_number(P)->
     [<<"pid">>, Cmp, format_value(P)];
 
-filter_matcher({<<"execname">>, [Cmp, P]}) when is_binary(P)->
+filter_matcher([<<"execname">>, Cmp, P]) when is_binary(P)->
     [<<"execname">>, Cmp,  format_value(P)];
 
-filter_matcher({<<"provider">>, [Cmp, P]}) when is_binary(P)->
+filter_matcher([<<"provider">>, Cmp, P]) when is_binary(P)->
     [<<"probeprov">>, Cmp,  format_value(P)];
 
-filter_matcher({<<"module">>, [Cmp, P]}) when is_binary(P)->
+filter_matcher([<<"module">>, Cmp, P]) when is_binary(P)->
     [<<"probemod">>, Cmp,  format_value(P)];
 
-filter_matcher({<<"probe">>, [Cmp, P]}) when is_binary(P)->
+filter_matcher([<<"probe">>, Cmp, P]) when is_binary(P)->
     [<<"probename">>, Cmp,  format_value(P)];
 
-filter_matcher({<<"zonename">>, [Cmp, P]}) when is_binary(P)->
+filter_matcher([<<"zonename">>, Cmp, P]) when is_binary(P)->
     [<<"zonename">>, Cmp,  format_value(P)];
 
-filter_matcher({<<"args">>, [I, Cmp, V]}) when is_integer(I) ->
+filter_matcher([<<"args">>, I, Cmp, V]) when is_integer(I) ->
     [<<"args[">>, format_value(I), "]", Cmp, format_value(V)];
 
-filter_matcher({<<"arg">>, [I, Cmp, V]}) when is_integer(I),
+filter_matcher([<<"arg">>, I, Cmp, V]) when is_integer(I),
                                        I >= 0,
                                        I =< 9->
-    [<<"arg">>, format_value(I), Cmp, format_value(V)];
+    [<<"arg">>, format_value(I), Cmp, format_value(V)].
 
-filter_matcher({<<"custom">>, C}) when is_binary(C)->
-    C.
 
 format_value(V) when is_integer(V) ->
     integer_to_list(V);
 
 format_value(V) when is_float(V) ->
+    io_lib:format("~p", [V]);
+
+format_value(null = V) ->
+    io_lib:format("~p", [V]);
+
+format_value(true = V) ->
+    io_lib:format("~p", [V]);
+
+format_value(false = V) ->
     io_lib:format("~p", [V]);
 
 format_value(V) when is_binary(V) ->
@@ -333,13 +350,19 @@ join_filter_test() ->
     ?assertEqual([a, s, b], join_filter([a, b], s)),
     ?assertEqual([a, s, b, s, c], join_filter([a, b, c], s)).
 
-iolist_test() ->
-    ?assertEqual(<<"a&&b">>, iolist_to_binary([<<"a">>, <<"&&">>, <<"b">>])).
-
 compile_filters_test() ->
     ?assertEqual(<<>>, compile_filters([])),
-    ?assertEqual(<<"a==1">>, compile_filters([{<<"custom">>, <<"a==1">>}])),
-    ?assertEqual(<<"a==1&&b==2">>, compile_filters([{<<"custom">>, <<"a==1">>}, {<<"custom">>, <<"b==2">>}])).
+    ?assertEqual(<<"a==1">>, compile_filters([[<<"custom">>, <<"a==1">>]])),
+    ?assertEqual(<<"(c==3&&b==2)">>, compile_filters([{<<"and">>,
+                                                     [[<<"custom">>, <<"c==3">>],
+                                                      [<<"custom">>, <<"b==2">>]]}])).
+
+compile_nested_test() ->
+    ?assertEqual(<<"(a==1&&(b==2||zonename==\"c\"))">>, compile_filters([{<<"and">>,
+                                                     [[<<"custom">>, <<"a==1">>],
+                                                      [{<<"or">>,
+                                                        [[<<"custom">>, <<"b==2">>],
+                                                         [<<"zonename">>, <<"c">>]]}]]}])).
 
 fmt_h(V) ->
     R =format_value(V),
@@ -357,7 +380,7 @@ fm_helper(F) ->
     iolist_to_binary(R).
 
 filter_matcher_correct_test() ->
-    ?assertEqual(<<"pid==1">>, fm_helper({<<"pid">>, [1]})),
+    ?assertEqual(<<"pid==1">>, fm_helper([<<"pid">>, 1])),
     ok.
 
 -endif.
