@@ -6,7 +6,8 @@ help() ->
     io:format("Usage~n"),
     io:format("  list [-j]~n"),
     io:format("  get [-j] <uuid>~n"),
-    io:format("  delete <uuid>~n").
+    io:format("  delete <uuid>~n"),
+    io:format("  import <file>~n").
 
 command(text, ["delete", ID]) ->
     case sniffle_dtrace:delete(list_to_binary(ID)) of

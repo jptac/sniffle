@@ -107,7 +107,14 @@ case "$1" in
 
     dtrace)
         shift
-        run sniffle_console dtrace $@
+        case $1 in
+            import)
+                run sniffle_console dtrace $1 "$( readlink -f "$( dirname "$2" )" )/$( basename "$2")"
+                ;;
+            *)
+                run sniffle_console dtrace $@
+                ;;
+        esac
         ;;
 
     join)
