@@ -13,7 +13,12 @@ case $1 in
     vms|hypervisors|packages|datasets|networks|dtrace)
         if [ -f /opt/local/sniffle/bin/sniffle-admin ]
         then
-            /opt/local/sniffle/bin/sniffle-admin $@
+            if [ "$2" == "import" ]
+            then
+                /opt/local/sniffle/bin/sniffle-admin $1 $2 "$( readlink -f "$( dirname "$3" )" )/$( basename "$3")"
+            else
+              /opt/local/sniffle/bin/sniffle-admin $@
+            fi
         else
             echo "Sniffle is not installed. Sorry!"
             exit 1
