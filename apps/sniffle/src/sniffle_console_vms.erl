@@ -8,6 +8,7 @@ help() ->
     io:format("  get [-j] <uuid>~n"),
     io:format("  logs [-j] <uuid>~n"),
     io:format("  snapshots [-j] <uuid>~n"),
+    io:format("  snapshots <uuid> <comment>~n"),
     io:format("  start <uuid>~n"),
     io:format("  stop <uuid>~n"),
     io:format("  reboot <uuid>~n"),
@@ -103,6 +104,23 @@ command(text, ["logs", UUID]) ->
             ok;
         _ ->
             ok
+    end;
+
+
+command(text, ["snapshot", UUID, Comment]) ->
+    case sniffle_vm:get(list_to_binary(UUID)) of
+        {ok, VM} ->
+            case sniffle_vm:snapshot(VM, Comment) of
+                {ok, Snap} ->
+                    io:format("New snapshot created: ~s~n.", [Snap]),
+                    ok;
+                E ->
+                    io:format("Failed to create: ~p~n.", [E]),
+                    error
+            end;
+        _ ->
+            io:format("VM ~s not found.", [UUID]),
+            error
     end;
 
 command(json, ["snapshots", UUID]) ->
