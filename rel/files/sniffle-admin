@@ -104,6 +104,12 @@ case "$1" in
         shift
         run sniffle_console ips $@
         ;;
+
+    dtrace)
+        shift
+        run sniffle_console dtrace $@
+        ;;
+
     join)
         shift
         run sniffle_console join $@
