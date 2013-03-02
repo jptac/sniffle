@@ -45,16 +45,21 @@ command(text, ["get", ID]) ->
     end;
 
 command(_, ["import", File]) ->
-    {ok, B} = file:read_file(File),
-    JSON = jsx:decode(B),
-    JSX = jsxd:from_list(JSON),
-    Name = jsxd:get(<<"name">>, <<"unnamed">>, JSX),
-    CopyFields = [<<"config">>, <<"type">>, <<"filter">>],
-    {ok, UUID} = sniffle_dtrace:add(Name,
+    case file:read_file(File) of
+        {error,enoent} ->
+            io:format("That file does not exist or is not an absolute path.~n"),
+            error;
+        {ok, B} ->
+            JSON = jsx:decode(B),
+            JSX = jsxd:from_list(JSON),
+            Name = jsxd:get(<<"name">>, <<"unnamed">>, JSX),
+            CopyFields = [<<"config">>, <<"type">>, <<"filter">>],
+            {ok, UUID} = sniffle_dtrace:add(Name,
                                     binary_to_list(jsxd:get(<<"script">>, <<"">>, JSX))),
-    sniffle_dtrace:set(UUID, jsxd:select(CopyFields, JSX)),
-    io:format("Imported ~s with uuid ~s.~n", [Name, UUID]),
-    ok;
+            sniffle_dtrace:set(UUID, jsxd:select(CopyFields, JSX)),
+            io:format("Imported ~s with uuid ~s.~n", [Name, UUID]),
+            ok
+    end;
 
 command(json, ["list"]) ->
     case sniffle_dtrace:list() of
