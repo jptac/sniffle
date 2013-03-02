@@ -43,7 +43,7 @@ command(text, ["get", ID]) ->
             error
     end;
 
-command(_, [import, File]) ->
+command(_, ["import", File]) ->
     {ok, B} = file:read_file(File),
     JSON = jsx:decode(B),
     JSX = jsxd:from_list(JSON),
