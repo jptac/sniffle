@@ -49,8 +49,8 @@ command(_, ["import", File]) ->
     JSX = jsxd:from_list(JSON),
     Name = jsxd:get(<<"name">>, <<"unnamed">>, JSX),
     {ok, UUID} = sniffle_dtrace:add(Name,
-                                    jsxd:get(<<"script">>, <<"">>, JSX)),
-    sniffle_dtrace:set(UUID, [<<"config">>, jsxd:get(<<"config">>, [], JSX)]),
+                                    binary_to_list(jsxd:get(<<"script">>, <<"">>, JSX))),
+    sniffle_dtrace:set(UUID, [{<<"config">>, jsxd:get(<<"config">>, [], JSX)}]),
     io:format("Imported ~s with uuid ~s.~n", [Name, UUID]),
     ok;
 
