@@ -21,7 +21,10 @@ command(text, ["delete", ID]) ->
 command(json, ["get", UUID]) ->
     case sniffle_dtrace:get(list_to_binary(UUID)) of
         {ok, H} ->
-            sniffle_console:pp_json(H),
+            sniffle_console:pp_json(jsxd:update(<<"script">>,
+                                                fun(S) ->
+                                                        list_to_binary(S)
+                                                end, <<>>, H)),
             ok;
         _ ->
             sniffle_console:pp_json([]),
@@ -34,7 +37,7 @@ command(text, ["get", ID]) ->
         {ok, D} ->
             print(D),
             print_vars(D),
-            io:format("~s", [jsxd:get(<<"script">>,<<"">>, D)]),
+            io:format("~.78c~n~s~n~.78c~n", [$=, jsxd:get(<<"script">>,<<"">>, D)], $=),
             ok;
         _ ->
             error
