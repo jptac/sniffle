@@ -108,12 +108,12 @@ command(text, ["logs", UUID]) ->
 
 
 command(text, ["snapshot", UUID | Comment]) ->
-    case sniffle_vm:snapshot(list_to_binary(UUID), iolist_to_binary(Comment)) of
+    case sniffle_vm:snapshot(list_to_binary(UUID), iolist_to_binary(join(Comment, " "))) of
         {ok, Snap} ->
-            io:format("New snapshot created: ~s~n.", [Snap]),
+            io:format("New snapshot created: ~s.~n", [Snap]),
             ok;
         E ->
-            io:format("Failed to create: ~p~n.", [E]),
+            io:format("Failed to create: ~p.~n", [E]),
             error
     end;
 
@@ -178,3 +178,10 @@ command(text, ["list"]) ->
 command(_, C) ->
     io:format("Unknown parameters: ~p", [C]),
     error.
+
+
+join([ Head | [] ], _Sep) ->
+   [Head];
+
+join([ Head | Rest], Sep) ->
+   [Head,Sep | join(Rest,Sep) ].
