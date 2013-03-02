@@ -104,6 +104,19 @@ case "$1" in
         shift
         run sniffle_console ips $@
         ;;
+
+    dtrace)
+        shift
+        case $1 in
+            import)
+                run sniffle_console dtrace $1 "$( readlink -f "$( dirname "$2" )" )/$( basename "$2")"
+                ;;
+            *)
+                run sniffle_console dtrace $@
+                ;;
+        esac
+        ;;
+
     join)
         shift
         run sniffle_console join $@
