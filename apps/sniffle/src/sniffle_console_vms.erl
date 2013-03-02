@@ -107,10 +107,10 @@ command(text, ["logs", UUID]) ->
     end;
 
 
-command(text, ["snapshot", UUID, Comment]) ->
+command(text, ["snapshot", UUID | Comment]) ->
     case sniffle_vm:get(list_to_binary(UUID)) of
         {ok, VM} ->
-            case sniffle_vm:snapshot(VM, Comment) of
+            case sniffle_vm:snapshot(VM, iolist_to_binary(Comment)) of
                 {ok, Snap} ->
                     io:format("New snapshot created: ~s~n.", [Snap]),
                     ok;
