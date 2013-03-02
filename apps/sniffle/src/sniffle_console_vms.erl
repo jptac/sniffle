@@ -108,18 +108,12 @@ command(text, ["logs", UUID]) ->
 
 
 command(text, ["snapshot", UUID | Comment]) ->
-    case sniffle_vm:get(list_to_binary(UUID)) of
-        {ok, VM} ->
-            case sniffle_vm:snapshot(VM, iolist_to_binary(Comment)) of
-                {ok, Snap} ->
-                    io:format("New snapshot created: ~s~n.", [Snap]),
-                    ok;
-                E ->
-                    io:format("Failed to create: ~p~n.", [E]),
-                    error
-            end;
-        _ ->
-            io:format("VM ~s not found.", [UUID]),
+    case sniffle_vm:snapshot(list_to_binary(UUID), iolist_to_binary(Comment)) of
+        {ok, Snap} ->
+            io:format("New snapshot created: ~s~n.", [Snap]),
+            ok;
+        E ->
+            io:format("Failed to create: ~p~n.", [E]),
             error
     end;
 
