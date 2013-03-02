@@ -37,11 +37,22 @@ command(text, ["get", ID]) ->
         {ok, D} ->
             print(D),
             print_vars(D),
-            io:format("~.78c~n~s~n~.78c~n", [$=, jsxd:get(<<"script">>,<<"">>, D)], $=),
+            io:format("~.78c~n~s~n~.78c~n", [$=, jsxd:get(<<"script">>,<<"">>, D), $=]),
             ok;
         _ ->
             error
     end;
+
+command(_, [import, File]) ->
+    {ok, B} = file:read_file(File),
+    JSON = jsx:decode(B),
+    JSX = jsxd:from_list(JSON),
+    Name = jsxd:get(<<"name">>, <<"unnamed">>, JSX),
+    {ok, UUID} = sniffle_dtrace:add(Name,
+                                    jsxd:get(<<"script">>, <<"">>, JSX)),
+    sniffle_dtrace:set(UUID, [<<"config">>, jsxd:get(<<"config">>, [], JSX)]),
+    io:format("Imported ~s with uuid ~s.~n", [Name, UUID]),
+    ok;
 
 command(json, ["list"]) ->
     case sniffle_dtrace:list() of
@@ -55,7 +66,6 @@ command(json, ["list"]) ->
             sniffle_console:pp_json([]),
             error
     end;
-
 command(text, ["list"]) ->
     header(),
     case sniffle_dtrace:list() of
