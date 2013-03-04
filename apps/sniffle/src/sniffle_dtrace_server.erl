@@ -43,13 +43,7 @@
 %%%===================================================================
 
 run(ID, Config, Listener) ->
-    case global:whereis_name({dtrace, ID}) of
-        undefined ->
-            sniffle_dtrace_sup:start_child([ID, Config, Listener]);
-        Pid ->
-            gen_server:cast(Pid, {listen, Listener}),
-            {ok, Pid}
-    end.
+    sniffle_dtrace_sup:start_child([ID, Config, Listener]).
 
 
 %%--------------------------------------------------------------------
@@ -60,7 +54,7 @@ run(ID, Config, Listener) ->
 %% @end
 %%--------------------------------------------------------------------
 start_link([ID, Config, Listener]) ->
-    gen_server:start_link({global, {dtrace, ID}}, ?MODULE, [ID, Config, Listener], []).
+    gen_server:start_link(?MODULE, [ID, Config, Listener], []).
 
 %%%===================================================================
 %%% gen_server callbacks
