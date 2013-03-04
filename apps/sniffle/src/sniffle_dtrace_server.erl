@@ -139,7 +139,7 @@ handle_cast(_Msg, State) ->
 %%--------------------------------------------------------------------
 handle_info(tick, State) ->
     {Composed, Runners} = lists:foldr(fun({S, Host, Port} = D, {Data, RunA}) ->
-                                   case libchunter_dtrace_server:walk(S) of
+                                   case libchunter_dtrace_server:walk(S, llquantize) of
                                        ok ->
                                            {Data, [D | RunA]};
                                        {ok, R} ->
