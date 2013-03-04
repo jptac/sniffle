@@ -139,11 +139,11 @@ handle_cast(_Msg, State) ->
 %%--------------------------------------------------------------------
 handle_info(tick, State) ->
     {Composed, Runners} = lists:foldr(fun({S, Host, Port} = D, {Data, RunA}) ->
-                                   case libchunter_dtrace_server:walk(S) of
+                                   case libchunter_dtrace_server:walk(S, llquantize) of
                                        ok ->
                                            {Data, [D | RunA]};
                                        {ok, R} ->
-                                           {jsxd:merge(fun merge_fn/3, Data, to_jsxd(R)), [D | RunA]};
+                                           {jsxd:merge(fun merge_fn/3, Data, R), [D | RunA]};
                                        E ->
                                            lager:error("DTrace host (~p) died with: ~p.", [S, E]),
                                            libchunter_dtrace_server:close(S),
@@ -210,22 +210,6 @@ merge_fn(_, A, _B) when is_list(A) ->
 
 merge_fn(_, _A, B) when is_list(B) ->
     B.
-
-to_jsxd(Data) ->
-    lists:foldr(fun ({_, Path, Vals}, Obj) ->
-                        BPath = lists:map(fun(L) when is_list(L) ->
-                                                  list_to_binary(L);
-                                             (B) when is_binary(B) ->
-                                                  B;
-                                             (N) when is_number(N) ->
-                                                  list_to_binary(integer_to_list(N))
-                                          end, Path),
-                        lists:foldr(fun({{Start, End}, Value}, Obj1) ->
-                                            B = list_to_binary(io_lib:format("~p-~p", [Start, End])),
-                                            jsxd:set(BPath ++ [B], Value, Obj1)
-                                    end, Obj, Vals)
-                end, [], Data).
-
 
 generate_script(ScriptObj, Config) ->
     Script = case jsxd:get(<<"script">>, ScriptObj) of
