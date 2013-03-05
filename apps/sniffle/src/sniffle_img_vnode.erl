@@ -209,11 +209,11 @@ handle_coverage({list, ReqID}, _KeySpaces, _Sender, State) ->
     List = sniffle_db:fold(State#state.db,
                            <<"img">>,
                            fun (K, _, []) ->
-                                   S = bit_size(K) - 32,
+                                   S = byte_size(K) - 4,
                                    <<K1:S/binary, _:32>> = K,
                                    [K1];
                                (K, _, [F|R]) ->
-                                   S = bit_size(K) - 32,
+                                   S = byte_size(K) - 4,
                                    case K of
                                        <<K1:S/binary, _:32>>
                                          when K1 =:= F ->
