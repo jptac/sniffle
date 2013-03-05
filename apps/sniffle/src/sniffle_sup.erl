@@ -36,6 +36,10 @@ init(_Args) ->
       sniffle_dataset_vnode_master,
       { riak_core_vnode_master, start_link, [sniffle_dataset_vnode]},
       permanent, 5000, worker, [sniffle_dataset_vnode_master]},
+    VImg = {
+      sniffle_img_vnode_master,
+      { riak_core_vnode_master, start_link, [sniffle_img_vnode]},
+      permanent, 5000, worker, [sniffle_img_vnode_master]},
     VDTrace = {
       sniffle_dtrace_vnode_master,
       { riak_core_vnode_master, start_link, [sniffle_dtrace_vnode]},
@@ -71,5 +75,5 @@ init(_Args) ->
     { ok,
       { {one_for_one, 5, 10},
         [VHypervisor, VVM, VIprange, VDataset, VPackage,
-         WriteFSMs, ReadFSMs, CoverageFSMs,
+         VImg, WriteFSMs, ReadFSMs, CoverageFSMs,
          CreateFSMs, DB, VDTrace, DTrace]}}.

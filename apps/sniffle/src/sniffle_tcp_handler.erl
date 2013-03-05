@@ -193,8 +193,6 @@ message({vm, list, Requirements}, State) when
      sniffle_vm:list(Requirements),
      State};
 
-
-
 %%%===================================================================
 %%%  Hypervisor Functions
 %%%===================================================================
@@ -286,6 +284,39 @@ message({dataset, list, Requirements}, State) when
       is_list(Requirements) ->
     {stop, normal,
      sniffle_dataset:list(Requirements),
+     State};
+
+%%%===================================================================
+%%%  Img Functions
+%%%===================================================================
+
+message({img, create, Img, Idx, Data}, State) when
+      is_binary(Img) ->
+    {stop, normal,
+     sniffle_img:create(Img, Idx, Data),
+     State};
+
+message({img, delete, Img, Idx}, State) when
+      is_binary(Img) ->
+    {stop, normal,
+     sniffle_img:delete(Img, Idx),
+     State};
+
+message({img, get, Img, Idx}, State) when
+      is_binary(Img) ->
+    {stop, normal,
+     sniffle_img:get(Img, Idx),
+     State};
+
+message({img, list}, State) ->
+    {stop, normal,
+     sniffle_img:list(),
+     State};
+
+message({img, list, Img}, State) when
+      is_binary(Img) ->
+    {stop, normal,
+     sniffle_img:list(Img),
      State};
 
 %%%===================================================================
