@@ -207,9 +207,20 @@ delete(State) ->
 handle_coverage({list, ReqID}, _KeySpaces, _Sender, State) ->
     estatsd:increment("sniffle.imgs.list"),
     List = sniffle_db:fold(State#state.db,
-                          <<"img">>,
-                           fun (K, _, L) ->
-                                   [K|L]
+                           <<"img">>,
+                           fun (K, _, []) ->
+                                   S = bit_size(K) - 32,
+                                   <<K1:S/binary, _:32>> = K,
+                                   [K1];
+                               (K, _, [F|R]) ->
+                                   S = bit_size(K) - 32,
+                                   case K of
+                                       <<K1:S/binary, _:32>>
+                                         when K1 =:= F ->
+                                           [F|R];
+                                       <<K1:S/binary, _:32>> ->
+                                           [K1, F | R]
+                                   end
                            end, []),
     {reply,
      {ok, ReqID, {State#state.partition,State#state.node}, List},
@@ -217,10 +228,9 @@ handle_coverage({list, ReqID}, _KeySpaces, _Sender, State) ->
 
 handle_coverage({list, ReqID, Img}, _KeySpaces, _Sender, State) ->
     estatsd:increment("sniffle.imgs.list"),
-    S = bit_size(Img),
     List = sniffle_db:fold(State#state.db,
                           <<"img", Img/binary>>,
-                           fun (<<_:S, Idx:32>>, _, L) ->
+                           fun (<<Idx:32>>, _, L) ->
                                    [Idx|L]
                            end, []),
     {reply,
