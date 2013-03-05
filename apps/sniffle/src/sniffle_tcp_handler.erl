@@ -286,6 +286,12 @@ message({dataset, list, Requirements}, State) when
      sniffle_dataset:list(Requirements),
      State};
 
+message({dataset, import, URL}, State) ->
+    {stop, normal,
+     sniffle_dataset:import(URL),
+     State};
+
+
 %%%===================================================================
 %%%  Img Functions
 %%%===================================================================

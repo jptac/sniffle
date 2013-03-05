@@ -10,6 +10,8 @@
          list/1
         ]).
 
+-ignore_xref([read_image/5]).
+
 create(Img, Idx, Data) ->
     do_write({Img, Idx}, create, Data).
 

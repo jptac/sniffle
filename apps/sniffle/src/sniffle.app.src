@@ -1,3 +1,4 @@
+
 %% -*- erlang -*-
 {application, sniffle,
  [
@@ -15,6 +16,10 @@
                   libhowl,
                   libsnarl,
                   hanoidb,
+                  crypto,
+                  public_key,
+                  ssl,
+                  hackney,
                   lager
                  ]},
   {mod, { sniffle_app, []}},
