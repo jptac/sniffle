@@ -184,7 +184,7 @@ get_ips(_Event, State = #state{config = Config,
                                                                 Res;
                                                             VLAN ->
                                                                 jsxd:set(<<"vlan_di">>, VLAN, Res)
-                                                            end,
+                                                        end,
                                                  NicsF1 = jsxd:set(K, Res1, NicsF),
                                                  {NicsF1, Mappings1}
                                          end, {[], []}, Nics),
@@ -215,8 +215,8 @@ get_server(_Event, State = #state{
             Conditions0 = jsxd:get(<<"requirements">>, [], Package),
             Conditions1 = Conditions0 ++ jsxd:get(<<"requirements">>, [], Dataset),
             Conditions2 = [{must, 'allowed', Permission, Permissions},
-                          {must, 'subset', <<"networks">>, NicTags},
-                          {must, 'element', <<"virtualisation">>, Type}] ++
+                           {must, 'subset', <<"networks">>, NicTags},
+                           {must, 'element', <<"virtualisation">>, Type}] ++
                 lists:map(fun(C) -> make_condition(C, Permissions) end, Conditions1),
             TestPhrase = ?TESTPHRASE ++ os:cmd("uname -a | digest -a md5"),
             Conditions = case application:get_env(sniffle, i_do_not_care_about_overcomissioning_memory_even_so_licenser_told_me_otherwise) of
@@ -369,4 +369,3 @@ make_condition(C, Permissions) ->
             {ok, Value} = jsxd:get(<<"value">>, C),
             {Weight, Condition, Attribute, Value}
     end.
-

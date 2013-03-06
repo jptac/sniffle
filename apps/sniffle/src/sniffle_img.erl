@@ -19,6 +19,7 @@ delete(Img, Idx) ->
     do_write({Img, Idx}, delete).
 
 get(Img, Idx) ->
+    lager:debug("<IMG> ~s[~p]", [Img, Idx]),
     sniffle_entity_read_fsm:start(
       {sniffle_img_vnode, sniffle_img},
       get, {Img, Idx}
