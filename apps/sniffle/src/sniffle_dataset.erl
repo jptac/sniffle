@@ -62,8 +62,7 @@ import(URL) ->
     sniffle_dataset:create(UUID),
     sniffle_dataset:set(UUID, Dataset),
     sniffle_dataset:set(UUID, <<"imported">>, 0),
-    {ok, 200, _, ImgClient} = hackney:request(get, ImgURL, [], <<>>, []),
-    spawn(?MODULE, read_image, [UUID, TotalSize, ImgClient, <<>>, 0]),
+    spawn(?MODULE, read_image, [UUID, TotalSize, ImgURL, <<>>, 0]),
     {ok, UUID}.
 
 
@@ -105,6 +104,10 @@ do_write(Dataset, Op, Val) ->
     end.
 
 %% If more then one MB is in the accumulator read store it in 1MB chunks
+read_image(UUID, TotalSize, Url, Acc, Idx) when is_binary(Url) ->
+    {ok, 200, _, Client} = hackney:request(get, Url, [], <<>>, []),
+    read_image(UUID, TotalSize, Client, Acc, Idx);
+
 read_image(UUID, TotalSize, Client, <<MB:1048576/binary, Acc/binary>>, Idx) ->
     sniffle_img:create(UUID, Idx, MB),
     Idx1 = Idx + 1,
@@ -128,4 +131,3 @@ read_image(UUID, TotalSize, Client, Acc, Idx) ->
         {error, Reason} ->
             lager:error("Error importing image ~s: ~p", [UUID, Reason])
     end.
-
