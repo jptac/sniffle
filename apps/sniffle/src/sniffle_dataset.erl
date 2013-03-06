@@ -54,10 +54,12 @@ import(URL) ->
     {ok, 200, _, Client} = hackney:request(get, URL, [], <<>>, []),
     {ok, Body, Client1} = hackney:body(Client),
     hackney:close(Client1),
-    Dataset = transform_dataset(Body),
+    JSON = jsxd:from_list(jsx:decode(D0)),
+    Dataset = transform_dataset(JSON),
+
     {ok, UUID} = jsxd:get([<<"dataset">>], Dataset),
-    {ok, ImgURL} = jsxd:get([<<"files">>, 0, <<"url">>], Dataset),
-    {ok, TotalSize} = jsxd:get([<<"files">>, 0, <<"size">>], Dataset),
+    {ok, ImgURL} = jsxd:get([<<"files">>, 0, <<"url">>], JSON),
+    {ok, TotalSize} = jsxd:get([<<"files">>, 0, <<"size">>], JSON),
     sniffle_dataset:create(UUID),
     sniffle_dataset:set(UUID, Dataset),
     sniffle_dataset:set(UUID, <<"imported">>, 0),
@@ -70,8 +72,7 @@ import(URL) ->
 %%% Internal Functions
 %%%===================================================================
 
-transform_dataset(D0) ->
-    D1 = jsxd:from_list(jsx:decode(D0)),
+transform_dataset(D1) ->
     {ok, ID} = jsxd:get(<<"uuid">>, D1),
     D2 = jsxd:thread(
            [{select,[<<"os">>, <<"metadata">>, <<"name">>, <<"version">>,
