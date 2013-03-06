@@ -54,7 +54,22 @@ import(URL) ->
     {ok, 200, _, Client} = hackney:request(get, URL, [], <<>>, []),
     {ok, Body, Client1} = hackney:body(Client),
     hackney:close(Client1),
-    Dataset = jsxd:from_list(jsx:decode(Body)),
+    Obj = jsxd:from_list(jsx:decode(Body)),
+    {ok, ID} = jsxd:get(<<"uuid">>, Obj),
+    libsniffle:dataset_create(ID),
+    Obj1 = jsxd:thread(
+             [{select,[<<"os">>, <<"metadata">>, <<"name">>, <<"version">>,
+                       <<"description">>, <<"disk_driver">>, <<"nic_driver">>,
+                       <<"image_size">>]},
+              {set, <<"dataset">>, ID},
+              {set, <<"networks">>, jsxd:get(<<"requirements.networks">>, [], Obj)}],
+             Obj),
+    Dataset = case jsxd:get(<<"os">>, JSON) of
+               {ok, <<"smartos">>} ->
+                   jsxd:set(<<"type">>, <<"zone">>, Obj1);
+               {ok, _} ->
+                   jsxd:set(<<"type">>, <<"kvm">>, Obj1)
+           end,
     {ok, UUID} = jsxd:get([<<"uuid">>], Dataset),
     {ok, ImgURL} = jsxd:get([<<"files">>, 0, <<"url">>], Dataset),
     {ok, TotalSize} = jsxd:get([<<"files">>, 0, <<"size">>], Dataset),
