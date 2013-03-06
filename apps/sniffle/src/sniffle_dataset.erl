@@ -55,7 +55,7 @@ import(URL) ->
     {ok, Body, Client1} = hackney:body(Client),
     hackney:close(Client1),
     Dataset = transform_dataset(Body),
-    {ok, UUID} = jsxd:get([<<"uuid">>], Dataset),
+    {ok, UUID} = jsxd:get([<<"dataset">>], Dataset),
     {ok, ImgURL} = jsxd:get([<<"files">>, 0, <<"url">>], Dataset),
     {ok, TotalSize} = jsxd:get([<<"files">>, 0, <<"size">>], Dataset),
     sniffle_dataset:create(UUID),
