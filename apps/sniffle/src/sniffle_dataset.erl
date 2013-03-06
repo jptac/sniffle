@@ -56,7 +56,6 @@ import(URL) ->
     hackney:close(Client1),
     JSON = jsxd:from_list(jsx:decode(D0)),
     Dataset = transform_dataset(JSON),
-
     {ok, UUID} = jsxd:get([<<"dataset">>], Dataset),
     {ok, ImgURL} = jsxd:get([<<"files">>, 0, <<"url">>], JSON),
     {ok, TotalSize} = jsxd:get([<<"files">>, 0, <<"size">>], JSON),
