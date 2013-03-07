@@ -119,7 +119,8 @@ read_image(UUID, TotalSize, Client, <<MB:1048576/binary, Acc/binary>>, Idx) ->
 
 %% If we're done (and less then one MB is left, store the rest)
 read_image(UUID, _TotalSize, done, Acc, Idx) ->
-    sniffle_dataset:set(UUID, <<"imported">>, 1),
+    libhowl:send(UUID,
+                 [{<<"event">>, <<"progress">>}, {<<"data">>, [{<<"imported">>, 1}]}]),
     sniffle_img:create(UUID, Idx, Acc);
 
 read_image(UUID, TotalSize, Client, Acc, Idx) ->
