@@ -23,7 +23,12 @@ create(Dataset) ->
     end.
 
 delete(Dataset) ->
-    do_write(Dataset, delete).
+    case do_write(Dataset, delete) of
+        ok ->
+            sniffle_img:delete(Dataset);
+        E ->
+            E
+    end.
 
 get(Dataset) ->
     sniffle_entity_read_fsm:start(
