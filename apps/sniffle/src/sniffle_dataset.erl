@@ -23,7 +23,12 @@ create(Dataset) ->
     end.
 
 delete(Dataset) ->
-    do_write(Dataset, delete).
+    case do_write(Dataset, delete) of
+        ok ->
+            sniffle_img:delete(Dataset);
+        E ->
+            E
+    end.
 
 get(Dataset) ->
     sniffle_entity_read_fsm:start(
@@ -109,13 +114,13 @@ read_image(UUID, TotalSize, Url, Acc, Idx) when is_binary(Url) ->
     read_image(UUID, TotalSize, Client, Acc, Idx);
 
 read_image(UUID, TotalSize, Client, <<MB:1048576/binary, Acc/binary>>, Idx) ->
-    sniffle_img:create(UUID, Idx, MB),
+    sniffle_img:create(UUID, Idx, binary:copy(MB)),
     Idx1 = Idx + 1,
     Done = (Idx1 * 1024*1024) / TotalSize,
     sniffle_dataset:set(UUID, <<"imported">>, Done),
     libhowl:send(UUID,
                  [{<<"event">>, <<"progress">>}, {<<"data">>, [{<<"imported">>, Done}]}]),
-    read_image(UUID, TotalSize, Client, Acc, Idx1);
+    read_image(UUID, TotalSize, Client, binary:copy(Acc), Idx1);
 
 %% If we're done (and less then one MB is left, store the rest)
 read_image(UUID, _TotalSize, done, Acc, Idx) ->
@@ -126,7 +131,7 @@ read_image(UUID, _TotalSize, done, Acc, Idx) ->
 read_image(UUID, TotalSize, Client, Acc, Idx) ->
     case hackney:stream_body(Client) of
         {ok, Data, Client1} ->
-            read_image(UUID, TotalSize, Client1, <<Acc/binary, Data/binary>>, Idx);
+            read_image(UUID, TotalSize, Client1, binary:copy(<<Acc/binary, Data/binary>>), Idx);
         {done, Client2} ->
             hackney:close(Client2),
             read_image(UUID, TotalSize, done, Acc, Idx);

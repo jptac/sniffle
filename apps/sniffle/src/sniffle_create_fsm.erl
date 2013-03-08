@@ -183,7 +183,7 @@ get_ips(_Event, State = #state{config = Config,
                                                             0 ->
                                                                 Res;
                                                             VLAN ->
-                                                                jsxd:set(<<"vlan_di">>, VLAN, Res)
+                                                                jsxd:set(<<"vlan_id">>, VLAN, Res)
                                                         end,
                                                  NicsF1 = jsxd:set(K, Res1, NicsF),
                                                  {NicsF1, Mappings1}

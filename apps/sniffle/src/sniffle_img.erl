@@ -4,6 +4,7 @@
 
 -export([
          create/3,
+         delete/1,
          delete/2,
          get/2,
          list/0,
@@ -17,6 +18,9 @@ create(Img, Idx, Data) ->
 
 delete(Img, Idx) ->
     do_write({Img, Idx}, delete).
+
+delete(Img) ->
+    do_write(Img, delete).
 
 get(Img, Idx) ->
     lager:debug("<IMG> ~s[~p]", [Img, Idx]),
