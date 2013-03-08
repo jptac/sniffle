@@ -264,8 +264,18 @@ terminate(_Reason,  State) ->
     ok.
 
 put(DB, Key, Value) ->
-    bitcask:put(DB, Key, term_to_binary(Value)),
-    erlang:garbage_collect().
+    R = bitcask:put(DB, Key, term_to_binary(Value)),
+    %% This is a very ugly hack, but since we don't have
+    %% much opperations on the image server we need to
+    %% trigger the GC manually.
+    case erlang:get(DB) of
+        {bc_state,_,{filestate,_,_,_,P1,P2,_,_},_,_,_,_,_} ->
+            erlang:garbage_collect(P1),
+            erlang:garbage_collect(P2),
+            R;
+        _ ->
+            R
+    end.
 
 get(DB, Key) ->
     case bitcask:get(DB, Key) of
