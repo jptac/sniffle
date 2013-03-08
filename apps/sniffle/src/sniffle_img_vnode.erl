@@ -268,6 +268,7 @@ put(DB, Key, Value) ->
     %% This is a very ugly hack, but since we don't have
     %% much opperations on the image server we need to
     %% trigger the GC manually.
+    erlang:garbage_collect(),
     case erlang:get(DB) of
         {bc_state,_,{filestate,_,_,_,P1,P2,_,_},_,_,_,_,_} ->
             erlang:garbage_collect(P1),
