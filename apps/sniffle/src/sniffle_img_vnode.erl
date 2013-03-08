@@ -264,7 +264,9 @@ terminate(_Reason,  State) ->
     ok.
 
 put(DB, Key, Value) ->
-    bitcask:put(DB, Key, term_to_binary(Value)).
+    bitcask:put(DB, Key, term_to_binary(Value)),
+    erlang:garbage_collect(),
+    erlang:garbage_collect(DB).
 
 get(DB, Key) ->
     case bitcask:get(DB, Key) of
