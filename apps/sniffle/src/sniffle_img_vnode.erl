@@ -226,7 +226,7 @@ handle_coverage({list, ReqID}, _KeySpaces, _Sender, State) ->
                                      S = byte_size(K) - 4,
                                      <<K1:S/binary, _:32>> = K,
                                      [K1];
-                                 (K, [F|R]) ->
+                                 (#bitcask_entry{key=K}, [F|R]) ->
                                      S = byte_size(K) - 4,
                                      case K of
                                          <<K1:S/binary, _:32>>
