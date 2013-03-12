@@ -152,7 +152,7 @@ get_ips(_Event, State = #state{config = Config,
                                dataset = Dataset}) ->
     Dataset1 = jsxd:update(<<"networks">>,
                            fun(Nics) ->
-                                   {Nics1, _} =
+                                   {Nics1, Mappings} =
                                        jsxd:fold(
                                          fun(K, Nic, {NicsF, Mappings}) ->
                                                  {ok, Name} = jsxd:get(<<"name">>, Nic),
@@ -172,9 +172,6 @@ get_ips(_Event, State = #state{config = Config,
                                                                jsxd:from_list([{<<"network">>, NicTag},
                                                                                {<<"ip">>, IP}]),
                                                                Mappings),
-                                                 sniffle_vm:set(UUID,
-                                                                <<"network_mappings">>,
-                                                                Mappings1),
                                                  Res = jsxd:from_list([{<<"nic_tag">>, Tag},
                                                                        {<<"ip">>, IPb},
                                                                        {<<"netmask">>, Netb},
@@ -188,6 +185,9 @@ get_ips(_Event, State = #state{config = Config,
                                                  NicsF1 = jsxd:set(K, Res1, NicsF),
                                                  {NicsF1, Mappings1}
                                          end, {[], []}, Nics),
+                                   sniffle_vm:set(UUID,
+                                                  <<"network_mappings">>,
+                                                  Mappings),
                                    Nics1
                            end, Dataset),
     {next_state, get_server, State#state{dataset = Dataset1}, 0}.
