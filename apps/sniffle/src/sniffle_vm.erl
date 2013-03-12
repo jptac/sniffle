@@ -16,6 +16,8 @@
     logs/1,
     stop/1,
     reboot/1,
+    stop/2,
+    reboot/2,
     delete/1,
     snapshot/2,
     delete_snapshot/2,
@@ -169,10 +171,16 @@ start(Vm) ->
             ok
     end.
 
+
 -spec stop(Vm::fifo:uuid()) ->
                   {error, timeout} | not_found | ok.
-
 stop(Vm) ->
+    stop(Vm, []).
+
+-spec stop(Vm::fifo:uuid(), Options::[atom()|{atom(), term()}]) ->
+                  {error, timeout} | not_found | ok.
+
+stop(Vm, Options) ->
     case sniffle_vm:get(Vm) of
         {error, timeout} ->
             {error, timeout};
@@ -181,14 +189,19 @@ stop(Vm) ->
         {ok, V} ->
             {ok, H} = jsxd:get(<<"hypervisor">>, V),
             {Server, Port} = get_hypervisor(H),
-            libchunter:stop_machine(Server, Port, Vm),
+            libchunter:stop_machine(Server, Port, Vm, Options),
             ok
     end.
 
 -spec reboot(Vm::fifo:uuid()) ->
                     {error, timeout} | not_found | ok.
-
 reboot(Vm) ->
+    reboot(Vm, []).
+
+-spec reboot(Vm::fifo:uuid(), Options::[atom()|{atom(), term()}]) ->
+                    {error, timeout} | not_found | ok.
+
+reboot(Vm, Options) ->
     case sniffle_vm:get(Vm) of
         {error, timeout} ->
             {error, timeout};
@@ -197,7 +210,7 @@ reboot(Vm) ->
         {ok, V} ->
             {ok, H} = jsxd:get(<<"hypervisor">>, V),
             {Server, Port} = get_hypervisor(H),
-            libchunter:reboot_machine(Server, Port, Vm),
+            libchunter:reboot_machine(Server, Port, Vm, Options),
             ok
     end.
 

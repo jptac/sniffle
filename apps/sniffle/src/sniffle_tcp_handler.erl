@@ -163,10 +163,22 @@ message({vm, stop, Vm}, State) when
      sniffle_vm:stop(Vm),
      State};
 
+message({vm, stop, force, Vm}, State) when
+      is_binary(Vm) ->
+    {stop, normal,
+     sniffle_vm:stop(Vm, [force]),
+     State};
+
 message({vm, reboot, Vm}, State) when
       is_binary(Vm) ->
     {stop, normal,
      sniffle_vm:reboot(Vm),
+     State};
+
+message({vm, reboot, force, Vm}, State) when
+      is_binary(Vm) ->
+    {stop, normal,
+     sniffle_vm:reboot(Vm, [force]),
      State};
 
 message({vm, set, Vm, Attribute, Value}, State) when
