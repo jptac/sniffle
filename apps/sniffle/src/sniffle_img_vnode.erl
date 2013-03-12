@@ -158,9 +158,10 @@ handle_command({create, {ReqID, Coordinator}, {Img, Idx}, Data},
                _Sender, State) ->
     I0 = statebox:new(fun sniffle_img_state:new/0),
     I1 = statebox:modify({fun sniffle_img_state:data/2, [Data]}, I0),
+    I2 = statebox:truncate(0, I1),
     VC0 = vclock:fresh(),
     VC = vclock:increment(Coordinator, VC0),
-    HObject = #sniffle_obj{val=I1, vclock=VC},
+    HObject = #sniffle_obj{val=I2, vclock=VC},
     put(State#state.db, <<Img/binary, Idx:32>>, HObject),
     {reply, {ok, ReqID}, State};
 
