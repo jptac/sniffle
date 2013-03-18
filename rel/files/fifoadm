@@ -15,7 +15,12 @@ case $1 in
         then
             if [ "$2" == "import" ]
             then
-                /opt/local/sniffle/bin/sniffle-admin $1 $2 "$( readlink -f "$( dirname "$3" )" )/$( basename "$3")"
+                if [ "$4" == "" ]
+                then
+                    /opt/local/sniffle/bin/sniffle-admin $1 $2 "$( readlink -f "$( dirname "$3" )" )/$( basename "$3")"
+                else
+                    /opt/local/sniffle/bin/sniffle-admin $1 $2 "$( readlink -f "$( dirname "$3" )" )/$( basename "$3")" "$( readlink -f "$( dirname "$4" )" )/$( basename "$4")"
+                fi
             else
               /opt/local/sniffle/bin/sniffle-admin $@
             fi
