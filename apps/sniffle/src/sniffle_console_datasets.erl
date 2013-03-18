@@ -6,7 +6,40 @@ help() ->
     io:format("Usage~n"),
     io:format("  list [-j]~n"),
     io:format("  get [-j] <uuid>~n"),
+    io:format("  import <manifest> <data file>~n"),
     io:format("  delete <uuid>~n").
+
+-define(CHUNK_SIZE, 1024*1024).
+
+read_image(UUID, File, Idx) ->
+    case file:read(File, 1024*1024) of
+        eof ->
+            ok;
+        {ok, B} ->
+            sniffle_img:create(UUID, Idx, binary:copy(B)),
+            read_image(UUID, File, Idx + 1)
+    end.
+
+command(text, ["import", Manifest, DataFile]) ->
+    case {filelib:is_file(Manifest), filelib:is_file(Manifest)} of
+        {false, _} ->
+            io:format("Manifest file '~s' could not be found.", [Manifest]),
+            error;
+        {_, false} ->
+            io:format("Data file '~s' could not be found.", [DataFile]),
+            error;
+        _ ->
+            {ok, Body} = file:read_file(Manifest),
+            JSON = jsxd:from_list(jsx:decode(Body)),
+            Dataset = sniffle_dataset:transform_dataset(JSON),
+            {ok, UUID} = jsxd:get([<<"dataset">>], Dataset),
+            sniffle_dataset:create(UUID),
+            sniffle_dataset:set(UUID, Dataset),
+            sniffle_dataset:set(UUID, <<"imported">>, 0),
+            {ok, F} = file:open(DataFile, [read, raw, binary]),
+            spawn(fun() ->read_image(UUID, F, 0) end),
+            ok
+    end;
 
 command(text, ["delete", ID]) ->
     case sniffle_dataset:delete(list_to_binary(ID)) of

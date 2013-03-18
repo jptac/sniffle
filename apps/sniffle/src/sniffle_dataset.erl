@@ -11,7 +11,8 @@
          set/2,
          set/3,
          import/1,
-         read_image/5
+         read_image/5,
+         transform_dataset/1
         ]).
 
 create(Dataset) ->
