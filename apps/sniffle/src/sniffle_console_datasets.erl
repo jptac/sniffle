@@ -24,8 +24,14 @@ read_image(UUID, File, TotalSize, LastDone, Idx) ->
             Idx1 = Idx + 1,
             Done = (Idx1 * 1024*1024) / TotalSize,
             sniffle_dataset:set(UUID, <<"imported">>, Done),
-            io:format(string:copies("=", trunc((Done - LastDone) / 0.02))),
-            read_image(UUID, File, TotalSize, Done, Idx)
+            case trunc((Done - LastDone) / 0.02) of
+                X when X >= 1 ->
+                    io:format(string:copies("=", X)),
+                    read_image(UUID, File, TotalSize, Done, Idx);
+                _ ->
+                    read_image(UUID, File, TotalSize, LastDone, Idx)
+            end
+                
     end.
 
 command(text, ["import", Manifest, DataFile]) ->
