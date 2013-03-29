@@ -7,6 +7,7 @@
          hvs/1,
          pkgs/1,
          ds/1,
+         dtrace/1,
          ips/1,
          pp_json/1,
          ringready/1]).
@@ -19,10 +20,21 @@
               ips/1,
               hvs/1,
               pkgs/1,
+              dtrace/1,
               remove/1,
               ringready/1
              ]).
 
+
+dtrace([C, "-j" | R]) ->
+    sniffle_console_dtrace:command(json, [C | R]);
+
+dtrace([]) ->
+    sniffle_console_dtrace:help(),
+    ok;
+
+dtrace(R) ->
+    sniffle_console_dtrace:command(text, R).
 
 vms([C, "-j" | R]) ->
     sniffle_console_vms:command(json, [C | R]);

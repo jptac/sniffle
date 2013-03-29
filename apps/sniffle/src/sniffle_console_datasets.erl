@@ -6,7 +6,56 @@ help() ->
     io:format("Usage~n"),
     io:format("  list [-j]~n"),
     io:format("  get [-j] <uuid>~n"),
+    io:format("  import <manifest> <data file>~n"),
     io:format("  delete <uuid>~n").
+
+-define(CHUNK_SIZE, 1024*1024).
+
+read_image(UUID, File, TotalSize, LastDone, Idx) ->
+    case file:read(File, 1024*1024) of
+        eof ->
+            sniffle_dataset:set(UUID, <<"imported">>, 1),
+            Done = ((Idx +1) * 1024*1024) / TotalSize,
+            io:format(string:copies("=", trunc((Done - LastDone) / 0.02))),
+            io:format("|~n"),
+            ok;
+        {ok, B} ->
+            sniffle_img:create(UUID, Idx, binary:copy(B)),
+            Idx1 = Idx + 1,
+            Done = (Idx1 * 1024*1024) / TotalSize,
+            sniffle_dataset:set(UUID, <<"imported">>, Done),
+            case trunc((Done - LastDone) / 0.02) of
+                X when X >= 1 ->
+                    io:format(string:copies("=", X)),
+                    read_image(UUID, File, TotalSize, Done, Idx);
+                _ ->
+                    read_image(UUID, File, TotalSize, LastDone, Idx)
+            end
+                
+    end.
+
+command(text, ["import", Manifest, DataFile]) ->
+    case {filelib:is_file(Manifest), filelib:is_file(Manifest)} of
+        {false, _} ->
+            io:format("Manifest file '~s' could not be found.", [Manifest]),
+            error;
+        {_, false} ->
+            io:format("Data file '~s' could not be found.", [DataFile]),
+            error;
+        _ ->
+            {ok, Body} = file:read_file(Manifest),
+            JSON = jsxd:from_list(jsx:decode(Body)),
+            Dataset = sniffle_dataset:transform_dataset(JSON),
+            {ok, UUID} = jsxd:get([<<"dataset">>], Dataset),
+            {ok, TotalSize} = jsxd:get([<<"files">>, 0, <<"size">>], JSON),
+            sniffle_dataset:create(UUID),
+            sniffle_dataset:set(UUID, Dataset),
+            sniffle_dataset:set(UUID, <<"imported">>, 0),
+            io:format("|0-----------------------50---------------------100|%~n|"),
+            {ok, F} = file:open(DataFile, [read, raw, binary]),
+            read_image(UUID, F, TotalSize, 0, 0),
+            ok
+    end;
 
 command(text, ["delete", ID]) ->
     case sniffle_dataset:delete(list_to_binary(ID)) of

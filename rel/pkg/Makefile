@@ -1,4 +1,4 @@
-VERSION=0.3.4p1
+VERSION=0.3.5
 COMPONENT=sniffle
 
 .PHONY: build_info package package_list

@@ -8,6 +8,7 @@ help() ->
     io:format("  get [-j] <uuid>~n"),
     io:format("  logs [-j] <uuid>~n"),
     io:format("  snapshots [-j] <uuid>~n"),
+    io:format("  snapshots <uuid> <comment>~n"),
     io:format("  start <uuid>~n"),
     io:format("  stop <uuid>~n"),
     io:format("  reboot <uuid>~n"),
@@ -105,6 +106,17 @@ command(text, ["logs", UUID]) ->
             ok
     end;
 
+
+command(text, ["snapshot", UUID | Comment]) ->
+    case sniffle_vm:snapshot(list_to_binary(UUID), iolist_to_binary(join(Comment, " "))) of
+        {ok, Snap} ->
+            io:format("New snapshot created: ~s.~n", [Snap]),
+            ok;
+        E ->
+            io:format("Failed to create: ~p.~n", [E]),
+            error
+    end;
+
 command(json, ["snapshots", UUID]) ->
     case sniffle_vm:get(list_to_binary(UUID)) of
         {ok, VM} ->
@@ -166,3 +178,10 @@ command(text, ["list"]) ->
 command(_, C) ->
     io:format("Unknown parameters: ~p", [C]),
     error.
+
+
+join([ Head | [] ], _Sep) ->
+   [Head];
+
+join([ Head | Rest], Sep) ->
+   [Head,Sep | join(Rest,Sep) ].
