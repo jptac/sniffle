@@ -31,7 +31,6 @@ read_image(UUID, File, TotalSize, LastDone, Idx) ->
                 _ ->
                     read_image(UUID, File, TotalSize, LastDone, Idx)
             end
-                
     end.
 
 command(text, ["import", Manifest, DataFile]) ->
