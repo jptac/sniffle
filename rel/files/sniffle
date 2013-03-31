@@ -121,6 +121,11 @@ case "$1" in
     console|console_clean)
         # .boot file typically just $SCRIPT (ie, the app name)
         # however, for debugging, sometimes start_clean.boot is useful:
+        RES=`$NODETOOL ping`
+        if [ "$RES" = "pong" ]; then
+            echo "Node is already running!"
+            exit 1
+        fi
         case "$1" in
             console)        BOOTFILE=$SCRIPT ;;
             console_clean)  BOOTFILE=start_clean ;;
