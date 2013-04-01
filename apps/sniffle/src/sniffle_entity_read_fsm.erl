@@ -261,7 +261,12 @@ repair(VNode, StatName, MObj, [{IdxNode,Obj}|T]) ->
             repair(VNode, StatName, MObj, T);
         false ->
             io:format("~p~n", [Obj]),
-            VNode:repair(IdxNode, StatName, Obj#sniffle_obj.vclock, MObj),
+            case Obj of
+                not_found ->
+                    VNode:repair(IdxNode, StatName, not_found, MObj);
+                _ ->
+                    VNode:repair(IdxNode, StatName, Obj#sniffle_obj.vclock, MObj)
+            end,
             repair(VNode, StatName, MObj, T)
     end.
 
