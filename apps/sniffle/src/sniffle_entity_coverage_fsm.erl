@@ -112,7 +112,7 @@ prepare(timeout, SD0=#state{system=System,
     PVC = N,
     {Nodes, _Other} =
         riak_core_coverage_plan:create_plan(
-          all, N, PVC, ReqId, System),
+          allup, N, PVC, ReqId, System),
     {ok, CHash} = riak_core_ring_manager:get_my_ring(),
     {Num, _} = riak_core_ring:chash(CHash),
     SD = SD0#state{preflist=Nodes, size=Num},
@@ -125,7 +125,6 @@ execute(timeout, SD0=#state{req_id=ReqId,
                             val=Val,
                             vnode=VNode,
                             preflist=Prelist}) ->
-    ?PRINT({execute, Entity, Val}),
     case Entity of
         undefined ->
             VNode:Op(Prelist, ReqId);
@@ -145,6 +144,7 @@ waiting({{undefined,{_Partition, _Node} = IdxNode},
          {ok,ReqID,IdxNode,Obj}},
         SD0=#state{num_r = NumR0, size=Size, from=From, replies=Replies0, r=R}) ->
     NumR = NumR0 + 1,
+    lager:debug("Got coverage reply(~p): ~p", [NumR, {ok,ReqID,IdxNode,Obj}]),
     Replies1 = case Replies0 of
                    [] ->
                        dict:new();
