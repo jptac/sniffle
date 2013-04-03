@@ -9,6 +9,7 @@
          ds/1,
          dtrace/1,
          ips/1,
+         down/1,
          pp_json/1,
          ringready/1]).
 
@@ -19,6 +20,7 @@
               ds/1,
               ips/1,
               hvs/1,
+              down/1,
               pkgs/1,
               dtrace/1,
               remove/1,
@@ -125,6 +127,34 @@ remove_node(Node) when is_atom(Node) ->
         Exception:Reason ->
             lager:error("Leave failed ~p:~p", [Exception, Reason]),
             io:format("Leave failed, see log for details~n"),
+            error
+    end.
+
+
+down([Node]) ->
+    try
+        case riak_core:down(list_to_atom(Node)) of
+            ok ->
+                io:format("Success: ~p marked as down~n", [Node]),
+                ok;
+            {error, legacy_mode} ->
+                io:format("Cluster is currently in legacy mode~n"),
+                ok;
+            {error, is_up} ->
+                io:format("Failed: ~s is up~n", [Node]),
+                error;
+            {error, not_member} ->
+                io:format("Failed: ~p is not a member of the cluster.~n",
+                          [Node]),
+                error;
+            {error, only_member} ->
+                io:format("Failed: ~p is the only member.~n", [Node]),
+                error
+        end
+    catch
+        Exception:Reason ->
+            lager:error("Down failed ~p:~p", [Exception, Reason]),
+            io:format("Down failed, see log for details~n"),
             error
     end.
 
