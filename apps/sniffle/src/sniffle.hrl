@@ -5,6 +5,8 @@
 -define(R, 2).
 -define(W, 3).
 -define(STATEBOX_EXPIRE, 60000).
+-define(STATEBOX_TRUNCATE, 240).
+
 -define(DEFAULT_TIMEOUT, 10000).
 
 
