@@ -260,7 +260,6 @@ repair(VNode, StatName, MObj, [{IdxNode,Obj}|T]) ->
         true ->
             repair(VNode, StatName, MObj, T);
         false ->
-            io:format("~p~n", [Obj]),
             case Obj of
                 not_found ->
                     VNode:repair(IdxNode, StatName, not_found, MObj);
