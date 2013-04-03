@@ -197,7 +197,7 @@ handle_command({set,
                              {fun sniffle_hypervisor_state:set/3,
                               [Resource, Value]}, H)
                    end, H1, Resources),
-            H3 = statebox:expire(?STATEBOX_EXPIRE, H2),
+            H3 = statebox:truncate(?STATEBOX_TRUNCATE, statebox:expire(?STATEBOX_EXPIRE, H2)),
             sniffle_db:put(State#state.db, <<"hypervisor">>, Hypervisor,
                            sniffle_obj:update(H3, Coordinator, O)),
             {reply, {ok, ReqID}, State};
