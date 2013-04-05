@@ -27,9 +27,9 @@ read_image(UUID, File, TotalSize, LastDone, Idx) ->
             case trunc((Done - LastDone) / 0.02) of
                 X when X >= 1 ->
                     io:format(string:copies("=", X)),
-                    read_image(UUID, File, TotalSize, Done, Idx);
+                    read_image(UUID, File, TotalSize, Done, Idx1);
                 _ ->
-                    read_image(UUID, File, TotalSize, LastDone, Idx)
+                    read_image(UUID, File, TotalSize, LastDone, Idx1)
             end
     end.
 
