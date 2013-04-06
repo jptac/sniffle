@@ -74,6 +74,7 @@ claim_ip(IP, Iprange) ->
             jsxd:set(<<"current">>, IP + 1 , Iprange);
         _ ->
             jsxd:update(<<"free">>, fun (IPs) ->
+                                            true = lists:member(IP, IPs),
                                             lists:filter(fun(X) -> X =/= IP end, IPs)
                                     end, Iprange)
     end.

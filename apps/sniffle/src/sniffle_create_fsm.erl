@@ -100,7 +100,18 @@ create(UUID, Package, Dataset, Config) ->
 init([UUID, Package, Dataset, Config]) ->
     process_flag(trap_exit, true),
     Config1 = jsxd:from_list(Config),
-    sniffle_vm:set(UUID, <<"config">>, Config1),
+    %% We're transforming the networks map {nic -> networkid} into
+    %% an array that is close to what it will look after the VM was
+    %% created, that way the structure stays consistant.
+    Config2 = jsxd:update(<<"networks">>,
+                          fun (N) ->
+                                  jsxd:from_list(
+                                    lists:map(fun ({Iface, Net}) ->
+                                                      [{<<"interface">>, Iface},
+                                                       {<<"network">>, Net}]
+                                              end, N))
+                          end, [], Config1),
+    sniffle_vm:set(UUID, <<"config">>, Config2),
     {ok, create_permissions, #state{
            uuid = UUID,
            package_name = Package,
