@@ -90,12 +90,12 @@ release_ip(IP, Iprange) ->
 release_ip(IP, First, Current, Last, Iprange) when
       First =< IP,
       Last >= IP,
-      Current == IP + 1 ->
+      Current =:= IP + 1 ->
     jsxd:set(<<"current">>, IP, Iprange);
 
 release_ip(IP, First, Current, Last, Iprange) when
-      First < IP,
-      Last > IP,
+      First =< IP,
+      Last >= IP,
       Current > IP ->
     jsxd:prepend(<<"free">>, IP, Iprange);
 

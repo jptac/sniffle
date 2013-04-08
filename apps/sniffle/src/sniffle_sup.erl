@@ -74,6 +74,6 @@ init(_Args) ->
       permanent, infinity, supervisor, [sniffle_dtrace_sup]},
     { ok,
       { {one_for_one, 5, 10},
-        [VHypervisor, VVM, VIprange, VDataset, VPackage,
-         VImg, WriteFSMs, ReadFSMs, CoverageFSMs,
-         CreateFSMs, DB, VDTrace, DTrace]}}.
+        [DB,CoverageFSMs, WriteFSMs, ReadFSMs, CreateFSMs,
+         VHypervisor, VVM, VIprange, VDataset, VPackage,
+         VImg, VDTrace, DTrace]}}.
