@@ -74,7 +74,8 @@ claim_ip(IP, Iprange) ->
             jsxd:set(<<"current">>, IP + 1 , Iprange);
         _ ->
             jsxd:update(<<"free">>, fun (IPs) ->
-                                            true = lists:member(IP, IPs),
+                                            %%TODO: This does not work well with the way statebox works.
+                                            %%true = lists:member(IP, IPs),
                                             lists:filter(fun(X) -> X =/= IP end, IPs)
                                     end, Iprange)
     end.
