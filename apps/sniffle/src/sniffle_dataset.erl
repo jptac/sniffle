@@ -115,8 +115,14 @@ do_write(Dataset, Op, Val) ->
 
 %% If more then one MB is in the accumulator read store it in 1MB chunks
 read_image(UUID, TotalSize, Url, Acc, Idx) when is_binary(Url) ->
-    {ok, 200, _, Client} = hackney:request(get, Url, [], <<>>, []),
-    read_image(UUID, TotalSize, Client, Acc, Idx);
+    case hackney:request(get, Url, [], <<>>, []) of
+        {ok, 200, _, Client} ->
+            read_image(UUID, TotalSize, Client, Acc, Idx);
+        {ok, E, _, _} ->
+            libhowl:send(UUID,
+                         [{<<"event">>, <<"error">>}, {<<"data">>, [{<<"message">>, E},
+                                                                    {<<"index">>, 0}]}])
+    end;
 
 read_image(UUID, TotalSize, Client, <<MB:1048576/binary, Acc/binary>>, Idx) ->
     sniffle_img:create(UUID, Idx, binary:copy(MB)),
@@ -142,5 +148,10 @@ read_image(UUID, TotalSize, Client, Acc, Idx) ->
             hackney:close(Client2),
             read_image(UUID, TotalSize, done, Acc, Idx);
         {error, Reason} ->
+            libhowl:send(UUID,
+                         [{<<"event">>, <<"error">>}, {<<"data">>, [{<<"message">>, <<"failed">>},
+                                                                    {<<"index">>, Idx}]}]),
+            libhowl:send(UUID,
+                         [{<<"event">>, <<"progress">>}, {<<"data">>, [{<<"imported">>, 0}]}]),
             lager:error("Error importing image ~s: ~p", [UUID, Reason])
     end.
