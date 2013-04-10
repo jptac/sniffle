@@ -57,19 +57,23 @@ set(Dataset, Attributes) ->
     do_write(Dataset, set, Attributes).
 
 import(URL) ->
-    {ok, 200, _, Client} = hackney:request(get, URL, [], <<>>, []),
-    {ok, Body, Client1} = hackney:body(Client),
-    hackney:close(Client1),
-    JSON = jsxd:from_list(jsx:decode(Body)),
-    Dataset = transform_dataset(JSON),
-    {ok, UUID} = jsxd:get([<<"dataset">>], Dataset),
-    {ok, ImgURL} = jsxd:get([<<"files">>, 0, <<"url">>], JSON),
-    {ok, TotalSize} = jsxd:get([<<"files">>, 0, <<"size">>], JSON),
-    sniffle_dataset:create(UUID),
-    sniffle_dataset:set(UUID, Dataset),
-    sniffle_dataset:set(UUID, <<"imported">>, 0),
-    spawn(?MODULE, read_image, [UUID, TotalSize, ImgURL, <<>>, 0]),
-    {ok, UUID}.
+    case hackney:request(get, URL, [], <<>>, []) of
+    {ok, 200, _, Client} ->
+            {ok, Body, Client1} = hackney:body(Client),
+            hackney:close(Client1),
+            JSON = jsxd:from_list(jsx:decode(Body)),
+            Dataset = transform_dataset(JSON),
+            {ok, UUID} = jsxd:get([<<"dataset">>], Dataset),
+            {ok, ImgURL} = jsxd:get([<<"files">>, 0, <<"url">>], JSON),
+            {ok, TotalSize} = jsxd:get([<<"files">>, 0, <<"size">>], JSON),
+            sniffle_dataset:create(UUID),
+            sniffle_dataset:set(UUID, Dataset),
+            sniffle_dataset:set(UUID, <<"imported">>, 0),
+            spawn(?MODULE, read_image, [UUID, TotalSize, ImgURL, <<>>, 0]),
+            {ok, UUID};
+        {ok, E, _, _} ->
+            {error, E}
+    end.
 
 
 %%%===================================================================
