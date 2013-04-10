@@ -216,6 +216,7 @@ handle_command({ip, claim,
                 {ReqID, Coordinator}, Iprange, IP}, _Sender, State) ->
     case sniffle_db:get(State#state.db, <<"iprange">>, Iprange) of
         {ok, #sniffle_obj{val=H0} = O} ->
+            true = sniffle_iprange_state:is_free(IP, statebox:value(H0)),
             estatsd:increment("sniffle.ipranges.claim.success"),
             H1 = statebox:modify({fun sniffle_iprange_state:load/1,[]}, H0),
             H2 = statebox:modify({fun sniffle_iprange_state:claim_ip/2,[IP]}, H1),
