@@ -7,7 +7,7 @@
 -define(STATEBOX_EXPIRE, 60000).
 -define(STATEBOX_TRUNCATE, 240).
 
--define(DEFAULT_TIMEOUT, 10000).
+-define(DEFAULT_TIMEOUT, 1000).
 
 
 -type val() ::  statebox:statebox().

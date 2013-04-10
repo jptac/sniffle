@@ -15,6 +15,8 @@
          set/2
         ]).
 
+-define(MAX_TRIES, 3).
+
 lookup(User) ->
     {ok, Res} = sniffle_entity_coverage_fsm:start(
                   {sniffle_iprange_vnode, sniffle_iprange},
@@ -57,20 +59,9 @@ list(Requirements) ->
 release_ip(Iprange, IP) ->
     do_write(Iprange, release_ip, IP).
 
+
 claim_ip(Iprange) ->
-    case sniffle_iprange:get(Iprange) of
-        {ok, not_found} ->
-            not_found;
-        {ok, Obj} ->
-            case {jsxd:get(<<"free">>, [], Obj), jsxd:get(<<"current">>, 0, Obj), jsxd:get(<<"last">>, 0, Obj)} of
-                {[], FoundIP, Last} when FoundIP > Last ->
-                    no_ips_left;
-                {[], FoundIP, _} ->
-                    do_write(Iprange, claim_ip, FoundIP);
-                {[FoundIP|_], _, _} ->
-                    do_write(Iprange, claim_ip, FoundIP)
-            end
-    end.
+    claim_ip(Iprange, 0).
 
 set(Iprange, Attribute, Value) ->
     set(Iprange, [{Attribute, Value}]).
@@ -87,3 +78,40 @@ do_write(Iprange, Op) ->
 
 do_write(Iprange, Op, Val) ->
     sniffle_entity_write_fsm:write({sniffle_iprange_vnode, sniffle_iprange}, Iprange, Op, Val).
+
+
+
+
+claim_ip(_Iprange, ?MAX_TRIES) ->
+    {error, failed};
+
+claim_ip(Iprange, N) ->
+    case sniffle_iprange:get(Iprange) of
+        {error, timeout} ->
+            timer:sleep(N*50),
+            claim_ip(Iprange, N + 1);
+        {ok, not_found} ->
+            not_found;
+        {ok, Obj} ->
+            case {jsxd:get(<<"free">>, [], Obj), jsxd:get(<<"current">>, 0, Obj), jsxd:get(<<"last">>, 0, Obj)} of
+                {[], FoundIP, Last} when FoundIP > Last ->
+                    no_ips_left;
+                {[], FoundIP, _} ->
+                    case do_write(Iprange, claim_ip, FoundIP) of
+                        {error, _} ->
+                            timer:sleep(N*50),
+                            claim_ip(Iprange, N + 1);
+                        R ->
+                            R
+                    end;
+                {[FoundIP|_], _, _} ->
+                    case do_write(Iprange, claim_ip, FoundIP) of
+                        {error, _} ->
+                            timer:sleep(N*50),
+                            claim_ip(Iprange, N + 1);
+                        R ->
+                            R
+                    end
+            end
+    end.
+
