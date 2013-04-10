@@ -21,6 +21,7 @@
          network/2,
          netmask/2,
          first/2,
+         is_free/2,
          last/2,
          current/2,
          release_ip/2,
@@ -68,10 +69,26 @@ tag(Tag, Iprange) ->
 vlan(Vlan, Iprange) ->
     jsxd:set(<<"vlan">>, Vlan, Iprange).
 
+
+is_free(IP, Iprange) ->
+    case jsxd:get(<<"current">>, Iprange) of
+        {ok, Current} when Current =< IP ->
+            true;
+        _ ->
+            IPs = jsxd:get(<<"free">>, [], Iprange),
+            lists:member(IP, IPs)
+    end.
+
 claim_ip(IP, Iprange) ->
     case jsxd:get(<<"current">>, Iprange) of
         {ok, IP} ->
             jsxd:set(<<"current">>, IP + 1 , Iprange);
+        {ok, Current} when Current < IP ->
+            jsxd:thread([{set, <<"current">>, IP + 1},
+                         {update, <<"free">>, fun (Free) ->
+                                                      lists:seq(Current, IP-1) ++ Free
+                                              end}],
+                        Iprange);
         _ ->
             jsxd:update(<<"free">>, fun (IPs) ->
                                             %%TODO: This does not work well with the way statebox works.
@@ -145,15 +162,16 @@ claim1_test() ->
 claim2_test() ->
     R = example_setup(),
     R1 = jsxd:set(<<"free">>, [123, 124], R),
-    R2 = claim_ip(123, R1),
-    ?assertEqual({ok, 110}, jsxd:get(<<"current">>, R2)),
-    ?assertEqual({ok, [124]}, jsxd:get(<<"free">>, R2)),
-    R3 = claim_ip(110, R1),
-    ?assertEqual({ok, 111}, jsxd:get(<<"current">>, R3)),
-    ?assertEqual({ok, [123, 124]}, jsxd:get(<<"free">>, R3)),
-    R4 = claim_ip(124, R1),
-    ?assertEqual({ok, 110}, jsxd:get(<<"current">>, R4)),
-    ?assertEqual({ok, [123]}, jsxd:get(<<"free">>, R4)).
+    R2 = jsxd:set(<<"current">>, 125, R1),
+    R3 = claim_ip(123, R2),
+    ?assertEqual({ok, 125}, jsxd:get(<<"current">>, R3)),
+    ?assertEqual({ok, [124]}, jsxd:get(<<"free">>, R3)),
+    R4 = claim_ip(125, R2),
+    ?assertEqual({ok, 126}, jsxd:get(<<"current">>, R4)),
+    ?assertEqual({ok, [123, 124]}, jsxd:get(<<"free">>, R4)),
+    R5 = claim_ip(124, R2),
+    ?assertEqual({ok, 125}, jsxd:get(<<"current">>, R5)),
+    ?assertEqual({ok, [123]}, jsxd:get(<<"free">>, R5)).
 
 return_test() ->
     R = example_setup(),
