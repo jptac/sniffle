@@ -216,18 +216,22 @@ handle_command({ip, claim,
                 {ReqID, Coordinator}, Iprange, IP}, _Sender, State) ->
     case sniffle_db:get(State#state.db, <<"iprange">>, Iprange) of
         {ok, #sniffle_obj{val=H0} = O} ->
-            true = sniffle_iprange_state:is_free(IP, statebox:value(H0)),
-            estatsd:increment("sniffle.ipranges.claim.success"),
-            H1 = statebox:modify({fun sniffle_iprange_state:load/1,[]}, H0),
-            H2 = statebox:modify({fun sniffle_iprange_state:claim_ip/2,[IP]}, H1),
-            H3 = statebox:expire(?STATEBOX_EXPIRE, H2),
-            sniffle_db:put(State#state.db, <<"iprange">>, Iprange,
-                           sniffle_obj:update(H3, Coordinator, O)),
-            V1 = statebox:value(H3),
-            {reply, {ok, ReqID, {jsxd:get(<<"tag">>, <<"">>, V1),
-                                 IP,
-                                 jsxd:get(<<"netmask">>, 0, V1),
-                                 jsxd:get(<<"gateway">>, 0, V1)}}, State};
+            case sniffle_iprange_state:is_free(IP, statebox:value(H0)) of
+                true ->
+                    estatsd:increment("sniffle.ipranges.claim.success"),
+                    H1 = statebox:modify({fun sniffle_iprange_state:load/1,[]}, H0),
+                    H2 = statebox:modify({fun sniffle_iprange_state:claim_ip/2,[IP]}, H1),
+                    H3 = statebox:expire(?STATEBOX_EXPIRE, H2),
+                    sniffle_db:put(State#state.db, <<"iprange">>, Iprange,
+                                   sniffle_obj:update(H3, Coordinator, O)),
+                    V1 = statebox:value(H3),
+                    {reply, {ok, ReqID, {jsxd:get(<<"tag">>, <<"">>, V1),
+                                         IP,
+                                         jsxd:get(<<"netmask">>, 0, V1),
+                                         jsxd:get(<<"gateway">>, 0, V1)}}, State};
+                false ->
+                    {reply, {error, ReqID, duplicated}, State}
+            end;
         _ ->
             estatsd:increment("sniffle.ipranges.claim.failed"),
             {reply, {ok, ReqID, not_found}, State}
