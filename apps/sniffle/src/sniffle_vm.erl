@@ -146,6 +146,7 @@ delete(Vm) ->
                         {ok, <<"deleting">>} ->
                             sniffle_vm:unregister(Vm),
                             libhowl:send(Vm, [{<<"event">>, <<"delete">>}]);
+                        %% When the vm was in failed state it got never handed off to the hypervisor
                         {ok, <<"failed-", _/binary>>} ->
                             sniffle_vm:unregister(Vm),
                             libhowl:send(Vm, [{<<"event">>, <<"delete">>}]);
