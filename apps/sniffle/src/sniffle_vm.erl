@@ -146,6 +146,9 @@ delete(Vm) ->
                         {ok, <<"deleting">>} ->
                             sniffle_vm:unregister(Vm),
                             libhowl:send(Vm, [{<<"event">>, <<"delete">>}]);
+                        {ok, <<"failed-", _/binary>>} ->
+                            sniffle_vm:unregister(Vm),
+                            libhowl:send(Vm, [{<<"event">>, <<"delete">>}]);
                         _ ->
                             set(Vm, <<"state">>, <<"deleting">>),
                             {Host, Port} = get_hypervisor(H),
