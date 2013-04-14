@@ -29,6 +29,8 @@
 
 -ignore_xref([logs/1]).
 
+-spec update(Vm::fifo:uuid(), Package::fifo:uuid(), Config::fifo:config()) ->
+                    not_found | {error, timeout} | ok.
 update(Vm, Package, Config) ->
     case sniffle_vm:get(Vm) of
         {ok, V} ->
@@ -248,6 +250,8 @@ log(Vm, Log) ->
             R
     end.
 
+-spec snapshot(VM::fifo:uuid(), Comment::binary()) ->
+                      {error, timeout} | not_found | {ok, UUID::fifo:uuid()}.
 snapshot(Vm, Comment) ->
     case sniffle_vm:get(Vm) of
         {error, timeout} ->
@@ -261,7 +265,7 @@ snapshot(Vm, Comment) ->
             {Mega,Sec,Micro} = erlang:now(),
             TimeStamp = (Mega*1000000+Sec)*1000000+Micro,
             case libchunter:snapshot(Server, Port, Vm, UUID) of
-                {reply,ok} ->
+                ok ->
                     do_write(Vm, set, [{[<<"snapshots">>, UUID, <<"timestamp">>], TimeStamp},
                                        {[<<"snapshots">>, UUID, <<"comment">>], Comment}]),
                     log(Vm, <<"Created snapshot ", UUID/binary, ": ", Comment/binary>>),
@@ -271,6 +275,8 @@ snapshot(Vm, Comment) ->
             end
     end.
 
+-spec delete_snapshot(VM::fifo:uuid(), UUID::binary()) ->
+                             {error, timeout} | not_found | ok.
 delete_snapshot(Vm, UUID) ->
     case sniffle_vm:get(Vm) of
         {error, timeout} ->
@@ -284,7 +290,7 @@ delete_snapshot(Vm, UUID) ->
                     {ok, H} = jsxd:get(<<"hypervisor">>, V),
                     {Server, Port} = get_hypervisor(H),
                     case libchunter:delete_snapshot(Server, Port, Vm, UUID) of
-                        {reply,ok} ->
+                        ok ->
                             Snapshots1 = jsxd:delete(UUID, Snapshots),
                             do_write(Vm, set, [{[<<"snapshots">>], Snapshots1}]),
                             log(Vm, <<"Deleted snapshot ", UUID/binary, ".">>),
@@ -297,6 +303,9 @@ delete_snapshot(Vm, UUID) ->
             end
     end.
 
+-spec rollback_snapshot(VM::fifo:uuid(), UUID::binary()) ->
+                               {error, timeout} | not_found | ok.
+
 rollback_snapshot(Vm, UUID) ->
     case sniffle_vm:get(Vm) of
         {error, timeout} ->
@@ -307,14 +316,15 @@ rollback_snapshot(Vm, UUID) ->
             case jsxd:get(<<"state">>, V) of
                 {ok, <<"stopped">>} ->
                     case jsxd:get([<<"snapshots">>, UUID, <<"timestamp">>], V) of
-                        {ok, T} ->
+                        {ok, T} when is_number(T) ->
                             {ok, H} = jsxd:get(<<"hypervisor">>, V),
                             {Server, Port} = get_hypervisor(H),
                             case libchunter:rollback_snapshot(Server, Port, Vm, UUID) of
-                                {reply,ok} ->
+                                ok ->
                                     Snapshots1 = jsxd:fold(fun (SUUID, Sn, A) ->
                                                                    case jsxd:get(<<"timestamp">>, 0, Sn) of
-                                                                       X when X > T ->
+                                                                       X when is_number(X),
+                                                                              X > T ->
                                                                            A;
                                                                        _ ->
                                                                            jsxd:set(SUUID, Sn, A)
@@ -351,7 +361,7 @@ set(Vm, Attributes) ->
 %%% Internal Functions
 %%%===================================================================
 
--spec do_write(VM::fifo:uuid(), Op::atom()) -> not_found | ok.
+-spec do_write(VM::fifo:uuid(), Op::atom()) -> fifo:write_fsm_reply().
 
 do_write(VM, Op) ->
     case sniffle_entity_write_fsm:write({sniffle_vm_vnode, sniffle_vm}, VM, Op) of
@@ -361,7 +371,7 @@ do_write(VM, Op) ->
             R
     end.
 
--spec do_write(VM::fifo:uuid(), Op::atom(), Val::term()) -> not_found | ok.
+-spec do_write(VM::fifo:uuid(), Op::atom(), Val::term()) -> fifo:write_fsm_reply().
 
 do_write(VM, Op, Val) ->
     case sniffle_entity_write_fsm:write({sniffle_vm_vnode, sniffle_vm}, VM, Op, Val) of

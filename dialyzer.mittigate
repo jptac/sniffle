@@ -1,94 +1,29 @@
-^leexinc.hrl:49:
-^leexinc.hrl:52:
-^leexinc.hrl:54:
-^leexinc.hrl:59:
-^leexinc.hrl:62:
-^leexinc.hrl:118:
-^leexinc.hrl:121:
-^leexinc.hrl:123:
-^leexinc.hrl:128:
-^leexinc.hrl:131:
-^leexinc.hrl:192:
-^leexinc.hrl:195:
-^leexinc.hrl:197:
-^leexinc.hrl:202:
-^leexinc.hrl:205:
-^leexinc.hrl:243:
-^leexinc.hrl:246:
-^leexinc.hrl:248:
-^leexinc.hrl:253:
-^leexinc.hrl:256:
-^leexinc.hrl:260:
+^fsm_example
+^gen_leader
+^jsx_
+^estatsd
+^hackney
+^uuid
+^mimetypes
+^protobuffs
+^sgte
+^webmachine
+^triq
+^riak_core
+^hanoidb
+^leexinc
 ^folsom_vm_metrics.erl:72:
-^gen_server2.erl:505:
-^gen_server2.erl:732:
-^gen_server2.erl:781:
-^gen_server2.erl:801:
-^gen_server2.erl:959:
-^gen_server2.erl:981:
-^meck.erl:653:
-^meck_cover.erl:30:
-^meck_cover.erl:98:
-^meck_cover.erl:109:
-^pokemon_pb.erl:46:
-^pokemon_pb.erl:52:
-^pokemon_pb.erl:53:
-^protobuffs_compile.erl:503:
-^riak_core_claim_sim.erl:400:
-^riak_core_claim_sim.erl:401:
-^riak_core_claim_util.erl:395:
-^riak_core_format.erl:60:
-^riak_core_format.erl:79:
-^riak_core_gossip.erl:390:
-^riak_core_gossip.erl:399:
-^riak_core_gossip.erl:404:
-^riak_core_gossip.erl:409:
-^riak_core_handoff_listener.erl:26:
-^riak_core_handoff_manager.erl:155:
-^riak_core_handoff_manager.erl:496:
-^riak_core_handoff_receiver.erl:25:
-^riak_core_pb.erl:52:
-^riak_core_pb.erl:53:
-^riak_core_pb.erl:55:
-^riak_core_pb.erl:57:
-^riak_core_pb.erl:59:
-^riak_core_pb.erl:60:
-^riak_core_pb.erl:65:
-^riak_core_pb.erl:68:
-^riak_core_pb.erl:71:
-^riak_core_pb.erl:86:
-^riak_core_pb.erl:88:
-^riak_core_pb.erl:111:
-^riak_core_pb.erl:117:
-^riak_core_pb.erl:126:
-^riak_core_pb.erl:138:
-^riak_core_pb.erl:151:
-^riak_core_pb.erl:171:
-^riak_core_ring.erl:240:
-^riak_core_ring.erl:320:
-^riak_core_ring.erl:1002:
-^riak_core_ring.erl:1051:
-^riak_core_ring.erl:1064:
-^riak_core_ring.erl:1080:
-^riak_core_ring.erl:1092:
-^riak_core_ring.erl:1230:
-^riak_core_ring_handler.erl:134:
-^riak_core_ring_manager.erl:28:
-^riak_core_ring_manager.erl:291:
-^riak_core_ring_manager.erl:296:
-^riak_core_ring_manager.erl:435:
-^riak_core_ring_manager.erl:442:
-^riak_core_ring_manager.erl:456:
-^riak_core_vnode_manager.erl:535:
-^riak_core_vnode_manager.erl:642:
-^riak_core_vnode_manager.erl:644:
-^riak_core_vnode_master.erl:89:
-^riak_core_vnode_master.erl:182:
+^gen_server2
+^meck
+^pokemon_pb
 ^supervisor_pre_r14b04.erl:1250:
-^uuid.erl:310:
-^webmachine_resource.erl:157:
 ^sniffle_dataset_vnode.erl:2: Callback info about the riak_core_vnode behaviour is not available
 ^sniffle_hypervisor_vnode.erl:2: Callback info about the riak_core_vnode behaviour is not available
 ^sniffle_iprange_vnode.erl:2: Callback info about the riak_core_vnode behaviour is not available
 ^sniffle_package_vnode.erl:2: Callback info about the riak_core_vnode behaviour is not available
 ^sniffle_vm_vnode.erl:2: Callback info about the riak_core_vnode behaviour is not available
+^sniffle_dtrace_vnode.erl:2: Callback info about the riak_core_vnode behaviour is not available
+^sniffle_img_vnode.erl:2: Callback info about the riak_core_vnode behaviour is not available
+^sniffle_img_vnode.erl:248: Matching of pattern
+^sniffle_iprange_vnode.erl:334: Guard test 'false' | 'null' | 'true' | binary() | ['false' | 'null' | 'true' | binary() | [any()] | number() | {_,_}] | number() =:= Name::none() can never succeed$
+^sniffle_package_vnode.erl:263: Guard test 'false' | 'null' | 'true' | binary() | ['false' | 'null' | 'true' | binary() | [any()] | number() | {_,_}] | number() =:= Name::none() can never succeed$

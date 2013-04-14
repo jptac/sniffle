@@ -13,10 +13,10 @@
          set/3
         ]).
 
-lookup(User) ->
+lookup(Package) ->
     {ok, Res} = sniffle_entity_coverage_fsm:start(
                   {sniffle_package_vnode, sniffle_package},
-                  lookup, User),
+                  lookup, Package),
     Res1 = lists:foldl(fun (not_found, Acc) ->
                                Acc;
                            (R, _) ->

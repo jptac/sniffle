@@ -17,18 +17,19 @@
 
 -define(MAX_TRIES, 3).
 
-lookup(User) ->
+lookup(Name) when
+      is_binary(Name) ->
     {ok, Res} = sniffle_entity_coverage_fsm:start(
                   {sniffle_iprange_vnode, sniffle_iprange},
-                  lookup, User),
-    Res1 = lists:foldl(fun (not_found, Acc) ->
-                               Acc;
-                           (R, _) ->
-                               R
-                       end, not_found, Res),
-    {ok, Res1}.
+                  lookup, Name),
+    lists:foldl(fun (not_found, Acc) ->
+                        Acc;
+                    (R, _) ->
+                        {ok, R}
+                end, not_found, Res).
 
-create(Iprange, Network, Gateway, Netmask, First, Last, Tag, Vlan) ->
+create(Iprange, Network, Gateway, Netmask, First, Last, Tag, Vlan) when
+      is_binary(Iprange) ->
     UUID = list_to_binary(uuid:to_string(uuid:uuid4())),
     case sniffle_iprange:lookup(Iprange) of
         {ok, not_found} ->
