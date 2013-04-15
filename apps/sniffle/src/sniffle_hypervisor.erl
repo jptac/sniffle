@@ -14,22 +14,33 @@
     status/0
    ]).
 
+-spec register(Hypervisor::fifo:hypervisor_id(),
+               IP::inet:ip_address() | inet:hostname(),
+               Port::inet:port_number()) ->
+                      duplicate | {error, timeout} | ok.
 register(Hypervisor, IP, Port) ->
     case sniffle_hypervisor:get(Hypervisor) of
-        {ok, not_found} ->
+        not_found ->
             do_write(Hypervisor, register, [IP, Port]);
         {ok, _UserObj} ->
             duplicate
     end.
 
+-spec unregister(Hypervisor::fifo:hypervisor_id()) ->
+                    not_found | {error, timeout} | ok.
 unregister(Hypervisor) ->
     do_write(Hypervisor, unregister).
 
+-spec get(Hypervisor::fifo:hypervisor_id()) ->
+                 not_found | {ok, HV::fifo:object()} | {error, timeout}.
 get(Hypervisor) ->
     sniffle_entity_read_fsm:start(
       {sniffle_hypervisor_vnode, sniffle_hypervisor},
       get, Hypervisor).
 
+-spec status() -> {error, timeout} |
+                  {ok, {Resources::fifo:object(),
+                        Warnings::fifo:object()}}.
 status() ->
     {ok, Stat} = sniffle_entity_coverage_fsm:start(
                    {sniffle_hypervisor_vnode, sniffle_hypervisor},
@@ -63,12 +74,16 @@ status() ->
                          end, {[],Warnings}, Stat),
     {ok, Stat1}.
 
+-spec list() ->
+                  {ok, [IPR::fifo:hypervisor_id()]} | {error, timeout}.
 list() ->
     sniffle_entity_coverage_fsm:start(
       {sniffle_hypervisor_vnode, sniffle_hypervisor},
       list
      ).
 
+-spec list(Reqs::[fifo:matcher()]) ->
+                  {ok, [IPR::fifo:hypervisor_id()]} | {error, timeout}.
 list(Requirements) ->
     {ok, Res} = sniffle_entity_coverage_fsm:start(
                   {sniffle_hypervisor_vnode, sniffle_hypervisor},
@@ -76,17 +91,18 @@ list(Requirements) ->
                  ),
     {ok,  lists:keysort(2, Res)}.
 
-set(Hypervisor, Resource, Value) ->
-    set(Hypervisor, [{Resource, Value}]).
+-spec set(Hypervisor::fifo:hypervisor_id(),
+          Attribute::fifo:keys(),
+          Value::fifo:value()) ->
+                 ok | {error, timeout}.
+set(Hypervisor, Attribute, Value) ->
+    set(Hypervisor, [{Attribute, Value}]).
 
-set(Hypervisor, Resources) ->
-    case do_write(Hypervisor, set, Resources) of
-        {ok, not_found} ->
-            not_found;
-        R ->
-            R
-    end.
-
+-spec set(Hypervisor::fifo:hypervisor_id(),
+          Attributes::fifo:attr_list()) ->
+                 ok | {error, timeout}.
+set(Hypervisor, Attributes) ->
+    do_write(Hypervisor, set, Attributes).
 
 %%%===================================================================
 %%% Internal Functions

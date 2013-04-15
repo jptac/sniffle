@@ -67,14 +67,18 @@ start(VNodeInfo, Op) ->
 start(VNodeInfo, Op, User) ->
     start(VNodeInfo, Op, User, undefined).
 
-start(VNodeInfo, Op, User, Val) ->
+-spec start(VNodeInfo::term(), Op::atom(), Entity::term() | undefined, Val::term() | undefined) ->
+                   ok | not_found | {ok, Res::term()} | {error, timeout}.
+start(VNodeInfo, Op, Entity, Val) ->
     ReqID = mk_reqid(),
     sniffle_entity_read_fsm_sup:start_read_fsm(
-      [ReqID, VNodeInfo, Op, self(), User, Val]
+      [ReqID, VNodeInfo, Op, self(), Entity, Val]
      ),
     receive
         {ReqID, ok} ->
             ok;
+        {ReqID, not_found} ->
+            not_found;
         {ReqID, ok, Result} ->
             {ok, Result};
         Other ->
@@ -159,7 +163,7 @@ waiting({ok, ReqID, IdxNode, Obj},
         NumR =:= R ->
             case merge(Replies) of
                 not_found ->
-                    From ! {ReqID, ok, not_found};
+                    From ! {ReqID, not_found};
                 Merged ->
                     Reply = sniffle_obj:val(Merged),
                     From ! {ReqID, ok, statebox:value(Reply)}
