@@ -39,58 +39,84 @@ load(Iprange) ->
 new() ->
     jsxd:set(<<"version">>, <<"0.1.0">>, jsxd:new()).
 
-name(Name, Iprange) ->
+name(Name, Iprange) when
+      is_binary(Name),
+      is_list(Iprange) ->
     jsxd:set(<<"name">>, Name, Iprange).
 
-uuid(Name, Iprange) ->
-    jsxd:set(<<"uuid">>, Name, Iprange).
+uuid(UUID, Iprange) when
+      is_binary(UUID),
+      is_list(Iprange) ->
+    jsxd:set(<<"uuid">>, UUID, Iprange).
 
-gateway(Gateway, Iprange) ->
+gateway(Gateway, Iprange) when
+      is_integer(Gateway),
+      is_list(Iprange) ->
     jsxd:set(<<"gateway">>, Gateway, Iprange).
 
-network(Network, Iprange) ->
+network(Network, Iprange) when
+      is_integer(Network),
+      is_list(Iprange) ->
     jsxd:set(<<"network">>, Network, Iprange).
 
-netmask(Netmask, Iprange) ->
+netmask(Netmask, Iprange) when
+      is_integer(Netmask),
+      is_list(Iprange) ->
     jsxd:set(<<"netmask">>, Netmask, Iprange).
 
-first(First, Iprange) ->
+first(First, Iprange) when
+      is_integer(First),
+      is_list(Iprange) ->
     jsxd:set(<<"first">>, First, Iprange).
 
-last(Last, Iprange) ->
+last(Last, Iprange) when
+      is_integer(Last),
+      is_list(Iprange) ->
     jsxd:set(<<"last">>, Last, Iprange).
 
-current(Current, Iprange) ->
+current(Current, Iprange) when
+      is_integer(Current),
+      is_list(Iprange) ->
     jsxd:set(<<"current">>, Current, Iprange).
 
-tag(Tag, Iprange) ->
+tag(Tag, Iprange) when
+      is_binary(Tag),
+      is_list(Iprange) ->
     jsxd:set(<<"tag">>, Tag, Iprange).
 
-vlan(Vlan, Iprange) ->
+vlan(Vlan, Iprange) when
+      is_integer(Vlan),
+      is_list(Iprange) ->
     jsxd:set(<<"vlan">>, Vlan, Iprange).
 
-
-is_free(IP, Iprange) ->
+is_free(IP, Iprange) when
+      is_integer(IP),
+      is_list(Iprange) ->
     case jsxd:get(<<"current">>, Iprange) of
-        {ok, Current} when Current =< IP ->
+        {ok, Current} when
+              is_integer(Current),
+              Current =< IP ->
             true;
         _ ->
             IPs = jsxd:get(<<"free">>, [], Iprange),
             lists:member(IP, IPs)
     end.
 
-claim_ip(IP, Iprange) ->
+claim_ip(IP, Iprange) when
+      is_integer(IP),
+      is_list(Iprange) ->
     case jsxd:get(<<"current">>, Iprange) of
         {ok, IP} ->
             jsxd:set(<<"current">>, IP + 1 , Iprange);
-        {ok, Current} when Current < IP ->
+        {ok, Current} when is_integer(Current),
+                           Current< IP ->
             jsxd:thread([{set, <<"current">>, IP + 1},
-                         {update, <<"free">>, fun (Free) ->
+                         {update, <<"free">>, fun (Free) when is_list(Free) ->
                                                       lists:seq(Current, IP-1) ++ Free
                                               end}],
                         Iprange);
         _ ->
-            jsxd:update(<<"free">>, fun (IPs) ->
+            jsxd:update(<<"free">>, fun (IPs) when is_list(IPs) ->
                                             %%TODO: This does not work well with the way statebox works.
                                             %%true = lists:member(IP, IPs),
                                             lists:filter(fun(X) -> X =/= IP end, IPs)
@@ -98,7 +124,9 @@ claim_ip(IP, Iprange) ->
     end.
 
 
-release_ip(IP, Iprange) ->
+release_ip(IP, Iprange) when
+      is_integer(IP),
+      is_list(Iprange) ->
     release_ip(IP,
                jsxd:get(<<"first">>, 0, Iprange),
                jsxd:get(<<"current">>, 0, Iprange),
@@ -106,23 +134,34 @@ release_ip(IP, Iprange) ->
                Iprange).
 
 release_ip(IP, First, Current, Last, Iprange) when
+      is_integer(IP),
+      is_integer(First),
+      is_integer(Current),
+      is_integer(Last),
+      is_list(Iprange),
       First =< IP,
       Last >= IP,
       Current =:= IP + 1 ->
     jsxd:set(<<"current">>, IP, Iprange);
 
 release_ip(IP, First, Current, Last, Iprange) when
+      is_integer(IP),
+      is_integer(First),
+      is_integer(Current),
+      is_integer(Last),
+      is_list(Iprange),
       First =< IP,
       Last >= IP,
       Current > IP ->
     jsxd:prepend(<<"free">>, IP, Iprange);
 
-release_ip(_IP, _First, _Current, _Last, Iprange) ->
+release_ip(_IP, _First, _Current, _Last, Iprange) when
+      is_integer(_IP),
+      is_integer(_First),
+      is_integer(_Current),
+      is_integer(_Last),
+      is_list(Iprange) ->
     Iprange.
-
-to_bin(IP) ->
-    <<A, B, C, D>> = <<IP:32>>,
-    list_to_binary(io_lib:format("~p.~p.~p.~p", [A, B, C, D])).
 
 set(Resource, delete, Iprange) ->
     jsxd:delete(Resource, Iprange);
@@ -130,6 +169,9 @@ set(Resource, delete, Iprange) ->
 set(Resource, Value, Iprange) ->
     jsxd:set(Resource, Value, Iprange).
 
+to_bin(IP) ->
+    <<A, B, C, D>> = <<IP:32>>,
+    list_to_binary(io_lib:format("~p.~p.~p.~p", [A, B, C, D])).
 
 -ifdef(TEST).
 

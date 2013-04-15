@@ -230,7 +230,7 @@ handle_command({ip, claim,
                                          jsxd:get(<<"netmask">>, 0, V1),
                                          jsxd:get(<<"gateway">>, 0, V1)}}, State};
                 false ->
-                    {reply, {error, ReqID, duplicated}, State}
+                    {reply, {error, ReqID, duplicate}, State}
             end;
         _ ->
             estatsd:increment("sniffle.ipranges.claim.failed"),

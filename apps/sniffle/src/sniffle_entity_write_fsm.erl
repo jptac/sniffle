@@ -75,6 +75,8 @@ write({VNode, System}, User, Op, Val) ->
     receive
         {ReqID, ok} ->
             ok;
+        {ReqID, ok, not_found} ->
+            not_found;
         {ReqID, ok, Result} ->
             {ok, Result};
         Other ->

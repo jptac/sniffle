@@ -2,33 +2,38 @@
 
 -include("sniffle.hrl").
 
--export(
-   [
-    register/2,
-    unregister/1,
-    create/3,
-    update/3,
-    get/1,
-    list/0,
-    list/1,
-    start/1,
-    log/2,
-    logs/1,
-    stop/1,
-    reboot/1,
-    stop/2,
-    reboot/2,
-    delete/1,
-    snapshot/2,
-    delete_snapshot/2,
-    rollback_snapshot/2,
-    set/2,
-    set/3
-   ]
-  ).
+-export([
+         register/2,
+         unregister/1,
+         create/3,
+         update/3,
+         list/0,
+         list/1,
+         get/1,
+         log/2,
+         logs/1,
+         set/2,
+         set/3,
+         start/1,
+         stop/1,
+         stop/2,
+         reboot/1,
+         reboot/2,
+         delete/1,
+         snapshot/2,
+         delete_snapshot/2,
+         rollback_snapshot/2
+        ]).
 
 -ignore_xref([logs/1]).
 
+%%--------------------------------------------------------------------
+%% @doc Updates a virtual machine form a package uuid and a config
+%%   object.
+%% @end
+%%--------------------------------------------------------------------
+-spec update(Vm::fifo:uuid(), Package::fifo:uuid(), Config::fifo:config()) ->
+                    not_found | {error, timeout} | ok.
 update(Vm, Package, Config) ->
     case sniffle_vm:get(Vm) of
         {ok, V} ->
@@ -65,13 +70,23 @@ update(Vm, Package, Config) ->
             E
     end.
 
--spec register(VM::fifo:uuid(), Hypervisor::binary()) -> ok.
-
+%%--------------------------------------------------------------------
+%% @doc Registers am existing VM, no checks made here.
+%% @end
+%%--------------------------------------------------------------------
+-spec register(VM::fifo:uuid(), Hypervisor::binary()) ->
+                      {error, timeout} | ok.
 register(Vm, Hypervisor) ->
     do_write(Vm, register, Hypervisor).
 
--spec unregister(VM::fifo:uuid()) -> ok.
-
+%%--------------------------------------------------------------------
+%% @doc Unregisteres an existing VM, this includs freeling the IP
+%%   addresses it had.
+%% @end
+%%--------------------------------------------------------------------
+-spec unregister(VM::fifo:uuid()) ->
+                        {error, timeout} |
+                        ok.
 unregister(Vm) ->
     case sniffle_vm:get(Vm) of
         {ok, V} ->
@@ -85,34 +100,49 @@ unregister(Vm) ->
     end,
     do_write(Vm, unregister).
 
+%%--------------------------------------------------------------------
+%% @doc Tries to creat a VM from a Package and dataset uuid. This
+%%   function just creates the UUID and returns it after handing the
+%%   data off to the create fsm.
+%% @end
+%%--------------------------------------------------------------------
 -spec create(Package::binary(), Dataset::binary(), Config::fifo:config()) ->
-                    {ok, fifo:uuid()}.
-
+                    {error, timeout} | {ok, fifo:uuid()}.
 create(Package, Dataset, Config) ->
     UUID = list_to_binary(uuid:to_string(uuid:uuid4())),
     do_write(UUID, register, <<"pending">>), %we've to put pending here since undefined will cause a wrong call!
     sniffle_create_fsm:create(UUID, Package, Dataset, Config),
     {ok, UUID}.
 
--spec get(Vm::fifo:uuid()) ->
-                 not_found |
-                 {error, timeout} |
-                 fifo:vm_config().
 
+%%--------------------------------------------------------------------
+%% @doc Reads a VM object form the DB.
+%% @end
+%%--------------------------------------------------------------------
+-spec get(Vm::fifo:uuid()) ->
+                 not_found | {error, timeout} | fifo:vm_config().
 get(Vm) ->
     sniffle_entity_read_fsm:start(
       {sniffle_vm_vnode, sniffle_vm},
       get, Vm
      ).
 
--spec list() -> {error, timeout} | [fifo:uuid()].
-
+%%--------------------------------------------------------------------
+%% @doc Lists all vm's.
+%% @end
+%%--------------------------------------------------------------------
+-spec list() ->
+                  {error, timeout} | [fifo:uuid()].
 list() ->
     sniffle_entity_coverage_fsm:start(
       {sniffle_vm_vnode, sniffle_vm},
       list
      ).
 
+%%--------------------------------------------------------------------
+%% @doc Lists all vm's and fiters by a given matcher set.
+%% @end
+%%--------------------------------------------------------------------
 -spec list([fifo:matcher()]) -> {error, timeout} |[fifo:uuid()].
 
 list(Requirements) ->
@@ -121,15 +151,16 @@ list(Requirements) ->
       list, Requirements
      ).
 
+%%--------------------------------------------------------------------
+%% @doc Tries to delete a VM, either unregistering it if no
+%%   Hypervisor was assigned or triggering the delete on hypervisor
+%%   site.
+%% @end
+%%--------------------------------------------------------------------
 -spec delete(Vm::fifo:uuid()) ->
                     {error, timeout} | not_found | ok.
-
 delete(Vm) ->
     case sniffle_vm:get(Vm) of
-        {error, timeout} ->
-            {error, timeout};
-        {ok, not_found} ->
-            not_found;
         {ok, V} ->
             case jsxd:get(<<"hypervisor">>, V) of
                 undefined ->
@@ -156,84 +187,101 @@ delete(Vm) ->
                             libchunter:delete_machine(Host, Port, Vm)
                     end
             end,
-            ok
+            ok;
+        E ->
+            E
     end.
 
+%%--------------------------------------------------------------------
+%% @doc Triggers the start of a VM on the hypervisor.
+%% @end
+%%--------------------------------------------------------------------
 -spec start(Vm::fifo:uuid()) ->
                    {error, timeout} | not_found | ok.
-
 start(Vm) ->
     case sniffle_vm:get(Vm) of
-        {error, timeout} ->
-            {error, timeout};
-        {ok, not_found} ->
-            not_found;
         {ok, V} ->
             {ok, H} = jsxd:get(<<"hypervisor">>, V),
             {Server, Port} = get_hypervisor(H),
             libchunter:start_machine(Server, Port, Vm),
-            ok
+            ok;
+        E ->
+            E
     end.
 
-
+%%--------------------------------------------------------------------
+%% @doc Triggers the stop of a VM on the hypervisor.
+%% @end
+%%--------------------------------------------------------------------
 -spec stop(Vm::fifo:uuid()) ->
                   {error, timeout} | not_found | ok.
 stop(Vm) ->
     stop(Vm, []).
 
+%%--------------------------------------------------------------------
+%% @doc Triggers the start of a VM on the hypervisor allowing options.
+%% @end
+%%--------------------------------------------------------------------
 -spec stop(Vm::fifo:uuid(), Options::[atom()|{atom(), term()}]) ->
                   {error, timeout} | not_found | ok.
-
 stop(Vm, Options) ->
     case sniffle_vm:get(Vm) of
-        {error, timeout} ->
-            {error, timeout};
-        {ok, not_found} ->
-            not_found;
         {ok, V} ->
             {ok, H} = jsxd:get(<<"hypervisor">>, V),
             {Server, Port} = get_hypervisor(H),
             libchunter:stop_machine(Server, Port, Vm, Options),
-            ok
+            ok;
+        E ->
+            E
     end.
 
+%%--------------------------------------------------------------------
+%% @doc Triggers the reboot of a VM on the hypervisor.
+%% @end
+%%--------------------------------------------------------------------
 -spec reboot(Vm::fifo:uuid()) ->
                     {error, timeout} | not_found | ok.
 reboot(Vm) ->
     reboot(Vm, []).
 
+%%--------------------------------------------------------------------
+%% @doc Triggers the reboot of a VM on the hypervisor allowing
+%%   options.
+%% @end
+%%--------------------------------------------------------------------
 -spec reboot(Vm::fifo:uuid(), Options::[atom()|{atom(), term()}]) ->
                     {error, timeout} | not_found | ok.
-
 reboot(Vm, Options) ->
     case sniffle_vm:get(Vm) of
-        {error, timeout} ->
-            {error, timeout};
-        {ok, not_found} ->
-            not_found;
         {ok, V} ->
             {ok, H} = jsxd:get(<<"hypervisor">>, V),
             {Server, Port} = get_hypervisor(H),
             libchunter:reboot_machine(Server, Port, Vm, Options),
-            ok
+            ok;
+        E ->
+            E
     end.
 
+%%--------------------------------------------------------------------
+%% @doc Reads the logs of a vm.
+%% @end
+%%--------------------------------------------------------------------
 -spec logs(Vm::fifo:uuid()) ->
-                  not_found | [fifo:log()].
-
+                  not_found | {error, timeout} | [fifo:log()].
 logs(Vm) ->
     case sniffle_vm:get(Vm) of
-        {error, timeout} ->
-            {error, timeout};
-        {ok, not_found} ->
-            not_found;
         {ok, V} ->
-            {ok, jsxd:get(<<"log">>, [], V)}
+            {ok, jsxd:get(<<"log">>, [], V)};
+        E ->
+            E
     end.
 
+%%--------------------------------------------------------------------
+%% @doc Adds a new log to the VM and timestamps it.
+%% @end
+%%--------------------------------------------------------------------
 -spec log(Vm::fifo:uuid(), Log::term()) ->
                  {error, timeout} | not_found | ok.
-
 log(Vm, Log) ->
     {Mega,Sec,Micro} = erlang:now(),
     Timestamp = (Mega*1000000+Sec)*1000000+Micro,
@@ -248,12 +296,15 @@ log(Vm, Log) ->
             R
     end.
 
+%%--------------------------------------------------------------------
+%% @doc Creates a new ZFS snapshot of the Vm's disks on the
+%%   hypervisor.
+%% @end
+%%--------------------------------------------------------------------
+-spec snapshot(VM::fifo:uuid(), Comment::binary()) ->
+                      {error, timeout} | not_found | {ok, UUID::fifo:uuid()}.
 snapshot(Vm, Comment) ->
     case sniffle_vm:get(Vm) of
-        {error, timeout} ->
-            {error, timeout};
-        {ok, not_found} ->
-            not_found;
         {ok, V} ->
             {ok, H} = jsxd:get(<<"hypervisor">>, V),
             {Server, Port} = get_hypervisor(H),
@@ -261,22 +312,26 @@ snapshot(Vm, Comment) ->
             {Mega,Sec,Micro} = erlang:now(),
             TimeStamp = (Mega*1000000+Sec)*1000000+Micro,
             case libchunter:snapshot(Server, Port, Vm, UUID) of
-                {reply,ok} ->
+                ok ->
                     do_write(Vm, set, [{[<<"snapshots">>, UUID, <<"timestamp">>], TimeStamp},
                                        {[<<"snapshots">>, UUID, <<"comment">>], Comment}]),
                     log(Vm, <<"Created snapshot ", UUID/binary, ": ", Comment/binary>>),
                     {ok, UUID};
                 E ->
-                    {error, E}
-            end
+                    E
+            end;
+        E ->
+            E
     end.
 
+%%--------------------------------------------------------------------
+%% @doc Deletes a ZFS snapshot of the Vm's disks on the ahypervisor.
+%% @end
+%%--------------------------------------------------------------------
+-spec delete_snapshot(VM::fifo:uuid(), UUID::binary()) ->
+                             {error, timeout} | not_found | ok.
 delete_snapshot(Vm, UUID) ->
     case sniffle_vm:get(Vm) of
-        {error, timeout} ->
-            {error, timeout};
-        {ok, not_found} ->
-            not_found;
         {ok, V} ->
             case jsxd:get([<<"snapshots">>, UUID, <<"timestamp">>], V) of
                 {ok, _} ->
@@ -284,7 +339,7 @@ delete_snapshot(Vm, UUID) ->
                     {ok, H} = jsxd:get(<<"hypervisor">>, V),
                     {Server, Port} = get_hypervisor(H),
                     case libchunter:delete_snapshot(Server, Port, Vm, UUID) of
-                        {reply,ok} ->
+                        ok ->
                             Snapshots1 = jsxd:delete(UUID, Snapshots),
                             do_write(Vm, set, [{[<<"snapshots">>], Snapshots1}]),
                             log(Vm, <<"Deleted snapshot ", UUID/binary, ".">>),
@@ -294,31 +349,37 @@ delete_snapshot(Vm, UUID) ->
                     end;
                 undefined ->
                     {error, not_found}
-            end
+            end;
+        E ->
+            E
     end.
 
+%%--------------------------------------------------------------------
+%% @doc Rolls back a ZFS snapshot of the Vm's disks on the
+%%   ahypervisor.
+%% @end
+%%--------------------------------------------------------------------
+-spec rollback_snapshot(VM::fifo:uuid(), UUID::binary()) ->
+                               {error, timeout} | not_found | ok.
 rollback_snapshot(Vm, UUID) ->
     case sniffle_vm:get(Vm) of
-        {error, timeout} ->
-            {error, timeout};
-        {ok, not_found} ->
-            not_found;
         {ok, V} ->
             case jsxd:get(<<"state">>, V) of
                 {ok, <<"stopped">>} ->
                     case jsxd:get([<<"snapshots">>, UUID, <<"timestamp">>], V) of
-                        {ok, T} ->
+                        {ok, T} when is_number(T) ->
                             {ok, H} = jsxd:get(<<"hypervisor">>, V),
                             {Server, Port} = get_hypervisor(H),
                             case libchunter:rollback_snapshot(Server, Port, Vm, UUID) of
-                                {reply,ok} ->
+                                ok ->
                                     Snapshots1 = jsxd:fold(fun (SUUID, Sn, A) ->
                                                                    case jsxd:get(<<"timestamp">>, 0, Sn) of
-                                                                       X when X > T ->
+                                                                       X when is_number(X),
+                                                                              X > T ->
                                                                            A;
                                                                        _ ->
                                                                            jsxd:set(SUUID, Sn, A)
-                                                      end
+                                                                   end
                                                            end, [], jsxd:get(<<"snapshots">>, [], V)),
                                     do_write(Vm, set, [{[<<"snapshots">>], Snapshots1}]),
                                     ok;
@@ -331,19 +392,27 @@ rollback_snapshot(Vm, UUID) ->
                 {ok, State} ->
                     log(Vm, <<"Not rolled back since state is ", State/binary, ".">>),
                     {error, not_stopped}
-            end
+            end;
+        E ->
+            E
     end.
 
--spec set(Vm::fifo:uuid(), Attribute::binary(), Value::fifo:value()) ->
+%%--------------------------------------------------------------------
+%% @doc Sets a attribute on the VM object.
+%% @end
+%%--------------------------------------------------------------------
+-spec set(Vm::fifo:uuid(), Attribute::fifo:keys(), Value::fifo:value()) ->
                  {error, timeout} | not_found | ok.
-
 set(Vm, Attribute, Value) ->
     do_write(Vm, set, [{Attribute, Value}]).
 
 
--spec set(Vm::fifo:uuid(), Attributes::fifo:config_list()) ->
+%%--------------------------------------------------------------------
+%% @doc Sets multiple attributes on the VM object.
+%% @end
+%%--------------------------------------------------------------------
+-spec set(Vm::fifo:uuid(), Attributes::fifo:attr_list()) ->
                  {error, timeout} | not_found | ok.
-
 set(Vm, Attributes) ->
     do_write(Vm, set, Attributes).
 
@@ -351,25 +420,15 @@ set(Vm, Attributes) ->
 %%% Internal Functions
 %%%===================================================================
 
--spec do_write(VM::fifo:uuid(), Op::atom()) -> not_found | ok.
+-spec do_write(VM::fifo:uuid(), Op::atom()) -> fifo:write_fsm_reply().
 
 do_write(VM, Op) ->
-    case sniffle_entity_write_fsm:write({sniffle_vm_vnode, sniffle_vm}, VM, Op) of
-        {ok, not_found} ->
-            not_found;
-        R ->
-            R
-    end.
+    sniffle_entity_write_fsm:write({sniffle_vm_vnode, sniffle_vm}, VM, Op).
 
--spec do_write(VM::fifo:uuid(), Op::atom(), Val::term()) -> not_found | ok.
+-spec do_write(VM::fifo:uuid(), Op::atom(), Val::term()) -> fifo:write_fsm_reply().
 
 do_write(VM, Op, Val) ->
-    case sniffle_entity_write_fsm:write({sniffle_vm_vnode, sniffle_vm}, VM, Op, Val) of
-        {ok, not_found} ->
-            not_found;
-        R ->
-            R
-    end.
+    sniffle_entity_write_fsm:write({sniffle_vm_vnode, sniffle_vm}, VM, Op, Val).
 
 get_hypervisor(Hypervisor) ->
     {ok, HypervisorObj} = sniffle_hypervisor:get(Hypervisor),

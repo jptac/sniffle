@@ -320,6 +320,12 @@ message({img, delete, Img, Idx}, State) when
      sniffle_img:delete(Img, Idx),
      State};
 
+message({img, delete, Img}, State) when
+      is_binary(Img) ->
+    {stop, normal,
+     sniffle_img:delete(Img),
+     State};
+
 message({img, get, Img, Idx}, State) when
       is_binary(Img) ->
     {stop, normal,
