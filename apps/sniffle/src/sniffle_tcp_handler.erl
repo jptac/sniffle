@@ -32,7 +32,7 @@ raw(_Data, State) ->
 -spec message(fifo:sniffle_message(), any()) -> any().
 
 message(version, State) ->
-    {stop, normal, ?VERSION, State};
+    {stop, normal, {ok, ?VERSION}, State};
 
 %%%===================================================================
 %%%  DTrace Functions
