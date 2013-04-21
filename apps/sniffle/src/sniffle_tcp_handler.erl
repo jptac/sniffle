@@ -32,7 +32,7 @@ raw(_Data, State) ->
 -spec message(fifo:sniffle_message(), any()) -> any().
 
 message(version, State) ->
-    {stop, normal, ?VERSION, State};
+    {stop, normal, {ok, ?VERSION}, State};
 
 %%%===================================================================
 %%%  DTrace Functions
@@ -318,6 +318,12 @@ message({img, delete, Img, Idx}, State) when
       is_binary(Img) ->
     {stop, normal,
      sniffle_img:delete(Img, Idx),
+     State};
+
+message({img, delete, Img}, State) when
+      is_binary(Img) ->
+    {stop, normal,
+     sniffle_img:delete(Img),
      State};
 
 message({img, get, Img, Idx}, State) when

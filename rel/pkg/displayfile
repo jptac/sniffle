@@ -21,5 +21,11 @@
 | If this is not the first node in your Smarl cluster join an existing ring    |
 | you can use the sniffle-admin tool to join the existing ring.                |
 |                                                                              |
+| If you want tab completion for the fifoadm command add the following line to |
+| your ~/.bashrc:                                                              |
+|                                                                              |
+| . /opt/local/sniffle/etc/fifo_complete.sh                                    |
+|                                                                              |
+|                                                                              |
 `------------------------------------------------------------------------------'
 

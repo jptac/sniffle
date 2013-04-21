@@ -1,6 +1,6 @@
 -module(sniffle_dataset).
 -include("sniffle.hrl").
-                                                %-include_lib("riak_core/include/riak_core_vnode.hrl").
+%%-include_lib("riak_core/include/riak_core_vnode.hrl").
 
 -export([
          create/1,
@@ -15,61 +15,81 @@
          transform_dataset/1
         ]).
 
-create(Dataset) ->
-    case sniffle_dataset:get(Dataset) of
-        {ok, not_found} ->
-            do_write(Dataset, create, []);
+-spec create(UUID::fifo:dataset_id()) ->
+                    duplicate | ok | {error, timeout}.
+create(UUID) ->
+    case sniffle_dataset:get(UUID) of
+        not_found ->
+            do_write(UUID, create, []);
         {ok, _RangeObj} ->
             duplicate
     end.
 
-delete(Dataset) ->
-    case do_write(Dataset, delete) of
+-spec delete(UUID::fifo:dataset_id()) ->
+                    not_found | {error, timeout} | ok.
+delete(UUID) ->
+    case do_write(UUID, delete) of
         ok ->
-            sniffle_img:delete(Dataset);
+            sniffle_img:delete(UUID);
         E ->
             E
     end.
 
-get(Dataset) ->
+-spec get(UUID::fifo:dtrace_id()) ->
+                 not_found | {ok, Dataset::fifo:dataset()} | {error, timeout}.
+get(UUID) ->
     sniffle_entity_read_fsm:start(
       {sniffle_dataset_vnode, sniffle_dataset},
-      get, Dataset
+      get, UUID
      ).
 
+-spec list() ->
+                  {ok, [UUID::fifo:dataset_id()]} | {error, timeout}.
 list() ->
     sniffle_entity_coverage_fsm:start(
       {sniffle_dataset_vnode, sniffle_dataset},
       list
      ).
 
+-spec list(Reqs::[fifo:matcher()]) ->
+                  {ok, [UUID::fifo:dataset_id()]} | {error, timeout}.
 list(Requirements) ->
     sniffle_entity_coverage_fsm:start(
       {sniffle_dataset_vnode, sniffle_dataset},
       list, Requirements
      ).
 
-set(Dataset, Attribute, Value) ->
-    do_write(Dataset, set, [{Attribute, Value}]).
+-spec set(UUID::fifo:dataset_id(),
+          Attribute::fifo:keys(),
+          Value::fifo:value()) ->
+                 ok | {error, timeout}.
+set(UUID, Attribute, Value) ->
+    do_write(UUID, set, [{Attribute, Value}]).
 
-
-set(Dataset, Attributes) ->
-    do_write(Dataset, set, Attributes).
+-spec set(UUID::fifo:dataset_id(),
+          Attributes::fifo:attr_list()) ->
+                 ok | {error, timeout}.
+set(UUID, Attributes) ->
+    do_write(UUID, set, Attributes).
 
 import(URL) ->
-    {ok, 200, _, Client} = hackney:request(get, URL, [], <<>>, []),
-    {ok, Body, Client1} = hackney:body(Client),
-    hackney:close(Client1),
-    JSON = jsxd:from_list(jsx:decode(Body)),
-    Dataset = transform_dataset(JSON),
-    {ok, UUID} = jsxd:get([<<"dataset">>], Dataset),
-    {ok, ImgURL} = jsxd:get([<<"files">>, 0, <<"url">>], JSON),
-    {ok, TotalSize} = jsxd:get([<<"files">>, 0, <<"size">>], JSON),
-    sniffle_dataset:create(UUID),
-    sniffle_dataset:set(UUID, Dataset),
-    sniffle_dataset:set(UUID, <<"imported">>, 0),
-    spawn(?MODULE, read_image, [UUID, TotalSize, ImgURL, <<>>, 0]),
-    {ok, UUID}.
+    case hackney:request(get, URL, [], <<>>, []) of
+    {ok, 200, _, Client} ->
+            {ok, Body, Client1} = hackney:body(Client),
+            hackney:close(Client1),
+            JSON = jsxd:from_list(jsx:decode(Body)),
+            Dataset = transform_dataset(JSON),
+            {ok, UUID} = jsxd:get([<<"dataset">>], Dataset),
+            {ok, ImgURL} = jsxd:get([<<"files">>, 0, <<"url">>], JSON),
+            {ok, TotalSize} = jsxd:get([<<"files">>, 0, <<"size">>], JSON),
+            sniffle_dataset:create(UUID),
+            sniffle_dataset:set(UUID, Dataset),
+            sniffle_dataset:set(UUID, <<"imported">>, 0),
+            spawn(?MODULE, read_image, [UUID, TotalSize, ImgURL, <<>>, 0]),
+            {ok, UUID};
+        {ok, E, _, _} ->
+            {error, E}
+    end.
 
 
 %%%===================================================================
@@ -94,25 +114,21 @@ transform_dataset(D1) ->
 
 
 do_write(Dataset, Op) ->
-    case sniffle_entity_write_fsm:write({sniffle_dataset_vnode, sniffle_dataset}, Dataset, Op) of
-        {ok, not_found} ->
-            not_found;
-        R ->
-            R
-    end.
+    sniffle_entity_write_fsm:write({sniffle_dataset_vnode, sniffle_dataset}, Dataset, Op).
 
 do_write(Dataset, Op, Val) ->
-    case sniffle_entity_write_fsm:write({sniffle_dataset_vnode, sniffle_dataset}, Dataset, Op, Val) of
-        {ok, not_found} ->
-            not_found;
-        R ->
-            R
-    end.
+    sniffle_entity_write_fsm:write({sniffle_dataset_vnode, sniffle_dataset}, Dataset, Op, Val).
 
 %% If more then one MB is in the accumulator read store it in 1MB chunks
 read_image(UUID, TotalSize, Url, Acc, Idx) when is_binary(Url) ->
-    {ok, 200, _, Client} = hackney:request(get, Url, [], <<>>, []),
-    read_image(UUID, TotalSize, Client, Acc, Idx);
+    case hackney:request(get, Url, [], <<>>, []) of
+        {ok, 200, _, Client} ->
+            read_image(UUID, TotalSize, Client, Acc, Idx);
+        {ok, E, _, _} ->
+            libhowl:send(UUID,
+                         [{<<"event">>, <<"error">>}, {<<"data">>, [{<<"message">>, E},
+                                                                    {<<"index">>, 0}]}])
+    end;
 
 read_image(UUID, TotalSize, Client, <<MB:1048576/binary, Acc/binary>>, Idx) ->
     sniffle_img:create(UUID, Idx, binary:copy(MB)),
@@ -138,5 +154,10 @@ read_image(UUID, TotalSize, Client, Acc, Idx) ->
             hackney:close(Client2),
             read_image(UUID, TotalSize, done, Acc, Idx);
         {error, Reason} ->
+            libhowl:send(UUID,
+                         [{<<"event">>, <<"error">>}, {<<"data">>, [{<<"message">>, <<"failed">>},
+                                                                    {<<"index">>, Idx}]}]),
+            libhowl:send(UUID,
+                         [{<<"event">>, <<"progress">>}, {<<"data">>, [{<<"imported">>, 0}]}]),
             lager:error("Error importing image ~s: ~p", [UUID, Reason])
     end.

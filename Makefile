@@ -32,7 +32,7 @@ rel: all
 relclean:
 	rm -rf rel/sniffle
 
-devrel: dev1 dev2 dev3
+devrel: dev1 dev2 dev3 dev4
 
 package: rel
 	make -C rel/pkg package
@@ -54,18 +54,18 @@ stage : rel
 	$(foreach dep,$(wildcard deps/* wildcard apps/*), rm -rf rel/sniffle/lib/$(shell basename $(dep))-* && ln -sf $(abspath $(dep)) rel/sniffle/lib;)
 
 
-stagedevrel: dev1 dev2 dev3
+stagedevrel: dev1 dev2 dev3 dev4
 	mkdir -p dev/dev{1,2,3}/data/{ipranges,datasets,packages,ring}
 	$(foreach dev,$^,\
 	  $(foreach dep,$(wildcard deps/* wildcard apps/*), rm -rf dev/$(dev)/lib/$(shell basename $(dep))-* && ln -sf $(abspath $(dep)) dev/$(dev)/lib;))
 
-devrel: dev1 dev2 dev3
+devrel: dev1 dev2 dev3 dev4
 
 
 devclean:
 	rm -rf dev
 
-dev1 dev2 dev3: all
+dev1 dev2 dev3 dev4: all
 	mkdir -p dev
 	(cd rel && $(REBAR) generate target_dir=../dev/$@ overlay_vars=vars/$@.config)
 

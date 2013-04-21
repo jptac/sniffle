@@ -120,6 +120,11 @@ case "$1" in
         run sniffle_console leave $@
         ;;
 
+    reip)
+        shift
+        run sniffle_console reip $@
+        ;;
+
     remove)
         if [ $# -ne 2 ]; then
             echo "Usage: $SCRIPT remove <node>"
