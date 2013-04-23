@@ -29,7 +29,9 @@ delete(Img, Idx) ->
 -spec delete(Img::fifo:dataset_id()) ->
                     not_found | {error, timeout} | ok.
 delete(Img) ->
-    do_write(Img, delete).
+    {ok, Idxs} = list(Img),
+    [do_write({Img, Idx}, delete) || Idx <- Idxs],
+    ok.
 
 -spec get(Img::fifo:dataset_id(),
           Idx::integer()) ->
