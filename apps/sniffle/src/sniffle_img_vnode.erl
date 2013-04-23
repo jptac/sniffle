@@ -169,16 +169,6 @@ handle_command({delete, {ReqID, _Coordinator}, {Img, Idx}}, _Sender, State) ->
     bitcask:delete(State#state.db, <<Img/binary, Idx:32>>),
     {reply, {ok, ReqID}, State};
 
-handle_command({delete, {ReqID, _Coordinator}, Img}, _Sender, State) ->
-    S = byte_size(Img),
-    bitcask:fold_keys(State#state.db,
-                      fun (#bitcask_entry{key = <<Img1:S/binary, _:32>> = K}, _) when Img1 =:= Img ->
-                              bitcask:delete(State#state.db, K);
-                          (_, A) ->
-                              A
-                      end, ok),
-    {reply, {ok, ReqID}, State};
-
 handle_command(Message, _Sender, State) ->
     ?PRINT({unhandled_command, Message}),
     {noreply, State}.
