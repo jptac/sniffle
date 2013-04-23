@@ -39,16 +39,17 @@ promote_to_image(Vm, SnapID, Config) ->
                     Img = list_to_binary(uuid:to_string(uuid:uuid4())),
                     Config1 = jsxd:select([<<"name">>,<<"version">>, <<"os">>, <<"description">>],
                                           jsxd:from_list(Config)),
-                    Config2 = jsxd:set(<<"type">>, jsxd:get([<<"config">>, <<"type">>], <<"zone">>, V), Config1),
                     {ok, Nets} = jsxd:get([<<"config">>, <<"networks">>], V),
-                    ok = sniffle_dataset:create(Img),
-                    sniffle_dataset:set(Img, Config2),
                     Nets1 = jsxd:map(fun (Idx, E) ->
                                              Name = io_lib:format("net~p", [Idx]),
                                              [{<<"description">>, jsxd:get(<<"tag">>, <<"undefined">>, E)},
                                               {<<"name">>, list_to_binary(Name)}]
                                      end, Nets),
-                    sniffle_dataset:set(Img, <<"networks">>, Nets1),
+                    Config2 = jsxd:thread([{set, <<"type">>, jsxd:get([<<"config">>, <<"type">>], <<"zone">>, V)},
+                                           {set, <<"dataset">>, Img},
+                                           {set, <<"networks">>, Nets1}], Config1),
+                    ok = sniffle_dataset:create(Img),
+                    sniffle_dataset:set(Img, Config2),
                     libchunter:store_snapshot(Server, Port, Vm, SnapID, Img);
                 undefined ->
                     not_found
