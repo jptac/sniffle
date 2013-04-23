@@ -50,7 +50,8 @@ promote_to_image(Vm, SnapID, Config) ->
                                            {set, <<"networks">>, Nets1}], Config1),
                     ok = sniffle_dataset:create(Img),
                     sniffle_dataset:set(Img, Config2),
-                    libchunter:store_snapshot(Server, Port, Vm, SnapID, Img);
+                    ok = libchunter:store_snapshot(Server, Port, Vm, SnapID, Img),
+                    {ok, Img};
                 undefined ->
                     not_found
             end;
