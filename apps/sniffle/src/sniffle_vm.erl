@@ -39,7 +39,7 @@ promote_to_image(Vm, SnapID, Config) ->
                     Img = list_to_binary(uuid:to_string(uuid:uuid4())),
                     Config1 = jsxd:select([<<"name">>,<<"version">>, <<"os">>, <<"description">>],
                                           jsxd:from_list(Config)),
-                    Config2 = jsxd:set(<<"type">>, jsxd:get([<<"config">>, <<"type">>], <<"zone">>, Vm), Config1),
+                    Config2 = jsxd:set(<<"type">>, jsxd:get([<<"config">>, <<"type">>], <<"zone">>, V), Config1),
                     {ok, Nets} = jsxd:get([<<"config">>, <<"networks">>], V),
                     ok = sniffle_dataset:create(Img),
                     sniffle_dataset:set(Img, Config2),
