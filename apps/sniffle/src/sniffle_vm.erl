@@ -22,10 +22,40 @@
          delete/1,
          snapshot/2,
          delete_snapshot/2,
-         rollback_snapshot/2
+         rollback_snapshot/2,
+         promote_to_image/3
         ]).
 
 -ignore_xref([logs/1]).
+
+
+promote_to_image(Vm, SnapID, Config) ->
+    case sniffle_vm:get(Vm) of
+        {ok, V} ->
+            case jsxd:get([<<"snapshots">>, SnapID, <<"timestamp">>], V) of
+                {ok, _} ->
+                    {ok, H} = jsxd:get(<<"hypervisor">>, V),
+                    {Server, Port} = get_hypervisor(H),
+                    Img = list_to_binary(uuid:to_string(uuid:uuid4())),
+                    Config1 = jsxd:select([<<"name">>,<<"version">>, <<"os">>, <<"description">>],
+                                          jsxd:from_list(Config)),
+                    Config2 = jsxd:set(<<"type">>, jsxd:get([<<"config">>, <<"type">>], <<"zone">>), Config1),
+                    {ok, Nets} = jsxd:get([<<"config">>, <<"networks">>], V),
+                    ok = sniffle_dataset:create(Img),
+                    sniffle_dataset:set(Img, Config2),
+                    Nets1 = jsxd:map(fun (Idx, E) ->
+                                             Name = io_lib:format("net~p", [Idx]),
+                                             [{<<"description">>, jsxd:get(<<"tag">>, <<"undefined">>, E)},
+                                              {<<"name">>, list_to_binary(Name)}]
+                                     end, Nets),
+                    sniffle_dataset:set(Img, <<"networks">>, Nets1),
+                    libchunter:store_snapshot(Server, Port, Vm, SnapID, Img);
+                undefined ->
+                    not_found
+            end;
+        E ->
+            E
+    end.
 
 %%--------------------------------------------------------------------
 %% @doc Updates a virtual machine form a package uuid and a config
