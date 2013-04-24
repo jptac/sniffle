@@ -118,6 +118,13 @@ message({vm, snapshot, rollback, Vm, UUID}, State) when
      sniffle_vm:rollback_snapshot(Vm, UUID),
      State};
 
+message({vm, snapshot, promote, Vm, UUID, Config}, State) when
+      is_binary(Vm),
+      is_binary(UUID) ->
+    {stop, normal,
+     sniffle_vm:promote_to_image(Vm, UUID, Config),
+     State};
+
 message({vm, create, Package, Dataset, Config}, State) when
       is_binary(Package),
       is_list(Config),
