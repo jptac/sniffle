@@ -8,7 +8,7 @@ help() ->
     io:format("  get [-j] <uuid>~n"),
     io:format("  logs [-j] <uuid>~n"),
     io:format("  snapshots [-j] <uuid>~n"),
-    io:format("  snapshots <uuid> <comment>~n"),
+    io:format("  snapshot <uuid> <comment>~n"),
     io:format("  start <uuid>~n"),
     io:format("  stop <uuid>~n"),
     io:format("  reboot <uuid>~n"),
