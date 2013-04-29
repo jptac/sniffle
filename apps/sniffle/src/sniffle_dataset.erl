@@ -180,4 +180,4 @@ http_opts() ->
                 P -> [{proxy, P}]
             end;
         P -> [{proxy, P}]
-    end;
+    end.
