@@ -231,12 +231,9 @@ delete(Vm) ->
 -spec start(Vm::fifo:uuid()) ->
                    {error, timeout} | not_found | ok.
 start(Vm) ->
-    case sniffle_vm:get(Vm) of
-        {ok, V} ->
-            {ok, H} = jsxd:get(<<"hypervisor">>, V),
-            {Server, Port} = get_hypervisor(H),
-            libchunter:start_machine(Server, Port, Vm),
-            ok;
+    case fetch_hypervisor(Vm) of
+        {ok, Server, Port} ->
+            libchunter:start_machine(Server, Port, Vm);
         E ->
             E
     end.
@@ -257,12 +254,9 @@ stop(Vm) ->
 -spec stop(Vm::fifo:uuid(), Options::[atom()|{atom(), term()}]) ->
                   {error, timeout} | not_found | ok.
 stop(Vm, Options) ->
-    case sniffle_vm:get(Vm) of
-        {ok, V} ->
-            {ok, H} = jsxd:get(<<"hypervisor">>, V),
-            {Server, Port} = get_hypervisor(H),
-            libchunter:stop_machine(Server, Port, Vm, Options),
-            ok;
+    case fetch_hypervisor(Vm) of
+        {ok, Server, Port} ->
+            libchunter:stop_machine(Server, Port, Vm, Options);
         E ->
             E
     end.
@@ -284,12 +278,9 @@ reboot(Vm) ->
 -spec reboot(Vm::fifo:uuid(), Options::[atom()|{atom(), term()}]) ->
                     {error, timeout} | not_found | ok.
 reboot(Vm, Options) ->
-    case sniffle_vm:get(Vm) of
-        {ok, V} ->
-            {ok, H} = jsxd:get(<<"hypervisor">>, V),
-            {Server, Port} = get_hypervisor(H),
-            libchunter:reboot_machine(Server, Port, Vm, Options),
-            ok;
+    case fetch_hypervisor(Vm) of
+        {ok, Server, Port} ->
+            libchunter:reboot_machine(Server, Port, Vm, Options);
         E ->
             E
     end.
@@ -467,3 +458,17 @@ get_hypervisor(Hypervisor) ->
     {ok, Port} = jsxd:get(<<"port">>, HypervisorObj),
     {ok, Host} = jsxd:get(<<"host">>, HypervisorObj),
     {binary_to_list(Host), Port}.
+
+fetch_hypervisor(Vm) ->
+    case sniffle_vm:get(Vm) of
+        {ok, V} ->
+            case jsxd:get(<<"hypervisor">>, V) of
+                {ok, H} ->
+                    {Server, Port} = get_hypervisor(H),
+                    {ok, Server, Port};
+                _ ->
+                    not_found
+            end;
+        _ ->
+            not_found
+    end.
