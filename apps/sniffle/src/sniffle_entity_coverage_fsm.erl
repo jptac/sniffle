@@ -39,7 +39,7 @@
                 preflist,
                 num_r=0,
                 size,
-                timeout=?DEFAULT_TIMEOUT,
+                timeout=4000,
                 val,
                 vnode,
                 system,
@@ -70,7 +70,7 @@ start(VNodeInfo, Op, User, Val) ->
             {ok, Result};
         Other ->
             lager:error("[coverage] Bad return: ~p", [Other])
-    after ?DEFAULT_TIMEOUT ->
+    after 4000 ->
             lager:error("[coverage] timeout"),
             {error, timeout}
     end.
