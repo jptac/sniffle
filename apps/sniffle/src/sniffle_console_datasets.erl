@@ -12,26 +12,15 @@ help() ->
 
 -define(CHUNK_SIZE, 1024*1024).
 
-read_image(UUID, File, TotalSize, LastDone, Idx) ->
+read_image(UUID, File, Idx) ->
     case file:read(File, 1024*1024) of
         eof ->
             sniffle_dataset:set(UUID, <<"imported">>, 1),
-            Done = ((Idx +1) * 1024*1024) / TotalSize,
-            io:format(string:copies("=", trunc((Done - LastDone) / 0.02))),
-            io:format("|~n"),
             ok;
         {ok, B} ->
             sniffle_img:create(UUID, Idx, binary:copy(B)),
             Idx1 = Idx + 1,
-            Done = (Idx1 * 1024*1024) / TotalSize,
-            sniffle_dataset:set(UUID, <<"imported">>, Done),
-            case trunc((Done - LastDone) / 0.02) of
-                X when X >= 1 ->
-                    io:format(string:copies("=", X)),
-                    read_image(UUID, File, TotalSize, Done, Idx1);
-                _ ->
-                    read_image(UUID, File, TotalSize, LastDone, Idx1)
-            end
+            read_image(UUID, File, Idx1)
     end.
 
 write_image(File, _UUID, [Idx | _], 2) ->
@@ -84,13 +73,11 @@ command(text, ["import", Manifest, DataFile]) ->
             JSON = jsxd:from_list(jsx:decode(Body)),
             Dataset = sniffle_dataset:transform_dataset(JSON),
             {ok, UUID} = jsxd:get([<<"dataset">>], Dataset),
-            {ok, TotalSize} = jsxd:get([<<"files">>, 0, <<"size">>], JSON),
             sniffle_dataset:create(UUID),
             sniffle_dataset:set(UUID, Dataset),
             sniffle_dataset:set(UUID, <<"imported">>, 0),
-            io:format("|0-----------------------50---------------------100|%~n|"),
             {ok, F} = file:open(DataFile, [read, raw, binary]),
-            read_image(UUID, F, TotalSize, 0, 0),
+            read_image(UUID, F, 0),
             ok
     end;
 
