@@ -51,6 +51,7 @@
 	<method_environment>
 	  <envvar name='PATH' value='/opt/local/gnu/bin:/opt/local/bin:/opt/local/sbin:/usr/bin:/usr/sbin'/>
 	  <envvar name='HOME' value='/var/db/sniffle'/>
+	  <!--envvar name='http_proxy' value='http://10.0.0.1'/-->
 	</method_environment>
       </method_context>
     </exec_method>
@@ -65,6 +66,7 @@
 	<method_environment>
 	  <envvar name='PATH' value='/opt/local/gnu/bin:/opt/local/bin:/opt/local/sbin:/usr/bin:/usr/sbin'/>
 	  <envvar name='HOME' value='/var/db/sniffle'/>
+	  <!--envvar name='http_proxy' value='http://10.0.0.1'/-->
 	</method_environment>
       </method_context>
     </exec_method>
@@ -79,6 +81,7 @@
 	<method_environment>
 	  <envvar name='PATH' value='/opt/local/gnu/bin:/opt/local/bin:/opt/local/sbin:/usr/bin:/usr/sbin'/>
 	  <envvar name='HOME' value='/var/db/sniffle'/>
+	  <!--envvar name='http_proxy' value='http://10.0.0.1'/-->
 	</method_environment>
       </method_context>
     </exec_method>

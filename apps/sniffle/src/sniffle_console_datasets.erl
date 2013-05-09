@@ -7,6 +7,7 @@ help() ->
     io:format("  list [-j]~n"),
     io:format("  get [-j] <uuid>~n"),
     io:format("  import <manifest> <data file>~n"),
+    io:format("  export <uuid> <directory>~n"),
     io:format("  delete <uuid>~n").
 
 -define(CHUNK_SIZE, 1024*1024).
@@ -32,6 +33,43 @@ read_image(UUID, File, TotalSize, LastDone, Idx) ->
                     read_image(UUID, File, TotalSize, LastDone, Idx1)
             end
     end.
+
+write_image(File, _UUID, [Idx | _], 2) ->
+    io:format("Retries exceeded could for shard ~p.~n", [Idx]),
+    file:close(File),
+    error;
+
+write_image(File, _UUID, [], _Retries) ->
+    file:close(File),
+    ok;
+
+write_image(File, UUID, [Idx | R], Retries) ->
+    case sniffle_img:get(UUID, Idx) of
+        {ok, B} ->
+            ok = file:write(File, B),
+            write_image(File, UUID, R, 0);
+        _ ->
+            write_image(File, UUID, [Idx | R], Retries + 1)
+    end.
+
+command(text, ["export", UUIDS, Path]) ->
+    UUID = list_to_binary(UUIDS),
+    case filelib:is_dir(Path) of
+        false ->
+            io:format("Export directory '~s' could not be found.", [Path]),
+            error;
+        _ ->
+            case sniffle_dataset:get(UUID) of
+                {ok, Obj} ->
+                    ok = file:write_file([Path, "/", UUIDS, ".json"], jsx:encode(Obj)),
+                    {ok, IDXs} = sniffle_img:list(UUID),
+                    {ok, File} = file:open([Path, "/", UUIDS, ".gz"], [write, raw]),
+                    write_image(File, UUID, lists:sort(IDXs), 0);
+                _ ->
+                    io:format("Dataset '~s' could not be found.", [UUID]),
+                    error
+            end
+    end;
 
 command(text, ["import", Manifest, DataFile]) ->
     case {filelib:is_file(Manifest), filelib:is_file(Manifest)} of

@@ -120,6 +120,17 @@ _fifoadm_importable() {
                 COMPREPLY=( $(compgen -W "${opts}" -- ${cur}) )
                 return 0
                 ;;
+            export)
+                if [[ ${COMP_CWORD} == 3 ]]
+                then
+                    opts=`_fifoadm_complete_generic`
+                else
+                    opts=`ls ${cur}*`
+                fi
+                COMPREPLY=( $(compgen -W "${opts}" -- ${cur}) )
+                return 0
+                ;;
+
             list)
                 if [[ ${cur} == -* ]]
                 then

@@ -97,19 +97,24 @@ import(URL) ->
 %%%===================================================================
 
 transform_dataset(D1) ->
-    {ok, ID} = jsxd:get(<<"uuid">>, D1),
-    D2 = jsxd:thread(
-           [{select,[<<"os">>, <<"metadata">>, <<"name">>, <<"version">>,
-                     <<"description">>, <<"disk_driver">>, <<"nic_driver">>,
-                     <<"image_size">>]},
-            {set, <<"dataset">>, ID},
-            {set, <<"networks">>, jsxd:get(<<"requirements.networks">>, [], D1)}],
-           D1),
-    case jsxd:get(<<"os">>, D1) of
-        {ok, <<"smartos">>} ->
-            jsxd:set(<<"type">>, <<"zone">>, D2);
-        {ok, _} ->
-            jsxd:set(<<"type">>, <<"kvm">>, D2)
+    case jsxd:get([<<"type">>], D1) of
+        undefined ->
+            {ok, ID} = jsxd:get(<<"uuid">>, D1),
+            D2 = jsxd:thread(
+                   [{select,[<<"os">>, <<"metadata">>, <<"name">>, <<"version">>,
+                             <<"description">>, <<"disk_driver">>, <<"nic_driver">>,
+                             <<"image_size">>]},
+                    {set, <<"dataset">>, ID},
+                    {set, <<"networks">>, jsxd:get(<<"requirements.networks">>, [], D1)}],
+                   D1),
+            case jsxd:get(<<"os">>, D1) of
+                {ok, <<"smartos">>} ->
+                    jsxd:set(<<"type">>, <<"zone">>, D2);
+                {ok, _} ->
+                    jsxd:set(<<"type">>, <<"kvm">>, D2)
+            end;
+        _ ->
+            D1
     end.
 
 
