@@ -62,7 +62,7 @@ command(text, ["export", UUIDS, Path]) ->
             case sniffle_dataset:get(UUID) of
                 {ok, Obj} ->
                     ok = file:write_file([Path, "/", UUIDS, ".json"], jsx:encode(Obj)),
-                    IDXs = sniffle_img:list(UUID),
+                    {ok, IDXs} = sniffle_img:list(UUID),
                     {ok, File} = file:open([Path, "/", UUIDS, ".gz"], [write, raw]),
                     write_image(File, UUID, lists:sort(IDXs), 0);
                 _ ->
