@@ -97,7 +97,7 @@ import(URL) ->
 %%%===================================================================
 
 transform_dataset(D1) ->
-    case jsxd:get([<<"type">>], D1) of
+    case jsxd:get([<<"urn">>], D1) of
         undefined ->
             {ok, ID} = jsxd:get(<<"uuid">>, D1),
             D2 = jsxd:thread(
