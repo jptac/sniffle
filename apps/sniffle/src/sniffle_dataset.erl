@@ -99,6 +99,8 @@ import(URL) ->
 transform_dataset(D1) ->
     case jsxd:get([<<"urn">>], D1) of
         undefined ->
+            D1;
+        _ ->
             {ok, ID} = jsxd:get(<<"uuid">>, D1),
             D2 = jsxd:thread(
                    [{select,[<<"os">>, <<"metadata">>, <<"name">>, <<"version">>,
@@ -112,9 +114,7 @@ transform_dataset(D1) ->
                     jsxd:set(<<"type">>, <<"zone">>, D2);
                 {ok, _} ->
                     jsxd:set(<<"type">>, <<"kvm">>, D2)
-            end;
-        _ ->
-            D1
+            end
     end.
 
 
