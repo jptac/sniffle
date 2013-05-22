@@ -82,7 +82,7 @@ add_nic(Vm, Network) ->
                                            _ ->
                                           jsxd:set([<<"primary">>], true, NicSpec)
                                        end,
-                            UR = [{<<"add_nics">>, NicSpec1}],
+                            UR = [{<<"add_nics">>, [NicSpec1]}],
                             case libchunter:update_machine(Server, Port, Vm, [], UR) of
                                 ok ->
                                     M = [{<<"network">>, Network},
