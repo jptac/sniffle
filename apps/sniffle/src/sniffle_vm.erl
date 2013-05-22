@@ -100,7 +100,7 @@ add_nic(Vm, Network) ->
                                     {error, update_failed}
                             end;
                         _ ->
-                            {error, failed_claim}
+                            {error, claim_failed}
                     end;
                 _ ->
                     {error, not_stopped}
