@@ -93,7 +93,7 @@ add_nic(Vm, Network) ->
                                              _ ->
                                                  [M]
                                          end,
-                                    sniffle_vm:set([<<"network_mappings">>], Ms1);
+                                    sniffle_vm:set(Vm, [<<"network_mappings">>], Ms1);
                                 _ ->
                                     sniffle_iprange:release_ip(Network, IP),
                                     {error, update_failed}
