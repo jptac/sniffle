@@ -97,6 +97,12 @@ message({vm, nic, remove, Vm, Nic}, State) when
      sniffle_vm:remove_nic(Vm, Nic),
      State};
 
+message({vm, nic, primary, Vm, Nic}, State) when
+      is_binary(Vm),
+      is_binary(Nic) ->
+    {stop, normal,
+     sniffle_vm:primary_nic(Vm, Nic),
+     State};
 
 message({vm, log, Vm, Log}, State) when
       is_binary(Vm) ->
