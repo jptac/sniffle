@@ -163,7 +163,7 @@ primary_nic(Vm, Mac) ->
                     libchunter:ping(Server, Port),
                     case jsxd:get(<<"state">>, V) of
                         {ok, <<"stopped">>} ->
-                            UR = [{<<"update_nics">>, [[{Mac, [{<<"primary">>, true}]}]]}],
+                            UR = [{<<"update_nics">>, [[{<<"mac">>, Mac}, {<<"primary">>, true}]]}],
                             case libchunter:update_machine(Server, Port, Vm, [], UR) of
                                 ok ->
                                     ok;
