@@ -73,14 +73,14 @@ add_nic(Vm, Network) ->
                         {ok, {Tag, IP, Net, Gw}} ->
                             NicSpec =
                                 jsxd:from_list([{<<"ip">>, sniffle_iprange_state:to_bin(IP)},
-                                                  {<<"gateway">>, sniffle_iprange_state:to_bin(Gw)},
-                                                  {<<"netmask">>, sniffle_iprange_state:to_bin(Net)},
-                                                  {<<"nic_tag">>, Tag }]),
+                                                {<<"gateway">>, sniffle_iprange_state:to_bin(Gw)},
+                                                {<<"netmask">>, sniffle_iprange_state:to_bin(Net)},
+                                                {<<"nic_tag">>, Tag }]),
                             NicSpec1 = case jsxd:get([<<"config">>, <<"networks">>], V) of
                                            {ok, [_|_]} ->
                                                NicSpec;
                                            _ ->
-                                          jsxd:set([<<"primary">>], true, NicSpec)
+                                               jsxd:set([<<"primary">>], true, NicSpec)
                                        end,
                             UR = [{<<"add_nics">>, [NicSpec1]}],
                             case libchunter:update_machine(Server, Port, Vm, [], UR) of
@@ -101,26 +101,54 @@ add_nic(Vm, Network) ->
                         _ ->
                             {error, failed_claim}
                     end;
-                 _ ->
+                _ ->
                     {error, not_stopped}
-
             end;
         E ->
             E
     end.
 
-remove_nic(Vm, _MAC) ->
+remove_nic(Vm, Mac) ->
     case sniffle_vm:get(Vm) of
         {ok, V} ->
-            {ok, H} = jsxd:get(<<"hypervisor">>, V),
-            {Server, Port} = get_hypervisor(H),
-            libchunter:ping(Server, Port),
-            case jsxd:get(<<"state">>, V) of
-                {ok, <<"stopped">>} ->
-                    ok;
-                 _ ->
-                    {error, not_stopped}
-
+            NicMap = jsxd:map(fun(Idx, Nic) ->
+                                      {ok, NicMac} = jsxd:get([<<"mac">>], Nic),
+                                      {NicMac, Idx}
+                              end, jsxd:get([<<"config">>, <<"networks">>], [], V)),
+            case jsxd:get(Mac, NicMap) of
+                {ok, Idx}  ->
+                    {ok, H} = jsxd:get(<<"hypervisor">>, V),
+                    {Server, Port} = get_hypervisor(H),
+                    libchunter:ping(Server, Port),
+                    case jsxd:get(<<"state">>, V) of
+                        {ok, <<"stopped">>} ->
+                            UR = [{<<"remove_nics">>, [Mac]}],
+                            {ok, IpStr} = jsxd:get([<<"config">>, <<"networks">>, Idx, <<"ip">>], V),
+                            IP = sniffle_iprange_state:parse_bin(IpStr),
+                            {ok, Ms} = jsxd:get([<<"network_mappings">>], V),
+                            case libchunter:update_machine(Server, Port, Vm, [], UR) of
+                                ok ->
+                                    case [ Network  || [{<<"network">>, Network},
+                                                        {<<"ip">>, IP1}] <- Ms, IP1 =:= IP] of
+                                        [Network] ->
+                                            sniffle_iprange:release_ip(Network, IP),
+                                            Ms1 = [ [{<<"network">>, N},
+                                                     {<<"ip">>, IP1}] ||
+                                                      [{<<"network">>, N},
+                                                       {<<"ip">>, IP1}] <- Ms,
+                                                      IP1 =/= IP],
+                                            sniffle_vm:set(Vm, [<<"network_mappings">>], Ms1);
+                                        _ ->
+                                            ok
+                                    end;
+                                _ ->
+                                    {error, update_failed}
+                            end;
+                        _ ->
+                            {error, not_stopped}
+                    end;
+                _ ->
+                    {error, not_found}
             end;
         E ->
             E
