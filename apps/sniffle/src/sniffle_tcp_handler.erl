@@ -83,6 +83,26 @@ message({dtrace, run, ID, Servers}, State) ->
 %%%===================================================================
 %%%  VM Functions
 %%%===================================================================
+message({vm, nic, add, Vm, Network}, State) when
+      is_binary(Vm),
+      is_binary(Network) ->
+    {stop, normal,
+     sniffle_vm:add_nic(Vm, Network),
+     State};
+
+message({vm, nic, remove, Vm, Nic}, State) when
+      is_binary(Vm),
+      is_binary(Nic) ->
+    {stop, normal,
+     sniffle_vm:remove_nic(Vm, Nic),
+     State};
+
+message({vm, nic, primary, Vm, Nic}, State) when
+      is_binary(Vm),
+      is_binary(Nic) ->
+    {stop, normal,
+     sniffle_vm:primary_nic(Vm, Nic),
+     State};
 
 message({vm, log, Vm, Log}, State) when
       is_binary(Vm) ->
