@@ -131,13 +131,10 @@ handle_command(ping, _Sender, State) ->
 handle_command({repair, {Img, Idx}, VClock, Obj}, _Sender, State) ->
     case get(State#state.db, <<Img/binary, Idx:32>>) of
         {ok, #sniffle_obj{vclock = VC1}} when VC1 =:= VClock ->
-            estatsd:increment("sniffle.imgs.readrepair.success"),
             put(State#state.db, Img, Obj);
         not_found ->
-            estatsd:increment("sniffle.imgs.readrepair.success"),
             put(State#state.db, Img,  Obj);
         _ ->
-            estatsd:increment("sniffle.imgs.readrepair.failed"),
             lager:error("[imgs] Read repair failed, data was updated too recent.")
     end,
     {noreply, State};
@@ -145,10 +142,8 @@ handle_command({repair, {Img, Idx}, VClock, Obj}, _Sender, State) ->
 handle_command({get, ReqID, {Img, Idx}}, _Sender, State) ->
     Res = case get(State#state.db, <<Img/binary, Idx:32>>) of
               {ok, R} ->
-                  estatsd:increment("sniffle.imgs.read.success"),
                   R;
               not_found ->
-                  estatsd:increment("sniffle.imgs.read.failed"),
                   not_found
           end,
     NodeIdx = {State#state.partition, State#state.node},
@@ -178,15 +173,12 @@ handle_handoff_command(?FOLD_REQ{foldfun=Fun, acc0=Acc0}, _Sender, State) ->
     {reply, Acc, State}.
 
 handoff_starting(_TargetNode, State) ->
-    estatsd:increment("sniffle.imgs.handoff.start"),
     {true, State}.
 
 handoff_cancelled(State) ->
-    estatsd:increment("sniffle.imgs.handoff.cancelled"),
     {ok, State}.
 
 handoff_finished(_TargetNode, State) ->
-    estatsd:increment("sniffle.imgs.handoff.finished"),
     {ok, State}.
 
 handle_handoff_data(Data, State) ->
@@ -211,7 +203,6 @@ delete(State) ->
     {ok, State}.
 
 handle_coverage({list, ReqID}, _KeySpaces, _Sender, State) ->
-    estatsd:increment("sniffle.imgs.list"),
     List = bitcask:fold_keys(State#state.db,
                              fun (#bitcask_entry{key=K}, []) ->
                                      S = byte_size(K) - 4,
@@ -232,7 +223,6 @@ handle_coverage({list, ReqID}, _KeySpaces, _Sender, State) ->
      State};
 
 handle_coverage({list, ReqID, Img}, _KeySpaces, _Sender, State) ->
-    estatsd:increment("sniffle.imgs.list"),
     S = byte_size(Img),
     List = bitcask:fold_keys(State#state.db,
                              fun (#bitcask_entry{key = <<Img1:S/binary, Idx:32>>}, L) when Img1 =:= Img ->

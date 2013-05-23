@@ -130,13 +130,10 @@ handle_command(ping, _Sender, State) ->
 handle_command({repair, Dataset, VClock, Obj}, _Sender, State) ->
     case sniffle_db:get(State#state.db, <<"dataset">>, Dataset) of
         {ok, #sniffle_obj{vclock = VC1}} when VC1 =:= VClock ->
-            estatsd:increment("sniffle.datasets.readrepair.success"),
             sniffle_db:put(State#state.db, <<"dataset">>, Dataset, Obj);
         not_found ->
-            estatsd:increment("sniffle.datasets.readrepair.success"),
             sniffle_db:put(State#state.db, <<"dataset">>, Dataset, Obj);
         _ ->
-            estatsd:increment("sniffle.datasets.readrepair.failed"),
             lager:error("[datasets] Read repair failed, data was updated too recent.")
     end,
     {noreply, State};
@@ -144,10 +141,8 @@ handle_command({repair, Dataset, VClock, Obj}, _Sender, State) ->
 handle_command({get, ReqID, Dataset}, _Sender, State) ->
     Res = case sniffle_db:get(State#state.db, <<"dataset">>, Dataset) of
               {ok, R} ->
-                  estatsd:increment("sniffle.datasets.read.success"),
                   R;
               not_found ->
-                  estatsd:increment("sniffle.datasets.read.failed"),
                   not_found
           end,
     NodeIdx = {State#state.partition, State#state.node},
@@ -172,7 +167,6 @@ handle_command({set,
                 Resources}, _Sender, State) ->
     case sniffle_db:get(State#state.db, <<"dataset">>, Dataset) of
         {ok, #sniffle_obj{val=H0} = O} ->
-            estatsd:increment("sniffle.datasets.write.success"),
             H1 = statebox:modify({fun sniffle_dataset_state:load/1,[]}, H0),
             H2 = lists:foldr(
                    fun ({Resource, Value}, H) ->
@@ -185,7 +179,6 @@ handle_command({set,
                            sniffle_obj:update(H3, Coordinator, O)),
             {reply, {ok, ReqID}, State};
         R ->
-            estatsd:increment("sniffle.datasets.write.failed"),
             lager:error("[datasets] tried to write to a non existing dataset: ~p", [R]),
             {reply, {ok, ReqID, not_found}, State}
     end;
@@ -199,15 +192,12 @@ handle_handoff_command(?FOLD_REQ{foldfun=Fun, acc0=Acc0}, _Sender, State) ->
     {reply, Acc, State}.
 
 handoff_starting(_TargetNode, State) ->
-    estatsd:increment("sniffle.datasets.handoff.start"),
     {true, State}.
 
 handoff_cancelled(State) ->
-    estatsd:increment("sniffle.datasets.handoff.cancelled"),
     {ok, State}.
 
 handoff_finished(_TargetNode, State) ->
-    estatsd:increment("sniffle.datasets.handoff.finished"),
     {ok, State}.
 
 handle_handoff_data(Data, State) ->
@@ -235,7 +225,6 @@ delete(State) ->
     {ok, State}.
 
 handle_coverage({list, ReqID}, _KeySpaces, _Sender, State) ->
-    estatsd:increment("sniffle.datasets.list"),
     List = sniffle_db:fold(State#state.db,
                           <<"dataset">>,
                            fun (K, _, L) ->
@@ -246,7 +235,6 @@ handle_coverage({list, ReqID}, _KeySpaces, _Sender, State) ->
      State};
 
 handle_coverage({list, ReqID, Requirements}, _KeySpaces, _Sender, State) ->
-    estatsd:increment("sniffle.datasets.select"),
     Getter = fun(#sniffle_obj{val=S0}, Resource) ->
                      jsxd:get(Resource, 0, statebox:value(S0))
              end,
