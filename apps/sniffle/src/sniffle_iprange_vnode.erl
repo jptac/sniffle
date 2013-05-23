@@ -160,13 +160,10 @@ handle_command(ping, _Sender, State) ->
 handle_command({repair, Iprange, VClock, Obj}, _Sender, State) ->
     case sniffle_db:get(State#state.db, <<"iprange">>, Iprange) of
         {ok, #sniffle_obj{vclock = VC1}} when VC1 =:= VClock ->
-            estatsd:increment("sniffle.ipranges.readrepair.success"),
             sniffle_db:put(State#state.db, <<"iprange">>, Iprange, Obj);
         not_found ->
-            estatsd:increment("sniffle.ipranges.readrepair.success"),
             sniffle_db:put(State#state.db, <<"iprange">>, Iprange, Obj);
         _ ->
-            estatsd:increment("sniffle.ipranges.readrepair.failed"),
             lager:error("[uprange] Read repair failed, data was updated too recent.")
     end,
     {noreply, State};
@@ -174,10 +171,8 @@ handle_command({repair, Iprange, VClock, Obj}, _Sender, State) ->
 handle_command({get, ReqID, Iprange}, _Sender, State) ->
     Res = case sniffle_db:get(State#state.db, <<"iprange">>, Iprange) of
               {ok, R} ->
-                  estatsd:increment("sniffle.ipranges.read.success"),
                   R;
               not_found ->
-                  estatsd:increment("sniffle.ipranges.read.failed"),
                   not_found
           end,
     NodeIdx = {State#state.partition, State#state.node},
@@ -186,7 +181,6 @@ handle_command({get, ReqID, Iprange}, _Sender, State) ->
 handle_command({create, {ReqID, Coordinator}, UUID,
                 [Iprange, Network, Gateway, Netmask, First, Last, Tag, Vlan]},
                _Sender, State) ->
-    estatsd:increment("sniffle.ipranges.create"),
     I0 = statebox:new(fun sniffle_iprange_state:new/0),
     I1 = lists:foldl(
            fun (OP, SB) ->
@@ -208,7 +202,6 @@ handle_command({create, {ReqID, Coordinator}, UUID,
     {reply, {ok, ReqID}, State};
 
 handle_command({delete, {ReqID, _Coordinator}, Iprange}, _Sender, State) ->
-    estatsd:increment("sniffle.ipranges.delete"),
     sniffle_db:delete(State#state.db, <<"iprange">>, Iprange),
     {reply, {ok, ReqID}, State};
 
@@ -218,7 +211,6 @@ handle_command({ip, claim,
         {ok, #sniffle_obj{val=H0} = O} ->
             case sniffle_iprange_state:is_free(IP, statebox:value(H0)) of
                 true ->
-                    estatsd:increment("sniffle.ipranges.claim.success"),
                     H1 = statebox:modify({fun sniffle_iprange_state:load/1,[]}, H0),
                     H2 = statebox:modify({fun sniffle_iprange_state:claim_ip/2,[IP]}, H1),
                     H3 = statebox:expire(?STATEBOX_EXPIRE, H2),
@@ -233,7 +225,6 @@ handle_command({ip, claim,
                     {reply, {error, ReqID, duplicate}, State}
             end;
         _ ->
-            estatsd:increment("sniffle.ipranges.claim.failed"),
             {reply, {ok, ReqID, not_found}, State}
     end;
 
@@ -242,7 +233,6 @@ handle_command({set,
                 Resources}, _Sender, State) ->
     case sniffle_db:get(State#state.db, <<"iprange">>, Iprange) of
         {ok, #sniffle_obj{val=H0} = O} ->
-            estatsd:increment("sniffle.iprange.write.success"),
             H1 = statebox:modify({fun sniffle_iprange_state:load/1,[]}, H0),
             H2 = lists:foldr(
                    fun ({Resource, Value}, H) ->
@@ -255,7 +245,6 @@ handle_command({set,
                            sniffle_obj:update(H3, Coordinator, O)),
             {reply, {ok, ReqID}, State};
         R ->
-            estatsd:increment("sniffle.iprange.write.failed"),
             lager:error("[hypervisors] tried to write to a non existing hypervisor: ~p", [R]),
             {reply, {ok, ReqID, not_found}, State}
     end;
@@ -264,7 +253,6 @@ handle_command({ip, release,
                 {ReqID, Coordinator}, Iprange, IP}, _Sender, State) ->
     case sniffle_db:get(State#state.db, <<"iprange">>, Iprange) of
         {ok, #sniffle_obj{val=H0} = O} ->
-            estatsd:increment("sniffle.ipranges.release.success"),
 
             H1 = statebox:modify({fun sniffle_iprange_state:load/1,[]}, H0),
             H2 = statebox:modify({fun sniffle_iprange_state:release_ip/2,[IP]}, H1),
@@ -274,12 +262,10 @@ handle_command({ip, release,
             {reply, {ok, ReqID}, State};
 
         _ ->
-            estatsd:increment("sniffle.ipranges.release.failed"),
             {reply, {ok, ReqID, not_found}, State}
     end;
 
 handle_command(Message, _Sender, State) ->
-    estatsd:increment("sniffle.ipranges.unknown_command"),
     lager:error("[ipranges] Unknown command: ~p", [Message]),
     {noreply, State}.
 
@@ -289,15 +275,12 @@ handle_handoff_command(?FOLD_REQ{foldfun=Fun, acc0=Acc0}, _Sender, State) ->
     {reply, Acc, State}.
 
 handoff_starting(_TargetNode, State) ->
-    estatsd:increment("sniffle.ipranges.handoff.started"),
     {true, State}.
 
 handoff_cancelled(State) ->
-    estatsd:increment("sniffle.ipranges.handoff.started"),
     {ok, State}.
 
 handoff_finished(_TargetNode, State) ->
-    estatsd:increment("sniffle.ipranges.handoff.started"),
     {ok, State}.
 
 handle_handoff_data(Data, State) ->
@@ -325,7 +308,6 @@ delete(State) ->
     {ok, State}.
 
 handle_coverage({lookup, ReqID, Name}, _KeySpaces, _Sender, State) ->
-    estatsd:increment("sniffle.ipranges.lookup"),
     Res = sniffle_db:fold(State#state.db,
                           <<"iprange">>,
                           fun (_U, #sniffle_obj{val=SB}, Res) ->
@@ -342,7 +324,6 @@ handle_coverage({lookup, ReqID, Name}, _KeySpaces, _Sender, State) ->
      State};
 
 handle_coverage({list, ReqID, Requirements}, _KeySpaces, _Sender, State) ->
-    estatsd:increment("sniffle.ipranges.list"),
     Getter = fun(#sniffle_obj{val=S0}, V) ->
                      jsxd:get(V, 0, statebox:value(S0))
              end,
@@ -362,7 +343,6 @@ handle_coverage({list, ReqID, Requirements}, _KeySpaces, _Sender, State) ->
 
 
 handle_coverage({list, ReqID}, _KeySpaces, _Sender, State) ->
-    estatsd:increment("sniffle.ipranges.list"),
     List = sniffle_db:fold(State#state.db,
                            <<"iprange">>,
                            fun (K, _, L) ->
