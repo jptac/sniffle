@@ -66,16 +66,19 @@ add_nic(Vm, Network) ->
     case sniffle_vm:get(Vm) of
         {ok, V} ->
             {ok, H} = jsxd:get(<<"hypervisor">>, V),
-            {Server, Port} = get_hypervisor(H),
+            {ok, HypervisorObj} = sniffle_hypervisor:get(H),
+            {ok, Port} = jsxd:get(<<"port">>, HypervisorObj),
+            {ok, HostB} = jsxd:get(<<"host">>, HypervisorObj),
+            Server = binary_to_list(HostB),
             libchunter:ping(Server, Port),
             case jsxd:get(<<"state">>, V) of
                 {ok, <<"stopped">>} ->
                     case sniffle_iprange:claim_ip(Network) of
                         {ok, {Tag, IP, Net, Gw}} ->
-                            case lists:member(Tag, jsxd:get([<<"networks">>], [], H)) of
+                            case lists:member(Tag, jsxd:get([<<"networks">>], [], HypervisorObj)) of
                                 false ->
                                     sniffle_iprange:release_ip(Network, IP),
-                                    {error, bad_Tag};
+                                    {error, bad_ag};
                                 true ->
                                     NicSpec =
                                         jsxd:from_list([{<<"ip">>, sniffle_iprange_state:to_bin(IP)},
