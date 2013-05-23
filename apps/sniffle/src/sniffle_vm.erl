@@ -72,32 +72,38 @@ add_nic(Vm, Network) ->
                 {ok, <<"stopped">>} ->
                     case sniffle_iprange:claim_ip(Network) of
                         {ok, {Tag, IP, Net, Gw}} ->
-                            NicSpec =
-                                jsxd:from_list([{<<"ip">>, sniffle_iprange_state:to_bin(IP)},
-                                                {<<"gateway">>, sniffle_iprange_state:to_bin(Gw)},
-                                                {<<"netmask">>, sniffle_iprange_state:to_bin(Net)},
-                                                {<<"nic_tag">>, Tag }]),
-                            NicSpec1 = case jsxd:get([<<"config">>, <<"networks">>], V) of
-                                           {ok, [_|_]} ->
-                                               NicSpec;
-                                           _ ->
-                                               jsxd:set([<<"primary">>], true, NicSpec)
-                                       end,
-                            UR = [{<<"add_nics">>, [NicSpec1]}],
-                            case libchunter:update_machine(Server, Port, Vm, [], UR) of
-                                ok ->
-                                    M = [{<<"network">>, Network},
-                                         {<<"ip">>, IP}],
-                                    Ms1= case jsxd:get([<<"network_mappings">>], V) of
-                                             {ok, Ms} ->
-                                                 [M | Ms];
-                                             _ ->
-                                                 [M]
-                                         end,
-                                    sniffle_vm:set(Vm, [<<"network_mappings">>], Ms1);
-                                _ ->
+                            case lists:member(Tag, jsxd:get([<<"networks">>], [], H)) of
+                                false ->
                                     sniffle_iprange:release_ip(Network, IP),
-                                    {error, update_failed}
+                                    {error, bad_Tag};
+                                true ->
+                                    NicSpec =
+                                        jsxd:from_list([{<<"ip">>, sniffle_iprange_state:to_bin(IP)},
+                                                        {<<"gateway">>, sniffle_iprange_state:to_bin(Gw)},
+                                                        {<<"netmask">>, sniffle_iprange_state:to_bin(Net)},
+                                                        {<<"nic_tag">>, Tag }]),
+                                    NicSpec1 = case jsxd:get([<<"config">>, <<"networks">>], V) of
+                                                   {ok, [_|_]} ->
+                                                       NicSpec;
+                                                   _ ->
+                                                       jsxd:set([<<"primary">>], true, NicSpec)
+                                               end,
+                                    UR = [{<<"add_nics">>, [NicSpec1]}],
+                                    case libchunter:update_machine(Server, Port, Vm, [], UR) of
+                                        ok ->
+                                            M = [{<<"network">>, Network},
+                                                 {<<"ip">>, IP}],
+                                            Ms1= case jsxd:get([<<"network_mappings">>], V) of
+                                                     {ok, Ms} ->
+                                                         [M | Ms];
+                                                     _ ->
+                                                         [M]
+                                                 end,
+                                            sniffle_vm:set(Vm, [<<"network_mappings">>], Ms1);
+                                        _ ->
+                                            sniffle_iprange:release_ip(Network, IP),
+                                            {error, update_failed}
+                                    end
                             end;
                         _ ->
                             {error, claim_failed}
