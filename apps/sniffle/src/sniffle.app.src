@@ -10,7 +10,6 @@
                   stdlib,
                   riak_core,
                   uuid,
-                  estatsd,
                   mdns_server_lib,
                   libchunter,
                   libhowl,
