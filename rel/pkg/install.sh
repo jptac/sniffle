@@ -27,6 +27,7 @@ case $2 in
 	chown -R sniffle:sniffle /var/db/sniffle
 	mkdir -p /var/log/sniffle/sasl
 	chown -R sniffle:sniffle /var/log/sniffle
+    chown -R sniffle:sniffle /tmp/sniffle/
 	;;
     POST-INSTALL)
 	if svcs svc:/network/sniffle:default > /dev/null 2>&1
