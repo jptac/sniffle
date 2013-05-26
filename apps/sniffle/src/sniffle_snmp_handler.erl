@@ -34,16 +34,7 @@ reload() ->
     snmpa:load_mibs(["SNIFFLE-MIB"]).
 
 start() ->
-    MIBS = ["SNIFFLE-MIB",
-            "SNIFFLE-DATASET-MIB",
-            "SNIFFLE-DTRACE-MIB",
-            "SNIFFLE-HYPERVISOR-MIB",
-            "SNIFFLE-IMAGE-MIB",
-            "SNIFFLE-IPRANGE-MIB",
-            "SNIFFLE-PACKAGE-MIB",
-            "SNIFFLE-VM-MIB"],
-    MIBS1 = [code:priv_dir(sniffle) ++ "/mibs" ++ M || M <- MIBS],
-    snmpa:load_mibs(MIBS1).
+    snmpa:load_mibs([code:priv_dir(sniffle) ++ "/mibs/SNIFFLE-MIB"]).
 
 %%----------------------------------------------------------------
 %% Instrumentation function for variable myName.
