@@ -1,3 +1,7 @@
+sniffle.xml
+apps/sniffle/priv/mibs/SNIFFLE-MIB.bin
+.bin
+apps/sniffle/include/SNIFFLE-MIB.hrl
 *.version
 apps/sniffle/src/sniffle_version.hrl
 rel/pkg/packlist
@@ -12,3 +16,4 @@ dev/*
 doc/*
 rel/sniffle
 erl_crash.dump
+sniffle_template.xml

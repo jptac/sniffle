@@ -31,6 +31,15 @@ start(_StartType, _StartArgs) ->
             ok = riak_core_node_watcher:service_up(sniffle_img, self()),
             ok = riak_core_node_watcher:service_up(sniffle_dtrace, self()),
 
+            statman_server:add_subscriber(statman_aggregator),
+            sniffle_snmp_handler:start(),
+            case application:get_env(newrelic,license_key) of
+                undefined ->
+                    ok;
+                _ ->
+                    newrelic_poller:start_link(fun newrelic_statman:poll/0)
+            end,
+
             {ok, Pid};
         {error, Reason} ->
             {error, Reason}

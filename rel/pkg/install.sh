@@ -27,7 +27,7 @@ case $2 in
 	chown -R sniffle:sniffle /var/db/sniffle
 	mkdir -p /var/log/sniffle/sasl
 	chown -R sniffle:sniffle /var/log/sniffle
-    chown -R sniffle:sniffle /tmp/sniffle/
+        chown -R sniffle:sniffle /tmp/sniffle/
 	;;
     POST-INSTALL)
 	if svcs svc:/network/sniffle:default > /dev/null 2>&1
@@ -35,7 +35,7 @@ case $2 in
 	    echo Service already existings ...
 	else
 	    echo Importing service ...
-	    svccfg import /opt/local/sniffle/etc/sniffle.xml
+	    svccfg import /opt/local/sniffle/share/sniffle.xml
 	fi
 	echo Trying to guess configuration ...
 	IP=`ifconfig net0 | grep inet | awk -e '{print $2}'`
