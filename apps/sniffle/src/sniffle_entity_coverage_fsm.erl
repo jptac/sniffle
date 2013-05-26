@@ -36,6 +36,7 @@
                 op,
                 r,
                 n,
+                start,
                 preflist,
                 num_r=0,
                 size,
@@ -100,6 +101,7 @@ init([ReqId, {VNode, System}, Op, From, Entity, Val]) ->
                 val=Val,
                 r=R,
                 n=N,
+                start=now(),
                 vnode=VNode,
                 system=System,
                 entity=Entity},
@@ -161,6 +163,9 @@ waiting({{undefined,{_Partition, _Node} = IdxNode},
                                          (Key, _Count, Keys) ->
                                               [Key | Keys]
                                       end, [], Replies),
+            statman_histogram:record_value(
+              {list_to_atom(atom_to_list(SD0#state.entity) ++ "/list"), total},
+              SD0#state.start),
             From ! {ReqID, ok, MergedReplies},
             {stop, normal, SD};
         true ->

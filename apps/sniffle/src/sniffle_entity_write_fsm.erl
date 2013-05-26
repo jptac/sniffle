@@ -34,6 +34,7 @@
                 op :: atom(),
                 n,
                 w,
+                start,
                 vnode,
                 system,
                 cordinator :: node(),
@@ -108,6 +109,7 @@ init([{VNode, System}, ReqID, From, Entity, Op, Val]) ->
                 n=N,
                 entity=Entity,
                 op=Op,
+                start=now(),
                 vnode=VNode,
                 system=System,
                 cordinator=node(),
@@ -149,6 +151,9 @@ waiting({ok, ReqID}, SD0=#state{from=From, num_w=NumW0, req_id=ReqID, w=W}) ->
     SD = SD0#state{num_w=NumW},
     if
         NumW =:= W ->
+            statman_histogram:record_value(
+              {list_to_atom(atom_to_list(SD0#state.entity) ++ "/write"), total},
+              SD0#state.start),
             From ! {ReqID, ok},
             {stop, normal, SD};
         true -> {next_state, waiting, SD}
@@ -159,6 +164,9 @@ waiting({ok, ReqID, Reply}, SD0=#state{from=From, num_w=NumW0, req_id=ReqID, w=W
     SD = SD0#state{num_w=NumW},
     if
         NumW =:= W ->
+            statman_histogram:record_value(
+              {list_to_atom(atom_to_list(SD0#state.entity) ++ "/write"), total},
+              SD0#state.start),
             From ! {ReqID, ok, Reply},
             {stop, normal, SD};
         true -> {next_state, waiting, SD}
