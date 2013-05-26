@@ -11,6 +11,7 @@ version_header: version
 	echo "-define(VERSION, <<\"$(shell cat sniffle.version)\">>)." > apps/sniffle/src/sniffle_version.hrl
 
 compile: version_header
+	erlc -oapps/sniffle/priv/mibs/ apps/sniffle/mibs/SNIFFLE-MIB.mib
 	$(REBAR) compile
 
 deps:

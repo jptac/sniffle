@@ -1,0 +1,331 @@
+SNIFFLE-IMAGE-MIB DEFINITIONS ::= BEGIN
+
+    IMPORTS
+        experimental   FROM RFC1155-SMI
+        OBJECT-TYPE    FROM RFC-1212
+        sniffle        FROM SNIFFLE-MIB
+        ;
+
+    image   OBJECT IDENTIFIER ::= { sniffle  2 }
+
+-- Hypervisor Section
+    readP999 OBJECT-TYPE
+        SYNTAX  INTEGER
+        ACCESS  read-only
+        STATUS  mandatory
+        DESCRIPTION
+            "99.9 percertile"
+        ::= { image 1 }
+
+    readP99 OBJECT-TYPE
+        SYNTAX  INTEGER
+        ACCESS  read-only
+        STATUS  mandatory
+        DESCRIPTION
+            "99 percertile"
+        ::= { image 2 }
+
+    readP95 OBJECT-TYPE
+        SYNTAX  INTEGER
+        ACCESS  read-only
+        STATUS  mandatory
+        DESCRIPTION
+            "95 percertile"
+        ::= { image 3 }
+
+    readP75 OBJECT-TYPE
+        SYNTAX  INTEGER
+        ACCESS  read-only
+        STATUS  mandatory
+        DESCRIPTION
+            "75 percertile"
+        ::= { image 4 }
+
+    readP25 OBJECT-TYPE
+        SYNTAX  INTEGER
+        ACCESS  read-only
+        STATUS  mandatory
+        DESCRIPTION
+            "25 percertile"
+        ::= { image 5 }
+
+    readCount OBJECT-TYPE
+        SYNTAX  INTEGER
+        ACCESS  read-only
+        STATUS  mandatory
+        DESCRIPTION
+            "number of events"
+        ::= { image 6 }
+
+    readMin OBJECT-TYPE
+        SYNTAX  INTEGER
+        ACCESS  read-only
+        STATUS  mandatory
+        DESCRIPTION
+            "number of events"
+        ::= { image 7 }
+
+    readMedian OBJECT-TYPE
+        SYNTAX  INTEGER
+        ACCESS  read-only
+        STATUS  mandatory
+        DESCRIPTION
+            "number of events"
+        ::= { image 8 }
+
+    readMean OBJECT-TYPE
+        SYNTAX  INTEGER
+        ACCESS  read-only
+        STATUS  mandatory
+        DESCRIPTION
+            "number of events"
+        ::= { image 9 }
+
+    readMax OBJECT-TYPE
+        SYNTAX  INTEGER
+        ACCESS  read-only
+        STATUS  mandatory
+        DESCRIPTION
+            "number of events"
+        ::= { image 10 }
+
+    writeP999 OBJECT-TYPE
+        SYNTAX  INTEGER
+        ACCESS  read-only
+        STATUS  mandatory
+        DESCRIPTION
+            "99.9 percertile"
+        ::= { image 11 }
+
+    writeP99 OBJECT-TYPE
+        SYNTAX  INTEGER
+        ACCESS  read-only
+        STATUS  mandatory
+        DESCRIPTION
+            "99 percertile"
+        ::= { image 12 }
+
+    writeP95 OBJECT-TYPE
+        SYNTAX  INTEGER
+        ACCESS  read-only
+        STATUS  mandatory
+        DESCRIPTION
+            "95 percertile"
+        ::= { image 13 }
+
+    writeP75 OBJECT-TYPE
+        SYNTAX  INTEGER
+        ACCESS  read-only
+        STATUS  mandatory
+        DESCRIPTION
+            "75 percertile"
+        ::= { image 14 }
+
+    writeP25 OBJECT-TYPE
+        SYNTAX  INTEGER
+        ACCESS  read-only
+        STATUS  mandatory
+        DESCRIPTION
+            "25 percertile"
+        ::= { image 15 }
+
+    writeCount OBJECT-TYPE
+        SYNTAX  INTEGER
+        ACCESS  read-only
+        STATUS  mandatory
+        DESCRIPTION
+            "number of events"
+        ::= { image 16 }
+
+    writeMin OBJECT-TYPE
+        SYNTAX  INTEGER
+        ACCESS  read-only
+        STATUS  mandatory
+        DESCRIPTION
+            "number of events"
+        ::= { image 17 }
+
+    writeMedian OBJECT-TYPE
+        SYNTAX  INTEGER
+        ACCESS  read-only
+        STATUS  mandatory
+        DESCRIPTION
+            "number of events"
+        ::= { image 18 }
+
+    writeMean OBJECT-TYPE
+        SYNTAX  INTEGER
+        ACCESS  read-only
+        STATUS  mandatory
+        DESCRIPTION
+            "number of events"
+        ::= { image 19 }
+
+    writeMax OBJECT-TYPE
+        SYNTAX  INTEGER
+        ACCESS  read-only
+        STATUS  mandatory
+        DESCRIPTION
+            "number of events"
+        ::= { image 20 }
+
+    listP999 OBJECT-TYPE
+        SYNTAX  INTEGER
+        ACCESS  read-only
+        STATUS  mandatory
+        DESCRIPTION
+            "99.9 percertile"
+        ::= { image 21 }
+
+    listP99 OBJECT-TYPE
+        SYNTAX  INTEGER
+        ACCESS  read-only
+        STATUS  mandatory
+        DESCRIPTION
+            "99 percertile"
+        ::= { image 22 }
+
+    listP95 OBJECT-TYPE
+        SYNTAX  INTEGER
+        ACCESS  read-only
+        STATUS  mandatory
+        DESCRIPTION
+            "95 percertile"
+        ::= { image 23 }
+
+    listP75 OBJECT-TYPE
+        SYNTAX  INTEGER
+        ACCESS  read-only
+        STATUS  mandatory
+        DESCRIPTION
+            "75 percertile"
+        ::= { image 24 }
+
+    listP25 OBJECT-TYPE
+        SYNTAX  INTEGER
+        ACCESS  read-only
+        STATUS  mandatory
+        DESCRIPTION
+            "25 percertile"
+        ::= { image 25 }
+
+    listCount OBJECT-TYPE
+        SYNTAX  INTEGER
+        ACCESS  read-only
+        STATUS  mandatory
+        DESCRIPTION
+            "number of events"
+        ::= { image 26 }
+
+    listMin OBJECT-TYPE
+        SYNTAX  INTEGER
+        ACCESS  read-only
+        STATUS  mandatory
+        DESCRIPTION
+            "number of events"
+        ::= { image 27 }
+
+    listMedian OBJECT-TYPE
+        SYNTAX  INTEGER
+        ACCESS  read-only
+        STATUS  mandatory
+        DESCRIPTION
+            "number of events"
+        ::= { image 28 }
+
+    listMean OBJECT-TYPE
+        SYNTAX  INTEGER
+        ACCESS  read-only
+        STATUS  mandatory
+        DESCRIPTION
+            "number of events"
+        ::= { image 29 }
+
+    listMax OBJECT-TYPE
+        SYNTAX  INTEGER
+        ACCESS  read-only
+        STATUS  mandatory
+        DESCRIPTION
+            "number of events"
+        ::= { image 30 }
+
+    repairP999 OBJECT-TYPE
+        SYNTAX  INTEGER
+        ACCESS  read-only
+        STATUS  mandatory
+        DESCRIPTION
+            "99.9 percertile"
+        ::= { image 31 }
+
+    repairP99 OBJECT-TYPE
+        SYNTAX  INTEGER
+        ACCESS  read-only
+        STATUS  mandatory
+        DESCRIPTION
+            "99 percertile"
+        ::= { image 32 }
+
+    repairP95 OBJECT-TYPE
+        SYNTAX  INTEGER
+        ACCESS  read-only
+        STATUS  mandatory
+        DESCRIPTION
+            "95 percertile"
+        ::= { image 33 }
+
+    repairP75 OBJECT-TYPE
+        SYNTAX  INTEGER
+        ACCESS  read-only
+        STATUS  mandatory
+        DESCRIPTION
+            "75 percertile"
+        ::= { image 34 }
+
+    repairP25 OBJECT-TYPE
+        SYNTAX  INTEGER
+        ACCESS  read-only
+        STATUS  mandatory
+        DESCRIPTION
+            "25 percertile"
+        ::= { image 35 }
+
+    repairCount OBJECT-TYPE
+        SYNTAX  INTEGER
+        ACCESS  read-only
+        STATUS  mandatory
+        DESCRIPTION
+            "number of events"
+        ::= { image 36 }
+
+    repairMin OBJECT-TYPE
+        SYNTAX  INTEGER
+        ACCESS  read-only
+        STATUS  mandatory
+        DESCRIPTION
+            "number of events"
+        ::= { image 37 }
+
+    repairMedian OBJECT-TYPE
+        SYNTAX  INTEGER
+        ACCESS  read-only
+        STATUS  mandatory
+        DESCRIPTION
+            "number of events"
+        ::= { image 38 }
+
+    repairMean OBJECT-TYPE
+        SYNTAX  INTEGER
+        ACCESS  read-only
+        STATUS  mandatory
+        DESCRIPTION
+            "number of events"
+        ::= { image 39 }
+
+    repairMax OBJECT-TYPE
+        SYNTAX  INTEGER
+        ACCESS  read-only
+        STATUS  mandatory
+        DESCRIPTION
+            "number of events"
+        ::= { image 40 }
+END
