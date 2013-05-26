@@ -169,13 +169,13 @@ waiting({ok, ReqID, IdxNode, Obj},
             case merge(Replies) of
                 not_found ->
                     statman_histogram:record_value(
-                      {list_to_atom(atom_to_list(SD0#state.entity) ++ "/read"), total},
+                      {list_to_binary(stat_name(SD0#state.vnode) ++ "/read"), total},
                       SD0#state.start),
                     From ! {ReqID, not_found};
                 Merged ->
                     Reply = sniffle_obj:val(Merged),
                     statman_histogram:record_value(
-                      {list_to_atom(atom_to_list(SD0#state.entity) ++ "/read"), total},
+                      {list_to_binary(stat_name(SD0#state.vnode) ++ "/read"), total},
                       SD0#state.start),
                     From ! {ReqID, ok, statebox:value(Reply)}
             end,
@@ -215,7 +215,7 @@ finalize(timeout, SD=#state{
             lager:error("[read] performing read repair on '~p'.", [Entity]),
             repair(VNode, Entity, MObj, Replies),
             statman_histogram:record_value(
-              {list_to_atom(atom_to_list(Entity) ++ "/repair"), total},
+              {list_to_binary(stat_name(SD#state.vnode) ++ "/repair"), total},
               Start),
             {stop, normal, SD};
         false ->
@@ -297,3 +297,18 @@ unique(L) ->
 
 mk_reqid() ->
     erlang:phash2(erlang:now()).
+
+stat_name(sniffle_dtrace_vnode) ->
+    "dtrace";
+stat_name(sniffle_vm_vnode) ->
+    "vm";
+stat_name(sniffle_hypervisor_vnode) ->
+    "hypervisor";
+stat_name(sniffle_package_vnode) ->
+    "package";
+stat_name(sniffle_dataset_vnode) ->
+    "dataset";
+stat_name(sniffle_img_vnode) ->
+    "img";
+stat_name(sniffle_iprange_vnode) ->
+    "iprange".
