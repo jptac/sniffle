@@ -168,6 +168,9 @@ waiting({ok, ReqID, IdxNode, Obj},
         NumR =:= R ->
             case merge(Replies) of
                 not_found ->
+                    statman_histogram:record_value(
+                      {list_to_atom(atom_to_list(SD0#state.entity) ++ "/read"), total},
+                      SD0#state.start),
                     From ! {ReqID, not_found};
                 Merged ->
                     Reply = sniffle_obj:val(Merged),
@@ -212,9 +215,8 @@ finalize(timeout, SD=#state{
             lager:error("[read] performing read repair on '~p'.", [Entity]),
             repair(VNode, Entity, MObj, Replies),
             statman_histogram:record_value(
-              {list_to_atom(atom_to_list(SD#state.entity) ++ "/repair"), total},
+              {list_to_atom(atom_to_list(Entity) ++ "/repair"), total},
               Start),
-
             {stop, normal, SD};
         false ->
             {stop, normal, SD}
