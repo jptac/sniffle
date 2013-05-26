@@ -152,7 +152,7 @@ waiting({ok, ReqID}, SD0=#state{from=From, num_w=NumW0, req_id=ReqID, w=W}) ->
     if
         NumW =:= W ->
             statman_histogram:record_value(
-              {list_to_atom(atom_to_list(SD0#state.entity) ++ "/write"), total},
+              {list_to_atom(atom_to_list(SD0#state.vnode) ++ "/write"), total},
               SD0#state.start),
             From ! {ReqID, ok},
             {stop, normal, SD};
@@ -165,7 +165,7 @@ waiting({ok, ReqID, Reply}, SD0=#state{from=From, num_w=NumW0, req_id=ReqID, w=W
     if
         NumW =:= W ->
             statman_histogram:record_value(
-              {list_to_atom(atom_to_list(SD0#state.entity) ++ "/write"), total},
+              {list_to_atom(atom_to_list(SD0#state.vnode) ++ "/write"), total},
               SD0#state.start),
             From ! {ReqID, ok, Reply},
             {stop, normal, SD};

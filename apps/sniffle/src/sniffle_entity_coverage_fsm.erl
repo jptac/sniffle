@@ -164,7 +164,7 @@ waiting({{undefined,{_Partition, _Node} = IdxNode},
                                               [Key | Keys]
                                       end, [], Replies),
             statman_histogram:record_value(
-              {list_to_atom(atom_to_list(SD0#state.entity) ++ "/list"), total},
+              {list_to_atom(atom_to_list(SD0#state.vnode) ++ "/list"), total},
               SD0#state.start),
             From ! {ReqID, ok, MergedReplies},
             {stop, normal, SD};
