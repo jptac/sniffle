@@ -1,3 +1,4 @@
+#!/usr/bin/env bash
 function write_item() {
     oid=$1
     group=$2
