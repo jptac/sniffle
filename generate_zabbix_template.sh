@@ -1,67 +1,3 @@
-function write_item() {
-    oid=$1
-    group=$2
-    param=$3
-    echo "  $oid -> $param"
-    cat <<EOF >> sniffle_template.xml
-              <item>
-                <name>$param</name>
-                <type>4</type>
-                <snmp_community>public</snmp_community>
-                <multiplier>0</multiplier>
-                <snmp_oid>$oid</snmp_oid>
-                <key>fifo.sniffle.group.$param</key>
-                <delay>30</delay>
-                <history>90</history>
-                <trends>365</trends>
-                <status>0</status>
-                <value_type>3</value_type>
-                <allowed_hosts/>
-EOF
-if echo $param | grep Count > /dev/null
-then
-cat <<EOF >> sniffle_template.xml
-                <units>requests</units>
-                <formula>1</formula>
-EOF
-else
-cat <<EOF >> sniffle_template.xml
-                <units>nanoseconds</units>
-                <formula>0.001</formula>
-EOF
-fi
-
-cat <<EOF >> sniffle_template.xml
-                <delta>0</delta>
-                <snmpv3_securityname/>
-                <snmpv3_securitylevel>0</snmpv3_securitylevel>
-                <snmpv3_authpassphrase/>
-                <snmpv3_privpassphrase/>
-                <delay_flex/>
-                <params/>
-                <ipmi_sensor/>
-                <data_type>0</data_type>
-                <authtype>0</authtype>
-                <username/>
-                <password/>
-                <publickey/>
-                <privatekey/>
-                <port/>
-                <description/>
-                <inventory_link>0</inventory_link>
-                <applications/>
-                <valuemap/>
-              </item>
-EOF
-}
-function generate_section() {
-echo "Processing $1 -> $2"
-cat apps/sniffle/include/$1.hrl | grep instance | sed 's/-define(//' | sed 's/_instance, ./ /' | sed 's/]).//' | sed 's/,/./g' | while read param oid
-do
-  write_item $oid $2 $param
-done
-}
-
 cat <<EOF > sniffle_template.xml
 <?xml version="1.0" encoding="UTF-8"?>
 <zabbix_export>
@@ -88,16 +24,60 @@ cat <<EOF > sniffle_template.xml
             </applications>
             <items>
 EOF
+cat apps/sniffle/include/SNIFFLE-MIB.hrl | grep instance | sed 's/-define(//' | sed 's/_instance, ./ /' | sed 's/]).//' | sed 's/,/./g' | while read param oid
+do
+    cat <<EOF >> sniffle_template.xml
+                <item>
+                    <name>$param</name>
+                    <type>4</type>
+                    <snmp_community>public</snmp_community>
+                    <multiplier>0</multiplier>
+                    <snmp_oid>$oid</snmp_oid>
+                    <key>fifo.sniffle.$param</key>
+                    <delay>30</delay>
+                    <history>90</history>
+                    <trends>365</trends>
+                    <status>0</status>
+                    <value_type>3</value_type>
+                    <allowed_hosts/>
+EOF
+    if echo $param | grep Count
+    then
+        cat <<EOF >> sniffle_template.xml
+                    <units>requests</units>
+                    <formula>1</formula>
+EOF
+    else
+        cat <<EOF >> sniffle_template.xml
+                    <units>nanoseconds</units>
+                    <formula>0.001</formula>
+EOF
+    fi
 
+    cat <<EOF >> sniffle_template.xml
 
-generate_section SNIFFLE-DATASET-MIB dataset
-generate_section SNIFFLE-HYPERVISOR-MIB hypervisor
-generate_section SNIFFLE-IPRANGE-MIB iprange
-generate_section SNIFFLE-PACKAGE-MIB package
-generate_section SNIFFLE-DTRACE-MIB dtrace
-generate_section SNIFFLE-IMAGE-MIB image
-generate_section SNIFFLE-VM-MIB vm
-
+                    <delta>0</delta>
+                    <snmpv3_securityname/>
+                    <snmpv3_securitylevel>0</snmpv3_securitylevel>
+                    <snmpv3_authpassphrase/>
+                    <snmpv3_privpassphrase/>
+                    <delay_flex/>
+                    <params/>
+                    <ipmi_sensor/>
+                    <data_type>0</data_type>
+                    <authtype>0</authtype>
+                    <username/>
+                    <password/>
+                    <publickey/>
+                    <privatekey/>
+                    <port/>
+                    <description/>
+                    <inventory_link>0</inventory_link>
+                    <applications/>
+                    <valuemap/>
+                </item>
+EOF
+done
 cat <<EOF >> sniffle_template.xml
             </items>
             <discovery_rules/>
