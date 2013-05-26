@@ -16,3 +16,4 @@ dev/*
 doc/*
 rel/sniffle
 erl_crash.dump
+sniffle_template.xml
