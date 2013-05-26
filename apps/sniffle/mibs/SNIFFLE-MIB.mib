@@ -47,6 +47,14 @@ SNIFFLE-MIB DEFINITIONS ::= BEGIN
         ::= { sniffle 3 }
 
 -- Hypervisor Section
+    hypervisorCount OBJECT-TYPE
+        SYNTAX  INTEGER
+        ACCESS  read-only
+        STATUS  mandatory
+        DESCRIPTION
+            "key count"
+        ::= { hypervisor 41 }
+
     hypervisorReadP999 OBJECT-TYPE
         SYNTAX  INTEGER
         ACCESS  read-only
@@ -368,6 +376,14 @@ SNIFFLE-MIB DEFINITIONS ::= BEGIN
         ::= { hypervisor 40 }
 
 -- Dtrace Section
+    dtraceCount OBJECT-TYPE
+        SYNTAX  INTEGER
+        ACCESS  read-only
+        STATUS  mandatory
+        DESCRIPTION
+            "key count"
+        ::= { dtrace 41 }
+
     dtraceReadP999 OBJECT-TYPE
         SYNTAX  INTEGER
         ACCESS  read-only
@@ -689,6 +705,14 @@ SNIFFLE-MIB DEFINITIONS ::= BEGIN
         ::= { dtrace 40 }
 
 -- Vm Section
+    vmCount OBJECT-TYPE
+        SYNTAX  INTEGER
+        ACCESS  read-only
+        STATUS  mandatory
+        DESCRIPTION
+            "key count"
+        ::= { vm 41 }
+
     vmReadP999 OBJECT-TYPE
         SYNTAX  INTEGER
         ACCESS  read-only
@@ -1010,6 +1034,14 @@ SNIFFLE-MIB DEFINITIONS ::= BEGIN
         ::= { vm 40 }
 
 -- Iprange Section
+    iprangeCount OBJECT-TYPE
+        SYNTAX  INTEGER
+        ACCESS  read-only
+        STATUS  mandatory
+        DESCRIPTION
+            "key count"
+        ::= { iprange 41 }
+
     iprangeReadP999 OBJECT-TYPE
         SYNTAX  INTEGER
         ACCESS  read-only
@@ -1331,6 +1363,14 @@ SNIFFLE-MIB DEFINITIONS ::= BEGIN
         ::= { iprange 40 }
 
 -- Dataset Section
+    datasetCount OBJECT-TYPE
+        SYNTAX  INTEGER
+        ACCESS  read-only
+        STATUS  mandatory
+        DESCRIPTION
+            "key count"
+        ::= { dataset 41 }
+
     datasetReadP999 OBJECT-TYPE
         SYNTAX  INTEGER
         ACCESS  read-only
@@ -1652,6 +1692,14 @@ SNIFFLE-MIB DEFINITIONS ::= BEGIN
         ::= { dataset 40 }
 
 -- Package Section
+    packageCount OBJECT-TYPE
+        SYNTAX  INTEGER
+        ACCESS  read-only
+        STATUS  mandatory
+        DESCRIPTION
+            "key count"
+        ::= { package 41 }
+
     packageReadP999 OBJECT-TYPE
         SYNTAX  INTEGER
         ACCESS  read-only
@@ -1973,6 +2021,14 @@ SNIFFLE-MIB DEFINITIONS ::= BEGIN
         ::= { package 40 }
 
 -- Image Section
+    imageCount OBJECT-TYPE
+        SYNTAX  INTEGER
+        ACCESS  read-only
+        STATUS  mandatory
+        DESCRIPTION
+            "key count"
+        ::= { image 41 }
+
     imageReadP999 OBJECT-TYPE
         SYNTAX  INTEGER
         ACCESS  read-only

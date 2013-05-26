@@ -2,6 +2,7 @@
 {version, {sniffle_snmp_handler, version, []}}.
 {ringStatus, {sniffle_snmp_handler, ring_status, []}}.
 
+{hypervisorCount, {sniffle_snmp_handler, keys, [<<"hypervisor">>]}}.
 {hypervisorReadP999, {sniffle_snmp_handler, p999, [<<"hypervisor/read">>]}}.
 {hypervisorReadP99, {sniffle_snmp_handler, p99, [<<"hypervisor/read">>]}}.
 {hypervisorReadP95, {sniffle_snmp_handler, p95, [<<"hypervisor/read">>]}}.
@@ -43,6 +44,7 @@
 {hypervisorRepairMean, {sniffle_snmp_handler, mean, [<<"hypervisor/repair">>]}}.
 {hypervisorRepairMax, {sniffle_snmp_handler, max, [<<"hypervisor/repair">>]}}.
 
+{dtraceCount, {sniffle_snmp_handler, keys, [<<"dtrace">>]}}.
 {dtraceReadP999, {sniffle_snmp_handler, p999, [<<"dtrace/read">>]}}.
 {dtraceReadP99, {sniffle_snmp_handler, p99, [<<"dtrace/read">>]}}.
 {dtraceReadP95, {sniffle_snmp_handler, p95, [<<"dtrace/read">>]}}.
@@ -84,6 +86,7 @@
 {dtraceRepairMean, {sniffle_snmp_handler, mean, [<<"dtrace/repair">>]}}.
 {dtraceRepairMax, {sniffle_snmp_handler, max, [<<"dtrace/repair">>]}}.
 
+{vmCount, {sniffle_snmp_handler, keys, [<<"vm">>]}}.
 {vmReadP999, {sniffle_snmp_handler, p999, [<<"vm/read">>]}}.
 {vmReadP99, {sniffle_snmp_handler, p99, [<<"vm/read">>]}}.
 {vmReadP95, {sniffle_snmp_handler, p95, [<<"vm/read">>]}}.
@@ -125,6 +128,7 @@
 {vmRepairMean, {sniffle_snmp_handler, mean, [<<"vm/repair">>]}}.
 {vmRepairMax, {sniffle_snmp_handler, max, [<<"vm/repair">>]}}.
 
+{iprangeCount, {sniffle_snmp_handler, keys, [<<"iprange">>]}}.
 {iprangeReadP999, {sniffle_snmp_handler, p999, [<<"iprange/read">>]}}.
 {iprangeReadP99, {sniffle_snmp_handler, p99, [<<"iprange/read">>]}}.
 {iprangeReadP95, {sniffle_snmp_handler, p95, [<<"iprange/read">>]}}.
@@ -166,6 +170,7 @@
 {iprangeRepairMean, {sniffle_snmp_handler, mean, [<<"iprange/repair">>]}}.
 {iprangeRepairMax, {sniffle_snmp_handler, max, [<<"iprange/repair">>]}}.
 
+{datasetCount, {sniffle_snmp_handler, keys, [<<"dataset">>]}}.
 {datasetReadP999, {sniffle_snmp_handler, p999, [<<"dataset/read">>]}}.
 {datasetReadP99, {sniffle_snmp_handler, p99, [<<"dataset/read">>]}}.
 {datasetReadP95, {sniffle_snmp_handler, p95, [<<"dataset/read">>]}}.
@@ -207,6 +212,7 @@
 {datasetRepairMean, {sniffle_snmp_handler, mean, [<<"dataset/repair">>]}}.
 {datasetRepairMax, {sniffle_snmp_handler, max, [<<"dataset/repair">>]}}.
 
+{packageCount, {sniffle_snmp_handler, keys, [<<"package">>]}}.
 {packageReadP999, {sniffle_snmp_handler, p999, [<<"package/read">>]}}.
 {packageReadP99, {sniffle_snmp_handler, p99, [<<"package/read">>]}}.
 {packageReadP95, {sniffle_snmp_handler, p95, [<<"package/read">>]}}.
@@ -248,6 +254,7 @@
 {packageRepairMean, {sniffle_snmp_handler, mean, [<<"package/repair">>]}}.
 {packageRepairMax, {sniffle_snmp_handler, max, [<<"package/repair">>]}}.
 
+{imageCount, {sniffle_snmp_handler, keys, [<<"image">>]}}.
 {imageReadP999, {sniffle_snmp_handler, p999, [<<"image/read">>]}}.
 {imageReadP99, {sniffle_snmp_handler, p99, [<<"image/read">>]}}.
 {imageReadP95, {sniffle_snmp_handler, p95, [<<"image/read">>]}}.

@@ -5,13 +5,13 @@
 -export([start/0, name/1, reload/0, version/1,
          p999/2, p99/2, p95/2, p75/2, p25/2,
          count/2, min/2, median/2, mean/2, max/2,
-         ring_status/1
+         ring_status/1, keys/2
         ]).
 
 -ignore_xref([name/1, nintynine/1, reload/0, version/1,
               p999/2, p99/2, p95/2, p75/2, p25/2,
               count/2, min/2, median/2, mean/2, max/2,
-              ring_status/1
+              ring_status/1, keys/2
              ]).
 
 %% Internal exports
@@ -61,6 +61,29 @@ ring_status(get) ->
             lager:error("Ringready failed ~p:~p", [Exception, Reason]),
             {value, 4}
     end.
+
+keys(get, <<"hypervisor">>) ->
+    {ok, L} = sniffle_hypervisor:list(),
+    {value, length(L)};
+keys(get, <<"dtrace">>) ->
+    {ok, L} = sniffle_dtrace:list(),
+    {value, length(L)};
+keys(get, <<"vm">>) ->
+    {ok, L} = sniffle_vm:list(),
+    {value, length(L)};
+keys(get, <<"iprange">>) ->
+    {ok, L} = sniffle_iprange:list(),
+    {value, length(L)};
+keys(get, <<"dataset">>) ->
+    {ok, L} = sniffle_dataset:list(),
+    {value, length(L)};
+keys(get, <<"package">>) ->
+    {ok, L} = sniffle_package:list(),
+    {value, length(L)};
+keys(get, <<"image">>) ->
+    {ok, L} = sniffle_img:list(),
+    {value, length(L)}.
+
 
 p999(get, Prefix) ->
     percentile_get(p999, Prefix, total).
