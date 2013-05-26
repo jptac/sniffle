@@ -6,7 +6,7 @@ SNIFFLE-IPRANGE-MIB DEFINITIONS ::= BEGIN
         sniffle        FROM SNIFFLE-MIB
         ;
 
-    iprange   OBJECT IDENTIFIER ::= { sniffle  6 }
+    iprange   OBJECT IDENTIFIER ::= { sniffle  2 }
 
 -- Hypervisor Section
     readP999 OBJECT-TYPE

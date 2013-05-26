@@ -6,7 +6,7 @@ SNIFFLE-HYPERVISOR-MIB DEFINITIONS ::= BEGIN
         sniffle        FROM SNIFFLE-MIB
         ;
 
-    hypervisor   OBJECT IDENTIFIER ::= { sniffle  4 }
+    hypervisor   OBJECT IDENTIFIER ::= { sniffle  2 }
 
 -- Hypervisor Section
     readP999 OBJECT-TYPE
