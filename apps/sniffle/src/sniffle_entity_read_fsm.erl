@@ -17,20 +17,23 @@
 %% States
 -export([prepare/2, execute/2, waiting/2, wait_for_n/2, finalize/2]).
 
--record(state, {req_id,
-                from,
-                entity,
-                op,
-                r,
-                n,
-                preflist,
-                num_r=0,
-                size,
-                timeout=?DEFAULT_TIMEOUT,
-                val,
-                vnode,
-                system,
-                replies=[]}).
+-record(state,
+        {
+          start,
+          req_id,
+          from,
+          entity,
+          op,
+          r,
+          n,
+          preflist,
+          num_r=0,
+          size,
+          timeout=?DEFAULT_TIMEOUT,
+          val,
+          vnode,
+          system,
+          replies=[]}).
 
 -ignore_xref([
               code_change/4,
@@ -107,15 +110,17 @@ init([ReqId, {VNode, System}, Op, From, Entity, Val]) ->
                      undefined ->
                          {?N, ?R, ?W}
                  end,
-    SD = #state{req_id=ReqId,
-                r=R,
-                n=N,
-                from=From,
-                op=Op,
-                val=Val,
-                vnode=VNode,
-                system=System,
-                entity=Entity},
+    SD = #state{
+            start = now(),
+            req_id=ReqId,
+            r=R,
+            n=N,
+            from=From,
+            op=Op,
+            val=Val,
+            vnode=VNode,
+            system=System,
+            entity=Entity},
     {ok, prepare, SD, 0}.
 
 %% @doc Calculate the Preflist.
@@ -165,6 +170,9 @@ waiting({ok, ReqID, IdxNode, Obj},
                 not_found ->
                     From ! {ReqID, not_found};
                 Merged ->
+                    statman_histogram:record_value(
+                      {list_to_atom(atom_to_list(SD0#state.entity) ++ "/read"), total},
+                      SD0#state.start),
                     Reply = sniffle_obj:val(Merged),
                     From ! {ReqID, ok, statebox:value(Reply)}
             end,
@@ -194,14 +202,19 @@ wait_for_n(timeout, SD) ->
     {stop, timeout, SD}.
 
 finalize(timeout, SD=#state{
-                    vnode=VNode,
-                    replies=Replies,
-                    entity=Entity}) ->
+                        vnode=VNode,
+                        replies=Replies,
+                        entity=Entity}) ->
     MObj = merge(Replies),
     case needs_repair(MObj, Replies) of
         true ->
+            Start = now(),
             lager:error("[read] performing read repair on '~p'.", [Entity]),
             repair(VNode, Entity, MObj, Replies),
+            statman_histogram:record_value(
+              {list_to_atom(atom_to_list(SD#state.entity)), repair},
+              Start),
+
             {stop, normal, SD};
         false ->
             {stop, normal, SD}

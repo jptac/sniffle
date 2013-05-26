@@ -74,6 +74,10 @@ init(_Args) ->
       permanent, infinity, supervisor, [sniffle_dtrace_sup]},
     { ok,
       { {one_for_one, 5, 10},
-        [DB,CoverageFSMs, WriteFSMs, ReadFSMs, CreateFSMs,
+        [{statman_server, {statman_server, start_link, [1000]},
+                                  permanent, 5000, worker, []},
+         {statman_aggregator, {statman_aggregator, start_link, []},
+          permanent, 5000, worker, []},
+         DB,CoverageFSMs, WriteFSMs, ReadFSMs, CreateFSMs,
          VHypervisor, VVM, VIprange, VDataset, VPackage,
          VImg, VDTrace, DTrace]}}.

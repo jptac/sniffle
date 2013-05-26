@@ -19,6 +19,9 @@
                   public_key,
                   ssl,
                   hackney,
+                  newrelic,
+                  snmp,
+                  mnesia,
                   eplugin,
                   lager
                  ]},
