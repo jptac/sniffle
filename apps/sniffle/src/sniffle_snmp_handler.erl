@@ -4,12 +4,14 @@
 %% External exports
 -export([start/0, name/1, reload/0, version/1,
          p999/2, p99/2, p95/2, p75/2, p25/2,
-         count/2, min/2, median/2, mean/2, max/2
+         count/2, min/2, median/2, mean/2, max/2,
+         ring_status/1
         ]).
 
 -ignore_xref([name/1, nintynine/1, reload/0, version/1,
               p999/2, p99/2, p95/2, p75/2, p25/2,
-              count/2, min/2, median/2, mean/2, max/2
+              count/2, min/2, median/2, mean/2, max/2,
+              ring_status/1
              ]).
 
 %% Internal exports
@@ -45,6 +47,20 @@ name(get) ->
 version(get) ->
     {value, binary_to_list(?VERSION)}.
 
+
+ring_status(get) ->
+    try riak_core_status:ringready() of
+        {ok, _Nodes} ->
+            {value, 0};
+        {error, {different_owners, _N1, _N2}} ->
+            {value, 1};
+        {error, {nodes_down, _Down}} ->
+            {value, 2}
+    catch
+        Exception:Reason ->
+            lager:error("Ringready failed ~p:~p", [Exception, Reason]),
+            {value, 4}
+    end.
 
 p999(get, Prefix) ->
     percentile_get(p999, Prefix, total).

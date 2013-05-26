@@ -1,5 +1,6 @@
 {name, {sniffle_snmp_handler, name, []}}.
 {version, {sniffle_snmp_handler, version, []}}.
+{ringStatus, {sniffle_snmp_handler, ring_status, []}}.
 
 {hypervisorReadP999, {sniffle_snmp_handler, p999, [<<"hypervisor/read">>]}}.
 {hypervisorReadP99, {sniffle_snmp_handler, p99, [<<"hypervisor/read">>]}}.

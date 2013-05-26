@@ -255,6 +255,5 @@ ringready([]) ->
             error
     end.
 
-
 pp_json(Obj) ->
     io:format("~s~n", [jsx:prettify(jsx:encode(Obj))]).

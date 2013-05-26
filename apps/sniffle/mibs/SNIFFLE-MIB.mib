@@ -13,13 +13,13 @@ SNIFFLE-MIB DEFINITIONS ::= BEGIN
 -- Group section
     sniffle      OBJECT IDENTIFIER ::= { fifo 2 }
 
-    hypervisor   OBJECT IDENTIFIER ::= { sniffle  3 }
-    dtrace       OBJECT IDENTIFIER ::= { sniffle  4 }
-    vm           OBJECT IDENTIFIER ::= { sniffle  5 }
-    iprange      OBJECT IDENTIFIER ::= { sniffle  6 }
-    dataset      OBJECT IDENTIFIER ::= { sniffle  7 }
-    package      OBJECT IDENTIFIER ::= { sniffle  8 }
-    image        OBJECT IDENTIFIER ::= { sniffle  0 }
+    hypervisor   OBJECT IDENTIFIER ::= { sniffle  4 }
+    dtrace       OBJECT IDENTIFIER ::= { sniffle  5 }
+    vm           OBJECT IDENTIFIER ::= { sniffle  6 }
+    iprange      OBJECT IDENTIFIER ::= { sniffle  7 }
+    dataset      OBJECT IDENTIFIER ::= { sniffle  8 }
+    package      OBJECT IDENTIFIER ::= { sniffle  9 }
+    image        OBJECT IDENTIFIER ::= { sniffle  10 }
 
 -- General section.
     name OBJECT-TYPE
@@ -37,6 +37,14 @@ SNIFFLE-MIB DEFINITIONS ::= BEGIN
         DESCRIPTION
             "sniffle version"
         ::= { sniffle 2 }
+
+    ringStatus OBJECT-TYPE
+        SYNTAX  INTEGER
+        ACCESS  read-only
+        STATUS  mandatory
+        DESCRIPTION
+            "ring status"
+        ::= { sniffle 3 }
 
 -- Hypervisor Section
     hypervisorReadP999 OBJECT-TYPE
