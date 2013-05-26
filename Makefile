@@ -39,7 +39,7 @@ package: rel
 	make -C rel/pkg package
 
 zabbix:
-	./generate_zabbix_template.sh
+	bash ./generate_zabbix_template.sh
 
 ###
 ### Docs
