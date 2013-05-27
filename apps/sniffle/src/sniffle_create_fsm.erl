@@ -260,14 +260,10 @@ get_server(_Event, State = #state{
             sniffle_vm:log(UUID, <<"Finding hypervisor ", CondB/binary>>),
             {ok, Hypervisors} = sniffle_hypervisor:list(Conditions),
             Hypervisors1 = eplugin:fold('create:hypervisor_select', Hypervisors),
-            case test_hypervisors(Hypervisors1) of
-                {ok, {HypervisorID, H}} ->
-                    sniffle_vm:log(UUID, <<"Deploying on hypervisor ", HypervisorID/binary>>),
-                    eplugin:call('create:handoff', UUID, HypervisorID),
-                    {next_state, create, State#state{hypervisor = H}, 0};
-                _ ->
-                    lager:error("No matching Hypervisors found.")
-            end;
+            {ok, {HypervisorID, H}} =  test_hypervisors(Hypervisors1),
+            sniffle_vm:log(UUID, <<"Deploying on hypervisor ", HypervisorID/binary>>),
+            eplugin:call('create:handoff', UUID, HypervisorID),
+            {next_state, create, State#state{hypervisor = H}, 0};
         _ ->
             {next_state, get_server, State, 10000}
     end.
