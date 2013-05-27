@@ -275,7 +275,7 @@ test_hypervisors([{HypervisorID, _} | R]) ->
     {ok, Host} = jsxd:get(<<"host">>, H),
     HostS = binary_to_list(Host),
     case libchunter:ping(HostS, Port) of
-        ok ->
+        pong ->
             {ok, {HypervisorID, {HostS, Port}}};
         _ ->
             test_hypervisors(R)
