@@ -168,17 +168,14 @@ waiting({ok, ReqID, IdxNode, Obj},
         NumR =:= R ->
             case merge(Replies) of
                 not_found ->
-                    statman_histogram:record_value(
-                      {list_to_binary(stat_name(SD0#state.vnode) ++ "/read"), total},
-                      SD0#state.start),
                     From ! {ReqID, not_found};
                 Merged ->
                     Reply = sniffle_obj:val(Merged),
-                    statman_histogram:record_value(
-                      {list_to_binary(stat_name(SD0#state.vnode) ++ "/read"), total},
-                      SD0#state.start),
                     From ! {ReqID, ok, statebox:value(Reply)}
             end,
+            statman_histogram:record_value(
+              {list_to_binary(stat_name(SD0#state.vnode) ++ "/read"), total},
+              SD0#state.start),
             if
                 NumR =:= N ->
                     {next_state, finalize, SD, 0};
