@@ -26,7 +26,6 @@
 -define(destroy, 6).       % Action; written, not read
 
 
-
 %% c("apps/sniffle/src/sniffle_snmp_handler.erl").
 reload() ->
     snmpa:unload_mibs(["SNIFFLE-MIB"]),
