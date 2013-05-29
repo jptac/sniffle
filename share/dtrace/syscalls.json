@@ -1,0 +1,11 @@
+{
+  "config": {
+    "end": 63,
+    "start": 0,
+    "step": 2
+  },
+  "name": "syscalls",
+  "script": "syscall:::entry\n$filter$\n{\nself->t = vtimestamp;\n}\nsyscall:::return\n/self->t/\n{\n  @[probefunc] = lquantize((vtimestamp - self->t ) / 1000, $start$, $end$, $step$);\n  self->t = 0;\n}",
+  "uuid": "b4b3750a-3f69-4e07-82fb-63d1ddcf0e93",
+  "version": "0.1.0"
+}

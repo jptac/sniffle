@@ -1,0 +1,11 @@
+{
+  "config": {
+    "end": 127,
+    "start": 0,
+    "step": 4
+  },
+  "name": "erlang function calls",
+  "script": "erlang*:::global-function-entry\n$filter$\n{\n  self->t[copyinstr(arg1)] = vtimestamp;\n}\nerlang*:::function-return\n/self->t[copyinstr(arg1)]/\n{\n  @time[copyinstr(arg1)] = lquantize((vtimestamp - self->t[copyinstr(arg1)] ) / 1000, $start$, $end$, $step$);\n  self->t[copyinstr(arg1)] = 0;\n}",
+  "uuid": "1d0d2356-71ca-46be-ace1-7df8d4e9e628",
+  "version": "0.1.0"
+}
