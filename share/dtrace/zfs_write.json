@@ -1,0 +1,11 @@
+{
+  "config": {
+    "end": 63,
+    "start": 0,
+    "step": 2
+  },
+  "name": "zfs write times",
+  "script": "syscall::write:entry\n/fds[arg0].fi_fs == \"zfs\" && $partial_filter$/\n{\nself->t = timestamp;\n}\nsyscall::write:return\n/self->t/\n{\n  @[execname] = lquantize((timestamp - self->t) / 1000, $start$, $end$, $step$);\n  self->t = 0;\n}",
+  "uuid": "58d740bd-c6ad-4bd5-81c6-70b72a4aae64",
+  "version": "0.1.0"
+}
