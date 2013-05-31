@@ -30,7 +30,8 @@
          tag/2,
          vlan/2,
          set/3,
-         to_bin/1
+         to_bin/1,
+         parse_bin/1
         ]).
 
 load(Iprange) ->
@@ -172,6 +173,11 @@ set(Resource, Value, Iprange) ->
 to_bin(IP) ->
     <<A, B, C, D>> = <<IP:32>>,
     list_to_binary(io_lib:format("~p.~p.~p.~p", [A, B, C, D])).
+
+parse_bin(Bin) ->
+    [A,B,C,D] = [ list_to_integer(binary_to_list(P)) || P <- re:split(Bin, "[.]")],
+    <<IP:32>> = <<A:8, B:8, C:8, D:8>>,
+    IP.
 
 -ifdef(TEST).
 

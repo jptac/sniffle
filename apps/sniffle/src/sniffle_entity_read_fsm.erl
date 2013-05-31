@@ -17,20 +17,23 @@
 %% States
 -export([prepare/2, execute/2, waiting/2, wait_for_n/2, finalize/2]).
 
--record(state, {req_id,
-                from,
-                entity,
-                op,
-                r,
-                n,
-                preflist,
-                num_r=0,
-                size,
-                timeout=?DEFAULT_TIMEOUT,
-                val,
-                vnode,
-                system,
-                replies=[]}).
+-record(state,
+        {
+          start,
+          req_id,
+          from,
+          entity,
+          op,
+          r,
+          n,
+          preflist,
+          num_r=0,
+          size,
+          timeout=?DEFAULT_TIMEOUT,
+          val,
+          vnode,
+          system,
+          replies=[]}).
 
 -ignore_xref([
               code_change/4,
@@ -107,15 +110,17 @@ init([ReqId, {VNode, System}, Op, From, Entity, Val]) ->
                      undefined ->
                          {?N, ?R, ?W}
                  end,
-    SD = #state{req_id=ReqId,
-                r=R,
-                n=N,
-                from=From,
-                op=Op,
-                val=Val,
-                vnode=VNode,
-                system=System,
-                entity=Entity},
+    SD = #state{
+            start = now(),
+            req_id=ReqId,
+            r=R,
+            n=N,
+            from=From,
+            op=Op,
+            val=Val,
+            vnode=VNode,
+            system=System,
+            entity=Entity},
     {ok, prepare, SD, 0}.
 
 %% @doc Calculate the Preflist.
@@ -168,6 +173,9 @@ waiting({ok, ReqID, IdxNode, Obj},
                     Reply = sniffle_obj:val(Merged),
                     From ! {ReqID, ok, statebox:value(Reply)}
             end,
+            statman_histogram:record_value(
+              {list_to_binary(stat_name(SD0#state.vnode) ++ "/read"), total},
+              SD0#state.start),
             if
                 NumR =:= N ->
                     {next_state, finalize, SD, 0};
@@ -194,14 +202,18 @@ wait_for_n(timeout, SD) ->
     {stop, timeout, SD}.
 
 finalize(timeout, SD=#state{
-                    vnode=VNode,
-                    replies=Replies,
-                    entity=Entity}) ->
+                        vnode=VNode,
+                        replies=Replies,
+                        entity=Entity}) ->
     MObj = merge(Replies),
     case needs_repair(MObj, Replies) of
         true ->
+            Start = now(),
             lager:error("[read] performing read repair on '~p'.", [Entity]),
             repair(VNode, Entity, MObj, Replies),
+            statman_histogram:record_value(
+              {list_to_binary(stat_name(SD#state.vnode) ++ "/repair"), total},
+              Start),
             {stop, normal, SD};
         false ->
             {stop, normal, SD}
@@ -282,3 +294,18 @@ unique(L) ->
 
 mk_reqid() ->
     erlang:phash2(erlang:now()).
+
+stat_name(sniffle_dtrace_vnode) ->
+    "dtrace";
+stat_name(sniffle_vm_vnode) ->
+    "vm";
+stat_name(sniffle_hypervisor_vnode) ->
+    "hypervisor";
+stat_name(sniffle_package_vnode) ->
+    "package";
+stat_name(sniffle_dataset_vnode) ->
+    "dataset";
+stat_name(sniffle_img_vnode) ->
+    "img";
+stat_name(sniffle_iprange_vnode) ->
+    "iprange".

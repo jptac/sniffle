@@ -22,10 +22,172 @@
          delete/1,
          snapshot/2,
          delete_snapshot/2,
-         rollback_snapshot/2
+         rollback_snapshot/2,
+         promote_to_image/3,
+         remove_nic/2,
+         add_nic/2,
+         primary_nic/2
         ]).
 
 -ignore_xref([logs/1]).
+
+
+promote_to_image(Vm, SnapID, Config) ->
+    case sniffle_vm:get(Vm) of
+        {ok, V} ->
+            case jsxd:get([<<"snapshots">>, SnapID, <<"timestamp">>], V) of
+                {ok, _} ->
+                    {ok, H} = jsxd:get(<<"hypervisor">>, V),
+                    {Server, Port} = get_hypervisor(H),
+                    Img = list_to_binary(uuid:to_string(uuid:uuid4())),
+                    Config1 = jsxd:select([<<"name">>,<<"version">>, <<"os">>, <<"description">>],
+                                          jsxd:from_list(Config)),
+                    {ok, Nets} = jsxd:get([<<"config">>, <<"networks">>], V),
+                    Nets1 = jsxd:map(fun (Idx, E) ->
+                                             Name = io_lib:format("net~p", [Idx]),
+                                             [{<<"description">>, jsxd:get(<<"tag">>, <<"undefined">>, E)},
+                                              {<<"name">>, list_to_binary(Name)}]
+                                     end, Nets),
+                    Config2 = jsxd:thread([{set, <<"type">>, jsxd:get([<<"config">>, <<"type">>], <<"zone">>, V)},
+                                           {set, <<"dataset">>, Img},
+                                           {set, <<"networks">>, Nets1}], Config1),
+                    ok = sniffle_dataset:create(Img),
+                    sniffle_dataset:set(Img, Config2),
+                    ok = libchunter:store_snapshot(Server, Port, Vm, SnapID, Img),
+                    {ok, Img};
+                undefined ->
+                    not_found
+            end;
+        E ->
+            E
+    end.
+
+add_nic(Vm, Network) ->
+    case sniffle_vm:get(Vm) of
+        {ok, V} ->
+            {ok, H} = jsxd:get(<<"hypervisor">>, V),
+            {ok, HypervisorObj} = sniffle_hypervisor:get(H),
+            {ok, Port} = jsxd:get(<<"port">>, HypervisorObj),
+            {ok, HostB} = jsxd:get(<<"host">>, HypervisorObj),
+            Server = binary_to_list(HostB),
+            libchunter:ping(Server, Port),
+            case jsxd:get(<<"state">>, V) of
+                {ok, <<"stopped">>} ->
+                    case sniffle_iprange:claim_ip(Network) of
+                        {ok, {Tag, IP, Net, Gw}} ->
+                            case lists:member(Tag, jsxd:get([<<"networks">>], [], HypervisorObj)) of
+                                false ->
+                                    sniffle_iprange:release_ip(Network, IP),
+                                    {error, bad_ag};
+                                true ->
+                                    NicSpec =
+                                        jsxd:from_list([{<<"ip">>, sniffle_iprange_state:to_bin(IP)},
+                                                        {<<"gateway">>, sniffle_iprange_state:to_bin(Gw)},
+                                                        {<<"netmask">>, sniffle_iprange_state:to_bin(Net)},
+                                                        {<<"nic_tag">>, Tag }]),
+                                    NicSpec1 = case jsxd:get([<<"config">>, <<"networks">>], V) of
+                                                   {ok, [_|_]} ->
+                                                       NicSpec;
+                                                   _ ->
+                                                       jsxd:set([<<"primary">>], true, NicSpec)
+                                               end,
+                                    UR = [{<<"add_nics">>, [NicSpec1]}],
+                                    case libchunter:update_machine(Server, Port, Vm, [], UR) of
+                                        ok ->
+                                            M = [{<<"network">>, Network},
+                                                 {<<"ip">>, IP}],
+                                            Ms1= case jsxd:get([<<"network_mappings">>], V) of
+                                                     {ok, Ms} ->
+                                                         [M | Ms];
+                                                     _ ->
+                                                         [M]
+                                                 end,
+                                            sniffle_vm:set(Vm, [<<"network_mappings">>], Ms1);
+                                        _ ->
+                                            sniffle_iprange:release_ip(Network, IP),
+                                            {error, update_failed}
+                                    end
+                            end;
+                        _ ->
+                            {error, claim_failed}
+                    end;
+                _ ->
+                    {error, not_stopped}
+            end;
+        E ->
+            E
+    end.
+
+remove_nic(Vm, Mac) ->
+    case sniffle_vm:get(Vm) of
+        {ok, V} ->
+            NicMap = make_nic_map(V),
+            case jsxd:get(Mac, NicMap) of
+                {ok, Idx}  ->
+                    {ok, H} = jsxd:get(<<"hypervisor">>, V),
+                    {Server, Port} = get_hypervisor(H),
+                    libchunter:ping(Server, Port),
+                    case jsxd:get(<<"state">>, V) of
+                        {ok, <<"stopped">>} ->
+                            UR = [{<<"remove_nics">>, [Mac]}],
+                            {ok, IpStr} = jsxd:get([<<"config">>, <<"networks">>, Idx, <<"ip">>], V),
+                            IP = sniffle_iprange_state:parse_bin(IpStr),
+                            {ok, Ms} = jsxd:get([<<"network_mappings">>], V),
+                            case libchunter:update_machine(Server, Port, Vm, [], UR) of
+                                ok ->
+                                    case [ Network  || [{<<"network">>, Network},
+                                                        {<<"ip">>, IP1}] <- Ms, IP1 =:= IP] of
+                                        [Network] ->
+                                            sniffle_iprange:release_ip(Network, IP),
+                                            Ms1 = [ [{<<"network">>, N},
+                                                     {<<"ip">>, IP1}] ||
+                                                      [{<<"network">>, N},
+                                                       {<<"ip">>, IP1}] <- Ms,
+                                                      IP1 =/= IP],
+                                            sniffle_vm:set(Vm, [<<"network_mappings">>], Ms1);
+                                        _ ->
+                                            ok
+                                    end;
+                                _ ->
+                                    {error, update_failed}
+                            end;
+                        _ ->
+                            {error, not_stopped}
+                    end;
+                _ ->
+                    {error, not_found}
+            end;
+        E ->
+            E
+    end.
+
+primary_nic(Vm, Mac) ->
+    case sniffle_vm:get(Vm) of
+        {ok, V} ->
+            NicMap = make_nic_map(V),
+            case jsxd:get(Mac, NicMap) of
+                {ok, _Idx}  ->
+                    {ok, H} = jsxd:get(<<"hypervisor">>, V),
+                    {Server, Port} = get_hypervisor(H),
+                    libchunter:ping(Server, Port),
+                    case jsxd:get(<<"state">>, V) of
+                        {ok, <<"stopped">>} ->
+                            UR = [{<<"update_nics">>, [[{<<"mac">>, Mac}, {<<"primary">>, true}]]}],
+                            case libchunter:update_machine(Server, Port, Vm, [], UR) of
+                                ok ->
+                                    ok;
+                                _ ->
+                                    {error, update_failed}
+                            end;
+                        _ ->
+                            {error, not_stopped}
+                    end;
+                _ ->
+                    {error, not_found}
+            end;
+        E ->
+            E
+    end.
 
 %%--------------------------------------------------------------------
 %% @doc Updates a virtual machine form a package uuid and a config
@@ -94,7 +256,16 @@ unregister(Vm) ->
                               {ok, Net} = jsxd:get(<<"network">>, N),
                               {ok, Ip} = jsxd:get(<<"ip">>, N),
                               sniffle_iprange:release_ip(Net, Ip)
-                      end,jsxd:get(<<"network_mappings">>, [], V));
+                      end,jsxd:get(<<"network_mappings">>, [], V)),
+            VmPrefix = [<<"vm">>, Vm],
+            ChannelPrefix = [<<"channels">>, Vm],
+
+            {ok, Users} = libsnarl:user_list(),
+            [libsnarl:user_revoke_prefix(U, VmPrefix) || U <- Users],
+            [libsnarl:user_revoke_prefix(U, ChannelPrefix) || U <- Users],
+            {ok, Groups} = libsnarl:group_list(),
+            [libsnarl:group_revoke_prefix(G, VmPrefix) || G <- Groups],
+            [libsnarl:group_revoke_prefix(G, ChannelPrefix) || G <- Groups];
         _ ->
             ok
     end,
@@ -199,12 +370,9 @@ delete(Vm) ->
 -spec start(Vm::fifo:uuid()) ->
                    {error, timeout} | not_found | ok.
 start(Vm) ->
-    case sniffle_vm:get(Vm) of
-        {ok, V} ->
-            {ok, H} = jsxd:get(<<"hypervisor">>, V),
-            {Server, Port} = get_hypervisor(H),
-            libchunter:start_machine(Server, Port, Vm),
-            ok;
+    case fetch_hypervisor(Vm) of
+        {ok, Server, Port} ->
+            libchunter:start_machine(Server, Port, Vm);
         E ->
             E
     end.
@@ -225,12 +393,9 @@ stop(Vm) ->
 -spec stop(Vm::fifo:uuid(), Options::[atom()|{atom(), term()}]) ->
                   {error, timeout} | not_found | ok.
 stop(Vm, Options) ->
-    case sniffle_vm:get(Vm) of
-        {ok, V} ->
-            {ok, H} = jsxd:get(<<"hypervisor">>, V),
-            {Server, Port} = get_hypervisor(H),
-            libchunter:stop_machine(Server, Port, Vm, Options),
-            ok;
+    case fetch_hypervisor(Vm) of
+        {ok, Server, Port} ->
+            libchunter:stop_machine(Server, Port, Vm, Options);
         E ->
             E
     end.
@@ -252,12 +417,9 @@ reboot(Vm) ->
 -spec reboot(Vm::fifo:uuid(), Options::[atom()|{atom(), term()}]) ->
                     {error, timeout} | not_found | ok.
 reboot(Vm, Options) ->
-    case sniffle_vm:get(Vm) of
-        {ok, V} ->
-            {ok, H} = jsxd:get(<<"hypervisor">>, V),
-            {Server, Port} = get_hypervisor(H),
-            libchunter:reboot_machine(Server, Port, Vm, Options),
-            ok;
+    case fetch_hypervisor(Vm) of
+        {ok, Server, Port} ->
+            libchunter:reboot_machine(Server, Port, Vm, Options);
         E ->
             E
     end.
@@ -435,3 +597,23 @@ get_hypervisor(Hypervisor) ->
     {ok, Port} = jsxd:get(<<"port">>, HypervisorObj),
     {ok, Host} = jsxd:get(<<"host">>, HypervisorObj),
     {binary_to_list(Host), Port}.
+
+fetch_hypervisor(Vm) ->
+    case sniffle_vm:get(Vm) of
+        {ok, V} ->
+            case jsxd:get(<<"hypervisor">>, V) of
+                {ok, H} ->
+                    {Server, Port} = get_hypervisor(H),
+                    {ok, Server, Port};
+                _ ->
+                    not_found
+            end;
+        _ ->
+            not_found
+    end.
+
+make_nic_map(V) ->
+    jsxd:map(fun(Idx, Nic) ->
+                     {ok, NicMac} = jsxd:get([<<"mac">>], Nic),
+                     {NicMac, Idx}
+             end, jsxd:get([<<"config">>, <<"networks">>], [], V)).

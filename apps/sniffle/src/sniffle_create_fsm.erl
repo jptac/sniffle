@@ -259,16 +259,30 @@ get_server(_Event, State = #state{
             CondB = list_to_binary(io_lib:format("~p", [Conditions])),
             sniffle_vm:log(UUID, <<"Finding hypervisor ", CondB/binary>>),
             {ok, Hypervisors} = sniffle_hypervisor:list(Conditions),
-            [{HypervisorID, _} | _] = eplugin:fold('create:hypervisor_select', Hypervisors),
+            Hypervisors1 = eplugin:fold('create:hypervisor_select', Hypervisors),
+            {ok, {HypervisorID, H}} =  test_hypervisors(Hypervisors1),
             sniffle_vm:log(UUID, <<"Deploying on hypervisor ", HypervisorID/binary>>),
-            {ok, H} = sniffle_hypervisor:get(HypervisorID),
-            {ok, Port} = jsxd:get(<<"port">>, H),
-            {ok, Host} = jsxd:get(<<"host">>, H),
             eplugin:call('create:handoff', UUID, HypervisorID),
-            {next_state, create, State#state{hypervisor = {binary_to_list(Host), Port}}, 0};
+            {next_state, create, State#state{hypervisor = H}, 0};
         _ ->
             {next_state, get_server, State, 10000}
     end.
+
+
+test_hypervisors([{HypervisorID, _} | R]) ->
+    {ok, H} = sniffle_hypervisor:get(HypervisorID),
+    {ok, Port} = jsxd:get(<<"port">>, H),
+    {ok, Host} = jsxd:get(<<"host">>, H),
+    HostS = binary_to_list(Host),
+    case libchunter:ping(HostS, Port) of
+        pong ->
+            {ok, {HypervisorID, {HostS, Port}}};
+        _ ->
+            test_hypervisors(R)
+    end;
+
+test_hypervisors([]) ->
+    {error, no_hypervisors}.
 
 create(_Event, State = #state{
                  dataset = Dataset,

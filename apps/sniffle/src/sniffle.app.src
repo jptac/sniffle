@@ -3,14 +3,13 @@
 {application, sniffle,
  [
   {description, "Project FiFo's central management server."},
-  {vsn, "0.3.6p1"},
+  {vsn, "0.3.7"},
   {registered, []},
   {applications, [
                   kernel,
                   stdlib,
                   riak_core,
                   uuid,
-                  estatsd,
                   mdns_server_lib,
                   libchunter,
                   libhowl,
@@ -20,6 +19,9 @@
                   public_key,
                   ssl,
                   hackney,
+                  newrelic,
+                  snmp,
+                  mnesia,
                   eplugin,
                   lager
                  ]},

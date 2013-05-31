@@ -73,7 +73,7 @@ set(UUID, Attributes) ->
     do_write(UUID, set, Attributes).
 
 import(URL) ->
-    case hackney:request(get, URL, [], <<>>, []) of
+    case hackney:request(get, URL, [], <<>>, http_opts()) of
     {ok, 200, _, Client} ->
             {ok, Body, Client1} = hackney:body(Client),
             hackney:close(Client1),
@@ -97,19 +97,24 @@ import(URL) ->
 %%%===================================================================
 
 transform_dataset(D1) ->
-    {ok, ID} = jsxd:get(<<"uuid">>, D1),
-    D2 = jsxd:thread(
-           [{select,[<<"os">>, <<"metadata">>, <<"name">>, <<"version">>,
-                     <<"description">>, <<"disk_driver">>, <<"nic_driver">>,
-                     <<"image_size">>]},
-            {set, <<"dataset">>, ID},
-            {set, <<"networks">>, jsxd:get(<<"requirements.networks">>, [], D1)}],
-           D1),
-    case jsxd:get(<<"os">>, D1) of
-        {ok, <<"smartos">>} ->
-            jsxd:set(<<"type">>, <<"zone">>, D2);
-        {ok, _} ->
-            jsxd:set(<<"type">>, <<"kvm">>, D2)
+    case jsxd:get([<<"urn">>], D1) of
+        undefined ->
+            D1;
+        _ ->
+            {ok, ID} = jsxd:get(<<"uuid">>, D1),
+            D2 = jsxd:thread(
+                   [{select,[<<"os">>, <<"metadata">>, <<"name">>, <<"version">>,
+                             <<"description">>, <<"disk_driver">>, <<"nic_driver">>,
+                             <<"image_size">>]},
+                    {set, <<"dataset">>, ID},
+                    {set, <<"networks">>, jsxd:get(<<"requirements.networks">>, [], D1)}],
+                   D1),
+            case jsxd:get(<<"os">>, D1) of
+                {ok, <<"smartos">>} ->
+                    jsxd:set(<<"type">>, <<"zone">>, D2);
+                {ok, _} ->
+                    jsxd:set(<<"type">>, <<"kvm">>, D2)
+            end
     end.
 
 
@@ -121,7 +126,7 @@ do_write(Dataset, Op, Val) ->
 
 %% If more then one MB is in the accumulator read store it in 1MB chunks
 read_image(UUID, TotalSize, Url, Acc, Idx) when is_binary(Url) ->
-    case hackney:request(get, Url, [], <<>>, []) of
+    case hackney:request(get, Url, [], <<>>, http_opts()) of
         {ok, 200, _, Client} ->
             read_image(UUID, TotalSize, Client, Acc, Idx);
         {ok, E, _, _} ->
@@ -160,4 +165,24 @@ read_image(UUID, TotalSize, Client, Acc, Idx) ->
             libhowl:send(UUID,
                          [{<<"event">>, <<"progress">>}, {<<"data">>, [{<<"imported">>, 0}]}]),
             lager:error("Error importing image ~s: ~p", [UUID, Reason])
+    end.
+
+
+
+http_opts() ->
+    case os:getenv("https_proxy") of
+        false ->
+            case os:getenv("HTTPS_PROXY") of
+                false ->
+                    case os:getenv("http_proxy") of
+                        false ->
+                            case os:getenv("HTTP_PROXY") of
+                                false -> [];
+                                P     -> [{proxy, P}]
+                                end;
+                        P -> [{proxy, P}]
+                    end;
+                P -> [{proxy, P}]
+            end;
+        P -> [{proxy, P}]
     end.
