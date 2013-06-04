@@ -259,13 +259,21 @@ unregister(Vm) ->
                       end,jsxd:get(<<"network_mappings">>, [], V)),
             VmPrefix = [<<"vm">>, Vm],
             ChannelPrefix = [<<"channels">>, Vm],
+            case libsnarl:user_list() of
 
-            {ok, Users} = libsnarl:user_list(),
-            [libsnarl:user_revoke_prefix(U, VmPrefix) || U <- Users],
-            [libsnarl:user_revoke_prefix(U, ChannelPrefix) || U <- Users],
-            {ok, Groups} = libsnarl:group_list(),
-            [libsnarl:group_revoke_prefix(G, VmPrefix) || G <- Groups],
-            [libsnarl:group_revoke_prefix(G, ChannelPrefix) || G <- Groups];
+                {ok, Users} ->
+                    [libsnarl:user_revoke_prefix(U, VmPrefix) || U <- Users],
+                    [libsnarl:user_revoke_prefix(U, ChannelPrefix) || U <- Users];
+                _ ->
+                    ok
+            end,
+            case libsnarl:group_list() of
+            {ok, Groups} ->
+                    [libsnarl:group_revoke_prefix(G, VmPrefix) || G <- Groups],
+                    [libsnarl:group_revoke_prefix(G, ChannelPrefix) || G <- Groups];
+                _ ->
+                    ok
+            end;
         _ ->
             ok
     end,
