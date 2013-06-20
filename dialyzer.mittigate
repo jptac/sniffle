@@ -16,6 +16,8 @@
 ^gen_server2
 ^meck
 ^pokemon_pb
+^lhttpc
+^newrelic.erl
 ^supervisor_pre_r14b04.erl:1250:
 ^sniffle_dataset_vnode.erl:2: Callback info about the riak_core_vnode behaviour is not available
 ^sniffle_hypervisor_vnode.erl:2: Callback info about the riak_core_vnode behaviour is not available

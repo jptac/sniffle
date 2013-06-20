@@ -96,13 +96,7 @@ mk_reqid() ->
 
 %% @doc Initialize the state data.
 init([{VNode, System}, ReqID, From, Entity, Op, Val]) ->
-    ?PRINT({init, {VNode, System}, ReqID}),
-    {N, _R, W} = case application:get_key(System) of
-                     {ok, Res} ->
-                         Res;
-                     undefined ->
-                         {?N, ?R, ?W}
-                 end,
+    {N, _R, W} = ?NRW(System),
     SD = #state{req_id=ReqID,
                 from=From,
                 w=W,

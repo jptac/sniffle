@@ -92,21 +92,16 @@ add_nic(Vm, Network) ->
                                                        jsxd:set([<<"primary">>], true, NicSpec)
                                                end,
                                     UR = [{<<"add_nics">>, [NicSpec1]}],
-                                    case libchunter:update_machine(Server, Port, Vm, [], UR) of
-                                        ok ->
-                                            M = [{<<"network">>, Network},
-                                                 {<<"ip">>, IP}],
-                                            Ms1= case jsxd:get([<<"network_mappings">>], V) of
+                                    ok = libchunter:update_machine(Server, Port, Vm, [], UR),
+                                    M = [{<<"network">>, Network},
+                                         {<<"ip">>, IP}],
+                                    Ms1= case jsxd:get([<<"network_mappings">>], V) of
                                                      {ok, Ms} ->
                                                          [M | Ms];
                                                      _ ->
                                                          [M]
                                                  end,
-                                            sniffle_vm:set(Vm, [<<"network_mappings">>], Ms1);
-                                        _ ->
-                                            sniffle_iprange:release_ip(Network, IP),
-                                            {error, update_failed}
-                                    end
+                                    sniffle_vm:set(Vm, [<<"network_mappings">>], Ms1)
                             end;
                         _ ->
                             {error, claim_failed}
@@ -133,23 +128,19 @@ remove_nic(Vm, Mac) ->
                             {ok, IpStr} = jsxd:get([<<"config">>, <<"networks">>, Idx, <<"ip">>], V),
                             IP = sniffle_iprange_state:parse_bin(IpStr),
                             {ok, Ms} = jsxd:get([<<"network_mappings">>], V),
-                            case libchunter:update_machine(Server, Port, Vm, [], UR) of
-                                ok ->
-                                    case [ Network  || [{<<"network">>, Network},
-                                                        {<<"ip">>, IP1}] <- Ms, IP1 =:= IP] of
-                                        [Network] ->
-                                            sniffle_iprange:release_ip(Network, IP),
-                                            Ms1 = [ [{<<"network">>, N},
-                                                     {<<"ip">>, IP1}] ||
-                                                      [{<<"network">>, N},
-                                                       {<<"ip">>, IP1}] <- Ms,
-                                                      IP1 =/= IP],
-                                            sniffle_vm:set(Vm, [<<"network_mappings">>], Ms1);
-                                        _ ->
-                                            ok
-                                    end;
+                            ok = libchunter:update_machine(Server, Port, Vm, [], UR),
+                            case [ Network || [{<<"network">>, Network},
+                                               {<<"ip">>, IP1}] <- Ms, IP1 =:= IP] of
+                                [Network] ->
+                                    sniffle_iprange:release_ip(Network, IP),
+                                    Ms1 = [ [{<<"network">>, N},
+                                             {<<"ip">>, IP1}] ||
+                                              [{<<"network">>, N},
+                                               {<<"ip">>, IP1}] <- Ms,
+                                              IP1 =/= IP],
+                                    sniffle_vm:set(Vm, [<<"network_mappings">>], Ms1);
                                 _ ->
-                                    {error, update_failed}
+                                    ok
                             end;
                         _ ->
                             {error, not_stopped}
@@ -173,12 +164,7 @@ primary_nic(Vm, Mac) ->
                     case jsxd:get(<<"state">>, V) of
                         {ok, <<"stopped">>} ->
                             UR = [{<<"update_nics">>, [[{<<"mac">>, Mac}, {<<"primary">>, true}]]}],
-                            case libchunter:update_machine(Server, Port, Vm, [], UR) of
-                                ok ->
-                                    ok;
-                                _ ->
-                                    {error, update_failed}
-                            end;
+                            libchunter:update_machine(Server, Port, Vm, [], UR);
                         _ ->
                             {error, not_stopped}
                     end;
@@ -268,7 +254,7 @@ unregister(Vm) ->
                     ok
             end,
             case libsnarl:group_list() of
-            {ok, Groups} ->
+                {ok, Groups} ->
                     [libsnarl:group_revoke_prefix(G, VmPrefix) || G <- Groups],
                     [libsnarl:group_revoke_prefix(G, ChannelPrefix) || G <- Groups];
                 _ ->
