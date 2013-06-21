@@ -72,7 +72,6 @@ repair(IdxNode, Iprange, VClock, Obj) ->
 %%%===================================================================
 
 get(Preflist, ReqID, Iprange) ->
-    ?PRINT({get, Preflist, ReqID, Iprange}),
     riak_core_vnode_master:command(Preflist,
                                    {get, ReqID, Iprange},
                                    {fsm, undefined, self()},

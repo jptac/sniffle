@@ -103,13 +103,7 @@ init([ReqId, {VNode, System}, Op, From, Entity]) ->
     init([ReqId, {VNode, System}, Op, From, Entity, undefined]);
 
 init([ReqId, {VNode, System}, Op, From, Entity, Val]) ->
-    ?PRINT({init, [Op, ReqId, From, Entity, Val]}),
-    {N, R, _W} = case application:get_key(System) of
-                     {ok, Res} ->
-                         Res;
-                     undefined ->
-                         {?N, ?R, ?W}
-                 end,
+    {N, R, _W} = ?NRW(System),
     SD = #state{
             start = now(),
             req_id=ReqId,
@@ -140,7 +134,6 @@ execute(timeout, SD0=#state{req_id=ReqId,
                             val=Val,
                             vnode=VNode,
                             preflist=Prelist}) ->
-    ?PRINT({execute, Entity, Val}),
     case Entity of
         undefined ->
             VNode:Op(Prelist, ReqId);

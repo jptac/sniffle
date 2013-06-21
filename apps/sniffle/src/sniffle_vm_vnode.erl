@@ -70,7 +70,6 @@ repair(IdxNode, Vm, VClock, Obj) ->
 -spec get(any(), any(), Vm::fifo:uuid()) -> ok.
 
 get(Preflist, ReqID, Vm) ->
-    ?PRINT({get, Preflist, ReqID, Vm}),
     riak_core_vnode_master:command(Preflist,
                                    {get, ReqID, Vm},
                                    {fsm, undefined, self()},

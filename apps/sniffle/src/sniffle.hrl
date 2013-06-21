@@ -1,8 +1,21 @@
--define(PRINT(Var), 1==1 orelse io:format("DEBUG: ~p:~p - ~p~n~n ~p~n~n", [?MODULE, ?LINE, ??Var, Var])).
+-define(ENV(K, D),
+        (case application:get_env(sniffle, K) of
+             undefined ->
+                 D;
+             {ok, EnvValue} ->
+                 EnvValue
+         end)).
 
--define(N, 3).
--define(R, 2).
--define(W, 3).
+-define(N, ?ENV(n, 3)).
+-define(R, ?ENV(r, 2)).
+-define(W, ?ENV(w, 3)).
+-define(NRW(System),
+        (case application:get_env(sniffle, System) of
+             {ok, Res} ->
+                 Res;
+             undefined ->
+                 {?N, ?R, ?W}
+         end)).
 -define(STATEBOX_EXPIRE, 60000).
 -define(STATEBOX_TRUNCATE, 240).
 

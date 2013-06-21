@@ -67,7 +67,6 @@ repair(IdxNode, Package, VClock, Obj) ->
 %%%===================================================================
 
 get(Preflist, ReqID, Package) ->
-    ?PRINT({get, Preflist, ReqID, Package}),
     riak_core_vnode_master:command(Preflist,
                                    {get, ReqID, Package},
                                    {fsm, undefined, self()},
