@@ -129,7 +129,7 @@ claim_ip(Iprange, N) ->
         {ok, Obj} ->
             case {jsxd:get(<<"free">>, [], Obj), jsxd:get(<<"current">>, 0, Obj), jsxd:get(<<"last">>, 0, Obj)} of
                 {[], FoundIP, Last} when FoundIP > Last ->
-                    no_ips_left;
+                    {error, full};
                 {[], FoundIP, _} ->
                     case do_write(Iprange, claim_ip, FoundIP) of
                         {error, _} ->
