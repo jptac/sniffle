@@ -67,7 +67,6 @@ repair(IdxNode, Hypervisor, VClock, Obj) ->
 %%%===================================================================
 
 get(Preflist, ReqID, Hypervisor) ->
-    ?PRINT({get, Preflist, ReqID, Hypervisor}),
     riak_core_vnode_master:command(Preflist,
                                    {get, ReqID, Hypervisor},
                                    {fsm, undefined, self()},
