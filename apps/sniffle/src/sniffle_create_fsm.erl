@@ -276,13 +276,17 @@ get_server(_Event, State = #state{
 build_key(_Event, State = #state{
                              owner = Owner,
                              config = Config}) ->
-    {ok, Keys} = libsnarl:user_keys(Owner),
-    KeysB = iolist_to_binary(merge_keys(Keys)),
-    Config1 = jsxd:update([<<"ssh_keys">>],
-                          fun (Ks) ->
-                                  <<KeysB/binary, Ks/binary>>
-                          end, KeysB, Config),
-    {next_state, create, State#state{config = Config1}, 0}.
+    case libsnarl:user_keys(Owner) of
+        {ok, []} ->
+            {next_state, create, State, 0};
+        {ok, Keys} ->
+            KeysB = iolist_to_binary(merge_keys(Keys)),
+            Config1 = jsxd:update([<<"ssh_keys">>],
+                                  fun (Ks) ->
+                                          <<KeysB/binary, Ks/binary>>
+                                  end, KeysB, Config),
+            {next_state, create, State#state{config = Config1}, 0}
+    end.
 
 
 create(_Event, State = #state{
