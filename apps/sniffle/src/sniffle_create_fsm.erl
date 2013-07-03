@@ -33,7 +33,8 @@
          create/2,
          get_server/2,
          create_permissions/2,
-         get_ips/2
+         get_ips/2,
+         build_key/2
         ]).
 
 -define(SERVER, ?MODULE).
@@ -46,7 +47,8 @@
               start_link/4,
               get_server/2,
               create_permissions/2,
-              get_ips/2
+              get_ips/2,
+              build_key/2
              ]).
 
 -record(state, {
@@ -56,6 +58,7 @@
           dataset,
           dataset_name,
           config,
+          owner,
           type,
           hypervisor
          }).
@@ -113,11 +116,11 @@ init([UUID, Package, Dataset, Config]) ->
                           end, [], Config1),
     sniffle_vm:set(UUID, <<"config">>, Config2),
     {ok, create_permissions, #state{
-           uuid = UUID,
-           package_name = Package,
-           dataset_name = Dataset,
-           config = Config1
-          }, 0}.
+                                uuid = UUID,
+                                package_name = Package,
+                                dataset_name = Dataset,
+                                config = Config1
+                               }, 0}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -135,18 +138,19 @@ init([UUID, Package, Dataset, Config]) ->
 %% @end
 %%--------------------------------------------------------------------
 create_permissions(_Event, State = #state{
-                             uuid = UUID,
-                             config = Config}) ->
+                                      uuid = UUID,
+                                      config = Config}) ->
     {<<"owner">>, Owner} = lists:keyfind(<<"owner">>, 1, Config),
     libsnarl:user_grant(Owner, [<<"vms">>, UUID, <<"...">>]),
     libsnarl:user_grant(Owner, [<<"channels">>, UUID, <<"join">>]),
     eplugin:call('create:permissions', UUID, Config, Owner),
-    {next_state, get_package, State, 0}.
+    {next_state, get_package, State#state{ owner = Owner }, 0}.
 
 
 get_package(_Event, State = #state{
-                      uuid = UUID,
-                      package_name = PackageName}) ->
+                               uuid = UUID,
+                               package_name = PackageName
+                              }) ->
     sniffle_vm:log(UUID, <<"Fetching package ", PackageName/binary>>),
     sniffle_vm:set(UUID, <<"state">>, <<"fetching_package">>),
     {ok, Package} = sniffle_package:get(PackageName),
@@ -154,8 +158,9 @@ get_package(_Event, State = #state{
     {next_state, get_dataset, State#state{package = Package}, 0}.
 
 get_dataset(_Event, State = #state{
-                      uuid = UUID,
-                      dataset_name = DatasetName}) ->
+                               uuid = UUID,
+                               dataset_name = DatasetName
+                              }) ->
     sniffle_vm:set(UUID, <<"state">>, <<"fetching_dataset">>),
     sniffle_vm:log(UUID, <<"Fetching dataset ", DatasetName/binary>>),
     {ok, Dataset} = sniffle_dataset:get(DatasetName),
@@ -164,10 +169,10 @@ get_dataset(_Event, State = #state{
 
 
 callbacks(_Event, State = #state{
-                    uuid = UUID,
-                    dataset = Dataset,
-                    package = Package,
-                    config = Config}) ->
+                             uuid = UUID,
+                             dataset = Dataset,
+                             package = Package,
+                             config = Config}) ->
     {UUID, Package1, Dataset1, Config1} =
         eplugin:fold('create:update', {UUID, Package, Dataset, Config}),
     {next_state, get_ips, State#state{
@@ -229,11 +234,11 @@ get_ips(_Event, State = #state{config = Config,
     {next_state, get_server, State#state{dataset = Dataset1}, 0}.
 
 get_server(_Event, State = #state{
-                     dataset = Dataset,
-                     uuid = UUID,
-                     config = Config,
-                     package = Package}) ->
-    {ok, Owner} = jsxd:get(<<"owner">>, Config),
+                              dataset = Dataset,
+                              uuid = UUID,
+                              owner = Owner,
+                              config = Config,
+                              package = Package}) ->
     sniffle_vm:log(UUID, <<"Assigning owner ", Owner/binary>>),
     {ok, Ram} = jsxd:get(<<"ram">>, Package),
     RamB = list_to_binary(integer_to_list(Ram)),
@@ -263,33 +268,29 @@ get_server(_Event, State = #state{
             {ok, {HypervisorID, H}} =  test_hypervisors(Hypervisors1),
             sniffle_vm:log(UUID, <<"Deploying on hypervisor ", HypervisorID/binary>>),
             eplugin:call('create:handoff', UUID, HypervisorID),
-            {next_state, create, State#state{hypervisor = H}, 0};
+            {next_state, build_key, State#state{hypervisor = H}, 0};
         _ ->
             {next_state, get_server, State, 10000}
     end.
 
+build_key(_Event, State = #state{
+                             owner = Owner,
+                             config = Config}) ->
+    {ok, Keys} = libsnarl:user_keys(Owner),
+    KeysB = iolist_to_binary(merge_keys(Keys)),
+    Config1 = jsxd:update([<<"ssh_keys">>],
+                          fun (Ks) ->
+                                  <<KeysB/binary, Ks/binary>>
+                          end, KeysB, Config),
+    {next_state, create, State#state{config = Config1}, 0}.
 
-test_hypervisors([{HypervisorID, _} | R]) ->
-    {ok, H} = sniffle_hypervisor:get(HypervisorID),
-    {ok, Port} = jsxd:get(<<"port">>, H),
-    {ok, Host} = jsxd:get(<<"host">>, H),
-    HostS = binary_to_list(Host),
-    case libchunter:ping(HostS, Port) of
-        pong ->
-            {ok, {HypervisorID, {HostS, Port}}};
-        _ ->
-            test_hypervisors(R)
-    end;
-
-test_hypervisors([]) ->
-    {error, no_hypervisors}.
 
 create(_Event, State = #state{
-                 dataset = Dataset,
-                 package = Package,
-                 uuid = UUID,
-                 config = Config,
-                 hypervisor = {Host, Port}}) ->
+                          dataset = Dataset,
+                          package = Package,
+                          uuid = UUID,
+                          config = Config,
+                          hypervisor = {Host, Port}}) ->
     sniffle_vm:log(UUID, <<"Handing off to hypervisor.">>),
     sniffle_vm:set(UUID, <<"state">>, <<"creating">>),
     libchunter:create_machine(Host, Port, UUID, Package, Dataset, Config),
@@ -386,6 +387,27 @@ code_change(_OldVsn, StateName, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+
+
+merge_keys(Keys) ->
+    [[Key, "\n"] || {_ID, Key} <- Keys].
+
+
+test_hypervisors([{HypervisorID, _} | R]) ->
+    {ok, H} = sniffle_hypervisor:get(HypervisorID),
+    {ok, Port} = jsxd:get(<<"port">>, H),
+    {ok, Host} = jsxd:get(<<"host">>, H),
+    HostS = binary_to_list(Host),
+    case libchunter:ping(HostS, Port) of
+        pong ->
+            {ok, {HypervisorID, {HostS, Port}}};
+        _ ->
+            test_hypervisors(R)
+    end;
+
+test_hypervisors([]) ->
+    {error, no_hypervisors}.
+
 
 make_condition(C, Permissions) ->
     Weight = case jsxd:get(<<"weight">>, <<"must">>, C) of
