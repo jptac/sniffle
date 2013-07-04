@@ -96,11 +96,11 @@ add_nic(Vm, Network) ->
                                     M = [{<<"network">>, Network},
                                          {<<"ip">>, IP}],
                                     Ms1= case jsxd:get([<<"network_mappings">>], V) of
-                                                     {ok, Ms} ->
-                                                         [M | Ms];
-                                                     _ ->
-                                                         [M]
-                                                 end,
+                                             {ok, Ms} ->
+                                                 [M | Ms];
+                                             _ ->
+                                                 [M]
+                                         end,
                                     sniffle_vm:set(Vm, [<<"network_mappings">>], Ms1)
                             end;
                         _ ->
