@@ -80,7 +80,7 @@ command(json, ["claim", ID]) ->
             error
     end;
 
-command(release, ["release", ID, IPS]) ->
+command(text, ["release", ID, IPS]) ->
     IP = sniffle_iprange_state:parse_bin(IPS),
     case sniffle_iprange:release_ip(list_to_binary(ID), IP) of
         ok ->
