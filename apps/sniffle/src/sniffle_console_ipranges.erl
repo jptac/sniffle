@@ -3,10 +3,12 @@
 -export([command/2, help/0]).
 
 help() ->
-    io:format("Usage~n"),
-    io:format("  list~n"),
-    io:format("  get <uuid>~n"),
-    io:format("  delete <uuid>~n").
+    io:format("Usage~n"
+              "  list~n"
+              "  get <uuid>~n"
+              "  claim <uuid>~n"
+              "  release <uuid> <ip>~n"
+              "  delete <uuid>~n").
 
 command(text, ["delete", UUID]) ->
     case sniffle_iprange:delete(list_to_binary(UUID)) of
@@ -50,9 +52,62 @@ command(text, ["list"]) ->
             []
     end;
 
+command(text, ["claim", ID]) ->
+    case get_ip(ID) of
+        {ok, {Tag, IP, Netmask, Gateway}} ->
+            io:format("A IP address has been claimed from the netowkr ~s.~n"
+                      "Tag:     ~s~n"
+                      "IP:      ~s~n"
+                      "Netmask: ~s~n"
+                      "Gateway: ~s~n",
+                      [ID, Tag, IP, Netmask, Gateway]),
+            ok;
+        _ ->
+            io:format("Could not get IP address.~n"),
+            error
+    end;
+
+command(json, ["claim", ID]) ->
+    case get_ip(ID) of
+        {ok, {Tag, IP, Netmask, Gateway}} ->
+            sniffle_console:pp_json(
+              [{<<"tag">>, Tag},
+               {<<"ip">>, IP},
+               {<<"netmask">>, Netmask},
+               {<<"gateway">>, Gateway}]),
+            ok;
+        _ ->
+            error
+    end;
+
+command(text, ["release", ID, IPS]) ->
+    IP = sniffle_iprange_state:parse_bin(IPS),
+    case sniffle_iprange:release_ip(list_to_binary(ID), IP) of
+        ok ->
+            io:format("Released ip.~n"),
+            ok;
+        _ ->
+            io:format("Release failed ip.~n"),
+            error
+    end;
+
+
+
 command(_, C) ->
-    io:format("Unknown parameters: ~p", [C]),
+    io:format("Unknown parameters: ~p~n", [C]),
     error.
+
+
+get_ip(ID) ->
+    case sniffle_iprange:claim_ip(list_to_binary(ID)) of
+        {ok, {Tag, IP, Netmask, Gateway}} ->
+            {ok, {Tag,
+                  sniffle_iprange_state:to_bin(IP),
+                  sniffle_iprange_state:to_bin(Netmask),
+                  sniffle_iprange_state:to_bin(Gateway)}};
+        _ ->
+            error
+    end.
 
 print(N) ->
     io:format("~-36s ~10s ~8s " ++
