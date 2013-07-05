@@ -63,7 +63,7 @@ command(text, ["claim", ID]) ->
                       [ID, Tag, IP, Netmask, Gateway]),
             ok;
         _ ->
-            io:format("Could not get IP address."),
+            io:format("Could not get IP address.~n"),
             error
     end;
 
@@ -84,17 +84,17 @@ command(text, ["release", ID, IPS]) ->
     IP = sniffle_iprange_state:parse_bin(IPS),
     case sniffle_iprange:release_ip(list_to_binary(ID), IP) of
         ok ->
-            io:format("Released ip."),
+            io:format("Released ip.~n"),
             ok;
         _ ->
-            io:format("Release failed ip."),
+            io:format("Release failed ip.~n"),
             error
     end;
 
 
 
 command(_, C) ->
-    io:format("Unknown parameters: ~p", [C]),
+    io:format("Unknown parameters: ~p~n", [C]),
     error.
 
 
@@ -106,7 +106,6 @@ get_ip(ID) ->
                   sniffle_iprange_state:to_bin(Netmask),
                   sniffle_iprange_state:to_bin(Gateway)}};
         _ ->
-            io:format("Could not get IP address."),
             error
     end.
 
