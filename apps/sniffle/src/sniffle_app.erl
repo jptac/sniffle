@@ -18,6 +18,7 @@ start(_StartType, _StartArgs) ->
             ok = riak_core:register([{vnode_module, sniffle_package_vnode}]),
             ok = riak_core:register([{vnode_module, sniffle_dataset_vnode}]),
             ok = riak_core:register([{vnode_module, sniffle_img_vnode}]),
+            ok = riak_core:register([{vnode_module, sniffle_network_vnode}]),
             ok = riak_core:register([{vnode_module, sniffle_dtrace_vnode}]),
 
             ok = riak_core_ring_events:add_guarded_handler(sniffle_ring_event_handler, []),
@@ -29,6 +30,7 @@ start(_StartType, _StartArgs) ->
             ok = riak_core_node_watcher:service_up(sniffle_package, self()),
             ok = riak_core_node_watcher:service_up(sniffle_dataset, self()),
             ok = riak_core_node_watcher:service_up(sniffle_img, self()),
+            ok = riak_core_node_watcher:service_up(sniffle_network, self()),
             ok = riak_core_node_watcher:service_up(sniffle_dtrace, self()),
 
             statman_server:add_subscriber(statman_aggregator),
