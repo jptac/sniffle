@@ -226,7 +226,7 @@ get_server(_Event, State = #state{
             sniffle_vm:log(UUID, <<"Finding hypervisor ", CondB/binary>>),
             {ok, Hypervisors} = sniffle_hypervisor:list(Conditions),
             Hypervisors1 = eplugin:fold('create:hypervisor_select', Hypervisors),
-            {ok, {HypervisorID, H, Nets1}} =  test_hypervisors(Hypervisors1, Nets),
+            {ok, HypervisorID, H, Nets1} =  test_hypervisors(Hypervisors1, Nets),
             sniffle_vm:log(UUID, <<"Deploying on hypervisor ", HypervisorID/binary>>),
             eplugin:call('create:handoff', UUID, HypervisorID),
             {next_state, get_ips,
