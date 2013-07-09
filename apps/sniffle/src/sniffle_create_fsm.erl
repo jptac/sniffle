@@ -453,7 +453,7 @@ test_hypervisors([{HypervisorID, _} | R], Nets) ->
             HostS = binary_to_list(Host),
             case libchunter:ping(HostS, Port) of
                 pong ->
-                    {ok, {HypervisorID, {HostS, Port}}, Nets1};
+                    {ok, HypervisorID, {HostS, Port}, Nets1};
                 _ ->
                     test_hypervisors(R, Nets)
             end;
