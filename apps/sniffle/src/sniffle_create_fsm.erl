@@ -189,11 +189,12 @@ get_networks(_Event, State = #state{config = Config}) ->
                               {ok, N} = sniffle_network:get(Network),
                               {ok, Rs} = jsxd:get(<<"ipranges">>, N),
                               Rs1 = [{R, sniffle_iprange:get(R)} || R <- Rs],
-                              Rs2 = lists:map(fun({ID, R}) ->
+                              Rs2 = [{R, D} || {R, {ok, D}} <- Rs1],
+                              Rs3 = lists:map(fun({ID, R}) ->
                                                       {ok, Tag} = jsxd:get(<<"tag">>, R),
                                                       {ID, Tag}
-                                              end, Rs1),
-                              {Name, Rs2}
+                                              end, Rs2),
+                              {Name, Rs3}
                       end, Nets),
     {next_state, get_server, State#state{nets = Nets1}, 0}.
 
