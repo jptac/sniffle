@@ -189,7 +189,7 @@ get_networks(_Event, State = #state{config = Config}) ->
                               {ok, N} = sniffle_network:get(Network),
                               {ok, Rs} = jsxd:get(<<"ipranges">>, N),
                               Rs1 = [{R, sniffle_iprange:get(R)} || R <- Rs],
-                              Rs2 = lists:map(fun(ID, R) ->
+                              Rs2 = lists:map(fun({ID, R}) ->
                                                       {ok, Tag} = jsxd:get(<<"tag">>, R),
                                                       {ID, Tag}
                                               end, Rs1),
@@ -440,7 +440,6 @@ test_hypervisor(H, [{NetName, Posibilities} | Nets], Acc) ->
 
 test_hypervisor(_, [], Acc) ->
     {ok, Acc}.
-
 
 test_hypervisors([{HypervisorID, _} | R], Nets) ->
     lager:info("test_hypervisors: ~p ~p",
