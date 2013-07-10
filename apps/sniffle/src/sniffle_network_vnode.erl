@@ -1,4 +1,4 @@
--module(sniffle_iprange_vnode).
+-module(sniffle_network_vnode).
 -behaviour(riak_core_vnode).
 -include("sniffle.hrl").
 -include_lib("riak_core/include/riak_core_vnode.hrl").
@@ -11,8 +11,8 @@
          create/4,
          delete/3,
          lookup/3,
-         claim_ip/4,
-         release_ip/4,
+         add_iprange/4,
+         remove_iprange/4,
          set/4
         ]).
 
@@ -48,11 +48,12 @@
               list/2,
               list/3,
               repair/4,
-              release_ip/4,
+              add_iprange/4,
+              remove_iprange/4,
               start_vnode/1
              ]).
 
--define(MASTER, sniffle_iprange_vnode_master).
+-define(MASTER, sniffle_network_vnode_master).
 
 %%%===================================================================
 %%% API
@@ -61,9 +62,9 @@
 start_vnode(I) ->
     riak_core_vnode_master:get_vnode_pid(I, ?MODULE).
 
-repair(IdxNode, Iprange, VClock, Obj) ->
+repair(IdxNode, Network, VClock, Obj) ->
     riak_core_vnode_master:command(IdxNode,
-                                   {repair, Iprange, VClock, Obj},
+                                   {repair, Network, VClock, Obj},
                                    ignore,
                                    ?MASTER).
 
@@ -71,9 +72,9 @@ repair(IdxNode, Iprange, VClock, Obj) ->
 %%% API - reads
 %%%===================================================================
 
-get(Preflist, ReqID, Iprange) ->
+get(Preflist, ReqID, Network) ->
     riak_core_vnode_master:command(Preflist,
-                                   {get, ReqID, Iprange},
+                                   {get, ReqID, Network},
                                    {fsm, undefined, self()},
                                    ?MASTER).
 
@@ -116,21 +117,20 @@ create(Preflist, ReqID, UUID, Data) ->
                                    {fsm, undefined, self()},
                                    ?MASTER).
 
-delete(Preflist, ReqID, Iprange) ->
+delete(Preflist, ReqID, Network) ->
     riak_core_vnode_master:command(Preflist,
-                                   {delete, ReqID, Iprange},
+                                   {delete, ReqID, Network},
                                    {fsm, undefined, self()},
                                    ?MASTER).
 
-claim_ip(Preflist, ReqID, Iprange, Ip) ->
+add_iprange(Preflist, ReqID, Network, IPRange) ->
     riak_core_vnode_master:command(Preflist,
-                                   {ip, claim, ReqID, Iprange, Ip},
+                                   {add_iprange, ReqID, Network, IPRange},
                                    {fsm, undefined, self()},
                                    ?MASTER).
-
-release_ip(Preflist, ReqID, Iprange, IP) ->
+remove_iprange(Preflist, ReqID, Network, IPRange) ->
     riak_core_vnode_master:command(Preflist,
-                                   {ip, release, ReqID, Iprange, IP},
+                                   {remove_iprange, ReqID, Network, IPRange},
                                    {fsm, undefined, self()},
                                    ?MASTER).
 
@@ -156,19 +156,19 @@ init([Partition]) ->
 handle_command(ping, _Sender, State) ->
     {reply, {pong, State#state.partition}, State};
 
-handle_command({repair, Iprange, VClock, Obj}, _Sender, State) ->
-    case sniffle_db:get(State#state.db, <<"iprange">>, Iprange) of
+handle_command({repair, Network, VClock, Obj}, _Sender, State) ->
+    case sniffle_db:get(State#state.db, <<"network">>, Network) of
         {ok, #sniffle_obj{vclock = VC1}} when VC1 =:= VClock ->
-            sniffle_db:put(State#state.db, <<"iprange">>, Iprange, Obj);
+            sniffle_db:put(State#state.db, <<"network">>, Network, Obj);
         not_found ->
-            sniffle_db:put(State#state.db, <<"iprange">>, Iprange, Obj);
+            sniffle_db:put(State#state.db, <<"network">>, Network, Obj);
         _ ->
             lager:error("[uprange] Read repair failed, data was updated too recent.")
     end,
     {noreply, State};
 
-handle_command({get, ReqID, Iprange}, _Sender, State) ->
-    Res = case sniffle_db:get(State#state.db, <<"iprange">>, Iprange) of
+handle_command({get, ReqID, Network}, _Sender, State) ->
+    Res = case sniffle_db:get(State#state.db, <<"network">>, Network) of
               {ok, R} ->
                   R;
               not_found ->
@@ -178,69 +178,38 @@ handle_command({get, ReqID, Iprange}, _Sender, State) ->
     {reply, {ok, ReqID, NodeIdx, Res}, State};
 
 handle_command({create, {ReqID, Coordinator}, UUID,
-                [Iprange, Network, Gateway, Netmask, First, Last, Tag, Vlan]},
+                [Name]},
                _Sender, State) ->
-    I0 = statebox:new(fun sniffle_iprange_state:new/0),
+    I0 = statebox:new(fun sniffle_network_state:new/0),
     I1 = lists:foldl(
            fun (OP, SB) ->
                    statebox:modify(OP, SB)
-           end, I0, [{fun sniffle_iprange_state:uuid/2, [UUID]},
-                     {fun sniffle_iprange_state:name/2, [Iprange]},
-                     {fun sniffle_iprange_state:network/2, [Network]},
-                     {fun sniffle_iprange_state:gateway/2, [Gateway]},
-                     {fun sniffle_iprange_state:netmask/2, [Netmask]},
-                     {fun sniffle_iprange_state:first/2, [First]},
-                     {fun sniffle_iprange_state:current/2, [First]},
-                     {fun sniffle_iprange_state:last/2, [Last]},
-                     {fun sniffle_iprange_state:tag/2, [Tag]},
-                     {fun sniffle_iprange_state:vlan/2, [Vlan]}]),
+           end, I0, [{fun sniffle_network_state:uuid/2, [UUID]},
+                     {fun sniffle_network_state:name/2, [Name]}]),
     VC0 = vclock:fresh(),
     VC = vclock:increment(Coordinator, VC0),
     HObject = #sniffle_obj{val=I1, vclock=VC},
-    sniffle_db:put(State#state.db, <<"iprange">>, UUID, HObject),
+    sniffle_db:put(State#state.db, <<"network">>, UUID, HObject),
     {reply, {ok, ReqID}, State};
 
-handle_command({delete, {ReqID, _Coordinator}, Iprange}, _Sender, State) ->
-    sniffle_db:delete(State#state.db, <<"iprange">>, Iprange),
+handle_command({delete, {ReqID, _Coordinator}, Network}, _Sender, State) ->
+    sniffle_db:delete(State#state.db, <<"network">>, Network),
     {reply, {ok, ReqID}, State};
-
-handle_command({ip, claim,
-                {ReqID, Coordinator}, Iprange, IP}, _Sender, State) ->
-    case sniffle_db:get(State#state.db, <<"iprange">>, Iprange) of
-        {ok, #sniffle_obj{val=H0} = O} ->
-            case sniffle_iprange_state:is_free(IP, statebox:value(H0)) of
-                true ->
-                    H1 = statebox:modify({fun sniffle_iprange_state:load/1,[]}, H0),
-                    H2 = statebox:modify({fun sniffle_iprange_state:claim_ip/2,[IP]}, H1),
-                    H3 = statebox:expire(?STATEBOX_EXPIRE, H2),
-                    sniffle_db:put(State#state.db, <<"iprange">>, Iprange,
-                                   sniffle_obj:update(H3, Coordinator, O)),
-                    V1 = statebox:value(H3),
-                    {reply, {ok, ReqID, {jsxd:get(<<"tag">>, <<"">>, V1),
-                                         IP,
-                                         jsxd:get(<<"netmask">>, 0, V1),
-                                         jsxd:get(<<"gateway">>, 0, V1)}}, State};
-                false ->
-                    {reply, {error, ReqID, duplicate}, State}
-            end;
-        _ ->
-            {reply, {ok, ReqID, not_found}, State}
-    end;
 
 handle_command({set,
-                {ReqID, Coordinator}, Iprange,
+                {ReqID, Coordinator}, Network,
                 Resources}, _Sender, State) ->
-    case sniffle_db:get(State#state.db, <<"iprange">>, Iprange) of
+    case sniffle_db:get(State#state.db, <<"network">>, Network) of
         {ok, #sniffle_obj{val=H0} = O} ->
-            H1 = statebox:modify({fun sniffle_iprange_state:load/1,[]}, H0),
+            H1 = statebox:modify({fun sniffle_network_state:load/1,[]}, H0),
             H2 = lists:foldr(
                    fun ({Resource, Value}, H) ->
                            statebox:modify(
-                             {fun sniffle_iprange_state:set/3,
+                             {fun sniffle_network_state:set_metadata/3,
                               [Resource, Value]}, H)
                    end, H1, Resources),
             H3 = statebox:expire(?STATEBOX_EXPIRE, H2),
-            sniffle_db:put(State#state.db, <<"iprange">>, Iprange,
+            sniffle_db:put(State#state.db, <<"network">>, Network,
                            sniffle_obj:update(H3, Coordinator, O)),
             {reply, {ok, ReqID}, State};
         R ->
@@ -248,29 +217,49 @@ handle_command({set,
             {reply, {ok, ReqID, not_found}, State}
     end;
 
-handle_command({ip, release,
-                {ReqID, Coordinator}, Iprange, IP}, _Sender, State) ->
-    case sniffle_db:get(State#state.db, <<"iprange">>, Iprange) of
+handle_command({add_iprange,
+                {ReqID, Coordinator}, Network,
+                IPRange}, _Sender, State) ->
+    case sniffle_db:get(State#state.db, <<"network">>, Network) of
         {ok, #sniffle_obj{val=H0} = O} ->
-
-            H1 = statebox:modify({fun sniffle_iprange_state:load/1,[]}, H0),
-            H2 = statebox:modify({fun sniffle_iprange_state:release_ip/2,[IP]}, H1),
+            H1 = statebox:modify({fun sniffle_network_state:load/1,[]}, H0),
+            H2 = statebox:modify(
+                   {fun sniffle_network_state:add_iprange/2,
+                    [IPRange]}, H1),
             H3 = statebox:expire(?STATEBOX_EXPIRE, H2),
-            sniffle_db:put(State#state.db, <<"iprange">>, Iprange,
+            sniffle_db:put(State#state.db, <<"network">>, Network,
                            sniffle_obj:update(H3, Coordinator, O)),
             {reply, {ok, ReqID}, State};
+        R ->
+            lager:error("[hypervisors] tried to write to a non existing hypervisor: ~p", [R]),
+            {reply, {ok, ReqID, not_found}, State}
+    end;
 
-        _ ->
+handle_command({remove_iprange,
+                {ReqID, Coordinator}, Network,
+                IPRange}, _Sender, State) ->
+    case sniffle_db:get(State#state.db, <<"network">>, Network) of
+        {ok, #sniffle_obj{val=H0} = O} ->
+            H1 = statebox:modify({fun sniffle_network_state:load/1,[]}, H0),
+            H2 = statebox:modify(
+                   {fun sniffle_network_state:remove_iprange/2,
+                    [IPRange]}, H1),
+            H3 = statebox:expire(?STATEBOX_EXPIRE, H2),
+            sniffle_db:put(State#state.db, <<"network">>, Network,
+                           sniffle_obj:update(H3, Coordinator, O)),
+            {reply, {ok, ReqID}, State};
+        R ->
+            lager:error("[hypervisors] tried to write to a non existing hypervisor: ~p", [R]),
             {reply, {ok, ReqID, not_found}, State}
     end;
 
 handle_command(Message, _Sender, State) ->
-    lager:error("[ipranges] Unknown command: ~p", [Message]),
+    lager:error("[networks] Unknown command: ~p", [Message]),
     {noreply, State}.
 
 handle_handoff_command(?FOLD_REQ{foldfun=Fun, acc0=Acc0}, _Sender, State) ->
     Acc = sniffle_db:fold(State#state.db,
-                          <<"iprange">>, Fun, Acc0),
+                          <<"network">>, Fun, Acc0),
     {reply, Acc, State}.
 
 handoff_starting(_TargetNode, State) ->
@@ -283,23 +272,23 @@ handoff_finished(_TargetNode, State) ->
     {ok, State}.
 
 handle_handoff_data(Data, State) ->
-    {Iprange, HObject} = binary_to_term(Data),
-    sniffle_db:put(State#state.db, <<"iprange">>, Iprange, HObject),
+    {Network, HObject} = binary_to_term(Data),
+    sniffle_db:put(State#state.db, <<"network">>, Network, HObject),
     {reply, ok, State}.
 
-encode_handoff_item(Iprange, Data) ->
-    term_to_binary({Iprange, Data}).
+encode_handoff_item(Network, Data) ->
+    term_to_binary({Network, Data}).
 
 is_empty(State) ->
     sniffle_db:fold(State#state.db,
-                    <<"iprange">>,
+                    <<"network">>,
                     fun (_, _, _) ->
                             {false, State}
                     end, {true, State}).
 
 delete(State) ->
     Trans = sniffle_db:fold(State#state.db,
-                            <<"iprange">>,
+                            <<"network">>,
                             fun (K,_, A) ->
                                     [{delete, K} | A]
                             end, []),
@@ -308,7 +297,7 @@ delete(State) ->
 
 handle_coverage({lookup, ReqID, Name}, _KeySpaces, _Sender, State) ->
     Res = sniffle_db:fold(State#state.db,
-                          <<"iprange">>,
+                          <<"network">>,
                           fun (_U, #sniffle_obj{val=SB}, Res) ->
                                   V = statebox:value(SB),
                                   case jsxd:get(<<"name">>, V) of
@@ -327,7 +316,7 @@ handle_coverage({list, ReqID, Requirements}, _KeySpaces, _Sender, State) ->
                      jsxd:get(V, 0, statebox:value(S0))
              end,
     List = sniffle_db:fold(State#state.db,
-                           <<"iprange">>,
+                           <<"network">>,
                            fun (Key, E, C) ->
                                    case sniffle_matcher:match(E, Getter, Requirements) of
                                        false ->
@@ -343,7 +332,7 @@ handle_coverage({list, ReqID, Requirements}, _KeySpaces, _Sender, State) ->
 
 handle_coverage({list, ReqID}, _KeySpaces, _Sender, State) ->
     List = sniffle_db:fold(State#state.db,
-                           <<"iprange">>,
+                           <<"network">>,
                            fun (K, _, L) ->
                                    [K|L]
                            end, []),
