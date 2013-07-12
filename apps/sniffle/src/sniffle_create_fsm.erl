@@ -151,8 +151,10 @@ create_permissions(_Event, State = #state{
     eplugin:call('create:permissions', UUID, Config, Creator),
     Owner = case libsnarl:user_active_org(Creator) of
                 {ok, <<"">>} ->
+                    lager:warning("User ~p has no active org.", [Creator]),
                     <<"">>;
                 {ok, Org} ->
+                    lager:warning("User ~p has active org: .", [Creator, Org]),
                     libsnarl:org_execute_trigger(Org, vm_create, UUID),
                     Org
             end,
