@@ -61,6 +61,7 @@
           dataset_name,
           config,
           owner,
+          creator,
           type,
           nets,
           hypervisor
@@ -80,7 +81,8 @@
 %% @end
 %%--------------------------------------------------------------------
 start_link(UUID, Package, Dataset, Config) ->
-    gen_fsm:start_link({local, ?SERVER}, ?MODULE, [UUID, Package, Dataset, Config], []).
+    gen_fsm:start_link({local, ?SERVER}, ?MODULE,
+                       [UUID, Package, Dataset, Config], []).
 
 create(UUID, Package, Dataset, Config) ->
     supervisor:start_child(sniffle_create_fsm_sup, [UUID, Package, Dataset, Config]).
@@ -143,11 +145,24 @@ init([UUID, Package, Dataset, Config]) ->
 create_permissions(_Event, State = #state{
                                       uuid = UUID,
                                       config = Config}) ->
-    {<<"owner">>, Owner} = lists:keyfind(<<"owner">>, 1, Config),
-    libsnarl:user_grant(Owner, [<<"vms">>, UUID, <<"...">>]),
-    libsnarl:user_grant(Owner, [<<"channels">>, UUID, <<"join">>]),
-    eplugin:call('create:permissions', UUID, Config, Owner),
-    {next_state, get_package, State#state{ owner = Owner }, 0}.
+    {ok, Creator} = jsxd:get([<<"owner">>], Config),
+    libsnarl:user_grant(Creator, [<<"vms">>, UUID, <<"...">>]),
+    libsnarl:user_grant(Creator, [<<"channels">>, UUID, <<"join">>]),
+    eplugin:call('create:permissions', UUID, Config, Creator),
+    Owner = case libsnarl:user_active_org(Creator) of
+                {ok, <<"">>} ->
+                    <<"">>;
+                {ok, Org} ->
+                    libsnarl:org_execute_trigger(Org, create_vm, UUID),
+                    Org
+            end,
+    Config1 = jsxd:set([<<"owner">>], Owner, Config),
+    {next_state, get_package,
+     State#state{
+       config = Config1,
+       creator = Creator,
+       owner = Owner
+      }, 0}.
 
 
 get_package(_Event, State = #state{
@@ -201,19 +216,19 @@ get_networks(_Event, State = #state{config = Config}) ->
 get_server(_Event, State = #state{
                               dataset = Dataset,
                               uuid = UUID,
-                              owner = Owner,
+                              creator = Creator,
                               config = Config,
                               nets = Nets,
                               package = Package}) ->
     lager:info("get_server: ~p", [Nets]),
-    sniffle_vm:log(UUID, <<"Assigning owner ", Owner/binary>>),
+    sniffle_vm:log(UUID, <<"Assigning owner ", Creator/binary>>),
     {ok, Ram} = jsxd:get(<<"ram">>, Package),
     RamB = list_to_binary(integer_to_list(Ram)),
     sniffle_vm:log(UUID, <<"Assigning memory ", RamB/binary>>),
     sniffle_vm:set(UUID, <<"state">>, <<"fetching_server">>),
     Permission = [<<"hypervisors">>, {<<"res">>, <<"name">>}, <<"create">>],
     {ok, Type} = jsxd:get(<<"type">>, Dataset),
-    case libsnarl:user_cache(Owner) of
+    case libsnarl:user_cache(Creator) of
         {ok, Permissions} ->
             Conditions0 = jsxd:get(<<"requirements">>, [], Package),
             Conditions1 = Conditions0 ++ jsxd:get(<<"requirements">>, [], Dataset),
@@ -294,9 +309,9 @@ get_ips(_Event, State = #state{nets = Nets,
     {next_state, build_key, State#state{dataset = Dataset1}, 0}.
 
 build_key(_Event, State = #state{
-                             owner = Owner,
+                             creator = Creator,
                              config = Config}) ->
-    case libsnarl:user_keys(Owner) of
+    case libsnarl:user_keys(Creator) of
         {ok, []} ->
             {next_state, create, State, 0};
         {ok, Keys} ->
