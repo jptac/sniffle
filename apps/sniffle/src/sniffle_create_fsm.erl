@@ -153,7 +153,7 @@ create_permissions(_Event, State = #state{
                 {ok, <<"">>} ->
                     <<"">>;
                 {ok, Org} ->
-                    libsnarl:org_execute_trigger(Org, create_vm, UUID),
+                    libsnarl:org_execute_trigger(Org, vm_create, UUID),
                     Org
             end,
     Config1 = jsxd:set([<<"owner">>], Owner, Config),
