@@ -155,10 +155,10 @@ create_permissions(_Event, State = #state{
                     <<"">>;
                 {ok, Org} ->
                     lager:warning("User ~p has active org: .", [Creator, Org]),
+                    sniffle_vm:set(UUID, <<"owner">>, Org),
                     libsnarl:org_execute_trigger(Org, vm_create, UUID),
                     Org
             end,
-    sniffle_vm:set(UUID, <<"owner">>, Owner),
     Config1 = jsxd:set([<<"owner">>], Owner, Config),
     {next_state, get_package,
      State#state{
@@ -166,7 +166,6 @@ create_permissions(_Event, State = #state{
        creator = Creator,
        owner = Owner
       }, 0}.
-
 
 get_package(_Event, State = #state{
                                uuid = UUID,

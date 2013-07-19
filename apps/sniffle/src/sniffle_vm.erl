@@ -31,7 +31,6 @@
 
 -ignore_xref([logs/1]).
 
-
 promote_to_image(Vm, SnapID, Config) ->
     case sniffle_vm:get(Vm) of
         {ok, V} ->
