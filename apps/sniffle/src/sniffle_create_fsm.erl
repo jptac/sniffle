@@ -158,6 +158,7 @@ create_permissions(_Event, State = #state{
                     libsnarl:org_execute_trigger(Org, vm_create, UUID),
                     Org
             end,
+    sniffle_vm:set(UUID, <<"owner">>, Owner),
     Config1 = jsxd:set([<<"owner">>], Owner, Config),
     {next_state, get_package,
      State#state{
@@ -196,9 +197,9 @@ callbacks(_Event, State = #state{
     {UUID, Package1, Dataset1, Config1} =
         eplugin:fold('create:update', {UUID, Package, Dataset, Config}),
     {next_state, get_networks, State#state{
-                            dataset = Dataset1,
-                            package = Package1,
-                            config = Config1}, 0}.
+                                 dataset = Dataset1,
+                                 package = Package1,
+                                 config = Config1}, 0}.
 
 get_networks(_Event, State = #state{config = Config}) ->
     Nets = jsxd:get([<<"networks">>], [], Config),
