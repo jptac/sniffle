@@ -62,7 +62,7 @@ list(Requirements) ->
                   {sniffle_dtrace_vnode, sniffle_dtrace},
                   list, Requirements
                  ),
-    Res1 = sniffle_matcher:apply_scales(Res),
+    Res1 = rankmatcher:apply_scales(Res),
     {ok,  lists:sort(Res1)}.
 
 -spec set(UUID::fifo:dtrace_id(),

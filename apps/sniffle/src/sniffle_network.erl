@@ -93,7 +93,7 @@ list(Requirements) ->
     {ok, Res} = sniffle_entity_coverage_fsm:start(
                   {sniffle_network_vnode, sniffle_network},
                   list, Requirements),
-    Res1 = sniffle_matcher:apply_scales(Res),
+    Res1 = rankmatcher:apply_scales(Res),
     {ok,  lists:sort(Res1)}.
 
 -spec set(Network::fifo:network_id(),

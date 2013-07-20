@@ -68,7 +68,7 @@ list() ->
     {ok, Res} = sniffle_entity_coverage_fsm:start(
                   {sniffle_iprange_vnode, sniffle_iprange},
                   list),
-    Res1 = sniffle_matcher:apply_scales(Res),
+    Res1 = rankmatcher:apply_scales(Res),
     {ok,  lists:sort(Res1)}.
 
 -spec list(Reqs::[fifo:matcher()]) ->

@@ -58,7 +58,7 @@ list(Requirements) ->
                   {sniffle_dataset_vnode, sniffle_dataset},
                   list, Requirements
                  ),
-    Res1 = sniffle_matcher:apply_scales(Res),
+    Res1 = rankmatcher:apply_scales(Res),
     {ok,  lists:sort(Res1)}.
 
 

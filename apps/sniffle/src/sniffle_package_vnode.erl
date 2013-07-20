@@ -273,7 +273,7 @@ handle_coverage({list, ReqID, Requirements}, _KeySpaces, _Sender, State) ->
     List = sniffle_db:fold(State#state.db,
                            <<"package">>,
                            fun (Key, E, C) ->
-                                   case sniffle_matcher:match(E, Getter, Requirements) of
+                                   case rankmatcher:match(E, Getter, Requirements) of
                                        false ->
                                            C;
                                        Pts ->
