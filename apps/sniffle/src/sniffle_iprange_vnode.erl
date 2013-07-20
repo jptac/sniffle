@@ -333,7 +333,7 @@ handle_coverage({list, ReqID, Requirements}, _KeySpaces, _Sender, State) ->
                                        false ->
                                            C;
                                        Pts ->
-                                           [{Key, Pts} | C]
+                                           [{Pts, Key} | C]
                                    end
                            end, []),
     {reply,

@@ -120,9 +120,9 @@ init([Partition]) ->
     DB = list_to_atom(integer_to_list(Partition)),
     sniffle_db:start(DB),
     {ok, #state{
-       db = DB,
-       partition = Partition,
-       node = node()}}.
+            db = DB,
+            partition = Partition,
+            node = node()}}.
 
 handle_command(ping, _Sender, State) ->
     {reply, {pong, State#state.partition}, State};
@@ -227,7 +227,7 @@ delete(State) ->
 
 handle_coverage({list, ReqID}, _KeySpaces, _Sender, State) ->
     List = sniffle_db:fold(State#state.db,
-                          <<"dtrace">>,
+                           <<"dtrace">>,
                            fun (K, _, L) ->
                                    [K|L]
                            end, []),
@@ -240,13 +240,13 @@ handle_coverage({list, ReqID, Requirements}, _KeySpaces, _Sender, State) ->
                      jsxd:get(Resource, 0, statebox:value(S0))
              end,
     List = sniffle_db:fold(State#state.db,
-                          <<"dtrace">>,
+                           <<"dtrace">>,
                            fun (Key, E, C) ->
                                    case sniffle_matcher:match(E, Getter, Requirements) of
                                        false ->
                                            C;
                                        Pts ->
-                                           [{Key, Pts} | C]
+                                           [{Pts, Key} | C]
                                    end
                            end, []),
     {reply,

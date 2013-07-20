@@ -58,10 +58,12 @@ list() ->
 -spec list(Reqs::[fifo:matcher()]) ->
                   {ok, [UUID::fifo:dtrace_id()]} | {error, timeout}.
 list(Requirements) ->
-    sniffle_entity_coverage_fsm:start(
-      {sniffle_dtrace_vnode, sniffle_dtrace},
-      list, Requirements
-     ).
+    {ok, Res} = sniffle_entity_coverage_fsm:start(
+                  {sniffle_dtrace_vnode, sniffle_dtrace},
+                  list, Requirements
+                 ),
+    Res1 = sniffle_matcher:apply_scales(Res),
+    {ok,  lists:sort(Res1)}.
 
 -spec set(UUID::fifo:dtrace_id(),
           Attribute::fifo:keys(),

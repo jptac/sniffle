@@ -131,10 +131,10 @@ init([Partition]) ->
     DB = list_to_atom(integer_to_list(Partition)),
     sniffle_db:start(DB),
     {ok, #state{
-       db = DB,
-       partition = Partition,
-       node = node()
-      }}.
+            db = DB,
+            partition = Partition,
+            node = node()
+           }}.
 
 handle_command(ping, _Sender, State) ->
     {reply, {pong, State#state.partition}, State};
@@ -193,7 +193,7 @@ handle_command({set,
             {reply, {ok, ReqID}, State};
         _ ->
             lager:error("[packages] tried to write to a non existing package."),
-                        {reply, {ok, ReqID, not_found}, State}
+            {reply, {ok, ReqID, not_found}, State}
 
     end;
 
@@ -257,7 +257,7 @@ handle_coverage({lookup, ReqID, Name}, _KeySpaces, _Sender, State) ->
 
 handle_coverage({list, ReqID}, _KeySpaces, _Sender, State) ->
     List = sniffle_db:fold(State#state.db,
-                          <<"package">>,
+                           <<"package">>,
                            fun (K, _, L) ->
                                    [K|L]
                            end, []),
@@ -271,13 +271,13 @@ handle_coverage({list, ReqID, Requirements}, _KeySpaces, _Sender, State) ->
                      jsxd:get(Resource, 0, statebox:value(S0))
              end,
     List = sniffle_db:fold(State#state.db,
-                          <<"package">>,
+                           <<"package">>,
                            fun (Key, E, C) ->
                                    case sniffle_matcher:match(E, Getter, Requirements) of
                                        false ->
                                            C;
                                        Pts ->
-                                           [{Key, Pts} | C]
+                                           [{Pts, Key} | C]
                                    end
                            end, []),
     {reply,
