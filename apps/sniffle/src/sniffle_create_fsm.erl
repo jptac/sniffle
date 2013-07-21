@@ -481,28 +481,33 @@ test_hypervisors([{_, HypervisorID} | R], Nets) ->
 test_hypervisors([], _) ->
     {error, no_hypervisors}.
 
-
 make_condition(C, Permissions) ->
     Weight = case jsxd:get(<<"weight">>, <<"must">>, C) of
                  <<"must">> ->
-                     must;
+                     make_rule(must, C, Permissions);
                  <<"cant">> ->
-                     cant;
+                     make_rule(cant, C, Permissions);
+                 <<"scale">> ->
+                     make_scale(scale, C);
+                 <<"random">> ->
+                     make_random(random, C);
                  I when is_integer(I) ->
-                     I
-             end,
-    Condition = case jsxd:get(<<"condition">>, <<"=:=">>, C) of
-                    <<">=">> -> '>=';
-                    <<">">> -> '>';
-                    <<"=<">> -> '=<';
-                    <<"<">> -> '<';
-                    <<"=:=">> -> '=:=';
-                    <<"=/=">> -> '=/=';
-                    <<"subset">> -> 'subset';
-                    <<"superset">> -> 'superset';
-                    <<"disjoint">> -> 'disjoint';
-                    <<"element">> -> 'element';
-                    <<"allowed">> -> 'allowed'
+                     make_rule(I, C, Permissions)
+             end.
+
+make_rule(Weight, C, Permissions) ->
+    Condition = case jsxd:get(<<"condition">>, C) of
+                    {ok, <<">=">>} -> '>=';
+                    {ok, <<">">>} -> '>';
+                    {ok, <<"=<">>} -> '=<';
+                    {ok, <<"<">>} -> '<';
+                    {ok, <<"=:=">>} -> '=:=';
+                    {ok, <<"=/=">>} -> '=/=';
+                    {ok, <<"subset">>} -> 'subset';
+                    {ok, <<"superset">>} -> 'superset';
+                    {ok, <<"disjoint">>} -> 'disjoint';
+                    {ok, <<"element">>} -> 'element';
+                    {ok, <<"allowed">>} -> 'allowed'
                 end,
     {ok, Attribute} = jsxd:get(<<"attribute">>, C),
     case Condition of
@@ -512,3 +517,14 @@ make_condition(C, Permissions) ->
             {ok, Value} = jsxd:get(<<"value">>, C),
             {Weight, Condition, Attribute, Value}
     end.
+
+make_scale(Weight, C) ->
+    {ok, Attribute} = jsxd:get(<<"attribute">>, C),
+    {ok, Low} = jsxd:get(<<"low">>, C),
+    {ok, High} = jsxd:get(<<"high">>, C),
+    {Weight, Attribute, Low, High}.
+
+make_random(Weight, C) ->
+    {ok, Low} = jsxd:get(<<"low">>, C),
+    {ok, High} = jsxd:get(<<"high">>, C),
+    {Weight, Low, High}.
