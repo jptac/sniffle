@@ -234,7 +234,7 @@ delete(State) ->
     Trans = sniffle_db:fold(State#state.db,
                             <<"hypervisor">>,
                             fun (K,_, A) ->
-                                    [{delete, K} | A]
+                                    [{delete, <<"hypervisor", K/binary>>} | A]
                             end, []),
     sniffle_db:transact(State#state.db, Trans),
     {ok, State}.

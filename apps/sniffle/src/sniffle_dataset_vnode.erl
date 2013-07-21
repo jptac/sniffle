@@ -218,7 +218,7 @@ delete(State) ->
     Trans = sniffle_db:fold(State#state.db,
                             <<"dataset">>,
                             fun (K,_, A) ->
-                                    [{delete, K} | A]
+                                    [{delete, <<"dataset", K/binary>>} | A]
                             end, []),
     sniffle_db:transact(State#state.db, Trans),
     {ok, State}.
