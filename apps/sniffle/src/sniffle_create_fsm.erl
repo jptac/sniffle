@@ -154,7 +154,7 @@ create_permissions(_Event, State = #state{
                     lager:warning("User ~p has no active org.", [Creator]),
                     <<"">>;
                 {ok, Org} ->
-                    lager:warning("User ~p has active org: .", [Creator, Org]),
+                    lager:warning("User ~p has active org: ~p.", [Creator, Org]),
                     sniffle_vm:set(UUID, <<"owner">>, Org),
                     libsnarl:org_execute_trigger(Org, vm_create, UUID),
                     Org
