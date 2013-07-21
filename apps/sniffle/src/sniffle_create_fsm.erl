@@ -482,18 +482,18 @@ test_hypervisors([], _) ->
     {error, no_hypervisors}.
 
 make_condition(C, Permissions) ->
-    Weight = case jsxd:get(<<"weight">>, <<"must">>, C) of
-                 <<"must">> ->
-                     make_rule(must, C, Permissions);
-                 <<"cant">> ->
-                     make_rule(cant, C, Permissions);
-                 <<"scale">> ->
-                     make_scale(scale, C);
-                 <<"random">> ->
-                     make_random(random, C);
-                 I when is_integer(I) ->
-                     make_rule(I, C, Permissions)
-             end.
+    case jsxd:get(<<"weight">>, <<"must">>, C) of
+        <<"must">> ->
+            make_rule(must, C, Permissions);
+        <<"cant">> ->
+            make_rule(cant, C, Permissions);
+        <<"scale">> ->
+            make_scale(scale, C);
+        <<"random">> ->
+            make_random(random, C);
+        I when is_integer(I) ->
+            make_rule(I, C, Permissions)
+    end.
 
 make_rule(Weight, C, Permissions) ->
     Condition = case jsxd:get(<<"condition">>, C) of
