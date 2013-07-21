@@ -310,10 +310,12 @@ list() ->
 -spec list([fifo:matcher()]) -> {error, timeout} |[fifo:uuid()].
 
 list(Requirements) ->
-    sniffle_entity_coverage_fsm:start(
-      {sniffle_vm_vnode, sniffle_vm},
-      list, Requirements
-     ).
+    {ok, Res} = sniffle_entity_coverage_fsm:start(
+                  {sniffle_vm_vnode, sniffle_vm},
+                  list, Requirements
+                 ),
+    Res1 = rankmatcher:apply_scales(Res),
+    {ok,  lists:sort(Res1)}.
 
 %%--------------------------------------------------------------------
 %% @doc Tries to delete a VM, either unregistering it if no

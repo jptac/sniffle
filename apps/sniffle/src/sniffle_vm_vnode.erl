@@ -142,10 +142,10 @@ init([Partition]) ->
     DB = list_to_atom(integer_to_list(Partition)),
     sniffle_db:start(DB),
     {ok, #state{
-       db = DB,
-       partition = Partition,
-       node = node()
-      }}.
+            db = DB,
+            partition = Partition,
+            node = node()
+           }}.
 
 -type vm_command() ::
         ping |
@@ -252,7 +252,19 @@ handle_command(Message, _Sender, State) ->
 
 handle_handoff_command(?FOLD_REQ{foldfun=Fun, acc0=Acc0}, _Sender, State) ->
     Acc = sniffle_db:fold(State#state.db, <<"vm">>, Fun, Acc0),
-    {reply, Acc, State}.
+    {reply, Acc, State};
+
+handle_handoff_command({get, _ReqID, _Vm} = Req, Sender, State) ->
+    handle_command(Req, Sender, State);
+
+handle_handoff_command(Req, Sender, State) ->
+    S1 = case handle_command(Req, Sender, State) of
+             {noreply, NewState} ->
+                 NewState;
+             {reply, _, NewState} ->
+                 NewState
+         end,
+    {forward, S1}.
 
 handoff_starting(_TargetNode, State) ->
     {true, State}.
@@ -282,14 +294,14 @@ delete(State) ->
     Trans = sniffle_db:fold(State#state.db,
                             <<"vm">>,
                             fun (K,_, A) ->
-                                    [{delete, K} | A]
+                                    [{delete, <<"vm", K/binary>>} | A]
                             end, []),
     sniffle_db:transact(State#state.db, Trans),
     {ok, State}.
 
 handle_coverage({list, ReqID}, _KeySpaces, _Sender, State) ->
     List = sniffle_db:fold(State#state.db,
-                          <<"vm">>,
+                           <<"vm">>,
                            fun (K, _, L) ->
                                    [K|L]
                            end, []),
@@ -302,13 +314,13 @@ handle_coverage({list, ReqID, Requirements}, _KeySpaces, _Sender, State) ->
                      jsxd:get(Resource, 0, statebox:value(S0))
              end,
     List = sniffle_db:fold(State#state.db,
-                          <<"vm">>,
+                           <<"vm">>,
                            fun (Key, E, C) ->
-                                   case sniffle_matcher:match(E, Getter, Requirements) of
+                                   case rankmatcher:match(E, Getter, Requirements) of
                                        false ->
                                            C;
                                        Pts ->
-                                           [{Key, Pts} | C]
+                                           [{Pts, Key} | C]
                                    end
                            end, []),
     {reply,

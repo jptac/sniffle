@@ -54,10 +54,13 @@ list() ->
 -spec list(Reqs::[fifo:matcher()]) ->
                   {ok, [UUID::fifo:dataset_id()]} | {error, timeout}.
 list(Requirements) ->
-    sniffle_entity_coverage_fsm:start(
-      {sniffle_dataset_vnode, sniffle_dataset},
-      list, Requirements
-     ).
+    {ok, Res} = sniffle_entity_coverage_fsm:start(
+                  {sniffle_dataset_vnode, sniffle_dataset},
+                  list, Requirements
+                 ),
+    Res1 = rankmatcher:apply_scales(Res),
+    {ok,  lists:sort(Res1)}.
+
 
 -spec set(UUID::fifo:dataset_id(),
           Attribute::fifo:keys(),

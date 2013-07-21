@@ -154,7 +154,7 @@ create_permissions(_Event, State = #state{
                     lager:warning("User ~p has no active org.", [Creator]),
                     <<"">>;
                 {ok, Org} ->
-                    lager:warning("User ~p has active org: .", [Creator, Org]),
+                    lager:warning("User ~p has active org: ~p.", [Creator, Org]),
                     sniffle_vm:set(UUID, <<"owner">>, Org),
                     libsnarl:org_execute_trigger(Org, vm_create, UUID),
                     Org
@@ -332,7 +332,7 @@ create(_Event, State = #state{
                           uuid = UUID,
                           config = Config,
                           hypervisor = {Host, Port}}) ->
-    sniffle_vm:log(UUID, <<"Handing off to hypervisor.">>),
+    sniffle_vm:log(UUID, <<"Handing off to hypervx§isor.">>),
     sniffle_vm:set(UUID, <<"state">>, <<"creating">>),
     libchunter:create_machine(Host, Port, UUID, Package, Dataset, Config),
     {stop, normal, State}.
@@ -459,7 +459,7 @@ test_hypervisor(H, [{NetName, Posibilities} | Nets], Acc) ->
 test_hypervisor(_, [], Acc) ->
     {ok, Acc}.
 
-test_hypervisors([{HypervisorID, _} | R], Nets) ->
+test_hypervisors([{_, HypervisorID} | R], Nets) ->
     lager:info("test_hypervisors: ~p ~p",
                [HypervisorID, Nets]),
     {ok, H} = sniffle_hypervisor:get(HypervisorID),
@@ -481,28 +481,33 @@ test_hypervisors([{HypervisorID, _} | R], Nets) ->
 test_hypervisors([], _) ->
     {error, no_hypervisors}.
 
-
 make_condition(C, Permissions) ->
-    Weight = case jsxd:get(<<"weight">>, <<"must">>, C) of
-                 <<"must">> ->
-                     must;
-                 <<"cant">> ->
-                     cant;
-                 I when is_integer(I) ->
-                     I
-             end,
-    Condition = case jsxd:get(<<"condition">>, <<"=:=">>, C) of
-                    <<">=">> -> '>=';
-                    <<">">> -> '>';
-                    <<"=<">> -> '=<';
-                    <<"<">> -> '<';
-                    <<"=:=">> -> '=:=';
-                    <<"=/=">> -> '=/=';
-                    <<"subset">> -> 'subset';
-                    <<"superset">> -> 'superset';
-                    <<"disjoint">> -> 'disjoint';
-                    <<"element">> -> 'element';
-                    <<"allowed">> -> 'allowed'
+    case jsxd:get(<<"weight">>, <<"must">>, C) of
+        <<"must">> ->
+            make_rule(must, C, Permissions);
+        <<"cant">> ->
+            make_rule(cant, C, Permissions);
+        <<"scale">> ->
+            make_scale(scale, C);
+        <<"random">> ->
+            make_random(random, C);
+        I when is_integer(I) ->
+            make_rule(I, C, Permissions)
+    end.
+
+make_rule(Weight, C, Permissions) ->
+    Condition = case jsxd:get(<<"condition">>, C) of
+                    {ok, <<">=">>} -> '>=';
+                    {ok, <<">">>} -> '>';
+                    {ok, <<"=<">>} -> '=<';
+                    {ok, <<"<">>} -> '<';
+                    {ok, <<"=:=">>} -> '=:=';
+                    {ok, <<"=/=">>} -> '=/=';
+                    {ok, <<"subset">>} -> 'subset';
+                    {ok, <<"superset">>} -> 'superset';
+                    {ok, <<"disjoint">>} -> 'disjoint';
+                    {ok, <<"element">>} -> 'element';
+                    {ok, <<"allowed">>} -> 'allowed'
                 end,
     {ok, Attribute} = jsxd:get(<<"attribute">>, C),
     case Condition of
@@ -512,3 +517,14 @@ make_condition(C, Permissions) ->
             {ok, Value} = jsxd:get(<<"value">>, C),
             {Weight, Condition, Attribute, Value}
     end.
+
+make_scale(Weight, C) ->
+    {ok, Attribute} = jsxd:get(<<"attribute">>, C),
+    {ok, Low} = jsxd:get(<<"low">>, C),
+    {ok, High} = jsxd:get(<<"high">>, C),
+    {Weight, Attribute, Low, High}.
+
+make_random(Weight, C) ->
+    {ok, Low} = jsxd:get(<<"low">>, C),
+    {ok, High} = jsxd:get(<<"high">>, C),
+    {Weight, Low, High}.
