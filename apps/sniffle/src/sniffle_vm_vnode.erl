@@ -264,7 +264,7 @@ handle_handoff_command(Req, Sender, State) ->
              {reply, _, NewState} ->
                  NewState
          end,
-    {forward, NewState}.
+    {forward, S1}.
 
 handoff_starting(_TargetNode, State) ->
     {true, State}.
