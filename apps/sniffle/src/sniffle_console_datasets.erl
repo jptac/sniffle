@@ -58,7 +58,7 @@ command(text, ["export", UUIDS, Path]) ->
                         {error,eacces} ->
                             io:format("Can't write to ~p, sniffle is running "
                                       "as sniffle user, and it must have "
-                                      "permissions to write to ~p."
+                                      "permissions to write to ~p.",
                                       [Path, Path]),
                             error
                     end;
