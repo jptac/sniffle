@@ -50,10 +50,18 @@ command(text, ["export", UUIDS, Path]) ->
         _ ->
             case sniffle_dataset:get(UUID) of
                 {ok, Obj} ->
-                    ok = file:write_file([Path, "/", UUIDS, ".json"], jsx:encode(Obj)),
-                    {ok, IDXs} = sniffle_img:list(UUID),
-                    {ok, File} = file:open([Path, "/", UUIDS, ".gz"], [write, raw]),
-                    write_image(File, UUID, lists:sort(IDXs), 0);
+                    case file:write_file([Path, "/", UUIDS, ".json"], jsx:encode(Obj)) of
+                        ok ->
+                            {ok, IDXs} = sniffle_img:list(UUID),
+                            {ok, File} = file:open([Path, "/", UUIDS, ".gz"], [write, raw]),
+                            write_image(File, UUID, lists:sort(IDXs), 0);
+                        {error,eacces} ->
+                            io:format("Can't write to ~p, sniffle is running "
+                                      "as sniffle user, and it must have "
+                                      "permissions to write to ~p."
+                                      [Path, Path]),
+                            error
+                    end;
                 _ ->
                     io:format("Dataset '~s' could not be found.", [UUID]),
                     error
