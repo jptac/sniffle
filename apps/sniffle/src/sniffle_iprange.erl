@@ -65,18 +65,18 @@ get(Iprange) ->
 -spec list() ->
                   {ok, [IPR::fifo:iprange_id()]} | {error, timeout}.
 list() ->
-    {ok, Res} = sniffle_entity_coverage_fsm:start(
-                  {sniffle_iprange_vnode, sniffle_iprange},
-                  list),
-    Res1 = rankmatcher:apply_scales(Res),
-    {ok,  lists:sort(Res1)}.
+    sniffle_entity_coverage_fsm:start(
+      {sniffle_iprange_vnode, sniffle_iprange},
+      list).
 
 -spec list(Reqs::[fifo:matcher()]) ->
                   {ok, [IPR::fifo:iprange_id()]} | {error, timeout}.
 list(Requirements) ->
-    sniffle_entity_coverage_fsm:start(
-      {sniffle_iprange_vnode, sniffle_iprange},
-      list, Requirements).
+    {ok, Res} = sniffle_entity_coverage_fsm:start(
+                  {sniffle_iprange_vnode, sniffle_iprange},
+                  list, Requirements),
+    Res1 = rankmatcher:apply_scales(Res),
+    {ok,  lists:sort(Res1)}.
 
 -spec release_ip(Iprange::fifo:iprange_id(),
                  IP::integer()) ->
