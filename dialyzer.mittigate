@@ -18,6 +18,8 @@
 ^pokemon_pb
 ^lhttpc
 ^newrelic.erl
+^glc_code.erl
+^lager
 ^supervisor_pre_r14b04.erl:1250:
 ^sniffle_dataset_vnode.erl:2: Callback info about the riak_core_vnode behaviour is not available
 ^sniffle_hypervisor_vnode.erl:2: Callback info about the riak_core_vnode behaviour is not available
@@ -26,6 +28,7 @@
 ^sniffle_vm_vnode.erl:2: Callback info about the riak_core_vnode behaviour is not available
 ^sniffle_dtrace_vnode.erl:2: Callback info about the riak_core_vnode behaviour is not available
 ^sniffle_img_vnode.erl:2: Callback info about the riak_core_vnode behaviour is not available
+^sniffle_network_vnode.erl:2: Callback info about the riak_core_vnode behaviour is not available
 ^sniffle_img_vnode.erl:248: Matching of pattern
 ^sniffle_iprange_vnode.erl:334: Guard test 'false' | 'null' | 'true' | binary() | ['false' | 'null' | 'true' | binary() | [any()] | number() | {_,_}] | number() =:= Name::none() can never succeed$
 ^sniffle_package_vnode.erl:263: Guard test 'false' | 'null' | 'true' | binary() | ['false' | 'null' | 'true' | binary() | [any()] | number() | {_,_}] | number() =:= Name::none() can never succeed$

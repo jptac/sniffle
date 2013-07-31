@@ -307,7 +307,7 @@ list() ->
 %% @doc Lists all vm's and fiters by a given matcher set.
 %% @end
 %%--------------------------------------------------------------------
--spec list([fifo:matcher()]) -> {error, timeout} |[fifo:uuid()].
+-spec list([fifo:matcher()]) -> {error, timeout} | {ok, [fifo:uuid()]}.
 
 list(Requirements) ->
     {ok, Res} = sniffle_entity_coverage_fsm:start(

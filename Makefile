@@ -99,6 +99,8 @@ dialyzer: deps compile
 	@sleep 1
 	dialyzer -Wno_return --plt $(COMBO_PLT) deps/*/ebin apps/*/ebin | grep -v -f dialyzer.mittigate
 
+dialyzer-gui: deps compile
+	dialyzer --gui -Wno_return --plt $(COMBO_PLT) deps/*/ebin apps/*/ebin
 typer:
 	typer --plt $(COMBO_PLT) deps/*/ebin apps/*/ebin
 
