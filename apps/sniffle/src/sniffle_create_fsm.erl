@@ -332,7 +332,7 @@ create(_Event, State = #state{
                           uuid = UUID,
                           config = Config,
                           hypervisor = {Host, Port}}) ->
-    sniffle_vm:log(UUID, <<"Handing off to hypervx§isor.">>),
+    sniffle_vm:log(UUID, <<"Handing off to hypervisor.">>),
     sniffle_vm:set(UUID, <<"state">>, <<"creating">>),
     libchunter:create_machine(Host, Port, UUID, Package, Dataset, Config),
     {stop, normal, State}.
