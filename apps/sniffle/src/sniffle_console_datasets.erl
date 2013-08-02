@@ -62,9 +62,10 @@ command(text, ["export", UUIDS, Path]) ->
         _ ->
             case sniffle_dataset:get(UUID) of
                 {ok, Obj} ->
-                    Obj1 = jsxd:set(<<"image_size">>, Obj,
+                    Obj1 = jsxd:set(<<"image_size">>,
                                     ensure_integer(
-                                      jsxd:get(<<"image_size">>, 0, Obj))),
+                                      jsxd:get(<<"image_size">>, 0, Obj)),
+                                    Obj),
                     case file:write_file([Path, "/", UUIDS, ".json"],
                                          jsx:encode(Obj1)) of
                         ok ->

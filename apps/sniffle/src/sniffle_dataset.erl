@@ -102,8 +102,9 @@ import(URL) ->
 transform_dataset(D1) ->
     case jsxd:get([<<"urn">>], D1) of
         undefined ->
-            jsxd:set(<<"image_size">>, D1,
-                     ensure_integer(jsxd:get(<<"image_size">>, 0, D1)));
+            jsxd:set(<<"image_size">>,
+                     ensure_integer(jsxd:get(<<"image_size">>, 0, D1)),
+                     D1);
         _ ->
             {ok, ID} = jsxd:get(<<"uuid">>, D1),
             D2 = jsxd:thread(
