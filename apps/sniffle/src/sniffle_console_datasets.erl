@@ -35,11 +35,23 @@ write_image(File, _UUID, [], _Retries) ->
 write_image(File, UUID, [Idx | R], Retries) ->
     case sniffle_img:get(UUID, Idx) of
         {ok, B} ->
-            ok = file:write(File, B),
-            write_image(File, UUID, R, 0);
+            case file:write(File, B) of
+                {error,enospc} ->
+                    io:format("No space left on device.", []),
+                    error;
+                ok ->
+                    write_image(File, UUID, R, 0)
+            end;
         _ ->
             write_image(File, UUID, [Idx | R], Retries + 1)
     end.
+
+ensure_integer(I) when is_integer(I) ->
+    I;
+ensure_integer(L) when is_list(L) ->
+    list_to_integer(L);
+ensure_integer(B) when is_binary(B) ->
+    list_to_integer(binary_to_list(B)).
 
 command(text, ["export", UUIDS, Path]) ->
     UUID = list_to_binary(UUIDS),
@@ -50,10 +62,15 @@ command(text, ["export", UUIDS, Path]) ->
         _ ->
             case sniffle_dataset:get(UUID) of
                 {ok, Obj} ->
-                    case file:write_file([Path, "/", UUIDS, ".json"], jsx:encode(Obj)) of
+                    Obj1 = jsxd:set(<<"image_size">>, Obj,
+                                    ensure_integer(
+                                      jsxd:get(<<"image_size">>, 0, Obj))),
+                    case file:write_file([Path, "/", UUIDS, ".json"],
+                                         jsx:encode(Obj1)) of
                         ok ->
                             {ok, IDXs} = sniffle_img:list(UUID),
-                            {ok, File} = file:open([Path, "/", UUIDS, ".gz"], [write, raw]),
+                            {ok, File} = file:open([Path, "/", UUIDS, ".gz"],
+                                                   [write, raw]),
                             write_image(File, UUID, lists:sort(IDXs), 0);
                         {error,eacces} ->
                             io:format("Can't write to ~p, sniffle is running "
