@@ -89,7 +89,8 @@ list(Requirements) ->
                   {sniffle_hypervisor_vnode, sniffle_hypervisor},
                   list, Requirements
                  ),
-    {ok,  lists:keysort(2, Res)}.
+    Res1 = rankmatcher:apply_scales(Res),
+    {ok,  lists:sort(Res1)}.
 
 -spec set(Hypervisor::fifo:hypervisor_id(),
           Attribute::fifo:keys(),

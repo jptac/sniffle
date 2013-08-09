@@ -31,7 +31,6 @@
 
 -ignore_xref([logs/1]).
 
-
 promote_to_image(Vm, SnapID, Config) ->
     case sniffle_vm:get(Vm) of
         {ok, V} ->
@@ -96,11 +95,11 @@ add_nic(Vm, Network) ->
                                     M = [{<<"network">>, Network},
                                          {<<"ip">>, IP}],
                                     Ms1= case jsxd:get([<<"network_mappings">>], V) of
-                                                     {ok, Ms} ->
-                                                         [M | Ms];
-                                                     _ ->
-                                                         [M]
-                                                 end,
+                                             {ok, Ms} ->
+                                                 [M | Ms];
+                                             _ ->
+                                                 [M]
+                                         end,
                                     sniffle_vm:set(Vm, [<<"network_mappings">>], Ms1)
                             end;
                         _ ->
@@ -308,13 +307,15 @@ list() ->
 %% @doc Lists all vm's and fiters by a given matcher set.
 %% @end
 %%--------------------------------------------------------------------
--spec list([fifo:matcher()]) -> {error, timeout} |[fifo:uuid()].
+-spec list([fifo:matcher()]) -> {error, timeout} | {ok, [fifo:uuid()]}.
 
 list(Requirements) ->
-    sniffle_entity_coverage_fsm:start(
-      {sniffle_vm_vnode, sniffle_vm},
-      list, Requirements
-     ).
+    {ok, Res} = sniffle_entity_coverage_fsm:start(
+                  {sniffle_vm_vnode, sniffle_vm},
+                  list, Requirements
+                 ),
+    Res1 = rankmatcher:apply_scales(Res),
+    {ok,  lists:sort(Res1)}.
 
 %%--------------------------------------------------------------------
 %% @doc Tries to delete a VM, either unregistering it if no

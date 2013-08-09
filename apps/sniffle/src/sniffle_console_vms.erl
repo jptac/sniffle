@@ -57,9 +57,10 @@ command(text, ["delete", UUID]) ->
 command(json, ["get", UUID]) ->
     case sniffle_vm:get(list_to_binary(UUID)) of
         {ok, VM} ->
-            sniffle_console:pp_json(jsxd:thread([{select, [<<"hypervisor">>, <<"state">>]},
-                                 {merge, jsxd:get(<<"config">>, [], VM)}],
-                                VM)),
+            sniffle_console:pp_json(
+              jsxd:thread([{select, [<<"hypervisor">>, <<"state">>]},
+                           {merge, jsxd:get(<<"config">>, [], VM)}],
+                          VM)),
             ok;
         _ ->
             sniffle_console:pp_json([]),
@@ -133,11 +134,11 @@ command(text, ["snapshots", UUID]) ->
     case sniffle_vm:get(list_to_binary(UUID)) of
         {ok, VM} ->
             jsxd:map(fun (SUUID, Snapshot) ->
-                              io:format("~16p ~36s ~s~n",
-                                        [jsxd:get(<<"timestamp">>, <<"-">>, Snapshot),
-                                         SUUID,
-                                         jsxd:get(<<"comment">>, <<"-">>, Snapshot)])
-                      end, jsxd:get(<<"snapshots">>, [], VM)),
+                             io:format("~16p ~36s ~s~n",
+                                       [jsxd:get(<<"timestamp">>, <<"-">>, Snapshot),
+                                        SUUID,
+                                        jsxd:get(<<"comment">>, <<"-">>, Snapshot)])
+                     end, jsxd:get(<<"snapshots">>, [], VM)),
             ok;
         _ ->
             ok
@@ -147,11 +148,11 @@ command(json, ["list"]) ->
     case sniffle_vm:list() of
         {ok, VMs} ->
             sniffle_console:pp_json(lists:map(fun (UUID) ->
-                                      {ok, VM} = sniffle_vm:get(UUID),
-                                      jsxd:thread([{select, [<<"hypervisor">>, <<"state">>]},
-                                                   {merge, jsxd:get(<<"config">>, [], VM)}],
-                                                  VM)
-                              end, VMs)),
+                                                      {ok, VM} = sniffle_vm:get(UUID),
+                                                      jsxd:thread([{select, [<<"hypervisor">>, <<"state">>]},
+                                                                   {merge, jsxd:get(<<"config">>, [], VM)}],
+                                                                  VM)
+                                              end, VMs)),
             ok;
         _ ->
             sniffle_console:pp_json([]),
@@ -181,7 +182,7 @@ command(_, C) ->
 
 
 join([ Head | [] ], _Sep) ->
-   [Head];
+    [Head];
 
 join([ Head | Rest], Sep) ->
-   [Head,Sep | join(Rest,Sep) ].
+    [Head,Sep | join(Rest,Sep) ].

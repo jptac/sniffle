@@ -1,6 +1,7 @@
 %% @doc Interface for sniffle-admin commands.
 -module(sniffle_console).
--export([join/1,
+-export([
+         join/1,
          leave/1,
          remove/1,
          vms/1,
@@ -13,7 +14,8 @@
          pp_json/1,
          staged_join/1,
          reip/1,
-         ringready/1]).
+         ringready/1]
+       ).
 
 -ignore_xref([
               join/1,
@@ -188,9 +190,6 @@ down([Node]) ->
             ok ->
                 io:format("Success: ~p marked as down~n", [Node]),
                 ok;
-            {error, legacy_mode} ->
-                io:format("Cluster is currently in legacy mode~n"),
-                ok;
             {error, is_up} ->
                 io:format("Failed: ~s is up~n", [Node]),
                 error;
@@ -226,11 +225,11 @@ reip([OldNode, NewNode]) ->
         NewRing = riak_core_ring:rename_node(Ring, OldNode, NewNode),
         riak_core_ring_manager:do_write_ringfile(NewRing),
         io:format("New ring file written to ~p~n",
-            [element(2, riak_core_ring_manager:find_latest_ringfile())])
+                  [element(2, riak_core_ring_manager:find_latest_ringfile())])
     catch
         Exception:Reason ->
             lager:error("Reip failed ~p:~p", [Exception,
-                    Reason]),
+                                              Reason]),
             io:format("Reip failed, see log for details~n"),
             error
     end.

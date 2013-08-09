@@ -32,6 +32,10 @@ init(_Args) ->
       sniffle_iprange_vnode_master,
       { riak_core_vnode_master, start_link, [sniffle_iprange_vnode]},
       permanent, 5000, worker, [sniffle_iprange_vnode_master]},
+    VNetwork = {
+      sniffle_network_vnode_master,
+      { riak_core_vnode_master, start_link, [sniffle_network_vnode]},
+      permanent, 5000, worker, [sniffle_network_vnode_master]},
     VDataset = {
       sniffle_dataset_vnode_master,
       { riak_core_vnode_master, start_link, [sniffle_dataset_vnode]},
@@ -80,4 +84,4 @@ init(_Args) ->
           permanent, 5000, worker, []},
          DB,CoverageFSMs, WriteFSMs, ReadFSMs, CreateFSMs,
          VHypervisor, VVM, VIprange, VDataset, VPackage,
-         VImg, VDTrace, DTrace]}}.
+         VImg, VDTrace, VNetwork, DTrace]}}.

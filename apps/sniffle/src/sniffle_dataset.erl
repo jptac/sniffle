@@ -54,10 +54,13 @@ list() ->
 -spec list(Reqs::[fifo:matcher()]) ->
                   {ok, [UUID::fifo:dataset_id()]} | {error, timeout}.
 list(Requirements) ->
-    sniffle_entity_coverage_fsm:start(
-      {sniffle_dataset_vnode, sniffle_dataset},
-      list, Requirements
-     ).
+    {ok, Res} = sniffle_entity_coverage_fsm:start(
+                  {sniffle_dataset_vnode, sniffle_dataset},
+                  list, Requirements
+                 ),
+    Res1 = rankmatcher:apply_scales(Res),
+    {ok,  lists:sort(Res1)}.
+
 
 -spec set(UUID::fifo:dataset_id(),
           Attribute::fifo:keys(),
@@ -99,15 +102,20 @@ import(URL) ->
 transform_dataset(D1) ->
     case jsxd:get([<<"urn">>], D1) of
         undefined ->
-            D1;
+            jsxd:set(<<"image_size">>,
+                     ensure_integer(jsxd:get(<<"image_size">>, 0, D1)),
+                     D1);
         _ ->
             {ok, ID} = jsxd:get(<<"uuid">>, D1),
             D2 = jsxd:thread(
-                   [{select,[<<"os">>, <<"metadata">>, <<"name">>, <<"version">>,
-                             <<"description">>, <<"disk_driver">>, <<"nic_driver">>,
-                             <<"image_size">>]},
+                   [{select,[<<"os">>, <<"metadata">>, <<"name">>,
+                             <<"version">>, <<"description">>,
+                             <<"disk_driver">>, <<"nic_driver">>]},
                     {set, <<"dataset">>, ID},
-                    {set, <<"networks">>, jsxd:get(<<"requirements.networks">>, [], D1)}],
+                    {set, <<"image_size">>,
+                     ensure_integer(jsxd:get(<<"image_size">>, 0, D1))},
+                    {set, <<"networks">>,
+                     jsxd:get(<<"requirements.networks">>, [], D1)}],
                    D1),
             case jsxd:get(<<"os">>, D1) of
                 {ok, <<"smartos">>} ->
@@ -117,6 +125,12 @@ transform_dataset(D1) ->
             end
     end.
 
+ensure_integer(I) when is_integer(I) ->
+    I;
+ensure_integer(L) when is_list(L) ->
+    list_to_integer(L);
+ensure_integer(B) when is_binary(B) ->
+    list_to_integer(binary_to_list(B)).
 
 do_write(Dataset, Op) ->
     sniffle_entity_write_fsm:write({sniffle_dataset_vnode, sniffle_dataset}, Dataset, Op).

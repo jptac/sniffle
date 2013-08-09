@@ -1,0 +1,10 @@
+{
+  "config": {
+    "end": 63,
+    "start": 0,
+    "step": 2
+  },
+  "name": "udp packages",
+  "script": "udp:::send\n{\n  @[\"send\"] = lquantize((timestamp % 1000)/15, $start$, $end$, $step$);\n}\nudp:::receive\n{\n  @[\"receive\"] = lquantize((timestamp % 1000)/15, $start$, $end$, $step$);\n}",
+  "version": "0.1.0"
+}

@@ -371,6 +371,50 @@ message({img, list, Img}, State) when
      State};
 
 %%%===================================================================
+%%%  Network Functions
+%%%===================================================================
+
+message({network, create, Name}, State) when
+      is_binary(Name) ->
+    {reply,
+     sniffle_network:create(Name),
+     State};
+
+message({network, delete, Network}, State) when
+      is_binary(Network) ->
+    {reply,
+     sniffle_network:delete(Network),
+     State};
+
+message({network, get, Network}, State) when
+      is_binary(Network) ->
+    {reply,
+     sniffle_network:get(Network),
+     State};
+
+message({network, add_iprange, Network, IPRange}, State) when
+      is_binary(Network) ->
+    {reply,
+     sniffle_network:add_iprange(Network, IPRange),
+     State};
+
+message({network, remove_iprange, Network, IPRange}, State) when
+      is_binary(Network) ->
+    {reply,
+     sniffle_network:remove_iprange(Network, IPRange),
+     State};
+
+message({network, list}, State) ->
+    {reply,
+     sniffle_network:list(),
+     State};
+
+message({network, list, Requirements}, State) ->
+    {reply,
+     sniffle_network:list(Requirements),
+     State};
+
+%%%===================================================================
 %%%  IPRange Functions
 %%%===================================================================
 

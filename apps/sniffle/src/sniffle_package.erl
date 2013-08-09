@@ -1,6 +1,6 @@
 -module(sniffle_package).
 -include("sniffle.hrl").
-                                                %-include_lib("riak_core/include/riak_core_vnode.hrl").
+%%-include_lib("riak_core/include/riak_core_vnode.hrl").
 
 -export([
          create/1,
@@ -61,9 +61,11 @@ list() ->
 -spec list(Reqs::[fifo:matcher()]) ->
                   {ok, [Pkg::fifo:package_id()]} | {error, timeout}.
 list(Requirements) ->
-    sniffle_entity_coverage_fsm:start(
-      {sniffle_package_vnode, sniffle_package},
-      list, Requirements).
+    {ok, Res} = sniffle_entity_coverage_fsm:start(
+                  {sniffle_package_vnode, sniffle_package},
+                  list, Requirements),
+    Res1 = rankmatcher:apply_scales(Res),
+    {ok,  lists:sort(Res1)}.
 
 -spec set(Package::fifo:package_id(),
           Attribute::fifo:keys(),
