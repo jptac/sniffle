@@ -10,7 +10,7 @@ case $1 in
             exit 1
         fi
         ;;
-    vms|hypervisors|packages|datasets|networks|dtrace)
+    vms|hypervisors|packages|datasets|ipranges|networks|dtrace)
         if [ -f /opt/local/sniffle/bin/sniffle-admin ]
         then
             if [ "$2" == "export" ]

@@ -21,12 +21,12 @@ command(text, ["delete", UUID]) ->
     end;
 
 command(text, ["get", ID]) ->
-    io:format("UUID                                 Name       Tag      " ++
-                  "First           Next            Last            " ++
-                  "Netmask         Gateway         Vlan~n"),
-    io:format("------------------------------------ ---------- -------- " ++
-                  "--------------- --------------- --------------- " ++
-                  "--------------- --------------- ----~n"),
+    io:format("UUID                                 Name       Tag      "
+              "First           Next            Last            "
+              "Netmask         Gateway         Vlan~n"),
+    io:format("------------------------------------ ---------- -------- "
+              "--------------- --------------- --------------- "
+              "--------------- --------------- ----~n"),
     case sniffle_iprange:get(list_to_binary(ID)) of
         {ok, N} ->
             print(N),
@@ -36,12 +36,12 @@ command(text, ["get", ID]) ->
     end;
 
 command(text, ["list"]) ->
-    io:format("UUID                                 Name       Tag      " ++
-                  "First           Next            Last            " ++
-                  "Netmask         Gateway         Vlan~n"),
-    io:format("------------------------------------ ---------- -------- " ++
-                  "--------------- --------------- --------------- " ++
-                  "--------------- --------------- ----~n"),
+    io:format("UUID                                 Name       Tag      "
+              "First           Next            Last            "
+              "Netmask         Gateway         Vlan~n"),
+    io:format("------------------------------------ ---------- -------- "
+              "--------------- --------------- --------------- "
+              "--------------- --------------- ----~n"),
     case sniffle_iprange:list() of
         {ok, Hs} ->
             lists:map(fun (ID) ->
@@ -91,8 +91,6 @@ command(text, ["release", ID, IPS]) ->
             error
     end;
 
-
-
 command(_, C) ->
     io:format("Unknown parameters: ~p~n", [C]),
     error.
@@ -110,9 +108,9 @@ get_ip(ID) ->
     end.
 
 print(N) ->
-    io:format("~-36s ~10s ~8s " ++
-                  "~15s ~15s ~15s " ++
-                  "~15s ~15s ~-4b ~n",
+    io:format("~-36s ~10s ~8s "
+              "~15s ~15s ~15s "
+              "~15s ~15s ~-4b ~n",
               [jsxd:get(<<"uuid">>, <<"-">>, N),
                jsxd:get(<<"name">>, <<"-">>, N),
                jsxd:get(<<"tag">>, <<"-">>, N),
