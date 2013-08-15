@@ -249,60 +249,56 @@ handle_coverage(list, _KeySpaces, {_, ReqID, _}, State) ->
 
 
 handle_coverage(status, _KeySpaces, {_, ReqID, _}, State) ->
-    Res = sniffle_db:fold(
-            State#state.db, <<"hypervisor">>,
-            fun(K, #sniffle_obj{val=S0}, {Res, Warnings}) ->
-                    H=statebox:value(S0),
-                    {ok, Host} = jsxd:get(<<"host">>, H),
-                    {ok, Port} = jsxd:get(<<"port">>, H),
-                    Res1 = jsxd:fold(fun (Resource, Value, Acc) ->
-                                             jsxd:update(Resource,
-                                                         fun(Current)->
-                                                                 Current + Value
-                                                         end, Value, Acc)
-                                     end, Res, jsxd:get(<<"resources">>, [], H)),
-                    Res2 = jsxd:update(<<"hypervisors">>, fun(Current)-> [K|Current] end, [K], Res1),
-                    Warnings1 = case libchunter:ping(binary_to_list(Host), Port) of
-                                    {error,connection_failed} ->
-                                        [jsxd:from_list(
-                                           [{<<"category">>, <<"chunter">>},
-                                            {<<"element">>, K},
-                                            {<<"type">>, <<"critical">>},
-                                            {<<"message">>,
-                                             bin_fmt("Chunter server ~s down.", [K])}]) |
-                                         Warnings];
-                                    pong ->
-                                        Warnings
-                                end,
-                    case jsxd:get(<<"pools">>, H) of
-                        undefined ->
-                            {Res2, Warnings1};
-                        {ok, Pools} ->
-                            jsxd:fold(
-                              fun (Name, Pool, {ResAcc, WarningsAcc}) ->
-                                      Size = jsxd:get(<<"size">>, 0, Pool),
-                                      Used = jsxd:get(<<"used">>, 0, Pool),
-                                      ResAcc1 = jsxd:thread([{update, <<"size">>, fun(C) -> C + Size end, Size},
-                                                             {update, <<"used">>, fun(C) -> C + Used end, Used}],
-                                                            ResAcc),
-                                      case jsxd:get(<<"health">>, <<"ONLINE">>, Pool) of
-                                          <<"ONLINE">> ->
-                                              {ResAcc1, WarningsAcc};
-                                          PoolState ->
-                                              {ResAcc1,
-                                               [jsxd:from_list(
-                                                  [{<<"category">>, <<"chunter">>},
-                                                   {<<"element">>, Name},
-                                                   {<<"type">>, <<"critical">>},
-                                                   {<<"message">>,
-                                                    bin_fmt("Zpool ~s in state ~s.", [Name, PoolState])}])|
-                                                WarningsAcc]}
-                                      end
-                              end,{Res2, Warnings1}, Pools)
-                    end
-            end, {[], []}),
+    R = sniffle_db:fold(
+          State#state.db, <<"hypervisor">>,
+          fun(K, #sniffle_obj{val=S0}, {Res, Warnings}) ->
+                  H=statebox:value(S0),
+                  {ok, Host} = jsxd:get(<<"host">>, H),
+                  {ok, Port} = jsxd:get(<<"port">>, H),
+                  D = {K, jsxd:get(<<"resources">>, [], H)},
+                  Warnings1 = case libchunter:ping(binary_to_list(Host), Port) of
+                                  {error,connection_failed} ->
+                                      [jsxd:from_list(
+                                         [{<<"category">>, <<"chunter">>},
+                                          {<<"element">>, K},
+                                          {<<"type">>, <<"critical">>},
+                                          {<<"message">>,
+                                           bin_fmt("Chunter server ~s down.", [K])}]) |
+                                       Warnings];
+                                  pong ->
+                                      Warnings
+                              end,
+                  case jsxd:get(<<"pools">>, H) of
+                      undefined ->
+                          {[D | Res], Warnings1};
+                      {ok, Pools} ->
+                          jsxd:fold(
+                            fun (Name, Pool, {ResAcc, WarningsAcc}) ->
+                                    Size = jsxd:get(<<"size">>, 0, Pool),
+                                    Used = jsxd:get(<<"used">>, 0, Pool),
+                                    ResAcc1 = jsxd:thread([{update, <<"size">>,
+                                                            fun(C) -> C + Size end, Size},
+                                                           {update, <<"used">>,
+                                                            fun(C) -> C + Used end, Used}],
+                                                          ResAcc),
+                                    case jsxd:get(<<"health">>, <<"ONLINE">>, Pool) of
+                                        <<"ONLINE">> ->
+                                            {ResAcc1, WarningsAcc};
+                                        PoolState ->
+                                            {ResAcc1,
+                                             [jsxd:from_list(
+                                                [{<<"category">>, <<"chunter">>},
+                                                 {<<"element">>, Name},
+                                                 {<<"type">>, <<"critical">>},
+                                                 {<<"message">>,
+                                                  bin_fmt("Zpool ~s in state ~s.", [Name, PoolState])}])|
+                                              WarningsAcc]}
+                                    end
+                            end,{[D | Res], Warnings1}, Pools)
+                  end
+          end, {[], []}),
     {reply,
-     {ok, ReqID, {State#state.partition, State#state.node}, [Res]},
+     {ok, ReqID, {State#state.partition, State#state.node}, R},
      State};
 
 handle_coverage(_Req, _KeySpaces, _Sender, State) ->
