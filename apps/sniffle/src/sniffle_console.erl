@@ -33,7 +33,6 @@
               ringready/1
              ]).
 
-
 dtrace([C, "-j" | R]) ->
     sniffle_console_dtrace:command(json, [C | R]);
 

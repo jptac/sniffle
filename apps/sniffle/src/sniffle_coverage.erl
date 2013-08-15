@@ -46,8 +46,6 @@ init({From, ReqID, _}, {VNodeMaster, NodeCheckService, Request}) ->
     {Request, VNodeSelector, NVal, PrimaryVNodeCoverage,
      NodeCheckService, VNodeMaster, Timeout, State}.
 
-
-
 process_results({ok, _ReqID, _IdxNode, Obj},
                 State = #state{replies = Replies}) ->
     Replies1 = lists:foldl(fun (Key, D) ->
@@ -66,9 +64,9 @@ finish(clean, State = #state{replies = Replies,
                                  (Key, _Count, Keys) ->
                                       [Key | Keys]
                               end, [], Replies),
-%%    statman_histogram:record_value(
-%%      {list_to_binary(stat_name(SD0#state.vnode) ++ "/list"), total},
-%%      SD0#state.start),
+    %%    statman_histogram:record_value(
+    %%      {list_to_binary(stat_name(SD0#state.vnode) ++ "/list"), total},
+    %%      SD0#state.start),
     From ! {ok, MergedReplies},
     {stop, normal, State};
 
