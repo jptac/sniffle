@@ -7,8 +7,6 @@
 -export([
          repair/4,
          get/3,
-         list/2,
-         list/3,
          create/4,
          delete/3
         ]).
@@ -69,26 +67,6 @@ get(Preflist, ReqID, {Img, Idx}) ->
                                    {get, ReqID, {Img, Idx}},
                                    {fsm, undefined, self()},
                                    ?MASTER).
-
-%%%===================================================================
-%%% API - coverage
-%%%===================================================================
-
-list(Preflist, ReqID) ->
-    riak_core_vnode_master:coverage(
-      {list, ReqID},
-      Preflist,
-      all,
-      {fsm, undefined, self()},
-      ?MASTER).
-
-list(Preflist, ReqID, Img) ->
-    riak_core_vnode_master:coverage(
-      {list, ReqID, Img},
-      Preflist,
-      all,
-      {fsm, undefined, self()},
-      ?MASTER).
 
 %%%===================================================================
 %%% API - writes
@@ -213,7 +191,7 @@ delete(State) ->
                       end, ok),
     {ok, State}.
 
-handle_coverage({list, ReqID}, _KeySpaces, _Sender, State) ->
+handle_coverage(list, _KeySpaces, {_, ReqID, _}, State) ->
     List = bitcask:fold_keys(State#state.db,
                              fun (#bitcask_entry{key=K}, []) ->
                                      S = byte_size(K) - 4,
@@ -233,7 +211,7 @@ handle_coverage({list, ReqID}, _KeySpaces, _Sender, State) ->
      {ok, ReqID, {State#state.partition,State#state.node}, List},
      State};
 
-handle_coverage({list, ReqID, Img}, _KeySpaces, _Sender, State) ->
+handle_coverage({list, Img}, _KeySpaces, {_, ReqID, _}, State) ->
     S = byte_size(Img),
     List = bitcask:fold_keys(State#state.db,
                              fun (#bitcask_entry{key = <<Img1:S/binary, Idx:32>>}, L) when Img1 =:= Img ->

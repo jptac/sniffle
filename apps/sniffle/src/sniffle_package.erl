@@ -16,9 +16,9 @@
 -spec lookup(Package::binary()) ->
                     not_found | {ok, Pkg::fifo:object()} | {error, timeout}.
 lookup(Package) ->
-    {ok, Res} = sniffle_entity_coverage_fsm:start(
-                  {sniffle_package_vnode, sniffle_package},
-                  lookup, Package),
+    {ok, Res} = sniffle_coverage:start(
+                  sniffle_package_vnode_master, sniffle_package,
+                  {lookup, Package}),
     lists:foldl(fun (not_found, Acc) ->
                         Acc;
                     (R, _) ->
@@ -54,16 +54,16 @@ get(Package) ->
 -spec list() ->
                   {ok, [Pkg::fifo:package_id()]} | {error, timeout}.
 list() ->
-    sniffle_entity_coverage_fsm:start(
-      {sniffle_package_vnode, sniffle_package},
+    sniffle_coverage:start(
+      sniffle_package_vnode_master, sniffle_package,
       list).
 
 -spec list(Reqs::[fifo:matcher()]) ->
                   {ok, [Pkg::fifo:package_id()]} | {error, timeout}.
 list(Requirements) ->
-    {ok, Res} = sniffle_entity_coverage_fsm:start(
-                  {sniffle_package_vnode, sniffle_package},
-                  list, Requirements),
+    {ok, Res} = sniffle_coverage:start(
+                  sniffle_package_vnode, sniffle_package,
+                  {list, Requirements}),
     Res1 = rankmatcher:apply_scales(Res),
     {ok,  lists:sort(Res1)}.
 
@@ -79,7 +79,6 @@ set(Package, Attribute, Value) ->
                  ok | {error, timeout}.
 set(Package, Attributes) ->
     do_write(Package, set, Attributes).
-
 
 %%%===================================================================
 %%% Internal Functions

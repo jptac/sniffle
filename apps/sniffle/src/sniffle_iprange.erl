@@ -21,9 +21,9 @@
                     not_found | {ok, IPR::fifo:object()} | {error, timeout}.
 lookup(Name) when
       is_binary(Name) ->
-    {ok, Res} = sniffle_entity_coverage_fsm:start(
-                  {sniffle_iprange_vnode, sniffle_iprange},
-                  lookup, Name),
+    {ok, Res} = sniffle_coverage:start(
+                  sniffle_iprange_vnode_master, sniffle_iprange,
+                  {lookup, Name}),
     lists:foldl(fun (not_found, Acc) ->
                         Acc;
                     (R, _) ->
@@ -65,16 +65,16 @@ get(Iprange) ->
 -spec list() ->
                   {ok, [IPR::fifo:iprange_id()]} | {error, timeout}.
 list() ->
-    sniffle_entity_coverage_fsm:start(
-      {sniffle_iprange_vnode, sniffle_iprange},
+    sniffle_coverage:start(
+      sniffle_iprange_vnode_master, sniffle_iprange,
       list).
 
 -spec list(Reqs::[fifo:matcher()]) ->
                   {ok, [IPR::fifo:iprange_id()]} | {error, timeout}.
 list(Requirements) ->
-    {ok, Res} = sniffle_entity_coverage_fsm:start(
-                  {sniffle_iprange_vnode, sniffle_iprange},
-                  list, Requirements),
+    {ok, Res} = sniffle_coverage:start(
+                  sniffle_iprange_vnode_master, sniffle_iprange,
+                  {list, Requirements}),
     Res1 = rankmatcher:apply_scales(Res),
     {ok,  lists:sort(Res1)}.
 

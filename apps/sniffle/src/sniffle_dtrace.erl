@@ -50,18 +50,16 @@ delete(UUID) ->
 -spec list() ->
                   {ok, [UUID::fifo:dtrace_id()]} | {error, timeout}.
 list() ->
-    sniffle_entity_coverage_fsm:start(
-      {sniffle_dtrace_vnode, sniffle_dtrace},
-      list
-     ).
+    sniffle_coverage:start(
+      sniffle_dtrace_vnode_master, sniffle_dtrace,
+      list).
 
 -spec list(Reqs::[fifo:matcher()]) ->
                   {ok, [UUID::fifo:dtrace_id()]} | {error, timeout}.
 list(Requirements) ->
-    {ok, Res} = sniffle_entity_coverage_fsm:start(
-                  {sniffle_dtrace_vnode, sniffle_dtrace},
-                  list, Requirements
-                 ),
+    {ok, Res} = sniffle_coverage:start(
+                  sniffle_dtrace_vnode_master, sniffle_dtrace,
+                  {list, Requirements}),
     Res1 = rankmatcher:apply_scales(Res),
     {ok,  lists:sort(Res1)}.
 
