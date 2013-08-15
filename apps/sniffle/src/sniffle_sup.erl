@@ -57,9 +57,9 @@ init(_Args) ->
       { sniffle_entity_write_fsm_sup, start_link, []},
       permanent, infinity, supervisor, [sniffle_entity_write_fsm_sup]},
     CoverageFSMs = {
-      sniffle_entity_coverage_fsm_sup,
-      { sniffle_entity_coverage_fsm_sup, start_link, []},
-      permanent, infinity, supervisor, [sniffle_entity_coverage_fsm_sup]},
+      sniffle_coverage_sup,
+      { sniffle_coverage_sup, start_link, []},
+      permanent, infinity, supervisor, [sniffle_coverage_sup]},
     ReadFSMs = {
       sniffle_entity_read_fsm_sup,
       {sniffle_entity_read_fsm_sup, start_link, []},

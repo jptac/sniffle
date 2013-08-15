@@ -1,5 +1,5 @@
 %% @doc Supervise the rts_write FSM.
--module(sniffle_entity_coverage_fsm_sup).
+-module(sniffle_coverage_sup).
 
 -behavior(supervisor).
 

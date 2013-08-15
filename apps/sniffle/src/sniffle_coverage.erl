@@ -8,16 +8,15 @@
          init/2,
          process_results/2,
          finish/2,
-         start/3
+         start/3,
+         mk_reqid/0
         ]).
 
 -record(state, {replies, r, reqid, from}).
 
-
 start(VNodeMaster, NodeCheckService, Request) ->
-
     ReqID = mk_reqid(),
-    sniffle_entity_coverage_fsm_sup:start_coverage(
+    sniffle_coverage_sup:start_coverage(
       ?MODULE, {self(), ReqID, something_else},
       {VNodeMaster, NodeCheckService, Request}),
     receive
@@ -37,7 +36,6 @@ init({From, ReqID, _}, {VNodeMaster, NodeCheckService, Request}) ->
     {NVal, R, _W} = ?NRW(NodeCheckService),
     %% all - full coverage; allup - partial coverage
     VNodeSelector = allup,
-    %% Same as R value here, TODO: Make this dynamic
     PrimaryVNodeCoverage = R,
     %% We timeout after 5s
     Timeout = 5000,

@@ -27,7 +27,7 @@ register(Hypervisor, IP, Port) ->
     end.
 
 -spec unregister(Hypervisor::fifo:hypervisor_id()) ->
-                    not_found | {error, timeout} | ok.
+                        not_found | {error, timeout} | ok.
 unregister(Hypervisor) ->
     do_write(Hypervisor, unregister).
 
@@ -42,37 +42,30 @@ get(Hypervisor) ->
                   {ok, {Resources::fifo:object(),
                         Warnings::fifo:object()}}.
 status() ->
-    {ok, Stat} = sniffle_coverage:start(
-                   sniffle_hypervisor_vnode_master, sniffle_hypervisor,
-                   status),
-    Warnings = case riak_core_status:transfers() of
-                   {[], []} ->
-                       [];
-                   {[], L} ->
-                       jsxd:from_list(
-                         [[{<<"category">>, <<"sniffle">>},
-                           {<<"element">>, <<"handoff">>},
-                           {<<"type">>, <<"info">>},
-                           {<<"message">>, bin_fmt("~b handofs pending.", [length(L)])}]]);
-                   {S, []} ->
-                       server_errors(S);
-                   {S, L} ->
-                       [jsxd:from_list(
-                          [{<<"category">>, <<"sniffle">>},
-                           {<<"element">>, <<"handoff">>},
-                           {<<"type">>, <<"info">>},
-                           {<<"message">>, bin_fmt("~b handofs pending.", [length(L)])}]) |
-                        server_errors(S)]
-               end,
-    Stat1  = lists:foldl(fun ({R, W}, {R0, W0}) ->
-                                 R1 = jsxd:merge(fun(_K, V1, V2) when is_list(V1), is_list(V2) ->
-                                                         V1 ++ V2;
-                                                    (_K, V1, V2) when is_number(V1), is_number(V2) ->
-                                                         V1 + V2
-                                                 end, R, R0),
-                                 {R1, W ++ W0}
-                         end, {[],Warnings}, Stat),
-    {ok, Stat1}.
+    {ok, {Resources, Warnings}} = sniffle_cloud_status:start(),
+    Warnings1 = case riak_core_status:transfers() of
+                    {[], []} ->
+                        Warnings;
+                    {[], L} ->
+                        W = jsxd:from_list(
+                              [[{<<"category">>, <<"sniffle">>},
+                                {<<"element">>, <<"handoff">>},
+                                {<<"type">>, <<"info">>},
+                                {<<"message">>, bin_fmt("~b handofs pending.",
+                                                        [length(L)])}]]),
+                        [W | Warnings];
+                    {S, []} ->
+                        Warnings ++ server_errors(S);
+                    {S, L} ->
+                        W = jsxd:from_list(
+                              [{<<"category">>, <<"sniffle">>},
+                               {<<"element">>, <<"handoff">>},
+                               {<<"type">>, <<"info">>},
+                               {<<"message">>, bin_fmt("~b handofs pending.",
+                                                       [length(L)])}]),
+                        [W | Warnings ++ server_errors(S)]
+                end,
+    {ok, {Resources, Warnings1}}.
 
 -spec list() ->
                   {ok, [IPR::fifo:hypervisor_id()]} | {error, timeout}.
