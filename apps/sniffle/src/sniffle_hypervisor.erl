@@ -48,11 +48,11 @@ status() ->
                         Warnings;
                     {[], L} ->
                         W = jsxd:from_list(
-                              [[{<<"category">>, <<"sniffle">>},
-                                {<<"element">>, <<"handoff">>},
-                                {<<"type">>, <<"info">>},
-                                {<<"message">>, bin_fmt("~b handofs pending.",
-                                                        [length(L)])}]]),
+                              [{<<"category">>, <<"sniffle">>},
+                               {<<"element">>, <<"handoff">>},
+                               {<<"type">>, <<"info">>},
+                               {<<"message">>, bin_fmt("~b handofs pending.",
+                                                       [length(L)])}]),
                         [W | Warnings];
                     {S, []} ->
                         Warnings ++ server_errors(S);
