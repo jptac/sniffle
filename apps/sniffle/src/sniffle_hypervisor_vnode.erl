@@ -159,7 +159,8 @@ handle_command({set,
                            sniffle_obj:update(H3, Coordinator, O)),
             {reply, {ok, ReqID}, State};
         R ->
-            lager:error("[hypervisors] tried to write to a non existing hypervisor: ~p", [R]),
+            lager:error("[hypervisors] tried to write to a non existing hypervisor ~p, causing read repair", [R]),
+            spawn(sniffle_hypervisor, get, [Hypervisor]),
             {reply, {ok, ReqID, not_found}, State}
     end;
 
