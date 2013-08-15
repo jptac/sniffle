@@ -47,7 +47,6 @@ init({From, ReqID, _}, {VNodeMaster, NodeCheckService, Request}) ->
 process_results({ok, _ReqID, _IdxNode, {Res, Warnings}},
                 State = #state{resources = Resources,
                                warnings = Warnings0}) ->
-    io:format("Warnings: ~p~n", [Warnings]),
     Resources1 = lists:foldl(fun({H, ResIn}, Acc) ->
                                      orddict:append(H, ResIn, Acc)
                              end, Resources, Res),
@@ -62,8 +61,6 @@ finish(clean, State = #state{resources = Resources,
                              warnings = Warnings,
                              r = R,
                              from = From}) ->
-    io:format("Res: ~p~n", [Resources]),
-    io:format("Warnings: ~p~n", [Warnings]),
     Resources1 =
         orddict:fold(
           fun (H, [Res | Resr], Acc) when length(Resr) >= (R-1) ->
