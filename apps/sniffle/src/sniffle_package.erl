@@ -62,7 +62,7 @@ list() ->
                   {ok, [Pkg::fifo:package_id()]} | {error, timeout}.
 list(Requirements) ->
     {ok, Res} = sniffle_coverage:start(
-                  sniffle_package_vnode, sniffle_package,
+                  sniffle_package_vnode_master, sniffle_package,
                   {list, Requirements}),
     Res1 = rankmatcher:apply_scales(Res),
     {ok,  lists:sort(Res1)}.
