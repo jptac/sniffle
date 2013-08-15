@@ -2,6 +2,8 @@
 
 -behaviour(riak_core_coverage_fsm).
 
+-include("sniffle.hrl").
+
 -export([
          init/2,
          process_results/2,
@@ -32,11 +34,9 @@ start(VNodeMaster, NodeCheckService, Request) ->
 
 %% The first is the vnode service used
 init({From, ReqID, _}, {VNodeMaster, NodeCheckService, Request}) ->
-    R = 2,
+    {NVal, R, _W} = ?NRW(NodeCheckService),
     %% all - full coverage; allup - partial coverage
     VNodeSelector = allup,
-    %% TODO: make this dynamic!
-    NVal = 3,
     %% Same as R value here, TODO: Make this dynamic
     PrimaryVNodeCoverage = R,
     %% We timeout after 5s
