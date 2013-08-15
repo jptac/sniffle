@@ -42,8 +42,8 @@ get(Hypervisor) ->
                   {ok, {Resources::fifo:object(),
                         Warnings::fifo:object()}}.
 status() ->
-    {ok, Stat} = sniffle_entity_coverage_fsm:start(
-                   {sniffle_hypervisor_vnode, sniffle_hypervisor},
+    {ok, Stat} = sniffle_coverage:start(
+                   sniffle_hypervisor_vnode_master, sniffle_hypervisor,
                    status),
     Warnings = case riak_core_status:transfers() of
                    {[], []} ->
@@ -77,18 +77,16 @@ status() ->
 -spec list() ->
                   {ok, [IPR::fifo:hypervisor_id()]} | {error, timeout}.
 list() ->
-    sniffle_entity_coverage_fsm:start(
-      {sniffle_hypervisor_vnode, sniffle_hypervisor},
-      list
-     ).
+    sniffle_coverage:start(
+      sniffle_hypervisor_vnode_master, sniffle_hypervisor,
+      list).
 
 -spec list(Reqs::[fifo:matcher()]) ->
                   {ok, [IPR::fifo:hypervisor_id()]} | {error, timeout}.
 list(Requirements) ->
-    {ok, Res} = sniffle_entity_coverage_fsm:start(
-                  {sniffle_hypervisor_vnode, sniffle_hypervisor},
-                  list, Requirements
-                 ),
+    {ok, Res} = sniffle_coverage:start(
+                  sniffle_hypervisor_vnode_master, sniffle_hypervisor,
+                  {list, Requirements}),
     Res1 = rankmatcher:apply_scales(Res),
     {ok,  lists:sort(Res1)}.
 

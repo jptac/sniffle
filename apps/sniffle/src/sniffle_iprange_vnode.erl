@@ -6,11 +6,8 @@
 -export([
          repair/4,
          get/3,
-         list/2,
-         list/3,
          create/4,
          delete/3,
-         lookup/3,
          claim_ip/4,
          release_ip/4,
          set/4
@@ -40,13 +37,10 @@
 -ignore_xref([
               release_ip/4,
               create/4,
-              lookup/3,
               delete/3,
               get/3,
               set/4,
               claim_ip/4,
-              list/2,
-              list/3,
               repair/4,
               release_ip/4,
               start_vnode/1
@@ -76,35 +70,6 @@ get(Preflist, ReqID, Iprange) ->
                                    {get, ReqID, Iprange},
                                    {fsm, undefined, self()},
                                    ?MASTER).
-
-lookup(Preflist, ReqID, Name) ->
-    riak_core_vnode_master:coverage(
-      {lookup, ReqID, Name},
-      Preflist,
-      all,
-      {fsm, undefined, self()},
-      ?MASTER).
-
-%%%===================================================================
-%%% API - coverage
-%%%===================================================================
-
-list(Preflist, ReqID) ->
-    riak_core_vnode_master:coverage(
-      {list, ReqID},
-      Preflist,
-      all,
-      {fsm, undefined, self()},
-      ?MASTER).
-
-list(Preflist, ReqID, Requirements) ->
-    riak_core_vnode_master:coverage(
-      {list, ReqID, Requirements},
-      Preflist,
-      all,
-      {fsm, undefined, self()},
-      ?MASTER).
-
 
 %%%===================================================================
 %%% API - writes
@@ -318,7 +283,7 @@ delete(State) ->
     sniffle_db:transact(State#state.db, Trans),
     {ok, State}.
 
-handle_coverage({lookup, ReqID, Name}, _KeySpaces, _Sender, State) ->
+handle_coverage({lookup, Name}, _KeySpaces, {_, ReqID, _}, State) ->
     Res = sniffle_db:fold(State#state.db,
                           <<"iprange">>,
                           fun (_U, #sniffle_obj{val=SB}, Res) ->
@@ -334,7 +299,7 @@ handle_coverage({lookup, ReqID, Name}, _KeySpaces, _Sender, State) ->
      {ok, ReqID, {State#state.partition, State#state.node}, [Res]},
      State};
 
-handle_coverage({list, ReqID, Requirements}, _KeySpaces, _Sender, State) ->
+handle_coverage({list, Requirements}, _KeySpaces, {_, ReqID, _}, State) ->
     Getter = fun(#sniffle_obj{val=S0}, V) ->
                      jsxd:get(V, 0, statebox:value(S0))
              end,
@@ -353,7 +318,7 @@ handle_coverage({list, ReqID, Requirements}, _KeySpaces, _Sender, State) ->
      State};
 
 
-handle_coverage({list, ReqID}, _KeySpaces, _Sender, State) ->
+handle_coverage(list, _KeySpaces, {_, ReqID, _}, State) ->
     List = sniffle_db:fold(State#state.db,
                            <<"iprange">>,
                            fun (K, _, L) ->

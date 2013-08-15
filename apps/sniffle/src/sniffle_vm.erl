@@ -298,10 +298,9 @@ get(Vm) ->
 -spec list() ->
                   {error, timeout} | [fifo:uuid()].
 list() ->
-    sniffle_entity_coverage_fsm:start(
-      {sniffle_vm_vnode, sniffle_vm},
-      list
-     ).
+    sniffle_coverage:start(
+      sniffle_vm_vnode_master, sniffle_vm,
+      list).
 
 %%--------------------------------------------------------------------
 %% @doc Lists all vm's and fiters by a given matcher set.
@@ -310,10 +309,9 @@ list() ->
 -spec list([fifo:matcher()]) -> {error, timeout} | {ok, [fifo:uuid()]}.
 
 list(Requirements) ->
-    {ok, Res} = sniffle_entity_coverage_fsm:start(
-                  {sniffle_vm_vnode, sniffle_vm},
-                  list, Requirements
-                 ),
+    {ok, Res} = sniffle_coverage:start(
+                  sniffle_vm_vnode_master, sniffle_vm,
+                  {list, Requirements}),
     Res1 = rankmatcher:apply_scales(Res),
     {ok,  lists:sort(Res1)}.
 

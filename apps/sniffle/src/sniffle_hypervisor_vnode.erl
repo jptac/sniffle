@@ -6,9 +6,6 @@
 -export([
          repair/4,
          get/3,
-         status/2,
-         list/2,
-         list/3,
          register/4,
          unregister/3,
          set/4
@@ -37,9 +34,6 @@
 
 -ignore_xref([
               get/3,
-              list/2,
-              list/3,
-              status/2,
               register/4,
               repair/4,
               set/4,
@@ -71,34 +65,6 @@ get(Preflist, ReqID, Hypervisor) ->
                                    {get, ReqID, Hypervisor},
                                    {fsm, undefined, self()},
                                    ?MASTER).
-
-%%%===================================================================
-%%% API - coverage
-%%%===================================================================
-
-list(Preflist, ReqID) ->
-    riak_core_vnode_master:coverage(
-      {list, ReqID},
-      Preflist,
-      all,
-      {fsm, undefined, self()},
-      ?MASTER).
-
-status(Preflist, ReqID) ->
-    riak_core_vnode_master:coverage(
-      {status, ReqID},
-      Preflist,
-      all,
-      {fsm, undefined, self()},
-      ?MASTER).
-
-list(Preflist, ReqID, Requirements) ->
-    riak_core_vnode_master:coverage(
-      {list, ReqID, Requirements},
-      Preflist,
-      all,
-      {fsm, undefined, self()},
-      ?MASTER).
 
 %%%===================================================================
 %%% API - writes
@@ -251,7 +217,7 @@ delete(State) ->
     sniffle_db:transact(State#state.db, Trans),
     {ok, State}.
 
-handle_coverage({list, ReqID, Requirements}, _KeySpaces, _Sender, State) ->
+handle_coverage({list, Requirements}, _KeySpaces, {_, ReqID, _}, State) ->
     Getter = fun(#sniffle_obj{val=S0}, Resource) ->
                      jsxd:get(Resource, 0, statebox:value(S0))
              end,
@@ -269,7 +235,7 @@ handle_coverage({list, ReqID, Requirements}, _KeySpaces, _Sender, State) ->
      {ok, ReqID, {State#state.partition, State#state.node}, List},
      State};
 
-handle_coverage({list, ReqID}, _KeySpaces, _Sender, State) ->
+handle_coverage(list, _KeySpaces, {_, ReqID, _}, State) ->
     List = sniffle_db:fold(State#state.db,
                            <<"hypervisor">>,
                            fun (K, _, L) ->
@@ -281,7 +247,7 @@ handle_coverage({list, ReqID}, _KeySpaces, _Sender, State) ->
 
 
 
-handle_coverage({status, ReqID}, _KeySpaces, _Sender, State) ->
+handle_coverage(status, _KeySpaces, {_, ReqID, _}, State) ->
     Res = sniffle_db:fold(
             State#state.db, <<"hypervisor">>,
             fun(K, #sniffle_obj{val=S0}, {Res, Warnings}) ->
