@@ -1,6 +1,9 @@
 %% @doc Interface for sniffle-admin commands.
 -module(sniffle_console_datasets).
--export([command/2, help/0]).
+-export([command/2, help/0, read_image/4]).
+
+
+-include_lib("kernel/include/file.hrl").
 
 help() ->
     io:format("Usage~n"),
@@ -12,15 +15,23 @@ help() ->
 
 -define(CHUNK_SIZE, 1024*1024).
 
-read_image(UUID, File, Idx) ->
+read_image(UUID, File, Idx, Size) ->
     case file:read(File, 1024*1024) of
         eof ->
+            libhowl:send(UUID,
+                         [{<<"event">>, <<"progress">>},
+                          {<<"data">>, [{<<"imported">>, 1}]}]),
             sniffle_dataset:set(UUID, <<"imported">>, 1),
             ok;
         {ok, B} ->
             sniffle_img:create(UUID, Idx, binary:copy(B)),
             Idx1 = Idx + 1,
-            read_image(UUID, File, Idx1)
+            Done = (Idx1 * 1024 * 1024) / Size,
+            sniffle_dataset:set(UUID, <<"imported">>, Done),
+            libhowl:send(UUID,
+                         [{<<"event">>, <<"progress">>},
+                          {<<"data">>, [{<<"imported">>, Done}]}]),
+            read_image(UUID, File, Idx1, Size)
     end.
 
 write_image(File, _UUID, [Idx | _], 2) ->
@@ -102,9 +113,17 @@ command(text, ["import", Manifest, DataFile]) ->
             sniffle_dataset:create(UUID),
             sniffle_dataset:set(UUID, Dataset),
             sniffle_dataset:set(UUID, <<"imported">>, 0),
-            {ok, F} = file:open(DataFile, [read, raw, binary]),
-            read_image(UUID, F, 0),
-            ok
+            case file:read_file_info(DataFile) of
+                {ok, Info} ->
+                    {ok, F} = file:open(DataFile, [read, raw, binary]),
+                    spawn(?MODULE, read_image,
+                          [UUID, F, 0, Info#file_info.size]),
+                    io:format("Import backgrounded for ~p.", [UUID]),
+
+                    ok;
+                _ ->
+                    error
+            end
     end;
 
 command(text, ["delete", ID]) ->
@@ -140,10 +159,11 @@ command(text, ["get", ID]) ->
 command(json, ["list"]) ->
     case sniffle_dataset:list() of
         {ok, Hs} ->
-            sniffle_console:pp_json(lists:map(fun (ID) ->
-                                                      {ok, H} = sniffle_dataset:get(ID),
-                                                      H
-                                              end, Hs)),
+            sniffle_console:pp_json(
+              lists:map(fun (ID) ->
+                                {ok, H} = sniffle_dataset:get(ID),
+                                H
+                        end, Hs)),
             ok;
         _ ->
             sniffle_console:pp_json([]),
@@ -167,13 +187,24 @@ command(_, C) ->
     error.
 
 header() ->
-    io:format("UUID                                 OS      Name            Version  Desc~n"),
-    io:format("------------------------------------ ------- --------------- -------- --------------~n", []).
+    io:format("UUID                                 "
+              "OS      "
+              "Name            "
+              "Version  "
+              "Imported "
+              "Desc~n"),
+    io:format("------------------------------------ "
+              "------- "
+              "--------------- "
+              "-------- "
+              "-------- "
+              "--------------~n", []).
 
 print(D) ->
-    io:format("~36s ~7s ~15s ~8s ~s~n",
+    io:format("~36s ~7s ~15s ~8s ~7p% ~s~n",
               [jsxd:get(<<"dataset">>, <<"-">>, D),
                jsxd:get(<<"os">>, <<"-">>, D),
                jsxd:get(<<"name">>, <<"-">>, D),
                jsxd:get(<<"version">>, <<"-">>, D),
+               jsxd:get(<<"imported">>, 1, D) * 100,
                jsxd:get(<<"description">>, <<"-">>, D)]).
