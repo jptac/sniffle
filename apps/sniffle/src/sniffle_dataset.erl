@@ -166,16 +166,19 @@ read_image(UUID, _TotalSize, done, Acc, Idx) ->
 read_image(UUID, TotalSize, Client, Acc, Idx) ->
     case hackney:stream_body(Client) of
         {ok, Data, Client1} ->
-            read_image(UUID, TotalSize, Client1, binary:copy(<<Acc/binary, Data/binary>>), Idx);
+            read_image(UUID, TotalSize, Client1,
+                       binary:copy(<<Acc/binary, Data/binary>>), Idx);
         {done, Client2} ->
             hackney:close(Client2),
             read_image(UUID, TotalSize, done, Acc, Idx);
         {error, Reason} ->
             libhowl:send(UUID,
-                         [{<<"event">>, <<"error">>}, {<<"data">>, [{<<"message">>, <<"failed">>},
-                                                                    {<<"index">>, Idx}]}]),
+                         [{<<"event">>, <<"error">>},
+                          {<<"data">>, [{<<"message">>, <<"failed">>},
+                                        {<<"index">>, Idx}]}]),
             libhowl:send(UUID,
-                         [{<<"event">>, <<"progress">>}, {<<"data">>, [{<<"imported">>, 0}]}]),
+                         [{<<"event">>, <<"progress">>},
+                          {<<"data">>, [{<<"imported">>, 0}]}]),
             lager:error("Error importing image ~s: ~p", [UUID, Reason])
     end.
 
