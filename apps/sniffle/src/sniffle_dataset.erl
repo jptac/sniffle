@@ -92,18 +92,13 @@ import(URL) ->
             {error, E}
     end.
 
-
 %%%===================================================================
 %%% Internal Functions
 %%%===================================================================
 
 transform_dataset(D1) ->
-    case jsxd:get([<<"urn">>], D1) of
+    case jsxd:get([<<"sniffle_version">>], D1) of
         undefined ->
-            jsxd:set(<<"image_size">>,
-                     ensure_integer(jsxd:get(<<"image_size">>, 0, D1)),
-                     D1);
-        _ ->
             {ok, ID} = jsxd:get(<<"uuid">>, D1),
             D2 = jsxd:thread(
                    [{select,[<<"os">>, <<"metadata">>, <<"name">>,
@@ -120,7 +115,11 @@ transform_dataset(D1) ->
                     jsxd:set(<<"type">>, <<"zone">>, D2);
                 {ok, _} ->
                     jsxd:set(<<"type">>, <<"kvm">>, D2)
-            end
+            end;
+        _ ->
+            jsxd:set(<<"image_size">>,
+                     ensure_integer(jsxd:get(<<"image_size">>, 0, D1)),
+                     D1)
     end.
 
 ensure_integer(I) when is_integer(I) ->
@@ -181,8 +180,6 @@ read_image(UUID, TotalSize, Client, Acc, Idx) ->
                           {<<"data">>, [{<<"imported">>, 0}]}]),
             lager:error("Error importing image ~s: ~p", [UUID, Reason])
     end.
-
-
 
 http_opts() ->
     case os:getenv("https_proxy") of

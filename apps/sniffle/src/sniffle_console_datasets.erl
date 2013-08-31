@@ -59,6 +59,7 @@ write_image(File, UUID, [Idx | R], Retries) ->
 
 ensure_integer(I) when is_integer(I) ->
     I;
+
 ensure_integer(L) when is_list(L) ->
     list_to_integer(L);
 ensure_integer(B) when is_binary(B) ->
@@ -73,10 +74,14 @@ command(text, ["export", UUIDS, Path]) ->
         _ ->
             case sniffle_dataset:get(UUID) of
                 {ok, Obj} ->
-                    Obj1 = jsxd:set(<<"image_size">>,
+                    Obj0 = jsxd:set(<<"image_size">>,
                                     ensure_integer(
                                       jsxd:get(<<"image_size">>, 0, Obj)),
                                     Obj),
+                    Obj1 = jsxd:set(<<"sniffle_version">>,
+                                    ensure_integer(
+                                      jsxd:get(<<"image_size">>, 0, Obj)),
+                                    Obj0),
                     case file:write_file([Path, "/", UUIDS, ".json"],
                                          jsx:encode(Obj1)) of
                         ok ->
@@ -90,7 +95,7 @@ command(text, ["export", UUIDS, Path]) ->
                                       "permissions to write to ~p.",
                                       [Path, Path]),
                             error
-                    end;
+                   end;
                 _ ->
                     io:format("Dataset '~s' could not be found.", [UUID]),
                     error
@@ -192,13 +197,13 @@ header() ->
               "Name            "
               "Version  "
               "Imported "
-              "Desc~n"),
-    io:format("------------------------------------ "
+              "Desc~n"
+              "------------------------------------ "
               "------- "
               "--------------- "
               "-------- "
               "-------- "
-              "--------------~n", []).
+              "--------------~n").
 
 print(D) ->
     io:format("~36s ~7s ~15s ~8s ~7p% ~s~n",
