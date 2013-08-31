@@ -4,6 +4,7 @@
 
 
 -include_lib("kernel/include/file.hrl").
+-include("sniffle_version.hrl").
 
 help() ->
     io:format("Usage~n"),
@@ -78,10 +79,7 @@ command(text, ["export", UUIDS, Path]) ->
                                     ensure_integer(
                                       jsxd:get(<<"image_size">>, 0, Obj)),
                                     Obj),
-                    Obj1 = jsxd:set(<<"sniffle_version">>,
-                                    ensure_integer(
-                                      jsxd:get(<<"image_size">>, 0, Obj)),
-                                    Obj0),
+                    Obj1 = jsxd:set(<<"sniffle_version">>, ?VERSION, Obj0),
                     case file:write_file([Path, "/", UUIDS, ".json"],
                                          jsx:encode(Obj1)) of
                         ok ->
