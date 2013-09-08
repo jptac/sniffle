@@ -23,6 +23,7 @@ read_image(UUID, File, Idx, Size) ->
                          [{<<"event">>, <<"progress">>},
                           {<<"data">>, [{<<"imported">>, 1}]}]),
             sniffle_dataset:set(UUID, <<"imported">>, 1),
+            lager:debug("[IMG:~p(~p)] import done to ~p%", [UUID, Idx+1, 100]),
             ok;
         {ok, B} ->
             sniffle_img:create(UUID, Idx, binary:copy(B)),
@@ -32,6 +33,7 @@ read_image(UUID, File, Idx, Size) ->
             libhowl:send(UUID,
                          [{<<"event">>, <<"progress">>},
                           {<<"data">>, [{<<"imported">>, Done}]}]),
+            lager:debug("[IMG:~p(~p)] import done to ~p%", [UUID, Idx, Done*100]),
             read_image(UUID, File, Idx1, Size)
     end.
 
@@ -93,7 +95,7 @@ command(text, ["export", UUIDS, Path]) ->
                                       "permissions to write to ~p.",
                                       [Path, Path]),
                             error
-                   end;
+                    end;
                 _ ->
                     io:format("Dataset '~s' could not be found.", [UUID]),
                     error
