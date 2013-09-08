@@ -34,7 +34,9 @@ read_image(UUID, File, Idx, Size) ->
                          [{<<"event">>, <<"progress">>},
                           {<<"data">>, [{<<"imported">>, Done}]}]),
             lager:debug("[IMG:~p(~p)] import done to ~p%", [UUID, Idx, Done*100]),
-            read_image(UUID, File, Idx1, Size)
+            read_image(UUID, File, Idx1, Size);
+        E ->
+            lager:debug("[IMG:~p(~p)] Error ~p", [UUID, Idx, E])
     end.
 
 write_image(File, _UUID, [Idx | _], 2) ->
