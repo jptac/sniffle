@@ -123,9 +123,9 @@ command(text, ["import", Manifest, DataFile]) ->
             case file:read_file_info(DataFile) of
                 {ok, Info} ->
                     {ok, F} = file:open(DataFile, [read, raw, binary]),
-                    spawn(?MODULE, read_image,
-                          [UUID, F, 0, Info#file_info.size]),
-                    io:format("Import backgrounded for ~p.", [UUID]),
+                    PID = spawn(?MODULE, read_image,
+                                [UUID, F, 0, Info#file_info.size]),
+                    io:format("Import backgrounded for ~p: ~p.", [UUID, PID]),
 
                     ok;
                 _ ->
