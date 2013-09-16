@@ -38,20 +38,20 @@ case $2 in
             echo Service already existings ...
         else
             echo Importing service ...
-            svccfg import /opt/local/sniffle/share/sniffle.xml
+            svccfg import /opt/local/fifo-sniffle/share/sniffle.xml
         fi
         echo Trying to guess configuration ...
         IP=`ifconfig net0 | grep inet | awk -e '{print $2}'`
-        if [ ! -f /opt/local/sniffle/etc/vm.args ]
+        if [ ! -f /opt/local/fifo-sniffle/etc/vm.args ]
         then
-            cp /opt/local/sniffle/etc/vm.args.example /opt/local/sniffle/etc/vm.args
-            sed --in-place -e "s/127.0.0.1/${IP}/g" /opt/local/sniffle/etc/vm.args
+            cp /opt/local/fifo-sniffle/etc/vm.args.example /opt/local/fifo-sniffle/etc/vm.args
+            sed --in-place -e "s/127.0.0.1/${IP}/g" /opt/local/fifo-sniffle/etc/vm.args
         fi
-        if [ ! -f /opt/local/sniffle/etc/app.config ]
+        if [ ! -f /opt/local/fifo-sniffle/etc/app.config ]
         then
-            cp /opt/local/sniffle/etc/app.config.example /opt/local/sniffle/etc/app.config
-            sed --in-place -e "s/127.0.0.1/${IP}/g" /opt/local/sniffle/etc/app.config
+            cp /opt/local/fifo-sniffle/etc/app.config.example /opt/local/fifo-sniffle/etc/app.config
+            sed --in-place -e "s/127.0.0.1/${IP}/g" /opt/local/fifo-sniffle/etc/app.config
         fi
-        cp /opt/local/sniffle/bin/fifoadm /opt/local/sbin
+        cp /opt/local/fifo-sniffle/bin/fifoadm /opt/local/sbin
         ;;
 esac

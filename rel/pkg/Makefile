@@ -1,5 +1,5 @@
 VERSION=0.4.2
-COMPONENT=sniffle
+COMPONENT=fifo-sniffle
 
 .PHONY: build_info package package_list
 

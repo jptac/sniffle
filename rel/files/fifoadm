@@ -11,22 +11,22 @@ case $1 in
         fi
         ;;
     vms|hypervisors|packages|datasets|ipranges|networks|dtrace)
-        if [ -f /opt/local/sniffle/bin/sniffle-admin ]
+        if [ -f /opt/local/fifo-sniffle/bin/sniffle-admin ]
         then
             if [ "$2" == "export" ]
             then
-                /opt/local/sniffle/bin/sniffle-admin $1 $2 $3 "$( readlink -f "$( dirname "$4" )" )/$( basename "$4")"
+                /opt/local/fifo-sniffle/bin/sniffle-admin $1 $2 $3 "$( readlink -f "$( dirname "$4" )" )/$( basename "$4")"
             else
                 if [ "$2" == "import" ]
                 then
                     if [ "$4" == "" ]
                     then
-                        /opt/local/sniffle/bin/sniffle-admin $1 $2 "$( readlink -f "$( dirname "$3" )" )/$( basename "$3")"
+                        /opt/local/fifo-sniffle/bin/sniffle-admin $1 $2 "$( readlink -f "$( dirname "$3" )" )/$( basename "$3")"
                     else
-                        /opt/local/sniffle/bin/sniffle-admin $1 $2 "$( readlink -f "$( dirname "$3" )" )/$( basename "$3")" "$( readlink -f "$( dirname "$4" )" )/$( basename "$4")"
+                        /opt/local/fifo-sniffle/bin/sniffle-admin $1 $2 "$( readlink -f "$( dirname "$3" )" )/$( basename "$3")" "$( readlink -f "$( dirname "$4" )" )/$( basename "$4")"
                     fi
                 else
-                    /opt/local/sniffle/bin/sniffle-admin $@
+                    /opt/local/fifo-sniffle/bin/sniffle-admin $@
                 fi
             fi
         else
