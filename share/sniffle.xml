@@ -44,7 +44,7 @@ Copyright 2012 Project FiFo / Heinz N. Gies
     <exec_method
         type='method'
         name='start'
-        exec='/opt/local/sniffle/bin/sniffle %m'
+        exec='/opt/local/fifo-sniffle/bin/sniffle %m'
         timeout_seconds='30'>
       <method_context>
         <method_credential user='sniffle' group='sniffle' />
@@ -59,7 +59,7 @@ Copyright 2012 Project FiFo / Heinz N. Gies
     <exec_method
         name='restart'
         type='method'
-        exec='/opt/local/sniffle/bin/sniffle %m'
+        exec='/opt/local/fifo-sniffle/bin/sniffle %m'
         timeout_seconds='120'>
       <method_context>
         <method_credential user='sniffle' group='sniffle' />
@@ -74,7 +74,7 @@ Copyright 2012 Project FiFo / Heinz N. Gies
     <exec_method
         name='stop'
         type='method'
-        exec='/opt/local/sniffle/bin/sniffle %m'
+        exec='/opt/local/fifo-sniffle/bin/sniffle %m'
         timeout_seconds='120'>
       <method_context>
         <method_credential user='sniffle' group='sniffle' />
