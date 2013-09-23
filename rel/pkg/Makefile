@@ -6,7 +6,7 @@ COMPONENT=fifo-sniffle
 
 package_list:
 	cat pre_pkg > packlist
-	(cd ../$(COMPONENT); find * -type f | sort) >> packlist
+	(cd ../$(COMPONENT_INTERNAL); find * -type f | sort) >> packlist
 	cat post_pkg >> packlist
 
 build_info:
