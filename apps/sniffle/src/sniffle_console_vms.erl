@@ -214,7 +214,7 @@ hdr_lines(F) ->
     hdr_lines(lists:reverse(F), {[], []}).
 
 
-hdr_lines([{S, _}|R], {Fmt, Vars}) ->
+hdr_lines([{_, S}|R], {Fmt, Vars}) ->
     hdr_lines(R, {[$~, integer_to_list(S), $c | Fmt], [$- | Vars]});
 
 hdr_lines([], {Fmt, Vars}) ->
@@ -224,11 +224,11 @@ hdr_lines([], {Fmt, Vars}) ->
 fields(F) ->
     fields(lists:reverse(F), {[], []}).
 
-fields([{S, V}|R], {Fmt, Vars}) when is_list(V)
+fields([{V, S}|R], {Fmt, Vars}) when is_list(V)
                                      orelse is_binary(V) ->
     hdr_lines(R, {[$~, integer_to_list(S), "s " | Fmt], [V | Vars]});
 
-fields([{S, V}|R], {Fmt, Vars}) ->
+fields([{V, S}|R], {Fmt, Vars}) ->
     fields(R, {[$~, integer_to_list(S), "p " | Fmt], [V | Vars]});
 
 fields([], {Fmt, Vars}) ->
