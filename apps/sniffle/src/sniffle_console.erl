@@ -14,8 +14,10 @@
          pp_json/1,
          staged_join/1,
          reip/1,
-         ringready/1]
-       ).
+         ringready/1,
+         hdr/1,
+         fields/2
+        ]).
 
 -ignore_xref([
               join/1,
@@ -255,3 +257,38 @@ ringready([]) ->
 
 pp_json(Obj) ->
     io:format("~s~n", [jsx:prettify(jsx:encode(Obj))]).
+
+hdr(F) ->
+    hdr_lines(lists:reverse(F), {"~n", [], "~n", []}).
+
+
+hdr_lines([{N, S}|R], {Fmt, Vars, FmtLs, VarLs}) ->
+    %% there is a space that matters here ---------v
+    hdr_lines(R, {
+                [$~ | integer_to_list(S) ++ [$s, $\  | Fmt]],
+                [N | Vars],
+                [$~ | integer_to_list(S) ++ [$c, $\  | FmtLs]],
+                [$- | VarLs]});
+
+hdr_lines([], {Fmt, Vars, FmtL, VarLs}) ->
+    io:format(Fmt, Vars),
+    io:format(FmtL, VarLs).
+
+
+fields(F, Vs) ->
+    fields(lists:reverse(F),
+           lists:reverse(Vs),
+           {"~n", []}).
+
+fields([{_, S}|R], [V | Vs], {Fmt, Vars}) when is_list(V)
+                                     orelse is_binary(V) ->
+    %% there is a space that matters here ------------v
+    fields(R, Vs, {[$~ | integer_to_list(S) ++ [$s, $\  | Fmt]], [V | Vars]});
+
+
+fields([{V, S}|R], [V | Vs], {Fmt, Vars}) ->
+    %% there is a space that matters here ------------v
+    fields(R, Vs, {[$~ | integer_to_list(S) ++ [$p, $\  | Fmt]], [V | Vars]});
+
+fields([], [], {Fmt, Vars}) ->
+    io:format(Fmt, Vars).

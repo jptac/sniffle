@@ -2,6 +2,9 @@
 -module(sniffle_console_vms).
 -export([command/2, help/0]).
 
+-define(F(Hs, Vs), sniffle_console:fields(Hs,Vs)).
+-define(H(Hs), sniffle_console:hdr(Hs)).
+
 help() ->
     fmt("Usage~n"
         "  list [-j]~n"
@@ -180,17 +183,17 @@ command(text, ["list"]) ->
          {"Hypervisor", 17},
          {"Name", 15},
          {"State", 10}],
-    fields(H),
-    hdr_lines(H),
+    ?H(H),
     case sniffle_vm:list() of
         {ok, VMs} ->
             lists:map(
               fun (UUID) ->
                       {ok, VM} = sniffle_vm:get(UUID),
-                      fields([{UUID, 36},
-                              {jsxd:get(<<"hypervisor">>, <<"-">>, VM), 17},
-                              {jsxd:get(<<"config.alias">>, <<"-">>, VM), 15},
-                              {jsxd:get(<<"state">>, <<"-">>, VM), 10}])
+                      ?F(H,
+                         [UUID,
+                          jsxd:get(<<"hypervisor">>, <<"-">>, VM),
+                          jsxd:get(<<"config.alias">>, <<"-">>, VM),
+                          jsxd:get(<<"state">>, <<"-">>, VM)])
               end, VMs);
         _ ->
             []
@@ -210,29 +213,4 @@ join([ Head | Rest], Sep) ->
 fmt(S) ->
     io:format(S).
 
-hdr_lines(F) ->
-    hdr_lines(lists:reverse(F), {"~n", []}).
 
-
-hdr_lines([{_, S}|R], {Fmt, Vars}) ->
-    %% there is a space that matters here ------------v
-    hdr_lines(R, {[$~ | integer_to_list(S) ++  [$c, $\  | Fmt]], [$- | Vars]});
-
-hdr_lines([], {Fmt, Vars}) ->
-    io:format(Fmt, Vars).
-
-fields(F) ->
-    fields(lists:reverse(F), {"~n", []}).
-
-fields([{V, S}|R], {Fmt, Vars}) when is_list(V)
-                                     orelse is_binary(V) ->
-    %% there is a space that matters here --------v
-    fields(R, {[$~ | integer_to_list(S) ++ [$s, $\  | Fmt]], [V | Vars]});
-
-
-fields([{V, S}|R], {Fmt, Vars}) ->
-    %% there is a space that matters here --------v
-    fields(R, {[$~ | integer_to_list(S) ++ [$p, $\  | Fmt]], [V | Vars]});
-
-fields([], {Fmt, Vars}) ->
-    io:format(Fmt, Vars).
