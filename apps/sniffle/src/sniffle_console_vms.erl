@@ -220,16 +220,15 @@ hdr_lines([{_, S}|R], {Fmt, Vars}) ->
 hdr_lines([], {Fmt, Vars}) ->
     io:format(Fmt, Vars).
 
-
 fields(F) ->
     fields(lists:reverse(F), {[], []}).
 
 fields([{V, S}|R], {Fmt, Vars}) when is_list(V)
                                      orelse is_binary(V) ->
-    fields(R, {[$~, integer_to_list(S), "s " | Fmt], [V | Vars]});
+    fields(R, {[$~, integer_to_list(S), $s, $\ | Fmt], [V | Vars]}); % there is a space here.
 
 fields([{V, S}|R], {Fmt, Vars}) ->
-    fields(R, {[$~, integer_to_list(S), "p " | Fmt], [V | Vars]});
+    fields(R, {[$~, integer_to_list(S), $s, $\ | Fmt], [V | Vars]}); % there is a space here.
 
 fields([], {Fmt, Vars}) ->
     io:format(Fmt, Vars).
