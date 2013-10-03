@@ -226,7 +226,7 @@ fields(F) ->
 
 fields([{V, S}|R], {Fmt, Vars}) when is_list(V)
                                      orelse is_binary(V) ->
-    hdr_lines(R, {[$~, integer_to_list(S), "s " | Fmt], [V | Vars]});
+    fields(R, {[$~, integer_to_list(S), "s " | Fmt], [V | Vars]});
 
 fields([{V, S}|R], {Fmt, Vars}) ->
     fields(R, {[$~, integer_to_list(S), "p " | Fmt], [V | Vars]});
