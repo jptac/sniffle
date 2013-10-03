@@ -29,8 +29,19 @@ command(json, ["get", UUID]) ->
     end;
 
 command(text, ["get", ID]) ->
-    io:format("Hypervisor         IP               Memory             Version       State~n"),
-    io:format("------------------ ---------------- ------------------ ------------- -------------~n", []),
+    io:format(
+      "Hypervisor         "
+      "UUID                                 "
+      "IP               "
+      "Memory             "
+      "Version       "
+      "State~n"),
+    io:format("------------------ "
+              "------------------------------------ "
+              "---------------- "
+              "------------------ "
+              "------------- "
+              "-------------~n", []),
     case sniffle_hypervisor:get(list_to_binary(ID)) of
         {ok, H} ->
             print(H),
@@ -53,8 +64,18 @@ command(json, ["list"]) ->
     end;
 
 command(text, ["list"]) ->
-    io:format("Hypervisor         IP               Memory             State         Version~n"),
-    io:format("------------------ ---------------- ------------------ ------------- -------------~n", []),
+    io:format("Hypervisor         "
+              "UUID                                 "
+              "IP               "
+              "Memory             "
+              "State         "
+              "Version~n"),
+    io:format("------------------ "
+              "------------------------------------ "
+              "---------------- "
+              "------------------ "
+              "------------- "
+              "-------------~n", []),
     case sniffle_hypervisor:list() of
         {ok, Hs} ->
             lists:map(fun (ID) ->
@@ -71,6 +92,7 @@ command(_, C) ->
 
 
 print(H) ->
+    {ok, Alias} = jsxd:get(<<"alias">>, H),
     {ok, ID} = jsxd:get(<<"uuid">>, H),
     {ok, Host} = jsxd:get(<<"host">>, H),
     {ok, Port} = jsxd:get(<<"port">>, H),
@@ -83,6 +105,6 @@ print(H) ->
     Mem = io_lib:format("~p/~p",
                         [jsxd:get(<<"resources.provisioned-memory">>, 0, H),
                          jsxd:get(<<"resources.total-memory">>, 0, H)]),
-    io:format("~-18s ~16s ~18s ~-13s ~s~n",
-              [ID, Host, Mem, State,
+    io:format("~-18s ~36s ~16s ~18s ~-13s ~s~n",
+              [Alias, ID, Host, Mem, State,
                jsxd:get(<<"version">>, <<"-">>, H)]).
