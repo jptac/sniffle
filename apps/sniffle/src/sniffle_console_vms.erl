@@ -225,10 +225,13 @@ fields(F) ->
 
 fields([{V, S}|R], {Fmt, Vars}) when is_list(V)
                                      orelse is_binary(V) ->
-    fields(R, {[$~, integer_to_list(S), $s, $\ | Fmt], [V | Vars]}); % there is a space here.
+    %% there is a space that matters here --------v
+    fields(R, {[$~ | integer_to_list(S) ++ [$s, $\ | Fmt]], [V | Vars]});
+
 
 fields([{V, S}|R], {Fmt, Vars}) ->
-    fields(R, {[$~, integer_to_list(S), $s, $\ | Fmt], [V | Vars]}); % there is a space here.
+    %% there is a space that matters here --------v
+    fields(R, {[$~ | integer_to_list(S) ++ [$p, $\ | Fmt]], [V | Vars]});
 
 fields([], {Fmt, Vars}) ->
     io:format(Fmt, Vars).
