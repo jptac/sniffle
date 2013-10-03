@@ -127,7 +127,7 @@ handle_command({get, ReqID, Hypervisor}, _Sender, State) ->
 
 handle_command({register, {ReqID, Coordinator}, Hypervisor, [Ip, Port]}, _Sender, State) ->
     H0 = statebox:new(fun sniffle_hypervisor_state:new/0),
-    H1 = statebox:modify({fun sniffle_hypervisor_state:name/2, [Hypervisor]}, H0),
+    H1 = statebox:modify({fun sniffle_hypervisor_state:uuid/2, [Hypervisor]}, H0),
     H2 = statebox:modify({fun sniffle_hypervisor_state:host/2, [Ip]}, H1),
     H3 = statebox:modify({fun sniffle_hypervisor_state:port/2, [Port]}, H2),
 
