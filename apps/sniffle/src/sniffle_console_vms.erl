@@ -211,7 +211,7 @@ fmt(S) ->
     io:format(S).
 
 hdr_lines(F) ->
-    hdr_lines(lists:reverse(F), {[], []}).
+    hdr_lines(lists:reverse(F), {"~n", []}).
 
 
 hdr_lines([{_, S}|R], {Fmt, Vars}) ->
@@ -222,7 +222,7 @@ hdr_lines([], {Fmt, Vars}) ->
     io:format(Fmt, Vars).
 
 fields(F) ->
-    fields(lists:reverse(F), {[], []}).
+    fields(lists:reverse(F), {"~n", []}).
 
 fields([{V, S}|R], {Fmt, Vars}) when is_list(V)
                                      orelse is_binary(V) ->
