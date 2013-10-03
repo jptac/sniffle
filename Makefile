@@ -27,7 +27,7 @@ test: xref
 	$(REBAR) skip_deps=true eunit
 
 rel: all zabbix
-	rm -r rel/sniffle/share
+	-rm -r rel/sniffle/share
 	$(REBAR) generate
 
 relclean:

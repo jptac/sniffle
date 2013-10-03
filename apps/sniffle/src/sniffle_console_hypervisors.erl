@@ -71,7 +71,7 @@ command(_, C) ->
 
 
 print(H) ->
-    {ok, ID} = jsxd:get(<<"name">>, H),
+    {ok, ID} = jsxd:get(<<"uuid">>, H),
     {ok, Host} = jsxd:get(<<"host">>, H),
     {ok, Port} = jsxd:get(<<"port">>, H),
     State = case libchunter:ping(binary_to_list(Host), Port) of
