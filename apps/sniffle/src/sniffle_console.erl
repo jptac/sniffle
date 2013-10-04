@@ -267,7 +267,7 @@ hdr_lines([{N, n} | R], {Fmt, Vars, FmtLs, VarLs}) ->
     hdr_lines(R, {
                 "~20s " ++ Fmt,
                 [N | Vars],
-                "~20s " ++ FmtLs,
+                "~20c " ++ FmtLs,
                 [$- | VarLs]});
 
 hdr_lines([{N, S}|R], {Fmt, Vars, FmtLs, VarLs}) ->
