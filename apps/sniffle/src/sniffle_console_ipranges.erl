@@ -2,6 +2,12 @@
 -module(sniffle_console_ipranges).
 -export([command/2, help/0]).
 
+-define(F(Hs, Vs), sniffle_console:fields(Hs,Vs)).
+-define(H(Hs), sniffle_console:hdr(Hs)).
+-define(Hdr, [{"UUID", 18}, {"Name", 10}, {"Tag", 8}, {"First", 15},
+              {"Next", 15}, {"Last", 15}, {"Netmask", 15}, {"Gatewau", 15},
+              {"Vlan", 4}]).
+
 help() ->
     io:format("Usage~n"
               "  list~n"
@@ -21,12 +27,7 @@ command(text, ["delete", UUID]) ->
     end;
 
 command(text, ["get", ID]) ->
-    io:format("UUID                                 Name       Tag      "
-              "First           Next            Last            "
-              "Netmask         Gateway         Vlan~n"),
-    io:format("------------------------------------ ---------- -------- "
-              "--------------- --------------- --------------- "
-              "--------------- --------------- ----~n"),
+    ?H(?Hdr),
     case sniffle_iprange:get(list_to_binary(ID)) of
         {ok, N} ->
             print(N),
@@ -36,12 +37,7 @@ command(text, ["get", ID]) ->
     end;
 
 command(text, ["list"]) ->
-    io:format("UUID                                 Name       Tag      "
-              "First           Next            Last            "
-              "Netmask         Gateway         Vlan~n"),
-    io:format("------------------------------------ ---------- -------- "
-              "--------------- --------------- --------------- "
-              "--------------- --------------- ----~n"),
+    ?H(?Hdr),
     case sniffle_iprange:list() of
         {ok, Hs} ->
             lists:map(fun (ID) ->
@@ -95,7 +91,6 @@ command(_, C) ->
     io:format("Unknown parameters: ~p~n", [C]),
     error.
 
-
 get_ip(ID) ->
     case sniffle_iprange:claim_ip(list_to_binary(ID)) of
         {ok, {Tag, IP, Netmask, Gateway}} ->
@@ -108,15 +103,12 @@ get_ip(ID) ->
     end.
 
 print(N) ->
-    io:format("~-36s ~10s ~8s "
-              "~15s ~15s ~15s "
-              "~15s ~15s ~-4b ~n",
-              [jsxd:get(<<"uuid">>, <<"-">>, N),
-               jsxd:get(<<"name">>, <<"-">>, N),
-               jsxd:get(<<"tag">>, <<"-">>, N),
-               sniffle_iprange_state:to_bin(jsxd:get(<<"first">>, 0, N)),
-               sniffle_iprange_state:to_bin(jsxd:get(<<"current">>, 0, N)),
-               sniffle_iprange_state:to_bin(jsxd:get(<<"last">>, 0, N)),
-               sniffle_iprange_state:to_bin(jsxd:get(<<"netmask">>, 0, N)),
-               sniffle_iprange_state:to_bin(jsxd:get(<<"gateway">>, 0, N)),
-               jsxd:get(<<"vlan">>, 0, N)]).
+    ?F(?Hdr, [jsxd:get(<<"uuid">>, <<"-">>, N),
+              jsxd:get(<<"name">>, <<"-">>, N),
+              jsxd:get(<<"tag">>, <<"-">>, N),
+              sniffle_iprange_state:to_bin(jsxd:get(<<"first">>, 0, N)),
+              sniffle_iprange_state:to_bin(jsxd:get(<<"current">>, 0, N)),
+              sniffle_iprange_state:to_bin(jsxd:get(<<"last">>, 0, N)),
+              sniffle_iprange_state:to_bin(jsxd:get(<<"netmask">>, 0, N)),
+              sniffle_iprange_state:to_bin(jsxd:get(<<"gateway">>, 0, N)),
+              jsxd:get(<<"vlan">>, 0, N)]).

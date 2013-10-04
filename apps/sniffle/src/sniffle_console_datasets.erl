@@ -6,13 +6,18 @@
 -include_lib("kernel/include/file.hrl").
 -include("sniffle_version.hrl").
 
+-define(F(Hs, Vs), sniffle_console:fields(Hs,Vs)).
+-define(H(Hs), sniffle_console:hdr(Hs)).
+-define(Hdr, [{"UUID", 36}, {"OS", 7}, {"Name", 15}, {"Version", 8},
+              {"Imported", 7}, {"Desc", n}]).
+
 help() ->
-    io:format("Usage~n"),
-    io:format("  list [-j]~n"),
-    io:format("  get [-j] <uuid>~n"),
-    io:format("  import <manifest> <data file>~n"),
-    io:format("  export <uuid> <directory>~n"),
-    io:format("  delete <uuid>~n").
+    io:format("Usage~n"
+              "  list [-j]~n"
+              "  get [-j] <uuid>~n"
+              "  import <manifest> <data file>~n"
+              "  export <uuid> <directory>~n"
+              "  delete <uuid>~n").
 
 -define(CHUNK_SIZE, 1024*1024).
 
@@ -154,7 +159,7 @@ command(json, ["get", UUID]) ->
     end;
 
 command(text, ["get", ID]) ->
-    header(),
+    ?H(?Hdr),
     case sniffle_dataset:get(list_to_binary(ID)) of
         {ok, D} ->
             print(D),
@@ -178,7 +183,7 @@ command(json, ["list"]) ->
     end;
 
 command(text, ["list"]) ->
-    header(),
+    ?H(?Hdr),
     case sniffle_dataset:list() of
         {ok, Ds} ->
             lists:map(fun (ID) ->
@@ -193,25 +198,10 @@ command(_, C) ->
     io:format("Unknown parameters: ~p", [C]),
     error.
 
-header() ->
-    io:format("UUID                                 "
-              "OS      "
-              "Name            "
-              "Version  "
-              "Imported "
-              "Desc~n"
-              "------------------------------------ "
-              "------- "
-              "--------------- "
-              "-------- "
-              "-------- "
-              "--------------~n").
-
 print(D) ->
-    io:format("~36s ~7s ~15s ~8s ~7p% ~s~n",
-              [jsxd:get(<<"dataset">>, <<"-">>, D),
-               jsxd:get(<<"os">>, <<"-">>, D),
-               jsxd:get(<<"name">>, <<"-">>, D),
-               jsxd:get(<<"version">>, <<"-">>, D),
-               jsxd:get(<<"imported">>, 1, D) * 100,
-               jsxd:get(<<"description">>, <<"-">>, D)]).
+    ?F(?Hdr, [jsxd:get(<<"dataset">>, <<"-">>, D),
+              jsxd:get(<<"os">>, <<"-">>, D),
+              jsxd:get(<<"name">>, <<"-">>, D),
+              jsxd:get(<<"version">>, <<"-">>, D),
+              jsxd:get(<<"imported">>, 1, D) * 100,
+              jsxd:get(<<"description">>, <<"-">>, D)]).
