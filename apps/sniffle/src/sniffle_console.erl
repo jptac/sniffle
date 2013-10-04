@@ -262,6 +262,14 @@ hdr(F) ->
     hdr_lines(lists:reverse(F), {"~n", [], "~n", []}).
 
 
+hdr_lines([{N, n} | R], {Fmt, Vars, FmtLs, VarLs}) ->
+    %% there is a space that matters here ---------v
+    hdr_lines(R, {
+                "~20s " ++ Fmt,
+                [N | Vars],
+                "~20s " ++ FmtLs,
+                [$- | VarLs]});
+
 hdr_lines([{N, S}|R], {Fmt, Vars, FmtLs, VarLs}) ->
     %% there is a space that matters here ---------v
     hdr_lines(R, {
