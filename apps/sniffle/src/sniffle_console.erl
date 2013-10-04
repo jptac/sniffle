@@ -288,6 +288,13 @@ fields(F, Vs) ->
            lists:reverse(Vs),
            {"~n", []}).
 
+fields([{_, n}|R], [V | Vs], {Fmt, Vars}) when is_list(V)
+                                     orelse is_binary(V) ->
+    fields(R, Vs, {"~s " ++ Fmt, [V | Vars]});
+
+fields([{_, n}|R], [V | Vs], {Fmt, Vars}) ->
+    fields(R, Vs, {"~p " ++ Fmt, [V | Vars]});
+
 fields([{_, S}|R], [V | Vs], {Fmt, Vars}) when is_list(V)
                                      orelse is_binary(V) ->
     %% there is a space that matters here ------------v
