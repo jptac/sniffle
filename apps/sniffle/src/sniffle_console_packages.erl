@@ -2,11 +2,15 @@
 -module(sniffle_console_packages).
 -export([command/2, help/0]).
 
+-define(F(Hs, Vs), sniffle_console:fields(Hs,Vs)).
+-define(H(Hs), sniffle_console:hdr(Hs)).
+-define(Hdr, [{"UUID", 36}, {"Name", 18}, {"Ram (MB)", 6},
+              {"Quota (GB)", 4}, {"Cpu Cap (%)", 5}]).
 help() ->
-    io:format("Usage~n"),
-    io:format("  list [-j]~n"),
-    io:format("  get [-j] <uuid>~n"),
-    io:format("  delete <uuid>~n").
+    io:format("Usage~n"
+              "  list [-j]~n"
+              "  get [-j] <uuid>~n"
+              "  delete <uuid>~n").
 
 command(text, ["delete", ID]) ->
     case sniffle_package:delete(list_to_binary(ID)) of
@@ -29,8 +33,7 @@ command(json, ["get", UUID]) ->
     end;
 
 command(text, ["get", ID]) ->
-    io:format("UUID                                 Name            Ram       Quota   CPU Cap~n"),
-    io:format("------------------------------------ --------------- --------- ------- -------~n", []),
+    ?H(?Hdr),
     case sniffle_package:get(list_to_binary(ID)) of
         {ok, P} ->
             print(P),
@@ -42,10 +45,11 @@ command(text, ["get", ID]) ->
 command(json, ["list"]) ->
     case sniffle_package:list() of
         {ok, Hs} ->
-            sniffle_console:pp_json(lists:map(fun (ID) ->
-                                                      {ok, H} = sniffle_package:get(ID),
-                                                      H
-                                              end, Hs)),
+            sniffle_console:pp_json(
+              lists:map(fun (ID) ->
+                                {ok, H} = sniffle_package:get(ID),
+                                H
+                        end, Hs)),
             ok;
         _ ->
             sniffle_console:pp_json([]),
@@ -53,8 +57,7 @@ command(json, ["list"]) ->
     end;
 
 command(text, ["list"]) ->
-    io:format("UUID                                 Name            Ram       Quota   CPU Cap~n"),
-    io:format("------------------------------------ --------------- --------- ------- -------~n", []),
+    ?H(?Hdr),
     case sniffle_package:list() of
         {ok, Ps} ->
             lists:map(fun (ID) ->
@@ -70,9 +73,8 @@ command(_, C) ->
     error.
 
 print(P) ->
-    io:format("~36s ~-15s ~6B MB ~4B GB ~5B%~n",
-              [jsxd:get(<<"uuid">>, 0, P),
-               jsxd:get(<<"name">>, 0, P),
-               jsxd:get(<<"ram">>, 0, P),
-               jsxd:get(<<"quota">>, 0, P),
-               jsxd:get(<<"cpu_cap">>, 0, P)]).
+    ?F(?Hdr, [jsxd:get(<<"uuid">>, <<"-">>, P),
+              jsxd:get(<<"name">>, <<"-">>, P),
+              jsxd:get(<<"ram">>, 0, P),
+              jsxd:get(<<"quota">>, 0, P),
+              jsxd:get(<<"cpu_cap">>, 0, P)]).
