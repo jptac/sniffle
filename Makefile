@@ -26,6 +26,12 @@ distclean: clean devclean relclean
 test: xref
 	$(REBAR) skip_deps=true eunit
 
+quick-xref:
+	$(REBAR) xref skip_deps=true
+
+quick-test:
+	$(REBAR) skip_deps=true eunit
+
 rel: all zabbix
 	-rm -r rel/sniffle/share
 	$(REBAR) generate
