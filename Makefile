@@ -2,7 +2,11 @@ REBAR = $(shell pwd)/rebar
 
 .PHONY: deps rel stagedevrel package version all
 
-all: deps compile
+
+all: cp-hooks deps compile
+
+cp-hooks:
+	cp hooks/* .git/hooks
 
 version:
 	echo "$(shell git symbolic-ref HEAD 2> /dev/null | cut -b 12-)-$(shell git log --pretty=format:'%h, %ad' -1)" > sniffle.version
