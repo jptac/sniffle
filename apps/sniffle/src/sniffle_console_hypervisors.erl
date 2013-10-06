@@ -85,5 +85,5 @@ print(H) ->
                         [jsxd:get(<<"resources.provisioned-memory">>, 0, H),
                          jsxd:get(<<"resources.total-memory">>, 0, H)]),
     ?F(?Hdr,
-       [jsxd:get(<<"alias">>, <<"-">>,H), jsxd:get(<<"uuid">>, <<"-">>, H),
-        Host, Mem, State, jsxd:get(<<"version">>, <<"-">>, H)]).
+       [jsxd:get(<<"alias">>, <<"-">>, H), H, Host, Mem, State,
+        jsxd:get(<<"version">>, <<"-">>, H)]).
