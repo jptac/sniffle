@@ -142,6 +142,10 @@ handle_command({delete, {ReqID, _Coordinator}, {Img, Idx}}, _Sender, State) ->
     bitcask:delete(State#state.db, <<Img/binary, Idx:32>>),
     {reply, {ok, ReqID}, State};
 
+handle_command(?FOLD_REQ{foldfun=Fun, acc0=Acc0}, _Sender, State) ->
+    Acc = bitcask:fold(State#state.db, Fun, Acc0),
+    {reply, Acc, State};
+
 handle_command(_Message, _Sender, State) ->
     {noreply, State}.
 

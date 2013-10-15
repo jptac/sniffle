@@ -218,6 +218,11 @@ handle_command({remove_iprange,
             {reply, {ok, ReqID, not_found}, State}
     end;
 
+handle_command(?FOLD_REQ{foldfun=Fun, acc0=Acc0}, _Sender, State) ->
+    Acc = sniffle_db:fold(State#state.db,
+                          <<"network">>, Fun, Acc0),
+    {reply, Acc, State};
+
 handle_command(Message, _Sender, State) ->
     lager:error("[networks] Unknown command: ~p", [Message]),
     {noreply, State}.
