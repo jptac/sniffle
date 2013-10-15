@@ -161,6 +161,10 @@ handle_command({set,
             {reply, {ok, ReqID, not_found}, State}
     end;
 
+handle_command(?FOLD_REQ{foldfun=Fun, acc0=Acc0}, _Sender, State) ->
+    Acc = sniffle_db:fold(State#state.db, <<"dtrace">>, Fun, Acc0),
+    {reply, Acc, State};
+
 handle_command(_Message, _Sender, State) ->
     {noreply, State}.
 

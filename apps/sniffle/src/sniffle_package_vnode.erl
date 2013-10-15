@@ -162,6 +162,11 @@ handle_command({set,
 
     end;
 
+handle_command(?FOLD_REQ{foldfun=Fun, acc0=Acc0}, _Sender, State) ->
+    Acc = sniffle_db:fold(State#state.db,
+                          <<"package">>, Fun, Acc0),
+    {reply, Acc, State};
+
 handle_command(Message, _Sender, State) ->
     lager:error("[packages] Unknown command: ~p", [Message]),
     {noreply, State}.

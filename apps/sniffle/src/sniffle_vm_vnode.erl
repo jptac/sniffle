@@ -218,6 +218,10 @@ handle_command({log,
             {reply, {ok, ReqID, not_found}, State}
     end;
 
+handle_command(?FOLD_REQ{foldfun=Fun, acc0=Acc0}, _Sender, State) ->
+    Acc = sniffle_db:fold(State#state.db, <<"vm">>, Fun, Acc0),
+    {reply, Acc, State};
+
 handle_command(Message, _Sender, State) ->
     lager:error("[vms] Unknown command: ~p", [Message]),
     {noreply, State}.
