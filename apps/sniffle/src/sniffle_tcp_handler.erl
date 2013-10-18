@@ -392,6 +392,20 @@ message({network, get, Network}, State) when
      sniffle_network:get(Network),
      State};
 
+message({network, set, Network, Attribute, Value}, State) when
+      is_binary(Network) ->
+    {reply,
+     sniffle_network:set(Network, Attribute, Value),
+     State};
+
+message({network, set, Network, Attributes}, State) when
+      is_binary(Network),
+      is_list(Attributes) ->
+    {reply,
+     sniffle_network:set(Network, Attributes),
+     State};
+
+
 message({network, add_iprange, Network, IPRange}, State) when
       is_binary(Network) ->
     {reply,
