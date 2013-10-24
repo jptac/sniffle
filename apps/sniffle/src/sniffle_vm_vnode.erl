@@ -260,27 +260,29 @@ encode_handoff_item(Vm, Data) ->
     term_to_binary({Vm, Data}).
 
 is_empty(State) ->
-    sniffle_db:fold(State#state.db,
+    sniffle_db:fold_keys(State#state.db,
                     <<"vm">>,
-                    fun (_,_, _) ->
+                    fun (_, _) ->
                             {false, State}
                     end, {true, State}).
 
 delete(State) ->
-    Trans = sniffle_db:fold(State#state.db,
+    Trans = sniffle_db:fold_keys(State#state.db,
                             <<"vm">>,
-                            fun (K,_, A) ->
+                            fun (K, A) ->
                                     [{delete, <<"vm", K/binary>>} | A]
                             end, []),
     sniffle_db:transact(State#state.db, Trans),
     {ok, State}.
 
 handle_coverage(list, _KeySpaces, {_, ReqID, _}, State) ->
-    List = sniffle_db:fold(State#state.db,
-                           <<"vm">>,
-                           fun (K, _, L) ->
-                                   [K|L]
-                           end, []),
+    List = sniffle_db:fold_keys(
+             State#state.db,
+             <<"vm">>,
+             fun (K, L) ->
+                     [K|L]
+             end, []),
+
     {reply,
      {ok, ReqID, {State#state.partition,State#state.node}, List},
      State};
