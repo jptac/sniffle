@@ -1,5 +1,10 @@
 %% @doc Interface for sniffle-admin commands.
 -module(sniffle_console).
+
+-ifdef(TEST).
+-include_lib("eunit/include/eunit.hrl").
+-endif.
+
 -export([
          join/1,
          leave/1,
@@ -301,9 +306,21 @@ fields([{_, S}|R], [V | Vs], {Fmt, Vars}) when is_list(V)
     fields(R, Vs, {[$~ | integer_to_list(S) ++ [$s, $\  | Fmt]], [V | Vars]});
 
 
-fields([{V, S}|R], [V | Vs], {Fmt, Vars}) ->
+fields([{_, S}|R], [V | Vs], {Fmt, Vars}) ->
     %% there is a space that matters here ------------v
     fields(R, Vs, {[$~ | integer_to_list(S) ++ [$p, $\  | Fmt]], [V | Vars]});
 
 fields([], [], {Fmt, Vars}) ->
     io:format(Fmt, Vars).
+
+-ifdef(TEST).
+
+named_test() ->
+    ?assertEqual(
+       ok, sniffle_console:fields(
+             [{"Desc", n}, {"Imported",7}, {"Version",8},
+              {"Name",15}, {"OS",7}, {"UUID",36}],
+             [<<"Base template to build other templates on">>,
+              100,<<"1.6.1">>,<<"smartos64">>, <<"smartos">>,
+              <<"f4c23828-7981-11e1-912f-8b6d67c68076">>])).
+-endif.
