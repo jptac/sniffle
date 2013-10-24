@@ -201,25 +201,25 @@ encode_handoff_item(Dataset, Data) ->
     term_to_binary({Dataset, Data}).
 
 is_empty(State) ->
-    sniffle_db:fold(State#state.db,
+    sniffle_db:fold_keys(State#state.db,
                     <<"dataset">>,
-                    fun (_, _, _) ->
+                    fun (_, _) ->
                             {false, State}
                     end, {true, State}).
 
 delete(State) ->
-    Trans = sniffle_db:fold(State#state.db,
+    Trans = sniffle_db:fold_keys(State#state.db,
                             <<"dataset">>,
-                            fun (K,_, A) ->
+                            fun (K, A) ->
                                     [{delete, <<"dataset", K/binary>>} | A]
                             end, []),
     sniffle_db:transact(State#state.db, Trans),
     {ok, State}.
 
 handle_coverage(list, _KeySpaces, {_, ReqID, _}, State) ->
-    List = sniffle_db:fold(State#state.db,
+    List = sniffle_db:fold_keys(State#state.db,
                            <<"dataset">>,
-                           fun (K, _, L) ->
+                           fun (K, L) ->
                                    [K|L]
                            end, []),
     {reply,

@@ -262,16 +262,16 @@ encode_handoff_item(Network, Data) ->
     term_to_binary({Network, Data}).
 
 is_empty(State) ->
-    sniffle_db:fold(State#state.db,
+    sniffle_db:fold_keys(State#state.db,
                     <<"network">>,
-                    fun (_, _, _) ->
+                    fun (_, _) ->
                             {false, State}
                     end, {true, State}).
 
 delete(State) ->
-    Trans = sniffle_db:fold(State#state.db,
+    Trans = sniffle_db:fold_keys(State#state.db,
                             <<"network">>,
-                            fun (K,_, A) ->
+                            fun (K, A) ->
                                     [{delete, <<"network", K/binary>>} | A]
                             end, []),
     sniffle_db:transact(State#state.db, Trans),
@@ -313,9 +313,9 @@ handle_coverage({list, Requirements}, _KeySpaces, {_, ReqID, _}, State) ->
 
 
 handle_coverage(list, _KeySpaces, {_, ReqID, _}, State) ->
-    List = sniffle_db:fold(State#state.db,
+    List = sniffle_db:fold_keys(State#state.db,
                            <<"network">>,
-                           fun (K, _, L) ->
+                           fun (K, L) ->
                                    [K|L]
                            end, []),
 

@@ -64,9 +64,10 @@ init([]) ->
     Restart = permanent,
     Shutdown = 2000,
     Type = worker,
-
-    AChild = {sniffle_db, {sniffle_db, start_link, []},
-              Restart, Shutdown, Type, [sniffle_db]},
+    {ok, BackendStr} = application:get_env(sniffle, backend),
+    Backend = list_to_atom("sniffle_" ++ BackendStr),
+    AChild = {Backend, {Backend, start_link, []},
+              Restart, Shutdown, Type, [Backend]},
 
     {ok, {SupFlags, [AChild]}}.
 
