@@ -68,40 +68,36 @@ add_nic(Vm, Network) ->
             {ok, HypervisorObj} = sniffle_hypervisor:get(H),
             {ok, Port} = jsxd:get(<<"port">>, HypervisorObj),
             {ok, HostB} = jsxd:get(<<"host">>, HypervisorObj),
+            HypervisorsNetwork = jsxd:get([<<"networks">>], [], HypervisorObj),
+            Requirements = [{must, member, <<"">>, HypervisorsNetwork}],
             Server = binary_to_list(HostB),
             libchunter:ping(Server, Port),
             case jsxd:get(<<"state">>, V) of
                 {ok, <<"stopped">>} ->
-                    case sniffle_iprange:claim_ip(Network) of
-                        {ok, {Tag, IP, Net, Gw}} ->
-                            case lists:member(Tag, jsxd:get([<<"networks">>], [], HypervisorObj)) of
-                                false ->
-                                    sniffle_iprange:release_ip(Network, IP),
-                                    {error, bad_ag};
-                                true ->
-                                    NicSpec =
-                                        jsxd:from_list([{<<"ip">>, sniffle_iprange_state:to_bin(IP)},
-                                                        {<<"gateway">>, sniffle_iprange_state:to_bin(Gw)},
-                                                        {<<"netmask">>, sniffle_iprange_state:to_bin(Net)},
-                                                        {<<"nic_tag">>, Tag }]),
-                                    NicSpec1 = case jsxd:get([<<"config">>, <<"networks">>], V) of
-                                                   {ok, [_|_]} ->
-                                                       NicSpec;
-                                                   _ ->
-                                                       jsxd:set([<<"primary">>], true, NicSpec)
-                                               end,
-                                    UR = [{<<"add_nics">>, [NicSpec1]}],
-                                    ok = libchunter:update_machine(Server, Port, Vm, [], UR),
-                                    M = [{<<"network">>, Network},
-                                         {<<"ip">>, IP}],
-                                    Ms1= case jsxd:get([<<"network_mappings">>], V) of
-                                             {ok, Ms} ->
-                                                 [M | Ms];
-                                             _ ->
-                                                 [M]
-                                         end,
-                                    sniffle_vm:set(Vm, [<<"network_mappings">>], Ms1)
-                            end;
+                    case sniffle_network:claim_ip(Network, Requirements) of
+                        {ok, IPRange, {Tag, IP, Net, Gw}} ->
+                            NicSpec =
+                                jsxd:from_list([{<<"ip">>, sniffle_iprange_state:to_bin(IP)},
+                                                {<<"gateway">>, sniffle_iprange_state:to_bin(Gw)},
+                                                {<<"netmask">>, sniffle_iprange_state:to_bin(Net)},
+                                                {<<"nic_tag">>, Tag }]),
+                            NicSpec1 = case jsxd:get([<<"config">>, <<"networks">>], V) of
+                                           {ok, [_|_]} ->
+                                               NicSpec;
+                                           _ ->
+                                               jsxd:set([<<"primary">>], true, NicSpec)
+                                       end,
+                            UR = [{<<"add_nics">>, [NicSpec1]}],
+                            ok = libchunter:update_machine(Server, Port, Vm, [], UR),
+                            M = [{<<"network">>, IPRange},
+                                 {<<"ip">>, IP}],
+                            Ms1= case jsxd:get([<<"network_mappings">>], V) of
+                                     {ok, Ms} ->
+                                         [M | Ms];
+                                     _ ->
+                                         [M]
+                                 end,
+                            sniffle_vm:set(Vm, [<<"network_mappings">>], Ms1);
                         _ ->
                             {error, claim_failed}
                     end;
