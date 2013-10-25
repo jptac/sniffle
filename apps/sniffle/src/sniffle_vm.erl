@@ -69,7 +69,7 @@ add_nic(Vm, Network) ->
             {ok, Port} = jsxd:get(<<"port">>, HypervisorObj),
             {ok, HostB} = jsxd:get(<<"host">>, HypervisorObj),
             HypervisorsNetwork = jsxd:get([<<"networks">>], [], HypervisorObj),
-            Requirements = [{must, member, <<"">>, HypervisorsNetwork}],
+            Requirements = [{must, member, <<"networks">>, HypervisorsNetwork}],
             Server = binary_to_list(HostB),
             libchunter:ping(Server, Port),
             case jsxd:get(<<"state">>, V) of
