@@ -98,13 +98,16 @@ add_nic(Vm, Network) ->
                                          [M]
                                  end,
                             sniffle_vm:set(Vm, [<<"network_mappings">>], Ms1);
-                        _ ->
+                        E ->
+                            lager:error("Could not get claim new IP: ~p", [E]),
                             {error, claim_failed}
                     end;
-                _ ->
+                E ->
+                    lager:error("VM needs to be stoppped: ~p", [E]),
                     {error, not_stopped}
             end;
         E ->
+            lager:error("Could not get new IP - could not get VM: ~p", [E]),
             E
     end.
 
