@@ -94,10 +94,10 @@ handle_call({delete, Bucket, Key}, _From, State) ->
 handle_call({fold, Bucket, FoldFn, Acc0}, _From, State) ->
     Len = byte_size(Bucket),
     Rep = eleveldb:fold(State#state.db,
-                        fun (<<ThisBucket:Len/binary, Key/binary>>, Value, Acc)
+                        fun ({<<ThisBucket:Len/binary, Key/binary>>, Value}, Acc)
                               when Bucket =:= ThisBucket ->
                                 FoldFn(Key, binary_to_term(Value), Acc);
-                            (_, _, Acc) ->
+                            ({_, _}, Acc) ->
                                 Acc
                         end,
                         Acc0,
