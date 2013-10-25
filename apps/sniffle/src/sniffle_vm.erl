@@ -99,7 +99,8 @@ add_nic(Vm, Network) ->
                                  end,
                             sniffle_vm:set(Vm, [<<"network_mappings">>], Ms1);
                         E ->
-                            lager:error("Could not get claim new IP: ~p", [E]),
+                            lager:error("Could not get claim new IP: ~p for ~p ~p",
+                                        [E, Network, Requirements]),
                             {error, claim_failed}
                     end;
                 E ->
