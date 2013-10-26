@@ -68,10 +68,6 @@ init(_Args) ->
       sniffle_create_fsm_sup,
       {sniffle_create_fsm_sup, start_link, []},
       permanent, infinity, supervisor, [sniffle_create_fsm_sup]},
-    DB = {
-      sniffle_db_sup,
-      {sniffle_db_sup, start_link, []},
-      permanent, infinity, supervisor, [sniffle_db_sup]},
     DTrace = {
       sniffle_dtrace_sup,
       {sniffle_dtrace_sup, start_link, []},
@@ -82,6 +78,6 @@ init(_Args) ->
                                   permanent, 5000, worker, []},
          {statman_aggregator, {statman_aggregator, start_link, []},
           permanent, 5000, worker, []},
-         DB,CoverageFSMs, WriteFSMs, ReadFSMs, CreateFSMs,
+         CoverageFSMs, WriteFSMs, ReadFSMs, CreateFSMs,
          VHypervisor, VVM, VIprange, VDataset, VPackage,
          VImg, VDTrace, VNetwork, DTrace]}}.
