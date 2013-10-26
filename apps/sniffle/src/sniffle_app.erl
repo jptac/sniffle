@@ -10,6 +10,23 @@
 %% ===================================================================
 
 start(_StartType, _StartArgs) ->
+    case application:get_env(fifo_db, db_path) of
+        {ok, _} ->
+            ok;
+        undefined ->
+            case application:get_env(sniffle, db_path) of
+                {ok, P} ->
+                    application:set_env(fifo_db, db_path, P);
+                _ ->
+                    application:set_env(fifo_db, db_path, "/var/db/sniffle")
+            end
+    end,
+    case application:get_env(fifo_db, backend) of
+        {ok, _} ->
+            ok;
+        undefined ->
+            application:set_env(fifo_db, backend, fifo_db_hanoidb)
+    end,
     case sniffle_sup:start_link() of
         {ok, Pid} ->
             ok = riak_core:register([{vnode_module, sniffle_hypervisor_vnode}]),
