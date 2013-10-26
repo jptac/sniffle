@@ -15,6 +15,7 @@
                   libhowl,
                   libsnarl,
                   fifo_db,
+                  bitcask,
                   crypto,
                   public_key,
                   ssl,
