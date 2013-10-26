@@ -152,7 +152,7 @@ handle_command({set,
                    end, H1, Resources),
             H3 = statebox:expire(?STATEBOX_EXPIRE, H2),
             fifo_db:put(State#state.db, <<"dataset">>, Dataset,
-                           sniffle_obj:update(H3, Coordinator, O)),
+                        sniffle_obj:update(H3, Coordinator, O)),
             {reply, {ok, ReqID}, State};
         R ->
             lager:error("[datasets] tried to write to a non existing dataset: ~p", [R]),
@@ -202,26 +202,26 @@ encode_handoff_item(Dataset, Data) ->
 
 is_empty(State) ->
     fifo_db:fold_keys(State#state.db,
-                    <<"dataset">>,
-                    fun (_, _) ->
-                            {false, State}
-                    end, {true, State}).
+                      <<"dataset">>,
+                      fun (_, _) ->
+                              {false, State}
+                      end, {true, State}).
 
 delete(State) ->
     Trans = fifo_db:fold_keys(State#state.db,
-                            <<"dataset">>,
-                            fun (K, A) ->
-                                    [{delete, <<"dataset", K/binary>>} | A]
-                            end, []),
+                              <<"dataset">>,
+                              fun (K, A) ->
+                                      [{delete, <<"dataset", K/binary>>} | A]
+                              end, []),
     fifo_db:transact(State#state.db, Trans),
     {ok, State}.
 
 handle_coverage(list, _KeySpaces, {_, ReqID, _}, State) ->
     List = fifo_db:fold_keys(State#state.db,
-                           <<"dataset">>,
-                           fun (K, L) ->
-                                   [K|L]
-                           end, []),
+                             <<"dataset">>,
+                             fun (K, L) ->
+                                     [K|L]
+                             end, []),
     {reply,
      {ok, ReqID, {State#state.partition,State#state.node}, List},
      State};
@@ -231,15 +231,15 @@ handle_coverage({list, Requirements}, _KeySpaces, {_, ReqID, _}, State) ->
                      jsxd:get(Resource, 0, statebox:value(S0))
              end,
     List = fifo_db:fold(State#state.db,
-                           <<"dataset">>,
-                           fun (Key, E, C) ->
-                                   case rankmatcher:match(E, Getter, Requirements) of
-                                       false ->
-                                           C;
-                                       Pts ->
-                                           [{Pts, Key} | C]
-                                   end
-                           end, []),
+                        <<"dataset">>,
+                        fun (Key, E, C) ->
+                                case rankmatcher:match(E, Getter, Requirements) of
+                                    false ->
+                                        C;
+                                    Pts ->
+                                        [{Pts, Key} | C]
+                                end
+                        end, []),
     {reply,
      {ok, ReqID, {State#state.partition, State#state.node}, List},
      State};

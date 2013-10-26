@@ -154,7 +154,7 @@ handle_command({set,
                    end, H1, Resources),
             H3 = statebox:expire(?STATEBOX_EXPIRE, H2),
             fifo_db:put(State#state.db, <<"package">>, Package,
-                           sniffle_obj:update(H3, Coordinator, O)),
+                        sniffle_obj:update(H3, Coordinator, O)),
             {reply, {ok, ReqID}, State};
         _ ->
             lager:error("[packages] tried to write to a non existing package."),
@@ -164,7 +164,7 @@ handle_command({set,
 
 handle_command(?FOLD_REQ{foldfun=Fun, acc0=Acc0}, _Sender, State) ->
     Acc = fifo_db:fold(State#state.db,
-                          <<"package">>, Fun, Acc0),
+                       <<"package">>, Fun, Acc0),
     {reply, Acc, State};
 
 handle_command(Message, _Sender, State) ->
@@ -173,7 +173,7 @@ handle_command(Message, _Sender, State) ->
 
 handle_handoff_command(?FOLD_REQ{foldfun=Fun, acc0=Acc0}, _Sender, State) ->
     Acc = fifo_db:fold(State#state.db,
-                          <<"package">>, Fun, Acc0),
+                       <<"package">>, Fun, Acc0),
     {reply, Acc, State};
 
 handle_handoff_command({get, _ReqID, _Vm} = Req, Sender, State) ->
@@ -207,42 +207,42 @@ encode_handoff_item(Package, Data) ->
 
 is_empty(State) ->
     fifo_db:fold_keys(State#state.db,
-                    <<"package">>,
-                    fun (_, _) ->
-                            {false, State}
-                    end, {true, State}).
+                      <<"package">>,
+                      fun (_, _) ->
+                              {false, State}
+                      end, {true, State}).
 
 delete(State) ->
     Trans = fifo_db:fold_keys(State#state.db,
-                            <<"package">>,
-                            fun (K, A) ->
-                                    [{delete, <<"package", K/binary>>} | A]
-                            end, []),
+                              <<"package">>,
+                              fun (K, A) ->
+                                      [{delete, <<"package", K/binary>>} | A]
+                              end, []),
     fifo_db:transact(State#state.db, Trans),
     {ok, State}.
 
 handle_coverage({lookup, Name}, _KeySpaces, {_, ReqID, _}, State) ->
     Res = fifo_db:fold(State#state.db,
-                          <<"package">>,
-                          fun (_U, #sniffle_obj{val=SB}, Res) ->
-                                  V = statebox:value(SB),
-                                  case jsxd:get(<<"name">>, V) of
-                                      {ok, Name} ->
-                                          V;
-                                      _ ->
-                                          Res
-                                  end
-                          end, not_found),
+                       <<"package">>,
+                       fun (_U, #sniffle_obj{val=SB}, Res) ->
+                               V = statebox:value(SB),
+                               case jsxd:get(<<"name">>, V) of
+                                   {ok, Name} ->
+                                       V;
+                                   _ ->
+                                       Res
+                               end
+                       end, not_found),
     {reply,
      {ok, ReqID, {State#state.partition,State#state.node}, [Res]},
      State};
 
 handle_coverage(list, _KeySpaces, {_, ReqID, _}, State) ->
     List = fifo_db:fold_keys(State#state.db,
-                           <<"package">>,
-                           fun (K, L) ->
-                                   [K|L]
-                           end, []),
+                             <<"package">>,
+                             fun (K, L) ->
+                                     [K|L]
+                             end, []),
 
     {reply,
      {ok, ReqID, {State#state.partition,State#state.node}, List},
@@ -253,15 +253,15 @@ handle_coverage({list, Requirements}, _KeySpaces, {_, ReqID, _}, State) ->
                      jsxd:get(Resource, 0, statebox:value(S0))
              end,
     List = fifo_db:fold(State#state.db,
-                           <<"package">>,
-                           fun (Key, E, C) ->
-                                   case rankmatcher:match(E, Getter, Requirements) of
-                                       false ->
-                                           C;
-                                       Pts ->
-                                           [{Pts, Key} | C]
-                                   end
-                           end, []),
+                        <<"package">>,
+                        fun (Key, E, C) ->
+                                case rankmatcher:match(E, Getter, Requirements) of
+                                    false ->
+                                        C;
+                                    Pts ->
+                                        [{Pts, Key} | C]
+                                end
+                        end, []),
     {reply,
      {ok, ReqID, {State#state.partition, State#state.node}, List},
      State};

@@ -195,7 +195,7 @@ handle_command({set,
                    end, H1, Resources),
             H3 = statebox:expire(?STATEBOX_EXPIRE, H2),
             fifo_db:put(State#state.db, <<"vm">>, Vm,
-                           sniffle_obj:update(H3, Coordinator, O)),
+                        sniffle_obj:update(H3, Coordinator, O)),
             {reply, {ok, ReqID}, State};
         R ->
             lager:error("[vms] tried to write to a non existing vm: ~p", [R]),
@@ -211,7 +211,7 @@ handle_command({log,
             H2 = statebox:modify({fun sniffle_vm_state:log/3, [Time, Log]}, H1),
             H3 = statebox:expire(?STATEBOX_EXPIRE, H2),
             fifo_db:put(State#state.db, <<"vm">>, Vm,
-                           sniffle_obj:update(H3, Coordinator, O)),
+                        sniffle_obj:update(H3, Coordinator, O)),
             {reply, {ok, ReqID}, State};
         R ->
             lager:error("[vms] tried to write to a non existing vm: ~p", [R]),
@@ -261,17 +261,17 @@ encode_handoff_item(Vm, Data) ->
 
 is_empty(State) ->
     fifo_db:fold_keys(State#state.db,
-                    <<"vm">>,
-                    fun (_, _) ->
-                            {false, State}
-                    end, {true, State}).
+                      <<"vm">>,
+                      fun (_, _) ->
+                              {false, State}
+                      end, {true, State}).
 
 delete(State) ->
     Trans = fifo_db:fold_keys(State#state.db,
-                            <<"vm">>,
-                            fun (K, A) ->
-                                    [{delete, <<"vm", K/binary>>} | A]
-                            end, []),
+                              <<"vm">>,
+                              fun (K, A) ->
+                                      [{delete, <<"vm", K/binary>>} | A]
+                              end, []),
     fifo_db:transact(State#state.db, Trans),
     {ok, State}.
 
@@ -292,15 +292,15 @@ handle_coverage({list, Requirements}, _KeySpaces, {_, ReqID, _}, State) ->
                      jsxd:get(Resource, 0, statebox:value(S0))
              end,
     List = fifo_db:fold(State#state.db,
-                           <<"vm">>,
-                           fun (Key, E, C) ->
-                                   case rankmatcher:match(E, Getter, Requirements) of
-                                       false ->
-                                           C;
-                                       Pts ->
-                                           [{Pts, Key} | C]
-                                   end
-                           end, []),
+                        <<"vm">>,
+                        fun (Key, E, C) ->
+                                case rankmatcher:match(E, Getter, Requirements) of
+                                    false ->
+                                        C;
+                                    Pts ->
+                                        [{Pts, Key} | C]
+                                end
+                        end, []),
     {reply,
      {ok, ReqID, {State#state.partition, State#state.node}, List},
      State};

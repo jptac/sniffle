@@ -175,7 +175,7 @@ handle_command({set,
                    end, H1, Resources),
             H3 = statebox:expire(?STATEBOX_EXPIRE, H2),
             fifo_db:put(State#state.db, <<"network">>, Network,
-                           sniffle_obj:update(H3, Coordinator, O)),
+                        sniffle_obj:update(H3, Coordinator, O)),
             {reply, {ok, ReqID}, State};
         R ->
             lager:error("[hypervisors] tried to write to a non existing hypervisor: ~p", [R]),
@@ -193,7 +193,7 @@ handle_command({add_iprange,
                     [IPRange]}, H1),
             H3 = statebox:expire(?STATEBOX_EXPIRE, H2),
             fifo_db:put(State#state.db, <<"network">>, Network,
-                           sniffle_obj:update(H3, Coordinator, O)),
+                        sniffle_obj:update(H3, Coordinator, O)),
             {reply, {ok, ReqID}, State};
         R ->
             lager:error("[hypervisors] tried to write to a non existing hypervisor: ~p", [R]),
@@ -211,7 +211,7 @@ handle_command({remove_iprange,
                     [IPRange]}, H1),
             H3 = statebox:expire(?STATEBOX_EXPIRE, H2),
             fifo_db:put(State#state.db, <<"network">>, Network,
-                           sniffle_obj:update(H3, Coordinator, O)),
+                        sniffle_obj:update(H3, Coordinator, O)),
             {reply, {ok, ReqID}, State};
         R ->
             lager:error("[hypervisors] tried to write to a non existing hypervisor: ~p", [R]),
@@ -220,7 +220,7 @@ handle_command({remove_iprange,
 
 handle_command(?FOLD_REQ{foldfun=Fun, acc0=Acc0}, _Sender, State) ->
     Acc = fifo_db:fold(State#state.db,
-                          <<"network">>, Fun, Acc0),
+                       <<"network">>, Fun, Acc0),
     {reply, Acc, State};
 
 handle_command(Message, _Sender, State) ->
@@ -229,7 +229,7 @@ handle_command(Message, _Sender, State) ->
 
 handle_handoff_command(?FOLD_REQ{foldfun=Fun, acc0=Acc0}, _Sender, State) ->
     Acc = fifo_db:fold(State#state.db,
-                          <<"network">>, Fun, Acc0),
+                       <<"network">>, Fun, Acc0),
     {reply, Acc, State};
 
 handle_handoff_command({get, _ReqID, _Vm} = Req, Sender, State) ->
@@ -263,32 +263,32 @@ encode_handoff_item(Network, Data) ->
 
 is_empty(State) ->
     fifo_db:fold_keys(State#state.db,
-                    <<"network">>,
-                    fun (_, _) ->
-                            {false, State}
-                    end, {true, State}).
+                      <<"network">>,
+                      fun (_, _) ->
+                              {false, State}
+                      end, {true, State}).
 
 delete(State) ->
     Trans = fifo_db:fold_keys(State#state.db,
-                            <<"network">>,
-                            fun (K, A) ->
-                                    [{delete, <<"network", K/binary>>} | A]
-                            end, []),
+                              <<"network">>,
+                              fun (K, A) ->
+                                      [{delete, <<"network", K/binary>>} | A]
+                              end, []),
     fifo_db:transact(State#state.db, Trans),
     {ok, State}.
 
 handle_coverage({lookup, Name}, _KeySpaces, {_, ReqID, _}, State) ->
     Res = fifo_db:fold(State#state.db,
-                          <<"network">>,
-                          fun (_U, #sniffle_obj{val=SB}, Res) ->
-                                  V = statebox:value(SB),
-                                  case jsxd:get(<<"name">>, V) of
-                                      {ok, Name} ->
-                                          V;
-                                      _ ->
-                                          Res
-                                  end
-                          end, not_found),
+                       <<"network">>,
+                       fun (_U, #sniffle_obj{val=SB}, Res) ->
+                               V = statebox:value(SB),
+                               case jsxd:get(<<"name">>, V) of
+                                   {ok, Name} ->
+                                       V;
+                                   _ ->
+                                       Res
+                               end
+                       end, not_found),
     {reply,
      {ok, ReqID, {State#state.partition, State#state.node}, [Res]},
      State};
@@ -298,15 +298,15 @@ handle_coverage({list, Requirements}, _KeySpaces, {_, ReqID, _}, State) ->
                      jsxd:get(V, 0, statebox:value(S0))
              end,
     List = fifo_db:fold(State#state.db,
-                           <<"network">>,
-                           fun (Key, E, C) ->
-                                   case rankmatcher:match(E, Getter, Requirements) of
-                                       false ->
-                                           C;
-                                       Pts ->
-                                           [{Pts, Key} | C]
-                                   end
-                           end, []),
+                        <<"network">>,
+                        fun (Key, E, C) ->
+                                case rankmatcher:match(E, Getter, Requirements) of
+                                    false ->
+                                        C;
+                                    Pts ->
+                                        [{Pts, Key} | C]
+                                end
+                        end, []),
     {reply,
      {ok, ReqID, {State#state.partition, State#state.node}, List},
      State};
@@ -314,10 +314,10 @@ handle_coverage({list, Requirements}, _KeySpaces, {_, ReqID, _}, State) ->
 
 handle_coverage(list, _KeySpaces, {_, ReqID, _}, State) ->
     List = fifo_db:fold_keys(State#state.db,
-                           <<"network">>,
-                           fun (K, L) ->
-                                   [K|L]
-                           end, []),
+                             <<"network">>,
+                             fun (K, L) ->
+                                     [K|L]
+                             end, []),
 
     {reply,
      {ok, ReqID, {State#state.partition,State#state.node}, List},

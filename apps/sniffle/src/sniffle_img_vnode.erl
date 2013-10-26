@@ -99,9 +99,9 @@ init([Partition]) ->
     {ok, DBLoc} = application:get_env(sniffle, db_path),
     DB = bitcask:open(DBLoc ++ "/" ++ PartStr ++ ".img", [read_write]),
     {ok, #state{
-       db = DB,
-       partition = Partition,
-       node = node()}}.
+            db = DB,
+            partition = Partition,
+            node = node()}}.
 
 handle_command(ping, _Sender, State) ->
     {reply, {pong, State#state.partition}, State};

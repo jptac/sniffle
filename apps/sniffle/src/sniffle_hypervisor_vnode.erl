@@ -156,7 +156,7 @@ handle_command({set,
                    end, H1, Resources),
             H3 = statebox:truncate(?STATEBOX_TRUNCATE, statebox:expire(?STATEBOX_EXPIRE, H2)),
             fifo_db:put(State#state.db, <<"hypervisor">>, Hypervisor,
-                           sniffle_obj:update(H3, Coordinator, O)),
+                        sniffle_obj:update(H3, Coordinator, O)),
             {reply, {ok, ReqID}, State};
         R ->
             lager:error("[hypervisors] tried to write to a non existing hypervisor ~p, causing read repair", [R]),
@@ -166,7 +166,7 @@ handle_command({set,
 
 handle_command(?FOLD_REQ{foldfun=Fun, acc0=Acc0}, _Sender, State) ->
     Acc = fifo_db:fold(State#state.db,
-                          <<"hypervisor">>, Fun, Acc0),
+                       <<"hypervisor">>, Fun, Acc0),
     {reply, Acc, State};
 
 handle_command(Message, _Sender, State) ->
@@ -175,7 +175,7 @@ handle_command(Message, _Sender, State) ->
 
 handle_handoff_command(?FOLD_REQ{foldfun=Fun, acc0=Acc0}, _Sender, State) ->
     Acc = fifo_db:fold(State#state.db,
-                          <<"hypervisor">>, Fun, Acc0),
+                       <<"hypervisor">>, Fun, Acc0),
     {reply, Acc, State};
 
 handle_handoff_command({get, _ReqID, _Vm} = Req, Sender, State) ->
@@ -209,17 +209,17 @@ encode_handoff_item(Hypervisor, Data) ->
 
 is_empty(State) ->
     fifo_db:fold_keys(State#state.db,
-                    <<"hypervisor">>,
-                    fun (_, _) ->
-                            {false, State}
-                    end, {true, State}).
+                      <<"hypervisor">>,
+                      fun (_, _) ->
+                              {false, State}
+                      end, {true, State}).
 
 delete(State) ->
     Trans = fifo_db:fold_keys(State#state.db,
-                            <<"hypervisor">>,
-                            fun (K, A) ->
-                                    [{delete, <<"hypervisor", K/binary>>} | A]
-                            end, []),
+                              <<"hypervisor">>,
+                              fun (K, A) ->
+                                      [{delete, <<"hypervisor", K/binary>>} | A]
+                              end, []),
     fifo_db:transact(State#state.db, Trans),
     {ok, State}.
 
@@ -228,25 +228,25 @@ handle_coverage({list, Requirements}, _KeySpaces, {_, ReqID, _}, State) ->
                      jsxd:get(Resource, 0, statebox:value(S0))
              end,
     List = fifo_db:fold(State#state.db,
-                           <<"hypervisor">>,
-                           fun (Key, E, C) ->
-                                   case rankmatcher:match(E, Getter, Requirements) of
-                                       false ->
-                                           C;
-                                       Pts ->
-                                           [{Pts, Key} | C]
-                                   end
-                           end, []),
+                        <<"hypervisor">>,
+                        fun (Key, E, C) ->
+                                case rankmatcher:match(E, Getter, Requirements) of
+                                    false ->
+                                        C;
+                                    Pts ->
+                                        [{Pts, Key} | C]
+                                end
+                        end, []),
     {reply,
      {ok, ReqID, {State#state.partition, State#state.node}, List},
      State};
 
 handle_coverage(list, _KeySpaces, {_, ReqID, _}, State) ->
     List = fifo_db:fold_keys(State#state.db,
-                           <<"hypervisor">>,
-                           fun (K, L) ->
-                                   [K|L]
-                           end, []),
+                             <<"hypervisor">>,
+                             fun (K, L) ->
+                                     [K|L]
+                             end, []),
     {reply,
      {ok, ReqID, {State#state.partition, State#state.node}, List},
      State};
@@ -306,7 +306,7 @@ handle_coverage(status, _KeySpaces, {_, ReqID, _}, State) ->
                                                   WarningsAcc]}
                                         end
                                 end,{jsxd:get(<<"resources">>, [], H), Warnings1}, Pools)
-                  end,
+                      end,
                   {[{K, Res1} | Res], W2}
           end, {[], []}),
     {reply,

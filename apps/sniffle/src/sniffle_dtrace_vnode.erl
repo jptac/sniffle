@@ -154,7 +154,7 @@ handle_command({set,
                    end, H1, Resources),
             H3 = statebox:expire(?STATEBOX_EXPIRE, H2),
             fifo_db:put(State#state.db, <<"dtrace">>, Dtrace,
-                           sniffle_obj:update(H3, Coordinator, O)),
+                        sniffle_obj:update(H3, Coordinator, O)),
             {reply, {ok, ReqID}, State};
         R ->
             lager:error("[dtraces] tried to write to a non existing dtrace: ~p", [R]),
@@ -203,17 +203,17 @@ encode_handoff_item(Dtrace, Data) ->
 
 is_empty(State) ->
     fifo_db:fold_keys(State#state.db,
-                    <<"dtrace">>,
-                    fun (_, _) ->
-                            {false, State}
-                    end, {true, State}).
+                      <<"dtrace">>,
+                      fun (_, _) ->
+                              {false, State}
+                      end, {true, State}).
 
 delete(State) ->
     Trans = fifo_db:fold_keys(State#state.db,
-                            <<"dtrace">>,
-                            fun (K, A) ->
-                                    [{delete, <<"dtrace", K/binary>>} | A]
-                            end, []),
+                              <<"dtrace">>,
+                              fun (K, A) ->
+                                      [{delete, <<"dtrace", K/binary>>} | A]
+                              end, []),
     fifo_db:transact(State#state.db, Trans),
     {ok, State}.
 
@@ -233,15 +233,15 @@ handle_coverage({list, Requirements}, _KeySpaces, {_, ReqID, _}, State) ->
                      jsxd:get(Resource, 0, statebox:value(S0))
              end,
     List = fifo_db:fold(State#state.db,
-                           <<"dtrace">>,
-                           fun (Key, E, C) ->
-                                   case rankmatcher:match(E, Getter, Requirements) of
-                                       false ->
-                                           C;
-                                       Pts ->
-                                           [{Pts, Key} | C]
-                                   end
-                           end, []),
+                        <<"dtrace">>,
+                        fun (Key, E, C) ->
+                                case rankmatcher:match(E, Getter, Requirements) of
+                                    false ->
+                                        C;
+                                    Pts ->
+                                        [{Pts, Key} | C]
+                                end
+                        end, []),
     {reply,
      {ok, ReqID, {State#state.partition, State#state.node}, List},
      State};
