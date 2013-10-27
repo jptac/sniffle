@@ -94,7 +94,7 @@ set(Preflist, ReqID, Dtrace, Data) ->
 
 init([Partition]) ->
     DB = list_to_atom(integer_to_list(Partition)),
-    sniffle_db:start(DB),
+    fifo_db:start(DB),
     {ok, #state{
             db = DB,
             partition = Partition,
@@ -104,18 +104,18 @@ handle_command(ping, _Sender, State) ->
     {reply, {pong, State#state.partition}, State};
 
 handle_command({repair, Dtrace, VClock, Obj}, _Sender, State) ->
-    case sniffle_db:get(State#state.db, <<"dtrace">>, Dtrace) of
+    case fifo_db:get(State#state.db, <<"dtrace">>, Dtrace) of
         {ok, #sniffle_obj{vclock = VC1}} when VC1 =:= VClock ->
-            sniffle_db:put(State#state.db, <<"dtrace">>, Dtrace, Obj);
+            fifo_db:put(State#state.db, <<"dtrace">>, Dtrace, Obj);
         not_found ->
-            sniffle_db:put(State#state.db, <<"dtrace">>, Dtrace, Obj);
+            fifo_db:put(State#state.db, <<"dtrace">>, Dtrace, Obj);
         _ ->
             lager:error("[dtraces] Read repair failed, data was updated too recent.")
     end,
     {noreply, State};
 
 handle_command({get, ReqID, Dtrace}, _Sender, State) ->
-    Res = case sniffle_db:get(State#state.db, <<"dtrace">>, Dtrace) of
+    Res = case fifo_db:get(State#state.db, <<"dtrace">>, Dtrace) of
               {ok, R} ->
                   R;
               not_found ->
@@ -133,17 +133,17 @@ handle_command({create, {ReqID, Coordinator}, ID, [Name, Script]},
     VC0 = vclock:fresh(),
     VC = vclock:increment(Coordinator, VC0),
     HObject = #sniffle_obj{val=I3, vclock=VC},
-    sniffle_db:put(State#state.db, <<"dtrace">>, ID, HObject),
+    fifo_db:put(State#state.db, <<"dtrace">>, ID, HObject),
     {reply, {ok, ReqID}, State};
 
 handle_command({delete, {ReqID, _Coordinator}, Dtrace}, _Sender, State) ->
-    sniffle_db:delete(State#state.db, <<"dtrace">>, Dtrace),
+    fifo_db:delete(State#state.db, <<"dtrace">>, Dtrace),
     {reply, {ok, ReqID}, State};
 
 handle_command({set,
                 {ReqID, Coordinator}, Dtrace,
                 Resources}, _Sender, State) ->
-    case sniffle_db:get(State#state.db, <<"dtrace">>, Dtrace) of
+    case fifo_db:get(State#state.db, <<"dtrace">>, Dtrace) of
         {ok, #sniffle_obj{val=H0} = O} ->
             H1 = statebox:modify({fun sniffle_dtrace_state:load/1,[]}, H0),
             H2 = lists:foldr(
@@ -153,8 +153,8 @@ handle_command({set,
                               [Resource, Value]}, H)
                    end, H1, Resources),
             H3 = statebox:expire(?STATEBOX_EXPIRE, H2),
-            sniffle_db:put(State#state.db, <<"dtrace">>, Dtrace,
-                           sniffle_obj:update(H3, Coordinator, O)),
+            fifo_db:put(State#state.db, <<"dtrace">>, Dtrace,
+                        sniffle_obj:update(H3, Coordinator, O)),
             {reply, {ok, ReqID}, State};
         R ->
             lager:error("[dtraces] tried to write to a non existing dtrace: ~p", [R]),
@@ -162,14 +162,14 @@ handle_command({set,
     end;
 
 handle_command(?FOLD_REQ{foldfun=Fun, acc0=Acc0}, _Sender, State) ->
-    Acc = sniffle_db:fold(State#state.db, <<"dtrace">>, Fun, Acc0),
+    Acc = fifo_db:fold(State#state.db, <<"dtrace">>, Fun, Acc0),
     {reply, Acc, State};
 
 handle_command(_Message, _Sender, State) ->
     {noreply, State}.
 
 handle_handoff_command(?FOLD_REQ{foldfun=Fun, acc0=Acc0}, _Sender, State) ->
-    Acc = sniffle_db:fold(State#state.db, <<"dtrace">>, Fun, Acc0),
+    Acc = fifo_db:fold(State#state.db, <<"dtrace">>, Fun, Acc0),
     {reply, Acc, State};
 
 handle_handoff_command({get, _ReqID, _Vm} = Req, Sender, State) ->
@@ -195,30 +195,30 @@ handoff_finished(_TargetNode, State) ->
 
 handle_handoff_data(Data, State) ->
     {Dtrace, HObject} = binary_to_term(Data),
-    sniffle_db:put(State#state.db, <<"dtrace">>, Dtrace, HObject),
+    fifo_db:put(State#state.db, <<"dtrace">>, Dtrace, HObject),
     {reply, ok, State}.
 
 encode_handoff_item(Dtrace, Data) ->
     term_to_binary({Dtrace, Data}).
 
 is_empty(State) ->
-    sniffle_db:fold_keys(State#state.db,
-                    <<"dtrace">>,
-                    fun (_, _) ->
-                            {false, State}
-                    end, {true, State}).
+    fifo_db:fold_keys(State#state.db,
+                      <<"dtrace">>,
+                      fun (_, _) ->
+                              {false, State}
+                      end, {true, State}).
 
 delete(State) ->
-    Trans = sniffle_db:fold_keys(State#state.db,
-                            <<"dtrace">>,
-                            fun (K, A) ->
-                                    [{delete, <<"dtrace", K/binary>>} | A]
-                            end, []),
-    sniffle_db:transact(State#state.db, Trans),
+    Trans = fifo_db:fold_keys(State#state.db,
+                              <<"dtrace">>,
+                              fun (K, A) ->
+                                      [{delete, <<"dtrace", K/binary>>} | A]
+                              end, []),
+    fifo_db:transact(State#state.db, Trans),
     {ok, State}.
 
 handle_coverage(list, _KeySpaces, {_, ReqID, _}, State) ->
-    List = sniffle_db:fold_keys(
+    List = fifo_db:fold_keys(
              State#state.db,
              <<"dtrace">>,
              fun (K, L) ->
@@ -232,16 +232,16 @@ handle_coverage({list, Requirements}, _KeySpaces, {_, ReqID, _}, State) ->
     Getter = fun(#sniffle_obj{val=S0}, Resource) ->
                      jsxd:get(Resource, 0, statebox:value(S0))
              end,
-    List = sniffle_db:fold(State#state.db,
-                           <<"dtrace">>,
-                           fun (Key, E, C) ->
-                                   case rankmatcher:match(E, Getter, Requirements) of
-                                       false ->
-                                           C;
-                                       Pts ->
-                                           [{Pts, Key} | C]
-                                   end
-                           end, []),
+    List = fifo_db:fold(State#state.db,
+                        <<"dtrace">>,
+                        fun (Key, E, C) ->
+                                case rankmatcher:match(E, Getter, Requirements) of
+                                    false ->
+                                        C;
+                                    Pts ->
+                                        [{Pts, Key} | C]
+                                end
+                        end, []),
     {reply,
      {ok, ReqID, {State#state.partition, State#state.node}, List},
      State};
