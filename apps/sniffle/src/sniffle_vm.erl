@@ -62,18 +62,21 @@ promote_to_image(Vm, SnapID, Config) ->
     end.
 
 add_nic(Vm, Network) ->
+    lager:info("[NIC ADD] Adding a new nic in ~s to ~s", [Network, Vm]),
     case sniffle_vm:get(Vm) of
         {ok, V} ->
+            lager:info("[NIC ADD] VM found.", []),
             {ok, H} = jsxd:get(<<"hypervisor">>, V),
             {ok, HypervisorObj} = sniffle_hypervisor:get(H),
             {ok, Port} = jsxd:get(<<"port">>, HypervisorObj),
             {ok, HostB} = jsxd:get(<<"host">>, HypervisorObj),
             HypervisorsNetwork = jsxd:get([<<"networks">>], [], HypervisorObj),
-            Requirements = [{must, member, <<"networks">>, HypervisorsNetwork}],
             Server = binary_to_list(HostB),
             libchunter:ping(Server, Port),
             case jsxd:get(<<"state">>, V) of
                 {ok, <<"stopped">>} ->
+                    Requirements = [{must, oneof, <<"tag">>, HypervisorsNetwork}],
+                    lager:info("[NIC ADD] Checking requirements: ~p.", [Requirements]),
                     case sniffle_network:claim_ip(Network, Requirements) of
                         {ok, IPRange, {Tag, IP, Net, Gw}} ->
                             NicSpec =
