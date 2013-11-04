@@ -245,20 +245,23 @@ unregister(Vm) ->
                               {ok, Ip} = jsxd:get(<<"ip">>, N),
                               sniffle_iprange:release_ip(Net, Ip)
                       end,jsxd:get(<<"network_mappings">>, [], V)),
-            VmPrefix = [<<"vm">>, Vm],
+            VmPrefix = [<<"vms">>, Vm],
             ChannelPrefix = [<<"channels">>, Vm],
             case libsnarl:user_list() of
-
                 {ok, Users} ->
-                    [libsnarl:user_revoke_prefix(U, VmPrefix) || U <- Users],
-                    [libsnarl:user_revoke_prefix(U, ChannelPrefix) || U <- Users];
+                    spawn(fun () ->
+                                  [libsnarl:user_revoke_prefix(U, VmPrefix) || U <- Users],
+                                  [libsnarl:user_revoke_prefix(U, ChannelPrefix) || U <- Users]
+                          end);
                 _ ->
                     ok
             end,
             case libsnarl:group_list() of
                 {ok, Groups} ->
-                    [libsnarl:group_revoke_prefix(G, VmPrefix) || G <- Groups],
-                    [libsnarl:group_revoke_prefix(G, ChannelPrefix) || G <- Groups];
+                    spawn(fun () ->
+                                  [libsnarl:group_revoke_prefix(G, VmPrefix) || G <- Groups],
+                                  [libsnarl:group_revoke_prefix(G, ChannelPrefix) || G <- Groups]
+                          end);
                 _ ->
                     ok
             end;
