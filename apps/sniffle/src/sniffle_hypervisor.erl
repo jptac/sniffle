@@ -65,7 +65,7 @@ status() ->
                                                        [length(L)])}]),
                         [W | Warnings ++ server_errors(S)]
                 end,
-    {ok, {Resources, Warnings1}}.
+    {ok, {ordsets:from_list(Resources), ordsets:from_list(Warnings1)}}.
 
 -spec list() ->
                   {ok, [IPR::fifo:hypervisor_id()]} | {error, timeout}.
