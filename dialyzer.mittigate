@@ -32,3 +32,9 @@
 ^sniffle_img_vnode.erl:248: Matching of pattern
 ^sniffle_iprange_vnode.erl:334: Guard test 'false' | 'null' | 'true' | binary() | ['false' | 'null' | 'true' | binary() | [any()] | number() | {_,_}] | number() =:= Name::none() can never succeed$
 ^sniffle_package_vnode.erl:263: Guard test 'false' | 'null' | 'true' | binary() | ['false' | 'null' | 'true' | binary() | [any()] | number() | {_,_}] | number() =:= Name::none() can never succeed$
+^eleveldb.erl:179: 
+^eleveldb.erl:191: 
+^eleveldb.erl:305: 
+^neotoma
+^sniffle_cloud_status.erl:3: Callback info about the riak_core_coverage_fsm behaviour is not available
+^sniffle_coverage.erl:3: Callback info about the riak_core_coverage_fsm behaviour is not available

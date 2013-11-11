@@ -141,8 +141,8 @@ do_write(Network, Op, Val) ->
 
 get_ip([N | R], []) ->
     case sniffle_iprange:claim_ip(N) of
-        {ok, _} = R ->
-            R;
+        Res = {ok, _} ->
+            Res;
         _ ->
             get_ip(R, [])
     end;
