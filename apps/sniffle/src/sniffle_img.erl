@@ -46,18 +46,16 @@ get(Img, Idx) ->
 -spec list() ->
                   {ok, [Img::fifo:dataset_id()]} | {error, timeout}.
 list() ->
-    sniffle_entity_coverage_fsm:start(
-      {sniffle_img_vnode, sniffle_img},
-      list
-     ).
+    sniffle_coverage:start(
+      sniffle_img_vnode_master, sniffle_img,
+      list).
 
 -spec list(Img::fifo:dataset_id()) ->
                   {ok, [Idx::integer()]} | {error, timeout}.
 list(Img) ->
-    sniffle_entity_coverage_fsm:start(
-      {sniffle_img_vnode, sniffle_img},
-      list, Img
-     ).
+    sniffle_coverage:start(
+      sniffle_img_vnode_master, sniffle_img,
+      {list, Img} ).
 
 %%%===================================================================
 %%% Internal Functions

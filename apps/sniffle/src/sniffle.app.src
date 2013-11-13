@@ -3,7 +3,7 @@
 {application, sniffle,
  [
   {description, "Project FiFo's central management server."},
-  {vsn, "0.4.1"},
+  {vsn, "0.4.2"},
   {registered, []},
   {applications, [
                   kernel,
@@ -14,7 +14,8 @@
                   libchunter,
                   libhowl,
                   libsnarl,
-                  hanoidb,
+                  fifo_db,
+                  bitcask,
                   crypto,
                   public_key,
                   ssl,
@@ -25,6 +26,6 @@
                   eplugin,
                   lager
                  ]},
-  {mod, { sniffle_app, []}},
-  {env, []}
+  {mod, {sniffle_app, []}},
+  {env, [{backend, "hanoidb"}]}
  ]}.

@@ -83,9 +83,9 @@ write({VNode, System}, User, Op, Val) ->
         {ReqID, error, Result} ->
             {error, Result};
         Other ->
-            lager:error("[write] Bad return: ~p", [Other])
+            lager:error("[~p:write] Bad return: ~p", [System, Other])
     after ?DEFAULT_TIMEOUT ->
-            lager:error("[write] timeout"),
+            lager:error("[~p:write] timeout on ~p", [System, Op]),
             {error, timeout}
     end.
 

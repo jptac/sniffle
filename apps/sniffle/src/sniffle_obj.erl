@@ -3,7 +3,7 @@
 %%
 %% TODO Possibly move type/record defs in there and use accessor funs
 %% and opaque types.
-%% 
+%%
 %% Taken form https://github.com/Licenser/try-try-try/blob/master/2011/riak-core-conflict-resolution/rts/src/rts_obj.erl
 
 -module(sniffle_obj).
@@ -12,11 +12,11 @@
 -export([val/1, vclock/1]).
 
 -ignore_xref([
-	      ancestors/1,
-	      equal/1,
-	      unique/1,
-	      vclock/1
-	     ]).
+              ancestors/1,
+              equal/1,
+              unique/1,
+              vclock/1
+             ]).
 
 -include("sniffle.hrl").
 

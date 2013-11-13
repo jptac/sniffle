@@ -2,11 +2,15 @@
 -module(sniffle_console_hypervisors).
 -export([command/2, help/0]).
 
+-define(F(Hs, Vs), sniffle_console:fields(Hs,Vs)).
+-define(H(Hs), sniffle_console:hdr(Hs)).
+-define(Hdr, [{"Hypervisor", 18}, {"UUID", 36}, {"IP", 16},
+              {"Memory", 18}, {"Version", -13}, {"State", n}]).
 help() ->
-    io:format("Usage~n"),
-    io:format("  list [-j]~n"),
-    io:format("  get [-j] <uuid>~n"),
-    io:format("  delete <uuid>~n").
+    io:format("Usage~n"
+              "  list [-j]~n"
+              "  get [-j] <uuid>~n"
+              "  delete <uuid>~n").
 
 command(text, ["delete", UUID]) ->
     case sniffle_hypervisor:unregister(list_to_binary(UUID)) of
@@ -29,8 +33,7 @@ command(json, ["get", UUID]) ->
     end;
 
 command(text, ["get", ID]) ->
-    io:format("Hypervisor         IP               Memory             Version       State~n"),
-    io:format("------------------ ---------------- ------------------ ------------- -------------~n", []),
+    ?H(?Hdr),
     case sniffle_hypervisor:get(list_to_binary(ID)) of
         {ok, H} ->
             print(H),
@@ -42,10 +45,11 @@ command(text, ["get", ID]) ->
 command(json, ["list"]) ->
     case sniffle_hypervisor:list() of
         {ok, Hs} ->
-            sniffle_console:pp_json(lists:map(fun (ID) ->
-                                                      {ok, H} = sniffle_hypervisor:get(ID),
-                                                      H
-                                              end, Hs)),
+            sniffle_console:pp_json(
+              lists:map(fun (ID) ->
+                                {ok, H} = sniffle_hypervisor:get(ID),
+                                H
+                        end, Hs)),
             ok;
         _ ->
             sniffle_console:pp_json([]),
@@ -53,8 +57,7 @@ command(json, ["list"]) ->
     end;
 
 command(text, ["list"]) ->
-    io:format("Hypervisor         IP               Memory             State         Version~n"),
-    io:format("------------------ ---------------- ------------------ ------------- -------------~n", []),
+    ?H(?Hdr),
     case sniffle_hypervisor:list() of
         {ok, Hs} ->
             lists:map(fun (ID) ->
@@ -69,9 +72,7 @@ command(_, C) ->
     io:format("Unknown parameters: ~p", [C]),
     error.
 
-
 print(H) ->
-    {ok, ID} = jsxd:get(<<"name">>, H),
     {ok, Host} = jsxd:get(<<"host">>, H),
     {ok, Port} = jsxd:get(<<"port">>, H),
     State = case libchunter:ping(binary_to_list(Host), Port) of
@@ -80,9 +81,15 @@ print(H) ->
                 _ ->
                     <<"disconnected">>
             end,
+    Name = case jsxd:get(<<"uuid">>, H) of
+               {ok, N} ->
+                   N;
+               _ ->
+                   jsxd:get(<<"name">>, <<"-">>, H)
+           end,
     Mem = io_lib:format("~p/~p",
                         [jsxd:get(<<"resources.provisioned-memory">>, 0, H),
                          jsxd:get(<<"resources.total-memory">>, 0, H)]),
-    io:format("~-18s ~16s ~18s ~-13s ~s~n",
-              [ID, Host, Mem, State,
-               jsxd:get(<<"version">>, <<"-">>, H)]).
+    ?F(?Hdr,
+       [jsxd:get(<<"alias">>, <<"-">>, H), Name, Host, Mem, State,
+        jsxd:get(<<"version">>, <<"-">>, H)]).

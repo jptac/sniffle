@@ -60,6 +60,9 @@ remove_iprange(Iprange, Network) when
                         ordsets:del_element(Iprange, R)
                 end, [Iprange], Network).
 
+set_metadata(Ks, delete, Network) ->
+    jsxd:delete([<<"metadata">> | Ks], Network);
+
 set_metadata(Ks, V, Network) ->
     jsxd:set([<<"metadata">> | Ks], V, Network).
 

@@ -2,7 +2,11 @@ REBAR = $(shell pwd)/rebar
 
 .PHONY: deps rel stagedevrel package version all
 
-all: deps compile
+
+all: cp-hooks deps compile
+
+cp-hooks:
+	cp hooks/* .git/hooks
 
 version:
 	echo "$(shell git symbolic-ref HEAD 2> /dev/null | cut -b 12-)-$(shell git log --pretty=format:'%h, %ad' -1)" > sniffle.version
@@ -26,7 +30,14 @@ distclean: clean devclean relclean
 test: xref
 	$(REBAR) skip_deps=true eunit
 
+quick-xref:
+	$(REBAR) xref skip_deps=true
+
+quick-test:
+	$(REBAR) skip_deps=true eunit
+
 rel: all zabbix
+	-rm -r rel/sniffle/share
 	$(REBAR) generate
 
 relclean:
@@ -77,7 +88,7 @@ dev1 dev2 dev3 dev4: all
 ## Dialyzer
 ##
 APPS = kernel stdlib sasl erts ssl tools os_mon runtime_tools crypto inets \
-	xmerl webtool snmp public_key mnesia eunit syntax_tools compiler
+       xmerl webtool snmp public_key mnesia eunit syntax_tools compiler edoc
 
 COMBO_PLT = $(HOME)/.sniffle_combo_dialyzer_plt
 

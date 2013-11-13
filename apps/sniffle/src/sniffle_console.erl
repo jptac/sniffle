@@ -1,5 +1,10 @@
 %% @doc Interface for sniffle-admin commands.
 -module(sniffle_console).
+
+-ifdef(TEST).
+-include_lib("eunit/include/eunit.hrl").
+-endif.
+
 -export([
          join/1,
          leave/1,
@@ -14,8 +19,10 @@
          pp_json/1,
          staged_join/1,
          reip/1,
-         ringready/1]
-       ).
+         ringready/1,
+         hdr/1,
+         fields/2
+        ]).
 
 -ignore_xref([
               join/1,
@@ -32,7 +39,6 @@
               reip/1,
               ringready/1
              ]).
-
 
 dtrace([C, "-j" | R]) ->
     sniffle_console_dtrace:command(json, [C | R]);
@@ -256,3 +262,65 @@ ringready([]) ->
 
 pp_json(Obj) ->
     io:format("~s~n", [jsx:prettify(jsx:encode(Obj))]).
+
+hdr(F) ->
+    hdr_lines(lists:reverse(F), {"~n", [], "~n", []}).
+
+
+hdr_lines([{N, n} | R], {Fmt, Vars, FmtLs, VarLs}) ->
+    %% there is a space that matters here ---------v
+    hdr_lines(R, {
+                "~20s " ++ Fmt,
+                [N | Vars],
+                "~20c " ++ FmtLs,
+                [$- | VarLs]});
+
+hdr_lines([{N, S}|R], {Fmt, Vars, FmtLs, VarLs}) ->
+    %% there is a space that matters here ---------v
+    hdr_lines(R, {
+                [$~ | integer_to_list(S) ++ [$s, $\  | Fmt]],
+                [N | Vars],
+                [$~ | integer_to_list(S) ++ [$c, $\  | FmtLs]],
+                [$- | VarLs]});
+
+hdr_lines([], {Fmt, Vars, FmtL, VarLs}) ->
+    io:format(Fmt, Vars),
+    io:format(FmtL, VarLs).
+
+
+fields(F, Vs) ->
+    fields(lists:reverse(F),
+           lists:reverse(Vs),
+           {"~n", []}).
+
+fields([{_, n}|R], [V | Vs], {Fmt, Vars}) when is_list(V)
+                                     orelse is_binary(V) ->
+    fields(R, Vs, {"~s " ++ Fmt, [V | Vars]});
+
+fields([{_, n}|R], [V | Vs], {Fmt, Vars}) ->
+    fields(R, Vs, {"~p " ++ Fmt, [V | Vars]});
+
+fields([{_, S}|R], [V | Vs], {Fmt, Vars}) when is_list(V)
+                                     orelse is_binary(V) ->
+    %% there is a space that matters here ------------v
+    fields(R, Vs, {[$~ | integer_to_list(S) ++ [$s, $\  | Fmt]], [V | Vars]});
+
+
+fields([{_, S}|R], [V | Vs], {Fmt, Vars}) ->
+    %% there is a space that matters here ------------v
+    fields(R, Vs, {[$~ | integer_to_list(S) ++ [$p, $\  | Fmt]], [V | Vars]});
+
+fields([], [], {Fmt, Vars}) ->
+    io:format(Fmt, Vars).
+
+-ifdef(TEST).
+
+named_test() ->
+    ?assertEqual(
+       ok, sniffle_console:fields(
+             [{"Desc", n}, {"Imported",7}, {"Version",8},
+              {"Name",15}, {"OS",7}, {"UUID",36}],
+             [<<"Base template to build other templates on">>,
+              100,<<"1.6.1">>,<<"smartos64">>, <<"smartos">>,
+              <<"f4c23828-7981-11e1-912f-8b6d67c68076">>])).
+-endif.

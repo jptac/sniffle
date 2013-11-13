@@ -46,18 +46,16 @@ get(UUID) ->
 -spec list() ->
                   {ok, [UUID::fifo:dataset_id()]} | {error, timeout}.
 list() ->
-    sniffle_entity_coverage_fsm:start(
-      {sniffle_dataset_vnode, sniffle_dataset},
-      list
-     ).
+    sniffle_coverage:start(
+      sniffle_dataset_vnode_master, sniffle_dataset,
+      list).
 
 -spec list(Reqs::[fifo:matcher()]) ->
                   {ok, [UUID::fifo:dataset_id()]} | {error, timeout}.
 list(Requirements) ->
-    {ok, Res} = sniffle_entity_coverage_fsm:start(
-                  {sniffle_dataset_vnode, sniffle_dataset},
-                  list, Requirements
-                 ),
+    {ok, Res} = sniffle_coverage:start(
+                  sniffle_dataset_vnode_master, sniffle_dataset,
+                  {list, Requirements}),
     Res1 = rankmatcher:apply_scales(Res),
     {ok,  lists:sort(Res1)}.
 
@@ -94,18 +92,13 @@ import(URL) ->
             {error, E}
     end.
 
-
 %%%===================================================================
 %%% Internal Functions
 %%%===================================================================
 
 transform_dataset(D1) ->
-    case jsxd:get([<<"urn">>], D1) of
+    case jsxd:get([<<"sniffle_version">>], D1) of
         undefined ->
-            jsxd:set(<<"image_size">>,
-                     ensure_integer(jsxd:get(<<"image_size">>, 0, D1)),
-                     D1);
-        _ ->
             {ok, ID} = jsxd:get(<<"uuid">>, D1),
             D2 = jsxd:thread(
                    [{select,[<<"os">>, <<"metadata">>, <<"name">>,
@@ -122,7 +115,11 @@ transform_dataset(D1) ->
                     jsxd:set(<<"type">>, <<"zone">>, D2);
                 {ok, _} ->
                     jsxd:set(<<"type">>, <<"kvm">>, D2)
-            end
+            end;
+        _ ->
+            jsxd:set(<<"image_size">>,
+                     ensure_integer(jsxd:get(<<"image_size">>, 0, D1)),
+                     D1)
     end.
 
 ensure_integer(I) when is_integer(I) ->
@@ -168,20 +165,21 @@ read_image(UUID, _TotalSize, done, Acc, Idx) ->
 read_image(UUID, TotalSize, Client, Acc, Idx) ->
     case hackney:stream_body(Client) of
         {ok, Data, Client1} ->
-            read_image(UUID, TotalSize, Client1, binary:copy(<<Acc/binary, Data/binary>>), Idx);
+            read_image(UUID, TotalSize, Client1,
+                       binary:copy(<<Acc/binary, Data/binary>>), Idx);
         {done, Client2} ->
             hackney:close(Client2),
             read_image(UUID, TotalSize, done, Acc, Idx);
         {error, Reason} ->
             libhowl:send(UUID,
-                         [{<<"event">>, <<"error">>}, {<<"data">>, [{<<"message">>, <<"failed">>},
-                                                                    {<<"index">>, Idx}]}]),
+                         [{<<"event">>, <<"error">>},
+                          {<<"data">>, [{<<"message">>, <<"failed">>},
+                                        {<<"index">>, Idx}]}]),
             libhowl:send(UUID,
-                         [{<<"event">>, <<"progress">>}, {<<"data">>, [{<<"imported">>, 0}]}]),
+                         [{<<"event">>, <<"progress">>},
+                          {<<"data">>, [{<<"imported">>, 0}]}]),
             lager:error("Error importing image ~s: ~p", [UUID, Reason])
     end.
-
-
 
 http_opts() ->
     case os:getenv("https_proxy") of

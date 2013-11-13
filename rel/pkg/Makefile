@@ -1,11 +1,12 @@
-VERSION=0.4.1
-COMPONENT=sniffle
+VERSION=0.4.2
+COMPONENT_INTERNAL=sniffle
+COMPONENT=fifo-sniffle
 
 .PHONY: build_info package package_list
 
 package_list:
 	cat pre_pkg > packlist
-	(cd ../$(COMPONENT); find * -type f | sort) >> packlist
+	(cd ../$(COMPONENT_INTERNAL); find * -type f | sort) >> packlist
 	cat post_pkg >> packlist
 
 build_info:
@@ -17,4 +18,4 @@ clean:
 	-rm *.tgz build-info packlist
 
 package: package_list build_info
-	pkg_create -i install.sh -k deinstall.sh -D displayfile -B build-info -c comment -d description -f packlist -I /opt/local/$(COMPONENT) -p ../$(COMPONENT) -U $(COMPONENT)-$(VERSION)$(SUFFIX).tgz
+	pkg_create -i install.sh -k deinstall.sh -D displayfile -B build-info -c comment -d description -f packlist -I /opt/local/$(COMPONENT) -p ../$(COMPONENT_INTERNAL) -U $(COMPONENT)-$(VERSION)$(SUFFIX).tgz

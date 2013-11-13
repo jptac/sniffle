@@ -1,26 +1,47 @@
 %% @doc Interface for sniffle-admin commands.
 -module(sniffle_console_datasets).
--export([command/2, help/0]).
+-export([command/2, help/0, read_image/4]).
+
+
+-include_lib("kernel/include/file.hrl").
+-include("sniffle_version.hrl").
+
+-define(F(Hs, Vs), sniffle_console:fields(Hs,Vs)).
+-define(H(Hs), sniffle_console:hdr(Hs)).
+-define(Hdr, [{"UUID", 36}, {"OS", 7}, {"Name", 15}, {"Version", 8},
+              {"Imported", 7}, {"Desc", n}]).
 
 help() ->
-    io:format("Usage~n"),
-    io:format("  list [-j]~n"),
-    io:format("  get [-j] <uuid>~n"),
-    io:format("  import <manifest> <data file>~n"),
-    io:format("  export <uuid> <directory>~n"),
-    io:format("  delete <uuid>~n").
+    io:format("Usage~n"
+              "  list [-j]~n"
+              "  get [-j] <uuid>~n"
+              "  import <manifest> <data file>~n"
+              "  export <uuid> <directory>~n"
+              "  delete <uuid>~n").
 
 -define(CHUNK_SIZE, 1024*1024).
 
-read_image(UUID, File, Idx) ->
+read_image(UUID, File, Idx, Size) ->
     case file:read(File, 1024*1024) of
         eof ->
+            libhowl:send(UUID,
+                         [{<<"event">>, <<"progress">>},
+                          {<<"data">>, [{<<"imported">>, 1}]}]),
             sniffle_dataset:set(UUID, <<"imported">>, 1),
+            lager:debug("[IMG:~p(~p)] import done to ~p%", [UUID, Idx+1, 100]),
             ok;
         {ok, B} ->
             sniffle_img:create(UUID, Idx, binary:copy(B)),
             Idx1 = Idx + 1,
-            read_image(UUID, File, Idx1)
+            Done = (Idx1 * 1024 * 1024) / Size,
+            sniffle_dataset:set(UUID, <<"imported">>, Done),
+            libhowl:send(UUID,
+                         [{<<"event">>, <<"progress">>},
+                          {<<"data">>, [{<<"imported">>, Done}]}]),
+            lager:debug("[IMG:~p(~p)] import done to ~p%", [UUID, Idx, Done*100]),
+            read_image(UUID, File, Idx1, Size);
+        E ->
+            lager:debug("[IMG:~p(~p)] Error ~p", [UUID, Idx, E])
     end.
 
 write_image(File, _UUID, [Idx | _], 2) ->
@@ -48,6 +69,7 @@ write_image(File, UUID, [Idx | R], Retries) ->
 
 ensure_integer(I) when is_integer(I) ->
     I;
+
 ensure_integer(L) when is_list(L) ->
     list_to_integer(L);
 ensure_integer(B) when is_binary(B) ->
@@ -62,10 +84,11 @@ command(text, ["export", UUIDS, Path]) ->
         _ ->
             case sniffle_dataset:get(UUID) of
                 {ok, Obj} ->
-                    Obj1 = jsxd:set(<<"image_size">>,
+                    Obj0 = jsxd:set(<<"image_size">>,
                                     ensure_integer(
                                       jsxd:get(<<"image_size">>, 0, Obj)),
                                     Obj),
+                    Obj1 = jsxd:set(<<"sniffle_version">>, ?VERSION, Obj0),
                     case file:write_file([Path, "/", UUIDS, ".json"],
                                          jsx:encode(Obj1)) of
                         ok ->
@@ -102,9 +125,17 @@ command(text, ["import", Manifest, DataFile]) ->
             sniffle_dataset:create(UUID),
             sniffle_dataset:set(UUID, Dataset),
             sniffle_dataset:set(UUID, <<"imported">>, 0),
-            {ok, F} = file:open(DataFile, [read, raw, binary]),
-            read_image(UUID, F, 0),
-            ok
+            case file:read_file_info(DataFile) of
+                {ok, Info} ->
+                    {ok, F} = file:open(DataFile, [read, raw, binary]),
+                    PID = spawn(?MODULE, read_image,
+                                [UUID, F, 0, Info#file_info.size]),
+                    io:format("Import backgrounded for ~p: ~p.", [UUID, PID]),
+
+                    ok;
+                _ ->
+                    error
+            end
     end;
 
 command(text, ["delete", ID]) ->
@@ -128,7 +159,7 @@ command(json, ["get", UUID]) ->
     end;
 
 command(text, ["get", ID]) ->
-    header(),
+    ?H(?Hdr),
     case sniffle_dataset:get(list_to_binary(ID)) of
         {ok, D} ->
             print(D),
@@ -140,10 +171,11 @@ command(text, ["get", ID]) ->
 command(json, ["list"]) ->
     case sniffle_dataset:list() of
         {ok, Hs} ->
-            sniffle_console:pp_json(lists:map(fun (ID) ->
-                                                      {ok, H} = sniffle_dataset:get(ID),
-                                                      H
-                                              end, Hs)),
+            sniffle_console:pp_json(
+              lists:map(fun (ID) ->
+                                {ok, H} = sniffle_dataset:get(ID),
+                                H
+                        end, Hs)),
             ok;
         _ ->
             sniffle_console:pp_json([]),
@@ -151,7 +183,7 @@ command(json, ["list"]) ->
     end;
 
 command(text, ["list"]) ->
-    header(),
+    ?H(?Hdr),
     case sniffle_dataset:list() of
         {ok, Ds} ->
             lists:map(fun (ID) ->
@@ -166,14 +198,10 @@ command(_, C) ->
     io:format("Unknown parameters: ~p", [C]),
     error.
 
-header() ->
-    io:format("UUID                                 OS      Name            Version  Desc~n"),
-    io:format("------------------------------------ ------- --------------- -------- --------------~n", []).
-
 print(D) ->
-    io:format("~36s ~7s ~15s ~8s ~s~n",
-              [jsxd:get(<<"dataset">>, <<"-">>, D),
-               jsxd:get(<<"os">>, <<"-">>, D),
-               jsxd:get(<<"name">>, <<"-">>, D),
-               jsxd:get(<<"version">>, <<"-">>, D),
-               jsxd:get(<<"description">>, <<"-">>, D)]).
+    ?F(?Hdr, [jsxd:get(<<"dataset">>, <<"-">>, D),
+              jsxd:get(<<"os">>, <<"-">>, D),
+              jsxd:get(<<"name">>, <<"-">>, D),
+              jsxd:get(<<"version">>, <<"-">>, D),
+              jsxd:get(<<"imported">>, 1, D) * 100,
+              jsxd:get(<<"description">>, <<"-">>, D)]).

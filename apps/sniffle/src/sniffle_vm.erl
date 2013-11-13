@@ -39,19 +39,40 @@ promote_to_image(Vm, SnapID, Config) ->
                     {ok, H} = jsxd:get(<<"hypervisor">>, V),
                     {Server, Port} = get_hypervisor(H),
                     Img = list_to_binary(uuid:to_string(uuid:uuid4())),
-                    Config1 = jsxd:select([<<"name">>,<<"version">>, <<"os">>, <<"description">>],
+                    {ok, C} = jsxd:get(<<"config">>, V),
+                    Config1 = jsxd:select([<<"name">>, <<"version">>, <<"os">>, <<"description">>],
                                           jsxd:from_list(Config)),
-                    {ok, Nets} = jsxd:get([<<"config">>, <<"networks">>], V),
+                    {ok, Nets} = jsxd:get([<<"networks">>], C),
                     Nets1 = jsxd:map(fun (Idx, E) ->
                                              Name = io_lib:format("net~p", [Idx]),
                                              [{<<"description">>, jsxd:get(<<"tag">>, <<"undefined">>, E)},
                                               {<<"name">>, list_to_binary(Name)}]
                                      end, Nets),
-                    Config2 = jsxd:thread([{set, <<"type">>, jsxd:get([<<"config">>, <<"type">>], <<"zone">>, V)},
+                    Config2 = jsxd:thread([{set, <<"type">>, jsxd:get([<<"type">>], <<"zone">>, C)},
                                            {set, <<"dataset">>, Img},
                                            {set, <<"networks">>, Nets1}], Config1),
+                    Config3 = case jsxd:get(<<"type">>, Config2) of
+                                  {ok, <<"zone">>} ->
+                                      Config2;
+                                  _ ->
+                                      ND = case jsxd:get(<<"nic_driver">>, Config) of
+                                               {ok, ND0} ->
+                                                   ND0;
+                                               _ ->
+                                                   jsxd:get([<<"networks">>, 0, model], <<"virtio">>, C)
+                                           end,
+                                      DD = case jsxd:get(<<"disk_driver">>, Config)  of
+                                               {ok, DD0} ->
+                                                   DD0;
+                                               _ ->
+                                                   jsxd:get([<<"disks">>, 0, model], <<"virtio">>, C)
+                                           end,
+                                      jsxd:thread([{set, <<"disk_driver">>, DD},
+                                                   {set, <<"nic_driver">>, ND}],
+                                                  Config2)
+                              end,
                     ok = sniffle_dataset:create(Img),
-                    sniffle_dataset:set(Img, Config2),
+                    sniffle_dataset:set(Img, Config3),
                     ok = libchunter:store_snapshot(Server, Port, Vm, SnapID, Img),
                     {ok, Img};
                 undefined ->
@@ -62,53 +83,56 @@ promote_to_image(Vm, SnapID, Config) ->
     end.
 
 add_nic(Vm, Network) ->
+    lager:info("[NIC ADD] Adding a new nic in ~s to ~s", [Network, Vm]),
     case sniffle_vm:get(Vm) of
         {ok, V} ->
+            lager:info("[NIC ADD] VM found.", []),
             {ok, H} = jsxd:get(<<"hypervisor">>, V),
             {ok, HypervisorObj} = sniffle_hypervisor:get(H),
             {ok, Port} = jsxd:get(<<"port">>, HypervisorObj),
             {ok, HostB} = jsxd:get(<<"host">>, HypervisorObj),
+            HypervisorsNetwork = jsxd:get([<<"networks">>], [], HypervisorObj),
             Server = binary_to_list(HostB),
             libchunter:ping(Server, Port),
             case jsxd:get(<<"state">>, V) of
                 {ok, <<"stopped">>} ->
-                    case sniffle_iprange:claim_ip(Network) of
-                        {ok, {Tag, IP, Net, Gw}} ->
-                            case lists:member(Tag, jsxd:get([<<"networks">>], [], HypervisorObj)) of
-                                false ->
-                                    sniffle_iprange:release_ip(Network, IP),
-                                    {error, bad_ag};
-                                true ->
-                                    NicSpec =
-                                        jsxd:from_list([{<<"ip">>, sniffle_iprange_state:to_bin(IP)},
-                                                        {<<"gateway">>, sniffle_iprange_state:to_bin(Gw)},
-                                                        {<<"netmask">>, sniffle_iprange_state:to_bin(Net)},
-                                                        {<<"nic_tag">>, Tag }]),
-                                    NicSpec1 = case jsxd:get([<<"config">>, <<"networks">>], V) of
-                                                   {ok, [_|_]} ->
-                                                       NicSpec;
-                                                   _ ->
-                                                       jsxd:set([<<"primary">>], true, NicSpec)
-                                               end,
-                                    UR = [{<<"add_nics">>, [NicSpec1]}],
-                                    ok = libchunter:update_machine(Server, Port, Vm, [], UR),
-                                    M = [{<<"network">>, Network},
-                                         {<<"ip">>, IP}],
-                                    Ms1= case jsxd:get([<<"network_mappings">>], V) of
-                                             {ok, Ms} ->
-                                                 [M | Ms];
-                                             _ ->
-                                                 [M]
-                                         end,
-                                    sniffle_vm:set(Vm, [<<"network_mappings">>], Ms1)
-                            end;
-                        _ ->
+                    Requirements = [{must, oneof, <<"tag">>, HypervisorsNetwork}],
+                    lager:info("[NIC ADD] Checking requirements: ~p.", [Requirements]),
+                    case sniffle_network:claim_ip(Network, Requirements) of
+                        {ok, IPRange, {Tag, IP, Net, Gw}} ->
+                            NicSpec =
+                                jsxd:from_list([{<<"ip">>, sniffle_iprange_state:to_bin(IP)},
+                                                {<<"gateway">>, sniffle_iprange_state:to_bin(Gw)},
+                                                {<<"netmask">>, sniffle_iprange_state:to_bin(Net)},
+                                                {<<"nic_tag">>, Tag }]),
+                            NicSpec1 = case jsxd:get([<<"config">>, <<"networks">>], V) of
+                                           {ok, [_|_]} ->
+                                               NicSpec;
+                                           _ ->
+                                               jsxd:set([<<"primary">>], true, NicSpec)
+                                       end,
+                            UR = [{<<"add_nics">>, [NicSpec1]}],
+                            ok = libchunter:update_machine(Server, Port, Vm, [], UR),
+                            M = [{<<"network">>, IPRange},
+                                 {<<"ip">>, IP}],
+                            Ms1= case jsxd:get([<<"network_mappings">>], V) of
+                                     {ok, Ms} ->
+                                         [M | Ms];
+                                     _ ->
+                                         [M]
+                                 end,
+                            sniffle_vm:set(Vm, [<<"network_mappings">>], Ms1);
+                        E ->
+                            lager:error("Could not get claim new IP: ~p for ~p ~p",
+                                        [E, Network, Requirements]),
                             {error, claim_failed}
                     end;
-                _ ->
+                E ->
+                    lager:error("VM needs to be stoppped: ~p", [E]),
                     {error, not_stopped}
             end;
         E ->
+            lager:error("Could not get new IP - could not get VM: ~p", [E]),
             E
     end.
 
@@ -242,20 +266,23 @@ unregister(Vm) ->
                               {ok, Ip} = jsxd:get(<<"ip">>, N),
                               sniffle_iprange:release_ip(Net, Ip)
                       end,jsxd:get(<<"network_mappings">>, [], V)),
-            VmPrefix = [<<"vm">>, Vm],
+            VmPrefix = [<<"vms">>, Vm],
             ChannelPrefix = [<<"channels">>, Vm],
             case libsnarl:user_list() of
-
                 {ok, Users} ->
-                    [libsnarl:user_revoke_prefix(U, VmPrefix) || U <- Users],
-                    [libsnarl:user_revoke_prefix(U, ChannelPrefix) || U <- Users];
+                    spawn(fun () ->
+                                  [libsnarl:user_revoke_prefix(U, VmPrefix) || U <- Users],
+                                  [libsnarl:user_revoke_prefix(U, ChannelPrefix) || U <- Users]
+                          end);
                 _ ->
                     ok
             end,
             case libsnarl:group_list() of
                 {ok, Groups} ->
-                    [libsnarl:group_revoke_prefix(G, VmPrefix) || G <- Groups],
-                    [libsnarl:group_revoke_prefix(G, ChannelPrefix) || G <- Groups];
+                    spawn(fun () ->
+                                  [libsnarl:group_revoke_prefix(G, VmPrefix) || G <- Groups],
+                                  [libsnarl:group_revoke_prefix(G, ChannelPrefix) || G <- Groups]
+                          end);
                 _ ->
                     ok
             end;
@@ -298,10 +325,9 @@ get(Vm) ->
 -spec list() ->
                   {error, timeout} | [fifo:uuid()].
 list() ->
-    sniffle_entity_coverage_fsm:start(
-      {sniffle_vm_vnode, sniffle_vm},
-      list
-     ).
+    sniffle_coverage:start(
+      sniffle_vm_vnode_master, sniffle_vm,
+      list).
 
 %%--------------------------------------------------------------------
 %% @doc Lists all vm's and fiters by a given matcher set.
@@ -310,10 +336,9 @@ list() ->
 -spec list([fifo:matcher()]) -> {error, timeout} | {ok, [fifo:uuid()]}.
 
 list(Requirements) ->
-    {ok, Res} = sniffle_entity_coverage_fsm:start(
-                  {sniffle_vm_vnode, sniffle_vm},
-                  list, Requirements
-                 ),
+    {ok, Res} = sniffle_coverage:start(
+                  sniffle_vm_vnode_master, sniffle_vm,
+                  {list, Requirements}),
     Res1 = rankmatcher:apply_scales(Res),
     {ok,  lists:sort(Res1)}.
 

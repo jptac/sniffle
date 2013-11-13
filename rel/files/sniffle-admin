@@ -100,7 +100,7 @@ case "$1" in
         shift
         run sniffle_console ds $@
         ;;
-    networks)
+    ipranges)
         shift
         run sniffle_console ips $@
         ;;

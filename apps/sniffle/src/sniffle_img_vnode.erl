@@ -7,8 +7,6 @@
 -export([
          repair/4,
          get/3,
-         list/2,
-         list/3,
          create/4,
          delete/3
         ]).
@@ -71,26 +69,6 @@ get(Preflist, ReqID, {Img, Idx}) ->
                                    ?MASTER).
 
 %%%===================================================================
-%%% API - coverage
-%%%===================================================================
-
-list(Preflist, ReqID) ->
-    riak_core_vnode_master:coverage(
-      {list, ReqID},
-      Preflist,
-      all,
-      {fsm, undefined, self()},
-      ?MASTER).
-
-list(Preflist, ReqID, Img) ->
-    riak_core_vnode_master:coverage(
-      {list, ReqID, Img},
-      Preflist,
-      all,
-      {fsm, undefined, self()},
-      ?MASTER).
-
-%%%===================================================================
 %%% API - writes
 %%%===================================================================
 
@@ -118,12 +96,12 @@ delete(Preflist, ReqID, Img) ->
 
 init([Partition]) ->
     PartStr = integer_to_list(Partition),
-    {ok, DBLoc} = application:get_env(sniffle, db_path),
+    {ok, DBLoc} = application:get_env(fifo_db, db_path),
     DB = bitcask:open(DBLoc ++ "/" ++ PartStr ++ ".img", [read_write]),
     {ok, #state{
-       db = DB,
-       partition = Partition,
-       node = node()}}.
+            db = DB,
+            partition = Partition,
+            node = node()}}.
 
 handle_command(ping, _Sender, State) ->
     {reply, {pong, State#state.partition}, State};
@@ -163,6 +141,10 @@ handle_command({create, {ReqID, Coordinator}, {Img, Idx}, Data},
 handle_command({delete, {ReqID, _Coordinator}, {Img, Idx}}, _Sender, State) ->
     bitcask:delete(State#state.db, <<Img/binary, Idx:32>>),
     {reply, {ok, ReqID}, State};
+
+handle_command(?FOLD_REQ{foldfun=Fun, acc0=Acc0}, _Sender, State) ->
+    Acc = bitcask:fold(State#state.db, Fun, Acc0),
+    {reply, Acc, State};
 
 handle_command(_Message, _Sender, State) ->
     {noreply, State}.
@@ -213,7 +195,7 @@ delete(State) ->
                       end, ok),
     {ok, State}.
 
-handle_coverage({list, ReqID}, _KeySpaces, _Sender, State) ->
+handle_coverage(list, _KeySpaces, {_, ReqID, _}, State) ->
     List = bitcask:fold_keys(State#state.db,
                              fun (#bitcask_entry{key=K}, []) ->
                                      S = byte_size(K) - 4,
@@ -233,7 +215,7 @@ handle_coverage({list, ReqID}, _KeySpaces, _Sender, State) ->
      {ok, ReqID, {State#state.partition,State#state.node}, List},
      State};
 
-handle_coverage({list, ReqID, Img}, _KeySpaces, _Sender, State) ->
+handle_coverage({list, Img}, _KeySpaces, {_, ReqID, _}, State) ->
     S = byte_size(Img),
     List = bitcask:fold_keys(State#state.db,
                              fun (#bitcask_entry{key = <<Img1:S/binary, Idx:32>>}, L) when Img1 =:= Img ->

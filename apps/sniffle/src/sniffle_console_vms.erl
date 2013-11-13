@@ -2,17 +2,20 @@
 -module(sniffle_console_vms).
 -export([command/2, help/0]).
 
+-define(F(Hs, Vs), sniffle_console:fields(Hs,Vs)).
+-define(H(Hs), sniffle_console:hdr(Hs)).
+
 help() ->
-    io:format("Usage~n"),
-    io:format("  list [-j]~n"),
-    io:format("  get [-j] <uuid>~n"),
-    io:format("  logs [-j] <uuid>~n"),
-    io:format("  snapshots [-j] <uuid>~n"),
-    io:format("  snapshot <uuid> <comment>~n"),
-    io:format("  start <uuid>~n"),
-    io:format("  stop <uuid>~n"),
-    io:format("  reboot <uuid>~n"),
-    io:format("  delete <uuid>~n").
+    fmt("Usage~n"
+        "  list [-j]~n"
+        "  get [-j] <uuid>~n"
+        "  logs [-j] <uuid>~n"
+        "  snapshots [-j] <uuid>~n"
+        "  snapshot <uuid> <comment>~n"
+        "  start <uuid>~n"
+        "  stop <uuid>~n"
+        "  reboot <uuid>~n"
+        "  delete <uuid>~n").
 
 command(text, ["start", UUID]) ->
     case sniffle_vm:start(list_to_binary(UUID)) of
@@ -68,15 +71,17 @@ command(json, ["get", UUID]) ->
     end;
 
 command(text, ["get", UUID]) ->
-    io:format("UUID                                 Hypervisor        Name            State~n"),
-    io:format("------------------------------------ ----------------- --------------- ----------~n", []),
+    H = [{"UUID", 36},
+         {"Hypervisor", 17},
+         {"Name", 10},
+         {"State", -15}],
+    ?H(H),
     case sniffle_vm:get(list_to_binary(UUID)) of
         {ok, VM} ->
-            io:format("~36s ~17s ~10s ~-15s~n",
-                      [UUID,
-                       jsxd:get(<<"hypervisor">>, <<"-">>, VM),
-                       jsxd:get(<<"state">>, <<"-">>, VM),
-                       jsxd:get(<<"config.alias">>, <<"-">>, VM)]),
+            ?F(H, [UUID,
+                   jsxd:get(<<"hypervisor">>, <<"-">>, VM),
+                   jsxd:get(<<"state">>, <<"-">>, VM),
+                   jsxd:get(<<"config.alias">>, <<"-">>, VM)]),
             ok;
         _ ->
             ok
@@ -93,14 +98,14 @@ command(json, ["logs", UUID]) ->
     end;
 
 command(text, ["logs", UUID]) ->
-    io:format("Timestamp        Log~n"),
-    io:format("---------------- -------------------------------------------------------------~n", []),
+    H = [{"Timestamp", 17},
+         {"Log", n}],
+    ?H(H),
     case sniffle_vm:get(list_to_binary(UUID)) of
         {ok, VM} ->
             lists:map(fun (Log) ->
-                              io:format("~17p ~s~n",
-                                        [jsxd:get(<<"date">>, <<"-">>, Log),
-                                         jsxd:get(<<"log">>, <<"-">>, Log)])
+                              ?F(H, [jsxd:get(<<"date">>, <<"-">>, Log),
+                                     jsxd:get(<<"log">>, <<"-">>, Log)])
                       end, jsxd:get(<<"log">>, [], VM)),
             ok;
         _ ->
@@ -109,7 +114,8 @@ command(text, ["logs", UUID]) ->
 
 
 command(text, ["snapshot", UUID | Comment]) ->
-    case sniffle_vm:snapshot(list_to_binary(UUID), iolist_to_binary(join(Comment, " "))) of
+    case sniffle_vm:snapshot(list_to_binary(UUID),
+                             iolist_to_binary(join(Comment, " "))) of
         {ok, Snap} ->
             io:format("New snapshot created: ~s.~n", [Snap]),
             ok;
@@ -129,16 +135,18 @@ command(json, ["snapshots", UUID]) ->
     end;
 
 command(text, ["snapshots", UUID]) ->
-    io:format("Timestamp        UUID                                 Comment~n"),
-    io:format("---------------- ------------------------------------ -----------~n", []),
+    H = [{"Timestamp", 16},
+         {"UUID", 36},
+         {"Comment", 100}],
+    ?H(H),
     case sniffle_vm:get(list_to_binary(UUID)) of
         {ok, VM} ->
-            jsxd:map(fun (SUUID, Snapshot) ->
-                             io:format("~16p ~36s ~s~n",
-                                       [jsxd:get(<<"timestamp">>, <<"-">>, Snapshot),
-                                        SUUID,
-                                        jsxd:get(<<"comment">>, <<"-">>, Snapshot)])
-                     end, jsxd:get(<<"snapshots">>, [], VM)),
+            jsxd:map(
+              fun (SUUID, Snapshot) ->
+                      ?F(H, [jsxd:get(<<"timestamp">>, <<"-">>, Snapshot),
+                             SUUID,
+                             jsxd:get(<<"comment">>, <<"-">>, Snapshot)])
+              end, jsxd:get(<<"snapshots">>, [], VM)),
             ok;
         _ ->
             ok
@@ -147,12 +155,14 @@ command(text, ["snapshots", UUID]) ->
 command(json, ["list"]) ->
     case sniffle_vm:list() of
         {ok, VMs} ->
-            sniffle_console:pp_json(lists:map(fun (UUID) ->
-                                                      {ok, VM} = sniffle_vm:get(UUID),
-                                                      jsxd:thread([{select, [<<"hypervisor">>, <<"state">>]},
-                                                                   {merge, jsxd:get(<<"config">>, [], VM)}],
-                                                                  VM)
-                                              end, VMs)),
+            sniffle_console:pp_json(
+              lists:map(fun (UUID) ->
+                                {ok, VM} = sniffle_vm:get(UUID),
+                                jsxd:thread(
+                                  [{select, [<<"hypervisor">>, <<"state">>]},
+                                   {merge, jsxd:get(<<"config">>, [], VM)}],
+                                  VM)
+                        end, VMs)),
             ok;
         _ ->
             sniffle_console:pp_json([]),
@@ -160,18 +170,21 @@ command(json, ["list"]) ->
     end;
 
 command(text, ["list"]) ->
-    io:format("UUID                                 Hypervisor        Name            State~n"),
-    io:format("------------------------------------ ----------------- --------------- ----------~n", []),
+    H = [{"UUID", 36},
+         {"Hypervisor", 17},
+         {"Name", 15},
+         {"State", 10}],
+    ?H(H),
     case sniffle_vm:list() of
         {ok, VMs} ->
-            lists:map(fun (UUID) ->
-                              {ok, VM} = sniffle_vm:get(UUID),
-                              io:format("~36s ~17s ~15s ~-10s~n",
-                                        [UUID,
-                                         jsxd:get(<<"hypervisor">>, <<"-">>, VM),
-                                         jsxd:get(<<"config.alias">>, <<"-">>, VM),
-                                         jsxd:get(<<"state">>, <<"-">>, VM)])
-                      end, VMs);
+            lists:map(
+              fun (UUID) ->
+                      {ok, VM} = sniffle_vm:get(UUID),
+                      ?F(H, [UUID,
+                             jsxd:get(<<"hypervisor">>, <<"-">>, VM),
+                             jsxd:get(<<"config.alias">>, <<"-">>, VM),
+                             jsxd:get(<<"state">>, <<"-">>, VM)])
+              end, VMs);
         _ ->
             []
     end;
@@ -186,3 +199,8 @@ join([ Head | [] ], _Sep) ->
 
 join([ Head | Rest], Sep) ->
     [Head,Sep | join(Rest,Sep) ].
+
+fmt(S) ->
+    io:format(S).
+
+

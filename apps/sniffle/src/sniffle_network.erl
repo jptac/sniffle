@@ -12,7 +12,9 @@
          set/3,
          set/2,
          add_iprange/2,
-         remove_iprange/2
+         remove_iprange/2,
+         claim_ip/1,
+         claim_ip/2
         ]).
 
 -ignore_xref([
@@ -25,7 +27,9 @@
               set/3,
               set/2,
               add_iprange/2,
-              remove_iprange/2
+              remove_iprange/2,
+              claim_ip/1,
+              claim_ip/2
              ]).
 
 -define(MAX_TRIES, 3).
@@ -34,9 +38,9 @@
                     not_found | {ok, IPR::fifo:object()} | {error, timeout}.
 lookup(Name) when
       is_binary(Name) ->
-    {ok, Res} = sniffle_entity_coverage_fsm:start(
-                  {sniffle_network_vnode, sniffle_network},
-                  lookup, Name),
+    {ok, Res} = sniffle_coverage:start(
+                  sniffle_network_vnode_master, sniffle_network,
+                  {lookup, Name}),
     lists:foldl(fun (not_found, Acc) ->
                         Acc;
                     (R, _) ->
@@ -83,16 +87,16 @@ remove_iprange(Network, IPRange) ->
 -spec list() ->
                   {ok, [IPR::fifo:network_id()]} | {error, timeout}.
 list() ->
-    sniffle_entity_coverage_fsm:start(
-      {sniffle_network_vnode, sniffle_network},
+    sniffle_coverage:start(
+      sniffle_network_vnode_master, sniffle_network,
       list).
 
 -spec list(Reqs::[fifo:matcher()]) ->
                   {ok, [IPR::fifo:network_id()]} | {error, timeout}.
 list(Requirements) ->
-    {ok, Res} = sniffle_entity_coverage_fsm:start(
-                  {sniffle_network_vnode, sniffle_network},
-                  list, Requirements),
+    {ok, Res} = sniffle_coverage:start(
+                  sniffle_network_vnode_master, sniffle_network,
+                   {list, Requirements}),
     Res1 = rankmatcher:apply_scales(Res),
     {ok,  lists:sort(Res1)}.
 
@@ -109,12 +113,60 @@ set(Network, Attribute, Value) ->
 set(Network, Attributes) ->
     do_write(Network, set, Attributes).
 
+
+claim_ip(UUID) ->
+    claim_ip(UUID, []).
+
+claim_ip(UUID, Rules) ->
+    case sniffle_network:get(UUID) of
+        {ok, Network} ->
+            {ok, Rs} = jsxd:get(<<"ipranges">>, Network),
+            get_ip(Rs, Rules);
+        R ->
+            R
+    end.
+
 %%%===================================================================
 %%% Internal Functions
 %%%===================================================================
 
 do_write(Network, Op) ->
-    sniffle_entity_write_fsm:write({sniffle_network_vnode, sniffle_network}, Network, Op).
+    sniffle_entity_write_fsm:write({sniffle_network_vnode, sniffle_network},
+                                   Network, Op).
 
 do_write(Network, Op, Val) ->
-    sniffle_entity_write_fsm:write({sniffle_network_vnode, sniffle_network}, Network, Op, Val).
+    sniffle_entity_write_fsm:write({sniffle_network_vnode, sniffle_network},
+                                   Network, Op, Val).
+
+
+get_ip([N | R], []) ->
+    case sniffle_iprange:claim_ip(N) of
+        Res = {ok, _} ->
+            Res;
+        _ ->
+            get_ip(R, [])
+    end;
+
+get_ip([N | R], Rules) ->
+    case sniffle_iprange:get(N) of
+        {ok, E} ->
+            case rankmatcher:match(E, fun getter/2, Rules) of
+                false ->
+                    get_ip(R, Rules);
+                _ ->
+                    case sniffle_iprange:claim_ip(N) of
+                        {ok, Res} ->
+                            {ok, N, Res};
+                        _ ->
+                            get_ip(R, Rules)
+                    end
+            end;
+        _ ->
+            get_ip(R, Rules)
+    end;
+
+get_ip([], _) ->
+    not_found.
+
+getter(O, V) ->
+    jsxd:get(V, 0, O).

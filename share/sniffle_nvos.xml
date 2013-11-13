@@ -34,13 +34,6 @@ Copyright 2012 Project FiFo / Heinz N. Gies
       <service_fmri value='svc:/system/filesystem/local'/>
     </dependency>
 
-    <dependency
-        name='epmd'
-        grouping='require_all'
-        restart_on='none' type='service'>
-      <service_fmri value='svc:/pkgsrc/epmd:default'/>
-    </dependency>
-
     <exec_method
         type='method'
         name='start'
@@ -49,7 +42,7 @@ Copyright 2012 Project FiFo / Heinz N. Gies
       <method_context>
         <method_credential user='sniffle' group='sniffle' />
         <method_environment>
-          <envvar name='PATH' value='/opt/local/gnu/bin:/opt/local/bin:/opt/local/sbin:/usr/bin:/usr/sbin'/>
+          <envvar name='PATH' value='/usr/gnu/bin:/usr/bin:/usr/sbin'/>
           <envvar name='HOME' value='/var/db/sniffle'/>
           <!--envvar name='http_proxy' value='http://10.0.0.1'/-->
         </method_environment>
@@ -64,7 +57,7 @@ Copyright 2012 Project FiFo / Heinz N. Gies
       <method_context>
         <method_credential user='sniffle' group='sniffle' />
         <method_environment>
-          <envvar name='PATH' value='/opt/local/gnu/bin:/opt/local/bin:/opt/local/sbin:/usr/bin:/usr/sbin'/>
+          <envvar name='PATH' value='/usr/gnu/bin:/usr/bin:/usr/sbin'/>
           <envvar name='HOME' value='/var/db/sniffle'/>
           <!--envvar name='http_proxy' value='http://10.0.0.1'/-->
         </method_environment>
@@ -79,7 +72,7 @@ Copyright 2012 Project FiFo / Heinz N. Gies
       <method_context>
         <method_credential user='sniffle' group='sniffle' />
         <method_environment>
-          <envvar name='PATH' value='/opt/local/gnu/bin:/opt/local/bin:/opt/local/sbin:/usr/bin:/usr/sbin'/>
+          <envvar name='PATH' value='/usr/gnu/bin:/usr/bin:/usr/sbin'/>
           <envvar name='HOME' value='/var/db/sniffle'/>
           <!--envvar name='http_proxy' value='http://10.0.0.1'/-->
         </method_environment>

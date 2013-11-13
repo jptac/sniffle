@@ -5,8 +5,6 @@
 
 -export([repair/4,
          get/3,
-         list/2,
-         list/3,
          log/4,
          register/4,
          unregister/3,
@@ -37,8 +35,6 @@
 %% those functions do not get called directly.
 -ignore_xref([
               get/3,
-              list/2,
-              list/3,
               log/4,
               register/4,
               repair/4,
@@ -74,30 +70,6 @@ get(Preflist, ReqID, Vm) ->
                                    {get, ReqID, Vm},
                                    {fsm, undefined, self()},
                                    ?MASTER).
-
-%%%===================================================================
-%%% API - coverage
-%%%===================================================================
-
--spec list(any(), any()) -> ok.
-
-list(Preflist, ReqID) ->
-    riak_core_vnode_master:coverage(
-      {list, ReqID},
-      Preflist,
-      all,
-      {fsm, undefined, self()},
-      ?MASTER).
-
--spec list(any(), any(), [fifo:matcher()]) -> ok.
-
-list(Preflist, ReqID, Requirements) ->
-    riak_core_vnode_master:coverage(
-      {list, ReqID, Requirements},
-      Preflist,
-      all,
-      {fsm, undefined, self()},
-      ?MASTER).
 
 %%%===================================================================
 %%% API - writes
@@ -140,7 +112,7 @@ set(Preflist, ReqID, Vm, Data) ->
 
 init([Partition]) ->
     DB = list_to_atom(integer_to_list(Partition)),
-    sniffle_db:start(DB),
+    fifo_db:start(DB),
     {ok, #state{
             db = DB,
             partition = Partition,
@@ -167,18 +139,18 @@ handle_command(ping, _Sender, State) ->
     {reply, {pong, State#state.partition}, State};
 
 handle_command({repair, Vm, VClock, Obj}, _Sender, State) ->
-    case sniffle_db:get(State#state.db, <<"vm">>, Vm) of
+    case fifo_db:get(State#state.db, <<"vm">>, Vm) of
         {ok, #sniffle_obj{vclock = VC1}} when VC1 =:= VClock ->
-            sniffle_db:put(State#state.db, <<"vm">>, Vm, Obj);
+            fifo_db:put(State#state.db, <<"vm">>, Vm, Obj);
         not_found ->
-            sniffle_db:put(State#state.db, <<"vm">>, Vm, Obj);
+            fifo_db:put(State#state.db, <<"vm">>, Vm, Obj);
         _ ->
             lager:error("[vms] Read repair failed, data was updated too recent.")
     end,
     {noreply, State};
 
 handle_command({get, ReqID, Vm}, _Sender, State) ->
-    Res = case sniffle_db:get(State#state.db, <<"vm">>, Vm) of
+    Res = case fifo_db:get(State#state.db, <<"vm">>, Vm) of
               {ok, R} ->
                   R;
               not_found ->
@@ -188,7 +160,7 @@ handle_command({get, ReqID, Vm}, _Sender, State) ->
     {reply, {ok, ReqID, NodeIdx, Res}, State};
 
 handle_command({register, {ReqID, Coordinator}, Vm, Hypervisor}, _Sender, State) ->
-    HObject = case sniffle_db:get(State#state.db, <<"vm">>, Vm) of
+    HObject = case fifo_db:get(State#state.db, <<"vm">>, Vm) of
                   not_found ->
                       H0 = statebox:new(fun sniffle_vm_state:new/0),
                       H1 = statebox:modify({fun sniffle_vm_state:uuid/2, [Vm]}, H0),
@@ -202,17 +174,17 @@ handle_command({register, {ReqID, Coordinator}, Vm, Hypervisor}, _Sender, State)
                       H3 = statebox:expire(?STATEBOX_EXPIRE, H2),
                       sniffle_obj:update(H3, Coordinator, O)
               end,
-    sniffle_db:put(State#state.db, <<"vm">>, Vm, HObject),
+    fifo_db:put(State#state.db, <<"vm">>, Vm, HObject),
     {reply, {ok, ReqID}, State};
 
 handle_command({unregister, {ReqID, _Coordinator}, Vm}, _Sender, State) ->
-    sniffle_db:delete(State#state.db, <<"vm">>, Vm),
+    fifo_db:delete(State#state.db, <<"vm">>, Vm),
     {reply, {ok, ReqID}, State};
 
 handle_command({set,
                 {ReqID, Coordinator}, Vm,
                 Resources}, _Sender, State) ->
-    case sniffle_db:get(State#state.db, <<"vm">>, Vm) of
+    case fifo_db:get(State#state.db, <<"vm">>, Vm) of
         {ok, #sniffle_obj{val=H0} = O} ->
             H1 = statebox:modify({fun sniffle_vm_state:load/1,[]}, H0),
             H2 = lists:foldr(
@@ -222,8 +194,8 @@ handle_command({set,
                               [Resource, Value]}, H)
                    end, H1, Resources),
             H3 = statebox:expire(?STATEBOX_EXPIRE, H2),
-            sniffle_db:put(State#state.db, <<"vm">>, Vm,
-                           sniffle_obj:update(H3, Coordinator, O)),
+            fifo_db:put(State#state.db, <<"vm">>, Vm,
+                        sniffle_obj:update(H3, Coordinator, O)),
             {reply, {ok, ReqID}, State};
         R ->
             lager:error("[vms] tried to write to a non existing vm: ~p", [R]),
@@ -233,25 +205,29 @@ handle_command({set,
 handle_command({log,
                 {ReqID, Coordinator}, Vm,
                 {Time, Log}}, _Sender, State) ->
-    case sniffle_db:get(State#state.db, <<"vm">>, Vm) of
+    case fifo_db:get(State#state.db, <<"vm">>, Vm) of
         {ok, #sniffle_obj{val=H0} = O} ->
             H1 = statebox:modify({fun sniffle_vm_state:load/1,[]}, H0),
             H2 = statebox:modify({fun sniffle_vm_state:log/3, [Time, Log]}, H1),
             H3 = statebox:expire(?STATEBOX_EXPIRE, H2),
-            sniffle_db:put(State#state.db, <<"vm">>, Vm,
-                           sniffle_obj:update(H3, Coordinator, O)),
+            fifo_db:put(State#state.db, <<"vm">>, Vm,
+                        sniffle_obj:update(H3, Coordinator, O)),
             {reply, {ok, ReqID}, State};
         R ->
             lager:error("[vms] tried to write to a non existing vm: ~p", [R]),
             {reply, {ok, ReqID, not_found}, State}
     end;
 
+handle_command(?FOLD_REQ{foldfun=Fun, acc0=Acc0}, _Sender, State) ->
+    Acc = fifo_db:fold(State#state.db, <<"vm">>, Fun, Acc0),
+    {reply, Acc, State};
+
 handle_command(Message, _Sender, State) ->
     lager:error("[vms] Unknown command: ~p", [Message]),
     {noreply, State}.
 
 handle_handoff_command(?FOLD_REQ{foldfun=Fun, acc0=Acc0}, _Sender, State) ->
-    Acc = sniffle_db:fold(State#state.db, <<"vm">>, Fun, Acc0),
+    Acc = fifo_db:fold(State#state.db, <<"vm">>, Fun, Acc0),
     {reply, Acc, State};
 
 handle_handoff_command({get, _ReqID, _Vm} = Req, Sender, State) ->
@@ -277,52 +253,54 @@ handoff_finished(_TargetNode, State) ->
 
 handle_handoff_data(Data, State) ->
     {Vm, HObject} = binary_to_term(Data),
-    sniffle_db:put(State#state.db, <<"vm">>, Vm, HObject),
+    fifo_db:put(State#state.db, <<"vm">>, Vm, HObject),
     {reply, ok, State}.
 
 encode_handoff_item(Vm, Data) ->
     term_to_binary({Vm, Data}).
 
 is_empty(State) ->
-    sniffle_db:fold(State#state.db,
-                    <<"vm">>,
-                    fun (_,_, _) ->
-                            {false, State}
-                    end, {true, State}).
+    fifo_db:fold_keys(State#state.db,
+                      <<"vm">>,
+                      fun (_, _) ->
+                              {false, State}
+                      end, {true, State}).
 
 delete(State) ->
-    Trans = sniffle_db:fold(State#state.db,
-                            <<"vm">>,
-                            fun (K,_, A) ->
-                                    [{delete, <<"vm", K/binary>>} | A]
-                            end, []),
-    sniffle_db:transact(State#state.db, Trans),
+    Trans = fifo_db:fold_keys(State#state.db,
+                              <<"vm">>,
+                              fun (K, A) ->
+                                      [{delete, <<"vm", K/binary>>} | A]
+                              end, []),
+    fifo_db:transact(State#state.db, Trans),
     {ok, State}.
 
-handle_coverage({list, ReqID}, _KeySpaces, _Sender, State) ->
-    List = sniffle_db:fold(State#state.db,
-                           <<"vm">>,
-                           fun (K, _, L) ->
-                                   [K|L]
-                           end, []),
+handle_coverage(list, _KeySpaces, {_, ReqID, _}, State) ->
+    List = fifo_db:fold_keys(
+             State#state.db,
+             <<"vm">>,
+             fun (K, L) ->
+                     [K|L]
+             end, []),
+
     {reply,
      {ok, ReqID, {State#state.partition,State#state.node}, List},
      State};
 
-handle_coverage({list, ReqID, Requirements}, _KeySpaces, _Sender, State) ->
+handle_coverage({list, Requirements}, _KeySpaces, {_, ReqID, _}, State) ->
     Getter = fun(#sniffle_obj{val=S0}, Resource) ->
                      jsxd:get(Resource, 0, statebox:value(S0))
              end,
-    List = sniffle_db:fold(State#state.db,
-                           <<"vm">>,
-                           fun (Key, E, C) ->
-                                   case rankmatcher:match(E, Getter, Requirements) of
-                                       false ->
-                                           C;
-                                       Pts ->
-                                           [{Pts, Key} | C]
-                                   end
-                           end, []),
+    List = fifo_db:fold(State#state.db,
+                        <<"vm">>,
+                        fun (Key, E, C) ->
+                                case rankmatcher:match(E, Getter, Requirements) of
+                                    false ->
+                                        C;
+                                    Pts ->
+                                        [{Pts, Key} | C]
+                                end
+                        end, []),
     {reply,
      {ok, ReqID, {State#state.partition, State#state.node}, List},
      State};
