@@ -1,3 +1,4 @@
+%% -*- erlang -*-
 %%%% This is the leveldb section
 
 %% @doc leveldb data_root

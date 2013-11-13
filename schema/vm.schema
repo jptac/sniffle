@@ -1,3 +1,4 @@
+%% -*- erlang -*-
 %%% Things that need to be in vm.args, but never tuned
 {mapping, "erlang.smp", "vm_args.-smp", [
   {default, "enable"},

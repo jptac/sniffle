@@ -1,3 +1,4 @@
+%% -*- erlang -*-
 %% complex lager example
 %% @doc where do you want the console.log output:
 %% off : nowhere

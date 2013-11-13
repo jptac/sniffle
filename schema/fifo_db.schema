@@ -1,3 +1,4 @@
+%% -*- erlang -*-
 %% @doc Default database destination
 {mapping, "db.dir", "fifo_db.db_path",
  [{default, "{{db_path}}"},

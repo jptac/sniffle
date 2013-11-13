@@ -1,3 +1,4 @@
+%% -*- erlang -*-
 %% @doc bitcask data root
 {mapping, "bitcask.data_root", "bitcask.data_root", [
   {default, "{{db_path}}"}
