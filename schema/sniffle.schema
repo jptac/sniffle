@@ -1,0 +1,391 @@
+%% -*- erlang -*-
+
+%% @doc The TCP endpoint that will be broadcasted.
+{mapping, "ip", "sniffle.endpoint",
+ [{default, {"127.0.0.1", 4223}},
+  {datatype, ip}]}.
+
+{translation,
+ "mdns_server_lib.ip",
+ fun(Conf) ->
+         {IP, _Port} = cuttlefish_util:conf_get_value("ip", Conf),
+         IP
+ end
+}.
+
+{translation,
+ "mdns_server_lib.port",
+ fun(Conf) ->
+         {_IP, Port} = cuttlefish_util:conf_get_value("ip", Conf),
+         Port
+ end
+}.
+
+{translation,
+ "mdns_client_lib.interface",
+ fun(Conf) ->
+         {IP, _Port} = cuttlefish_util:conf_get_value("ip", Conf),
+         [A, B, C, D] = [list_to_integer(O) ||
+                            O <- re:split(IP, "\\.", [{return, list}])],
+         {A, B, C, D}
+ end
+}.
+
+%% @doc The mDNS domain this installation is part of
+{mapping, "domain", "mdns_server_lib.domain",
+ [{default, ".local"},
+  {commented, ".local"},
+  {datatype, string}]}.
+
+%% @doc The livetime of a broadcast, alsot he rebroadcast frequency
+{mapping, "broadcast_interval", "mdns_server_lib.ttl",
+ [{default, 120},
+  {commented, 120},
+  {datatype, {duration, s}}]}.
+
+%% @doc The default TCP handler, there is very very very
+%% rarely any reason to change this.
+{mapping, "tcp_callback", "mdns_server_lib.handler",
+ [{datatype, string},
+  {level, advanced},
+  {default, "sniffle_tcp_handler"}]}.
+
+%% {translation,
+%%  "mdns_server_lib.handler",
+%%  fun(Conf) ->
+%%          Setting = cuttlefish_util:conf_get_value("tcp_callback", Conf),
+%%          list_to_atom(Setting)
+%%  end
+%% }.
+
+%% @doc Default ring creation size.  Make sure it is a power of 2,
+%% e.g. 16, 32, 64, 128, 256, 512 etc
+{mapping, "ring_size", "riak_core.ring_creation_size",
+ [{datatype, integer},
+  {default, 64},
+  {commented, 64},
+  {validators, ["ring_size"]}
+ ]}.
+
+{validator, "ring_size", "not a power of 2 greater than 1",
+ fun(Size) ->
+         Size > 1 andalso (Size band (Size-1) =:= 0)
+ end}.
+
+%% @doc The number of copies of the data that is keeped.
+%% For good consistency N  < (R + W) should be true.
+{mapping, "n", "sniffle.sniffle_n",
+ [{datatype, integer},
+  {default, 3},
+  {commented, 3}]}.
+
+%% @doc The number of replies requried for a read request to succeed
+%% The lower the value the faster the replies but the more likely stale
+%% data is returend.
+{mapping, "r", "sniffle.sniffle_r",
+ [{datatype, integer},
+  {default, 2},
+  {commented, 2}]}.
+
+%% @doc The number of replies requried for a write request to succeed
+%% The lower the value the faster the write but the more likely to only
+%% write partial data.
+{mapping, "w", "sniffle.sniffle_w",
+ [{datatype, integer},
+  {default, 3},
+  {commented, 3}]}.
+
+%% @doc The number of copies of the data that is keeped.
+%% For good consistency N  < (R + W) should be true.
+{mapping, "dataset.n", "sniffle.sniffle_dataset",
+ [{datatype, integer},
+  {level, advanced},
+  {default, 3},
+  {commented, 3}]}.
+
+%% @doc The number of replies requried for a read request to succeed
+%% The lower the value the faster the replies but the more likely stale
+%% data is returend.
+{mapping, "dataset.r", "sniffle.sniffle_dataset",
+ [{datatype, integer},
+  {level, advanced},
+  {default, 2},
+  {commented, 2}]}.
+
+
+%% @doc The number of replies requried for a write request to succeed
+%% The lower the value the faster the write but the more likely to only
+%% write partial data.
+{mapping, "dataset.w", "sniffle.sniffle_dataset",
+ [{datatype, integer},
+  {level, advanced},
+  {default, 3},
+  {commented, 3}]}.
+
+{ translation,
+  "sniffle.sniffle_dataset",
+  fun(Conf) ->
+          N = cuttlefish_util:conf_get_value("dataset.n", Conf),
+          R = cuttlefish_util:conf_get_value("dataset.r", Conf),
+          W = cuttlefish_util:conf_get_value("dataset.w", Conf),
+          {N, R, W}
+  end
+}.
+
+%% @doc The number of copies of the data that is keeped.
+%% For good consistency N  < (R + W) should be true.
+{mapping, "hypervisor.n", "sniffle.sniffle_hypervisor",
+ [{datatype, integer},
+  {level, advanced},
+  {default, 3},
+  {commented, 3}]}.
+
+%% @doc The number of replies requried for a read request to succeed
+%% The lower the value the faster the replies but the more likely stale
+%% data is returend.
+{mapping, "hypervisor.r", "sniffle.sniffle_hypervisor",
+ [{datatype, integer},
+  {level, advanced},
+  {default, 2},
+  {commented, 2}]}.
+
+
+%% @doc The number of replies requried for a write request to succeed
+%% The lower the value the faster the write but the more likely to only
+%% write partial data.
+{mapping, "hypervisor.w", "sniffle.sniffle_hypervisor",
+ [{datatype, integer},
+  {level, advanced},
+  {default, 3},
+  {commented, 3}]}.
+
+{ translation,
+  "sniffle.sniffle_hypervisor",
+  fun(Conf) ->
+          N = cuttlefish_util:conf_get_value("hypervisor.n", Conf),
+          R = cuttlefish_util:conf_get_value("hypervisor.r", Conf),
+          W = cuttlefish_util:conf_get_value("hypervisor.w", Conf),
+          {N, R, W}
+  end
+}.
+
+%% @doc The number of copies of the data that is keeped.
+%% For good consistency N  < (R + W) should be true.
+{mapping, "vm.n", "sniffle.sniffle_vm",
+ [{datatype, integer},
+  {level, advanced},
+  {default, 3},
+  {commented, 3}]}.
+
+%% @doc The number of replies requried for a read request to succeed
+%% The lower the value the faster the replies but the more likely stale
+%% data is returend.
+{mapping, "vm.r", "sniffle.sniffle_vm",
+ [{datatype, integer},
+  {level, advanced},
+  {default, 2},
+  {commented, 2}]}.
+
+
+%% @doc The number of replies requried for a write request to succeed
+%% The lower the value the faster the write but the more likely to only
+%% write partial data.
+{mapping, "vm.w", "sniffle.sniffle_vm",
+ [{datatype, integer},
+  {level, advanced},
+  {default, 3},
+  {commented, 3}]}.
+
+{ translation,
+  "sniffle.sniffle_vm",
+  fun(Conf) ->
+          N = cuttlefish_util:conf_get_value("vm.n", Conf),
+          R = cuttlefish_util:conf_get_value("vm.r", Conf),
+          W = cuttlefish_util:conf_get_value("vm.w", Conf),
+          {N, R, W}
+  end
+}.
+
+%% @doc The number of copies of the data that is keeped.
+%% For good consistency N  < (R + W) should be true.
+{mapping, "iprange.n", "sniffle.sniffle_iprange",
+ [{datatype, integer},
+  {level, advanced},
+  {default, 3},
+  {commented, 3}]}.
+
+%% @doc The number of replies requried for a read request to succeed
+%% The lower the value the faster the replies but the more likely stale
+%% data is returend.
+{mapping, "iprange.r", "sniffle.sniffle_iprange",
+ [{datatype, integer},
+  {level, advanced},
+  {default, 2},
+  {commented, 2}]}.
+
+
+%% @doc The number of replies requried for a write request to succeed
+%% The lower the value the faster the write but the more likely to only
+%% write partial data.
+{mapping, "iprange.w", "sniffle.sniffle_iprange",
+ [{datatype, integer},
+  {level, advanced},
+  {default, 3},
+  {commented, 3}]}.
+
+{ translation,
+  "sniffle.sniffle_iprange",
+  fun(Conf) ->
+          N = cuttlefish_util:conf_get_value("iprange.n", Conf),
+          R = cuttlefish_util:conf_get_value("iprange.r", Conf),
+          W = cuttlefish_util:conf_get_value("iprange.w", Conf),
+          {N, R, W}
+  end
+}.
+
+%% @doc The number of copies of the data that is keeped.
+%% For good consistency N  < (R + W) should be true.
+{mapping, "network.n", "sniffle.sniffle_network",
+ [{datatype, integer},
+  {level, advanced},
+  {default, 3},
+  {commented, 3}]}.
+
+%% @doc The number of replies requried for a read request to succeed
+%% The lower the value the faster the replies but the more likely stale
+%% data is returend.
+{mapping, "network.r", "sniffle.sniffle_network",
+ [{datatype, integer},
+  {level, advanced},
+  {default, 2},
+  {commented, 2}]}.
+
+
+%% @doc The number of replies requried for a write request to succeed
+%% The lower the value the faster the write but the more likely to only
+%% write partial data.
+{mapping, "network.w", "sniffle.sniffle_network",
+ [{datatype, integer},
+  {level, advanced},
+  {default, 3},
+  {commented, 3}]}.
+
+{ translation,
+  "sniffle.sniffle_network",
+  fun(Conf) ->
+          N = cuttlefish_util:conf_get_value("network.n", Conf),
+          R = cuttlefish_util:conf_get_value("network.r", Conf),
+          W = cuttlefish_util:conf_get_value("network.w", Conf),
+          {N, R, W}
+  end
+}.
+
+%% @doc The number of copies of the data that is keeped.
+%% For good consistency N  < (R + W) should be true.
+{mapping, "img.n", "sniffle.sniffle_img",
+ [{datatype, integer},
+  {level, advanced},
+  {default, 3},
+  {commented, 3}]}.
+
+%% @doc The number of replies requried for a read request to succeed
+%% The lower the value the faster the replies but the more likely stale
+%% data is returend.
+{mapping, "img.r", "sniffle.sniffle_img",
+ [{datatype, integer},
+  {level, advanced},
+  {default, 2},
+  {commented, 2}]}.
+
+
+%% @doc The number of replies requried for a write request to succeed
+%% The lower the value the faster the write but the more likely to only
+%% write partial data.
+{mapping, "img.w", "sniffle.sniffle_img",
+ [{datatype, integer},
+  {level, advanced},
+  {default, 3},
+  {commented, 3}]}.
+
+{ translation,
+  "sniffle.sniffle_img",
+  fun(Conf) ->
+          N = cuttlefish_util:conf_get_value("img.n", Conf),
+          R = cuttlefish_util:conf_get_value("img.r", Conf),
+          W = cuttlefish_util:conf_get_value("img.w", Conf),
+          {N, R, W}
+  end
+}.
+%% @doc The number of copies of the data that is keeped.
+%% For good consistency N  < (R + W) should be true.
+{mapping, "dtrace.n", "sniffle.sniffle_dtrace",
+ [{datatype, integer},
+  {level, advanced},
+  {default, 3},
+  {commented, 3}]}.
+
+%% @doc The number of replies requried for a read request to succeed
+%% The lower the value the faster the replies but the more likely stale
+%% data is returend.
+{mapping, "dtrace.r", "sniffle.sniffle_dtrace",
+ [{datatype, integer},
+  {level, advanced},
+  {default, 2},
+  {commented, 2}]}.
+
+
+%% @doc The number of replies requried for a write request to succeed
+%% The lower the value the faster the write but the more likely to only
+%% write partial data.
+{mapping, "dtrace.w", "sniffle.sniffle_dtrace",
+ [{datatype, integer},
+  {level, advanced},
+  {default, 3},
+  {commented, 3}]}.
+
+{ translation,
+  "sniffle.sniffle_dtrace",
+  fun(Conf) ->
+          N = cuttlefish_util:conf_get_value("dtrace.n", Conf),
+          R = cuttlefish_util:conf_get_value("dtrace.r", Conf),
+          W = cuttlefish_util:conf_get_value("dtrace.w", Conf),
+          {N, R, W}
+  end
+}.
+
+%% @doc The number of copies of the data that is keeped.
+%% For good consistency N  < (R + W) should be true.
+{mapping, "package.n", "sniffle.sniffle_package",
+ [{datatype, integer},
+  {level, advanced},
+  {default, 3},
+  {commented, 3}]}.
+
+%% @doc The number of replies requried for a read request to succeed
+%% The lower the value the faster the replies but the more likely stale
+%% data is returend.
+{mapping, "package.r", "sniffle.sniffle_package",
+ [{datatype, integer},
+  {level, advanced},
+  {default, 2},
+  {commented, 2}]}.
+
+
+%% @doc The number of replies requried for a write request to succeed
+%% The lower the value the faster the write but the more likely to only
+%% write partial data.
+{mapping, "package.w", "sniffle.sniffle_package",
+ [{datatype, integer},
+  {level, advanced},
+  {default, 3},
+  {commented, 3}]}.
+
+{translation,
+ "sniffle.sniffle_package",
+ fun(Conf) ->
+         N = cuttlefish_util:conf_get_value("package.n", Conf),
+         R = cuttlefish_util:conf_get_value("package.r", Conf),
+         W = cuttlefish_util:conf_get_value("package.w", Conf),
+         {N, R, W}
+ end
+}.
