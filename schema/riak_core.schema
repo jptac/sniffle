@@ -1,5 +1,5 @@
 %% -*- erlang -*-
-%% example of super basic mapping
+
 %% @doc Default ring creation size.  Make sure it is a power of 2,
 %% e.g. 16, 32, 64, 128, 256, 512 etc
 {mapping, "ring_size", "riak_core.ring_creation_size",
