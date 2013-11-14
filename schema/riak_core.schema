@@ -43,7 +43,7 @@
 %% HTTPS interface will bind.
 {mapping, "listener.https.$name", "riak_core.https",
  [
-  {commented, {"{{sniffle_ip}}", {{handoff_port}} }},
+  {commented, {"{{sniffle_ip}}", {{https_port}} }},
   {datatype, ip},
   {include_default, "internal"}
  ]}.
@@ -74,7 +74,7 @@
 %% intra-cluster data handoff.
 {mapping, "handoff.port", "riak_core.handoff_port",
  [
-  {default, 8099},
+  {default, {{handoff_port}} },
   {datatype, integer}
  ]}.
 
