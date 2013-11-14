@@ -21,6 +21,16 @@
  end
 }.
 
+{translation,
+ "mdns_client_lib.interface",
+ fun(Conf) ->
+         {IP, _Port} = cuttlefish_util:conf_get_value("ip", Conf),
+         [A, B, C, D] = [list_to_integer(O) ||
+                            O <- re:split(IP, "\\.", [{return, list}])],
+         {A, B, C, D}
+ end
+}.
+
 %% @doc The mDNS domain this installation is part of
 {mapping, "domain", "mdns_server_lib.domain",
  [{default, ".local"},
