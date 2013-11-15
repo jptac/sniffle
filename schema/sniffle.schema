@@ -91,6 +91,22 @@
  end
 }.
 
+
+%% @doc The default Service that is announced, ther eis very very
+%% rarely any reason to change this.
+{mapping, "service", "mdns_server_lib.service",
+ [{datatype, string},
+  {level, advanced},
+  {default, "sniffle"}]}.
+
+{translation,
+ "mdns_server_lib.service",
+ fun(Conf) ->
+         Setting = cuttlefish_util:conf_get_value("service", Conf),
+         list_to_atom(Setting)
+ end
+}.
+
 %% @doc Default ring creation size.  Make sure it is a power of 2,
 %% e.g. 16, 32, 64, 128, 256, 512 etc
 {mapping, "ring_size", "riak_core.ring_creation_size",
