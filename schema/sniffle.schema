@@ -96,7 +96,6 @@
 %% rarely any reason to change this.
 {mapping, "service", "mdns_server_lib.service",
  [{datatype, string},
-  {level, advanced},
   {default, "sniffle"}]}.
 
 %% @doc Default ring creation size.  Make sure it is a power of 2,
