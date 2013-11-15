@@ -2,7 +2,7 @@
 
 %% @doc The TCP endpoint that will be broadcasted.
 {mapping, "ip", "sniffle.endpoint",
- [{default, {"127.0.0.1", 4223}},
+ [{default, {"{{sniffle_ip}}", {{sniffle_port}} }},
   {datatype, ip}]}.
 
 {translation,
