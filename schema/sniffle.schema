@@ -50,6 +50,39 @@
   {level, advanced},
   {default, "sniffle_tcp_handler"}]}.
 
+%% @doc The path data gets stored into.
+{mapping, "data_dir", "riak_core.platform_data_dir",
+ [{default, "{{platform_data_dir}}"},
+  {datatype, string}]}.
+
+{translation,
+ "fifo_db.db_path",
+ fun(Conf) ->
+         cuttlefish_util:conf_get_value("data_dir", Conf)
+ end
+}.
+
+{translation,
+ "leveldb.data_root",
+ fun(Conf) ->
+         cuttlefish_util:conf_get_value("data_dir", Conf)
+ end
+}.
+
+{translation,
+ "hanoidb.data_root",
+ fun(Conf) ->
+         cuttlefish_util:conf_get_value("data_dir", Conf)
+ end
+}.
+
+{translation,
+ "bitcask.data_root",
+ fun(Conf) ->
+         cuttlefish_util:conf_get_value("data_dir", Conf)
+ end
+}.
+
 %% {translation,
 %%  "mdns_server_lib.handler",
 %%  fun(Conf) ->
