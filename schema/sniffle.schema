@@ -50,6 +50,39 @@
   {level, advanced},
   {default, "sniffle_tcp_handler"}]}.
 
+%% @doc The path data gets stored into.
+{mapping, "data_dir", "riak_core.platform_data_dir",
+ [{default, "{{platform_data_dir}}"},
+  {datatype, string}]}.
+
+{translation,
+ "fifo_db.db_path",
+ fun(Conf) ->
+         cuttlefish_util:conf_get_value("data_dir", Conf)
+ end
+}.
+
+{translation,
+ "leveldb.data_root",
+ fun(Conf) ->
+         cuttlefish_util:conf_get_value("data_dir", Conf)
+ end
+}.
+
+{translation,
+ "hanoidb.data_root",
+ fun(Conf) ->
+         cuttlefish_util:conf_get_value("data_dir", Conf)
+ end
+}.
+
+{translation,
+ "bitcask.data_root",
+ fun(Conf) ->
+         cuttlefish_util:conf_get_value("data_dir", Conf)
+ end
+}.
+
 %% {translation,
 %%  "mdns_server_lib.handler",
 %%  fun(Conf) ->
@@ -74,7 +107,7 @@
 
 %% @doc The number of copies of the data that is keeped.
 %% For good consistency N  < (R + W) should be true.
-{mapping, "n", "sniffle.sniffle_n",
+{mapping, "n", "sniffle.n",
  [{datatype, integer},
   {default, 3},
   {commented, 3}]}.
@@ -82,7 +115,7 @@
 %% @doc The number of replies requried for a read request to succeed
 %% The lower the value the faster the replies but the more likely stale
 %% data is returend.
-{mapping, "r", "sniffle.sniffle_r",
+{mapping, "r", "sniffle.r",
  [{datatype, integer},
   {default, 2},
   {commented, 2}]}.
@@ -90,7 +123,7 @@
 %% @doc The number of replies requried for a write request to succeed
 %% The lower the value the faster the write but the more likely to only
 %% write partial data.
-{mapping, "w", "sniffle.sniffle_w",
+{mapping, "w", "sniffle.w",
  [{datatype, integer},
   {default, 3},
   {commented, 3}]}.

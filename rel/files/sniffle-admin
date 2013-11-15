@@ -23,12 +23,12 @@ fi
 cd $RUNNER_BASE_DIR
 
 # Extract the target node name from node.args
-NAME_ARG=`grep -e '-[s]*name' $RUNNER_ETC_DIR/vm.args`
+NAME_ARG=`egrep '^\-name' $RUNNER_ETC_DIR/vm.args 2> /dev/null`
 if [ -z "$NAME_ARG" ]; then
-    NODENAME=`egrep 'nodename[ \t]*=[ \t]*' $RUNNER_ETC_DIR/{{cuttlefish_conf}} 2> /dev/null | cut -d = -f 2`
+    NODENAME=`egrep '^[ \t]*nodename[ \t]*=[ \t]*' $RUNNER_ETC_DIR/{{cuttlefish_conf}} 2> /dev/null | tail -n 1 | cut -d = -f 2`
     if [ -z "$NODENAME" ]; then
-        echoerr "vm.args needs to have a -name parameter."
-        echoerr "  -sname is not supported."
+        echo "vm.args needs to have a -name parameter."
+        echo "  -sname is not supported."
         exit 1
     else
         NAME_ARG="-name ${NODENAME# *}"
@@ -51,11 +51,11 @@ else
 fi
 
 # Extract the target cookie
-COOKIE_ARG=`grep '\-setcookie' $RUNNER_ETC_DIR/vm.args`
+COOKIE_ARG=`grep -e '-setcookie' $RUNNER_ETC_DIR/vm.args`
 if [ -z "$COOKIE_ARG" ]; then
-    COOKIE=`egrep 'distributed_cookie[ \t]*=[ \t]*' $RUNNER_ETC_DIR/{{cuttlefish_conf}} 2> /dev/null | cut -d = -f 2`
+    COOKIE=`egrep '^[ \t]*distributed_cookie[ \t]*=[ \t]*' $RUNNER_ETC_DIR/{{cuttlefish_conf}} 2> /dev/null | cut -d = -f 2`
     if [ -z "$COOKIE" ]; then
-        echoerr "vm.args needs to have a -setcookie parameter."
+        echo "vm.args needs to have a -setcookie parameter."
         exit 1
     else
         COOKIE_ARG="-setcookie $COOKIE"
