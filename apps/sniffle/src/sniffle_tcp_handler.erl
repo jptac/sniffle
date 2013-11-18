@@ -214,6 +214,13 @@ message({vm, set, Vm, Attribute, Value}, State) when
      sniffle_vm:set(Vm, Attribute, Value),
      State};
 
+message({vm, owner, Vm, Owner}, State) when
+      is_binary(Vm),
+      is_binary(Owner) ->
+    {reply,
+     sniffle_vm:set_owner(Vm, Owner),
+     State};
+
 message({vm, set, Vm, Attributes}, State) when
       is_binary(Vm),
       is_list(Attributes) ->
