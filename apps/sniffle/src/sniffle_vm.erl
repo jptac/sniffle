@@ -26,7 +26,8 @@
          promote_to_image/3,
          remove_nic/2,
          add_nic/2,
-         primary_nic/2
+         primary_nic/2,
+         set_owner/2
         ]).
 
 -ignore_xref([logs/1]).
@@ -457,6 +458,15 @@ logs(Vm) ->
         E ->
             E
     end.
+
+%%--------------------------------------------------------------------
+%% @doc Sets the owner of a VM.
+%% @end
+%%--------------------------------------------------------------------
+-spec set_owner(Vm::fifo:uuid(), Owner::fifo:uuid()) ->
+                       not_found | {error, timeout} | [fifo:log()].
+set_owner(Vm, Owner) ->
+    set(Vm, <<"owner">>, Owner).
 
 %%--------------------------------------------------------------------
 %% @doc Adds a new log to the VM and timestamps it.
