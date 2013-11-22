@@ -5,6 +5,16 @@
 %% Application callbacks
 -export([start/2, stop/1]).
 
+-define(SRV(VNode, Srv),
+        ok = riak_core:register([{vnode_module, VNode}]),
+        ok = riak_core_node_watcher:service_up(Srv, self())).
+
+-define(SRV_WITH_AAE(VNode, Srv),
+        ?SRV(VNode, Srv),
+        ok = riak_core_capability:register({Srv, anti_entropy},
+                                           [enabled_v1, disabled],
+                                           enabled_v1)).
+
 %% ===================================================================
 %% Application callbacks
 %% ===================================================================
@@ -29,26 +39,17 @@ start(_StartType, _StartArgs) ->
     end,
     case sniffle_sup:start_link() of
         {ok, Pid} ->
-            ok = riak_core:register([{vnode_module, sniffle_hypervisor_vnode}]),
-            ok = riak_core:register([{vnode_module, sniffle_vm_vnode}]),
-            ok = riak_core:register([{vnode_module, sniffle_iprange_vnode}]),
-            ok = riak_core:register([{vnode_module, sniffle_package_vnode}]),
-            ok = riak_core:register([{vnode_module, sniffle_dataset_vnode}]),
-            ok = riak_core:register([{vnode_module, sniffle_img_vnode}]),
-            ok = riak_core:register([{vnode_module, sniffle_network_vnode}]),
-            ok = riak_core:register([{vnode_module, sniffle_dtrace_vnode}]),
-
             ok = riak_core_ring_events:add_guarded_handler(sniffle_ring_event_handler, []),
             ok = riak_core_node_watcher_events:add_guarded_handler(sniffle_node_event_handler, []),
 
-            ok = riak_core_node_watcher:service_up(sniffle_hypervisor, self()),
-            ok = riak_core_node_watcher:service_up(sniffle_vm, self()),
-            ok = riak_core_node_watcher:service_up(sniffle_iprange, self()),
-            ok = riak_core_node_watcher:service_up(sniffle_package, self()),
-            ok = riak_core_node_watcher:service_up(sniffle_dataset, self()),
-            ok = riak_core_node_watcher:service_up(sniffle_img, self()),
-            ok = riak_core_node_watcher:service_up(sniffle_network, self()),
-            ok = riak_core_node_watcher:service_up(sniffle_dtrace, self()),
+            ?SRV_WITH_AAE(sniffle_hypervisor_vnode, sniffle_hypervisor),
+            ?SRV_WITH_AAE(sniffle_vm_vnode, sniffle_vm),
+            ?SRV_WITH_AAE(sniffle_iprange_vnode, sniffle_iprange),
+            ?SRV_WITH_AAE(sniffle_package_vnode, sniffle_package),
+            ?SRV_WITH_AAE(sniffle_dataset_vnode, sniffle_dataset),
+            ?SRV_WITH_AAE(sniffle_img_vnode, sniffle_img),
+            ?SRV_WITH_AAE(sniffle_network_vnode, sniffle_network),
+            ?SRV_WITH_AAE(sniffle_dtrace_vnode, sniffle_dtrace),
 
             statman_server:add_subscriber(statman_aggregator),
             sniffle_snmp_handler:start(),

@@ -127,14 +127,31 @@ init(_Args) ->
           [sniffle_img, sniffle_img_vnode]},
          permanent, 30000, worker, [riak_core_entropy_manager]},
 
+    EntropyManagerDtrace =
+        {sniffle_dtrace_entropy_manager,
+         {riak_core_entropy_manager, start_link,
+          [sniffle_dtrace, sniffle_dtrace_vnode]},
+         permanent, 30000, worker, [riak_core_entropy_manager]},
+
+    EntropyManagerPackage =
+        {sniffle_package_entropy_manager,
+         {riak_core_entropy_manager, start_link,
+          [sniffle_package, sniffle_package_vnode]},
+         permanent, 30000, worker, [riak_core_entropy_manager]},
+
     {ok,
      {{one_for_one, 5, 10},
       [{statman_server, {statman_server, start_link, [1000]},
         permanent, 5000, worker, []},
        {statman_aggregator, {statman_aggregator, start_link, []},
         permanent, 5000, worker, []},
+       %% General FSM's
        CoverageFSMs, WriteFSMs, ReadFSMs,
+       %% Logic
        CreateFSMs, DTrace,
+       %% VNodes
        VHypervisor, VVM, VIprange, VDataset, VPackage, VImg, VDTrace, VNetwork,
+       %% AAE
        EntropyManagerVm, EntropyManagerHypervisor, EntropyManagerIPRange,
-       EntropyManagerNetwork, EntropyManagerDataset, EntropyManagerImg]}}.
+       EntropyManagerNetwork, EntropyManagerDataset, EntropyManagerImg,
+       EntropyManagerDtrace, EntropyManagerPackage]}}.
