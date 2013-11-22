@@ -431,16 +431,23 @@ terminate(_Reason, _State) ->
 %%% AAE
 %%%===================================================================
 
-handle_info(retry_create_hashtree, State=#state{hashtrees=undefined}) ->
+handle_info(retry_create_hashtree, State=#state{
+                                            hashtrees=undefined,
+                                            partition=Idx
+                                           }) ->
+    lager:debug("~p/~p retrying to create a hash tree.", [?SERVICE, Idx]),
     HT = riak_core_aae_vnode:maybe_create_hashtrees(?SERVICE, State#state.partition,
                                                     undefined),
     {ok, State#state{hashtrees = HT}};
 handle_info(retry_create_hashtree, State) ->
     {ok, State};
-handle_info({'DOWN', _, _, Pid, _}, State=#state{hashtrees=Pid}) ->
-    HT = riak_core_aae_vnode:maybe_create_hashtrees(?SERVICE, State#state.partition,
-                                                    Pid),
-    {ok, State#state{hashtrees = HT}};
+handle_info({'DOWN', _, _, Pid, _}, State=#state{
+                                             hashtrees=Pid,
+                                             partition=Idx
+                                            }) ->
+    lager:debug("~p/~p hashtree ~p went down.", [?SERVICE, Idx, Pid]),
+    erlang:send_after(1000, self(), retry_create_hashtree),
+    {ok, State#state{hashtrees = undefined}};
 handle_info({'DOWN', _, _, _, _}, State) ->
     {ok, State};
 handle_info(_, State) ->
