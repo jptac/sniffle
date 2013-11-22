@@ -1,5 +1,6 @@
 -module(sniffle_img_vnode).
 -behaviour(riak_core_vnode).
+-behaviour(riak_core_aae_vnode).
 -include("sniffle.hrl").
 -include_lib("riak_core/include/riak_core_vnode.hrl").
 -include("bitcask.hrl").
@@ -25,14 +26,19 @@
          handle_handoff_data/2,
          encode_handoff_item/2,
          handle_coverage/4,
-         handle_exit/3
+         handle_exit/3,
+         handle_info/2
         ]).
 
--record(state, {
-          db,
-          partition,
-          node
-         }).
+
+-export([
+         master/0,
+         aae_repair/2,
+         hashtree_pid/1,
+         rehash/3,
+         hash_object/2,
+         request_hashtree_pid/1
+        ]).
 
 -ignore_xref([
               create/4,
@@ -41,10 +47,58 @@
               list/2,
               list/3,
               repair/4,
-              start_vnode/1
+              start_vnode/1,
+              handle_info/2
              ]).
 
+-record(state, {db, partition, node, hashtrees}).
+
+-define(SERVICE, sniffle_img).
+
 -define(MASTER, sniffle_img_vnode_master).
+
+%%%===================================================================
+%%% AAE
+%%%===================================================================
+
+master() ->
+    ?MASTER.
+
+hash_object(BKey, RObj) ->
+    lager:debug("Hashing Key: ~p", [BKey]),
+    list_to_binary(integer_to_list(erlang:phash2({BKey, RObj}))).
+
+aae_repair(_, Key) ->
+    lager:debug("AAE Repair: ~p", [Key]),
+    sniffle_img:get(Key).
+
+hashtree_pid(Partition) ->
+    riak_core_vnode_master:sync_command({Partition, node()},
+                                        {hashtree_pid, node()},
+                                        ?MASTER,
+                                        infinity).
+
+%% Asynchronous version of {@link hashtree_pid/1} that sends a message back to
+%% the calling process. Used by the {@link riak_core_entropy_manager}.
+request_hashtree_pid(Partition) ->
+    ReqId = {hashtree_pid, Partition},
+    riak_core_vnode_master:command({Partition, node()},
+                                   {hashtree_pid, node()},
+                                   {raw, ReqId, self()},
+                                   ?MASTER).
+
+%% Used by {@link riak_core_exchange_fsm} to force a vnode to update the hashtree
+%% for repaired keys. Typically, repairing keys will trigger read repair that
+%% will update the AAE hash in the write path. However, if the AAE tree is
+%% divergent from the KV data, it is possible that AAE will try to repair keys
+%% that do not have divergent KV replicas. In that case, read repair is never
+%% triggered. Always rehashing keys after any attempt at repair ensures that
+%% AAE does not try to repair the same non-divergent keys over and over.
+rehash(Preflist, _, Key) ->
+    riak_core_vnode_master:command(Preflist,
+                                   {rehash, Key},
+                                   ignore,
+                                   ?MASTER).
 
 %%%===================================================================
 %%% API
@@ -63,8 +117,11 @@ repair(IdxNode, Img, VClock, Obj) ->
 %%%===================================================================
 
 get(Preflist, ReqID, {Img, Idx}) ->
+    get(Preflist, ReqID, <<Img/binary, Idx:32>>);
+
+get(Preflist, ReqID, ImgAndIdx) ->
     riak_core_vnode_master:command(Preflist,
-                                   {get, ReqID, {Img, Idx}},
+                                   {get, ReqID, ImgAndIdx},
                                    {fsm, undefined, self()},
                                    ?MASTER).
 
@@ -98,10 +155,10 @@ init([Partition]) ->
     PartStr = integer_to_list(Partition),
     {ok, DBLoc} = application:get_env(fifo_db, db_path),
     DB = bitcask:open(DBLoc ++ "/" ++ PartStr ++ ".img", [read_write]),
-    {ok, #state{
-            db = DB,
-            partition = Partition,
-            node = node()}}.
+    HT = riak_core_aae_vnode:maybe_create_hashtrees(?SERVICE,
+                                                    Partition,
+                                                    undefined),
+    {ok, #state{db = DB, hashtrees = HT, partition = Partition, node = node()}}.
 
 handle_command(ping, _Sender, State) ->
     {reply, {pong, State#state.partition}, State};
@@ -109,16 +166,62 @@ handle_command(ping, _Sender, State) ->
 handle_command({repair, {Img, Idx}, VClock, Obj}, _Sender, State) ->
     case get(State#state.db, <<Img/binary, Idx:32>>) of
         {ok, #sniffle_obj{vclock = VC1}} when VC1 =:= VClock ->
-            put(State#state.db, Img, Obj);
+            put(State, Img, Obj);
         not_found ->
-            put(State#state.db, Img,  Obj);
+            put(State, Img,  Obj);
         _ ->
             lager:error("[imgs] Read repair failed, data was updated too recent.")
     end,
     {noreply, State};
 
-handle_command({get, ReqID, {Img, Idx}}, _Sender, State) ->
-    Res = case get(State#state.db, <<Img/binary, Idx:32>>) of
+%%%===================================================================
+%%% AAE
+%%%===================================================================
+
+handle_command({hashtree_pid, Node}, _, State=#state{hashtrees=HT}) ->
+    %% Handle riak_core request forwarding during ownership handoff.
+    %% Following is necessary in cases where anti-entropy was enabled
+    %% after the vnode was already running
+    case {node(), HT} of
+        {Node, undefined} ->
+            HT1 =  riak_core_aae_vnode:maybe_create_hashtrees(
+                     ?SERVICE,
+                     State#state.partition,
+                     HT),
+            {reply, {ok, HT1}, State#state{hashtrees = HT1}};
+        {Node, _} ->
+            {reply, {ok, HT}, State};
+        _ ->
+            {reply, {error, wrong_node}, State}
+    end;
+
+handle_command({rehash, Key}, _, State=#state{db=DB}) ->
+    case fifo_db:get(DB, <<"img">>, Key) of
+        {ok, Term} ->
+            riak_core_aae_vnode:update_hashtree(<<"img">>, Key,
+                                                term_to_binary(Term),
+                                                State#state.hashtrees);
+        _ ->
+            %% Make sure hashtree isn't tracking deleted data
+            riak_core_index_hashtree:delete({<<"img">>, Key},
+                                            State#state.hashtrees)
+    end,
+    {noreply, State};
+
+handle_command(?FOLD_REQ{foldfun=Fun, acc0=Acc0}, _Sender, State) ->
+    lager:debug("Fold on ~p", [State#state.partition]),
+    Acc = fifo_db:fold(State#state.db, <<"img">>,
+                       fun(K, V, O) ->
+                               Fun({<<"img">>, K}, V, O)
+                       end, Acc0),
+    {reply, Acc, State};
+
+%%%===================================================================
+%%% General
+%%%===================================================================
+
+handle_command({get, ReqID, ImgAndIdx}, _Sender, State) ->
+    Res = case get(State#state.db, ImgAndIdx) of
               {ok, R} ->
                   R;
               not_found ->
@@ -135,16 +238,12 @@ handle_command({create, {ReqID, Coordinator}, {Img, Idx}, Data},
     VC0 = vclock:fresh(),
     VC = vclock:increment(Coordinator, VC0),
     HObject = #sniffle_obj{val=I2, vclock=VC},
-    put(State#state.db, <<Img/binary, Idx:32>>, HObject),
+    put(State, <<Img/binary, Idx:32>>, HObject),
     {reply, {ok, ReqID}, State};
 
 handle_command({delete, {ReqID, _Coordinator}, {Img, Idx}}, _Sender, State) ->
     bitcask:delete(State#state.db, <<Img/binary, Idx:32>>),
     {reply, {ok, ReqID}, State};
-
-handle_command(?FOLD_REQ{foldfun=Fun, acc0=Acc0}, _Sender, State) ->
-    Acc = bitcask:fold(State#state.db, Fun, Acc0),
-    {reply, Acc, State};
 
 handle_command(_Message, _Sender, State) ->
     {noreply, State}.
@@ -176,7 +275,7 @@ handoff_finished(_TargetNode, State) ->
 
 handle_handoff_data(Data, State) ->
     {Img, HObject} = binary_to_term(Data),
-    put(State#state.db, Img, HObject),
+    put(State, Img, HObject),
     {reply, ok, State}.
 
 encode_handoff_item(Img, Data) ->
@@ -237,8 +336,12 @@ terminate(_Reason,  State) ->
     bitcask:close(State#state.db),
     ok.
 
-put(DB, Key, Value) ->
-    R = bitcask:put(DB, Key, term_to_binary(Value)),
+put(State, Key, Value) ->
+    DB = State#state.db,
+    Bin = term_to_binary(Value),
+    R = bitcask:put(DB, Key, Bin),
+    riak_core_aae_vnode:update_hashtree(<<"img">>, Key, Bin,
+                                        State#state.hashtrees),
     %% This is a very ugly hack, but since we don't have
     %% much opperations on the image server we need to
     %% trigger the GC manually.
@@ -259,3 +362,22 @@ get(DB, Key) ->
         E ->
             E
     end.
+
+%%%===================================================================
+%%% AAE
+%%%===================================================================
+
+handle_info(retry_create_hashtree, State=#state{hashtrees=undefined}) ->
+    HT = riak_core_aae_vnode:maybe_create_hashtrees(?SERVICE, State#state.partition,
+                                                    undefined),
+    {ok, State#state{hashtrees = HT}};
+handle_info(retry_create_hashtree, State) ->
+    {ok, State};
+handle_info({'DOWN', _, _, Pid, _}, State=#state{hashtrees=Pid}) ->
+    HT = riak_core_aae_vnode:maybe_create_hashtrees(?SERVICE, State#state.partition,
+                                                    Pid),
+    {ok, State#state{hashtrees = HT}};
+handle_info({'DOWN', _, _, _, _}, State) ->
+    {ok, State};
+handle_info(_, State) ->
+    {ok, State}.

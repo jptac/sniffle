@@ -1,5 +1,6 @@
 -module(sniffle_iprange_vnode).
 -behaviour(riak_core_vnode).
+-behaviour(riak_core_aae_vnode).
 -include("sniffle.hrl").
 -include_lib("riak_core/include/riak_core_vnode.hrl").
 
@@ -26,13 +27,17 @@
          handle_handoff_data/2,
          encode_handoff_item/2,
          handle_coverage/4,
-         handle_exit/3]).
+         handle_exit/3,
+         handle_info/2]).
 
--record(state, {
-          db,
-          partition,
-          node
-         }).
+-export([
+         master/0,
+         aae_repair/2,
+         hashtree_pid/1,
+         rehash/3,
+         hash_object/2,
+         request_hashtree_pid/1
+        ]).
 
 -ignore_xref([
               release_ip/4,
@@ -43,10 +48,58 @@
               claim_ip/4,
               repair/4,
               release_ip/4,
-              start_vnode/1
+              start_vnode/1,
+              handle_info/2
              ]).
 
+-record(state, {db, partition, node, hashtrees}).
+
+-define(SERVICE, sniffle_iprange).
+
 -define(MASTER, sniffle_iprange_vnode_master).
+
+%%%===================================================================
+%%% AAE
+%%%===================================================================
+
+master() ->
+    ?MASTER.
+
+hash_object(BKey, RObj) ->
+    lager:debug("Hashing Key: ~p", [BKey]),
+    list_to_binary(integer_to_list(erlang:phash2({BKey, RObj}))).
+
+aae_repair(_, Key) ->
+    lager:debug("AAE Repair: ~p", [Key]),
+    sniffle_iprange:get(Key).
+
+hashtree_pid(Partition) ->
+    riak_core_vnode_master:sync_command({Partition, node()},
+                                        {hashtree_pid, node()},
+                                        ?MASTER,
+                                        infinity).
+
+%% Asynchronous version of {@link hashtree_pid/1} that sends a message back to
+%% the calling process. Used by the {@link riak_core_entropy_manager}.
+request_hashtree_pid(Partition) ->
+    ReqId = {hashtree_pid, Partition},
+    riak_core_vnode_master:command({Partition, node()},
+                                   {hashtree_pid, node()},
+                                   {raw, ReqId, self()},
+                                   ?MASTER).
+
+%% Used by {@link riak_core_exchange_fsm} to force a vnode to update the hashtree
+%% for repaired keys. Typically, repairing keys will trigger read repair that
+%% will update the AAE hash in the write path. However, if the AAE tree is
+%% divergent from the KV data, it is possible that AAE will try to repair keys
+%% that do not have divergent KV replicas. In that case, read repair is never
+%% triggered. Always rehashing keys after any attempt at repair ensures that
+%% AAE does not try to repair the same non-divergent keys over and over.
+rehash(Preflist, _, Key) ->
+    riak_core_vnode_master:command(Preflist,
+                                   {rehash, Key},
+                                   ignore,
+                                   ?MASTER).
 
 %%%===================================================================
 %%% API
@@ -112,11 +165,10 @@ set(Preflist, ReqID, Hypervisor, Data) ->
 init([Partition]) ->
     DB = list_to_atom(integer_to_list(Partition)),
     fifo_db:start(DB),
-    {ok, #state{
-            db = DB,
-            partition = Partition,
-            node = node()
-           }}.
+    HT = riak_core_aae_vnode:maybe_create_hashtrees(?SERVICE,
+                                                    Partition,
+                                                    undefined),
+    {ok, #state{db = DB, hashtrees = HT, partition = Partition, node = node()}}.
 
 handle_command(ping, _Sender, State) ->
     {reply, {pong, State#state.partition}, State};
@@ -124,13 +176,59 @@ handle_command(ping, _Sender, State) ->
 handle_command({repair, Iprange, VClock, Obj}, _Sender, State) ->
     case fifo_db:get(State#state.db, <<"iprange">>, Iprange) of
         {ok, #sniffle_obj{vclock = VC1}} when VC1 =:= VClock ->
-            fifo_db:put(State#state.db, <<"iprange">>, Iprange, Obj);
+            do_put(Iprange, Obj, State);
         not_found ->
-            fifo_db:put(State#state.db, <<"iprange">>, Iprange, Obj);
+            do_put(Iprange, Obj, State);
         _ ->
             lager:error("[uprange] Read repair failed, data was updated too recent.")
     end,
     {noreply, State};
+
+%%%===================================================================
+%%% AAE
+%%%===================================================================
+
+handle_command({hashtree_pid, Node}, _, State=#state{hashtrees=HT}) ->
+    %% Handle riak_core request forwarding during ownership handoff.
+    %% Following is necessary in cases where anti-entropy was enabled
+    %% after the vnode was already running
+    case {node(), HT} of
+        {Node, undefined} ->
+            HT1 =  riak_core_aae_vnode:maybe_create_hashtrees(
+                     ?SERVICE,
+                     State#state.partition,
+                     HT),
+            {reply, {ok, HT1}, State#state{hashtrees = HT1}};
+        {Node, _} ->
+            {reply, {ok, HT}, State};
+        _ ->
+            {reply, {error, wrong_node}, State}
+    end;
+
+handle_command({rehash, Key}, _, State=#state{db=DB}) ->
+    case fifo_db:get(DB, <<"iprange">>, Key) of
+        {ok, Term} ->
+            riak_core_aae_vnode:update_hashtree(<<"iprange">>, Key,
+                                                term_to_binary(Term),
+                                                State#state.hashtrees);
+        _ ->
+            %% Make sure hashtree isn't tracking deleted data
+            riak_core_index_hashtree:delete({<<"iprange">>, Key},
+                                            State#state.hashtrees)
+    end,
+    {noreply, State};
+
+handle_command(?FOLD_REQ{foldfun=Fun, acc0=Acc0}, _Sender, State) ->
+    lager:debug("Fold on ~p", [State#state.partition]),
+    Acc = fifo_db:fold(State#state.db, <<"iprange">>,
+                       fun(K, V, O) ->
+                               Fun({<<"iprange">>, K}, V, O)
+                       end, Acc0),
+    {reply, Acc, State};
+
+%%%===================================================================
+%%% General
+%%%===================================================================
 
 handle_command({get, ReqID, Iprange}, _Sender, State) ->
     Res = case fifo_db:get(State#state.db, <<"iprange">>, Iprange) of
@@ -161,12 +259,13 @@ handle_command({create, {ReqID, Coordinator}, UUID,
                      {fun sniffle_iprange_state:vlan/2, [Vlan]}]),
     VC0 = vclock:fresh(),
     VC = vclock:increment(Coordinator, VC0),
-    HObject = #sniffle_obj{val=I1, vclock=VC},
-    fifo_db:put(State#state.db, <<"iprange">>, UUID, HObject),
+    Obj = #sniffle_obj{val=I1, vclock=VC},
+    do_put(UUID, Obj, State),
     {reply, {ok, ReqID}, State};
 
 handle_command({delete, {ReqID, _Coordinator}, Iprange}, _Sender, State) ->
     fifo_db:delete(State#state.db, <<"iprange">>, Iprange),
+    riak_core_index_hashtree:delete({<<"iprange">>, Iprange}, State#state.hashtrees),
     {reply, {ok, ReqID}, State};
 
 handle_command({ip, claim,
@@ -178,13 +277,14 @@ handle_command({ip, claim,
                     H1 = statebox:modify({fun sniffle_iprange_state:load/1,[]}, H0),
                     H2 = statebox:modify({fun sniffle_iprange_state:claim_ip/2,[IP]}, H1),
                     H3 = statebox:expire(?STATEBOX_EXPIRE, H2),
-                    fifo_db:put(State#state.db, <<"iprange">>, Iprange,
-                                sniffle_obj:update(H3, Coordinator, O)),
+                    Obj =  sniffle_obj:update(H3, Coordinator, O),
+                    do_put(Iprange, Obj, State),
                     V1 = statebox:value(H3),
-                    {reply, {ok, ReqID, {jsxd:get(<<"tag">>, <<"">>, V1),
-                                         IP,
-                                         jsxd:get(<<"netmask">>, 0, V1),
-                                         jsxd:get(<<"gateway">>, 0, V1)}}, State};
+                    {reply, {ok, ReqID,
+                             {jsxd:get(<<"tag">>, <<"">>, V1),
+                              IP,
+                              jsxd:get(<<"netmask">>, 0, V1),
+                              jsxd:get(<<"gateway">>, 0, V1)}}, State};
                 false ->
                     {reply, {error, ReqID, duplicate}, State}
             end;
@@ -205,8 +305,8 @@ handle_command({set,
                               [Resource, Value]}, H)
                    end, H1, Resources),
             H3 = statebox:expire(?STATEBOX_EXPIRE, H2),
-            fifo_db:put(State#state.db, <<"iprange">>, Iprange,
-                        sniffle_obj:update(H3, Coordinator, O)),
+            Obj =  sniffle_obj:update(H3, Coordinator, O),
+            do_put(Iprange, Obj, State),
             {reply, {ok, ReqID}, State};
         R ->
             lager:error("[hypervisors] tried to write to a non existing hypervisor: ~p", [R]),
@@ -221,18 +321,13 @@ handle_command({ip, release,
             H1 = statebox:modify({fun sniffle_iprange_state:load/1,[]}, H0),
             H2 = statebox:modify({fun sniffle_iprange_state:release_ip/2,[IP]}, H1),
             H3 = statebox:expire(?STATEBOX_EXPIRE, H2),
-            fifo_db:put(State#state.db, <<"iprange">>, Iprange,
-                        sniffle_obj:update(H3, Coordinator, O)),
+            Obj =  sniffle_obj:update(H3, Coordinator, O),
+            do_put(Iprange, Obj, State),
             {reply, {ok, ReqID}, State};
 
         _ ->
             {reply, {ok, ReqID, not_found}, State}
     end;
-
-handle_command(?FOLD_REQ{foldfun=Fun, acc0=Acc0}, _Sender, State) ->
-    Acc = fifo_db:fold(State#state.db,
-                       <<"iprange">>, Fun, Acc0),
-    {reply, Acc, State};
 
 handle_command(Message, _Sender, State) ->
     lager:error("[ipranges] Unknown command: ~p", [Message]),
@@ -243,7 +338,7 @@ handle_handoff_command(?FOLD_REQ{foldfun=Fun, acc0=Acc0}, _Sender, State) ->
                        <<"iprange">>, Fun, Acc0),
     {reply, Acc, State};
 
-handle_handoff_command({get, _ReqID, _Vm} = Req, Sender, State) ->
+handle_handoff_command({get, _ReqID, _Iprange} = Req, Sender, State) ->
     handle_command(Req, Sender, State);
 
 handle_handoff_command(Req, Sender, State) ->
@@ -265,8 +360,8 @@ handoff_finished(_TargetNode, State) ->
     {ok, State}.
 
 handle_handoff_data(Data, State) ->
-    {Iprange, HObject} = binary_to_term(Data),
-    fifo_db:put(State#state.db, <<"iprange">>, Iprange, HObject),
+    {Iprange, Obj} = binary_to_term(Data),
+    do_put(Iprange, Obj, State),
     {reply, ok, State}.
 
 encode_handoff_item(Iprange, Data) ->
@@ -342,8 +437,33 @@ handle_coverage({overlap, ReqID, _Start, _Stop}, _KeySpaces, _Sender, State) ->
 handle_coverage(_Req, _KeySpaces, _Sender, State) ->
     {stop, not_implemented, State}.
 
+
 handle_exit(_Pid, _Reason, State) ->
     {noreply, State}.
 
 terminate(_Reason, _State) ->
     ok.
+
+%%%===================================================================
+%%% AAE
+%%%===================================================================
+
+handle_info(retry_create_hashtree, State=#state{hashtrees=undefined}) ->
+    HT = riak_core_aae_vnode:maybe_create_hashtrees(?SERVICE, State#state.partition,
+                                                    undefined),
+    {ok, State#state{hashtrees = HT}};
+handle_info(retry_create_hashtree, State) ->
+    {ok, State};
+handle_info({'DOWN', _, _, Pid, _}, State=#state{hashtrees=Pid}) ->
+    HT = riak_core_aae_vnode:maybe_create_hashtrees(?SERVICE, State#state.partition,
+                                                    Pid),
+    {ok, State#state{hashtrees = HT}};
+handle_info({'DOWN', _, _, _, _}, State) ->
+    {ok, State};
+handle_info(_, State) ->
+    {ok, State}.
+
+do_put(Key, Obj, State) ->
+    fifo_db:put(State#state.db, <<"iprange">>, Key, Obj),
+    riak_core_aae_vnode:update_hashtree(<<"iprange">>, Key, term_to_binary(Obj),
+                                        State#state.hashtrees).
