@@ -20,6 +20,10 @@ start_link() ->
 %% ===================================================================
 
 init(_Args) ->
+    %% ===================================================================
+    %% VNodes
+    %% ===================================================================
+
     VHypervisor = {
       sniffle_hypervisor_vnode_master,
       { riak_core_vnode_master, start_link, [sniffle_hypervisor_vnode]},
@@ -52,32 +56,85 @@ init(_Args) ->
       sniffle_package_vnode_master,
       { riak_core_vnode_master, start_link, [sniffle_package_vnode]},
       permanent, 5000, worker, [sniffle_package_vnode_master]},
+
+    %% ===================================================================
+    %% FSMs
+    %% ===================================================================
     WriteFSMs = {
       sniffle_entity_write_fsm_sup,
       { sniffle_entity_write_fsm_sup, start_link, []},
       permanent, infinity, supervisor, [sniffle_entity_write_fsm_sup]},
+
     CoverageFSMs = {
       sniffle_coverage_sup,
       { sniffle_coverage_sup, start_link, []},
       permanent, infinity, supervisor, [sniffle_coverage_sup]},
+
     ReadFSMs = {
       sniffle_entity_read_fsm_sup,
       {sniffle_entity_read_fsm_sup, start_link, []},
       permanent, infinity, supervisor, [sniffle_entity_read_fsm_sup]},
+
+    %% ===================================================================
+    %% VNodes
+    %% ===================================================================
     CreateFSMs = {
       sniffle_create_fsm_sup,
       {sniffle_create_fsm_sup, start_link, []},
       permanent, infinity, supervisor, [sniffle_create_fsm_sup]},
+
     DTrace = {
       sniffle_dtrace_sup,
       {sniffle_dtrace_sup, start_link, []},
       permanent, infinity, supervisor, [sniffle_dtrace_sup]},
+
+    %% ===================================================================
+    %% AAE
+    %% ===================================================================
+    EntropyManagerHypervisor =
+        {sniffle_hypervisor_entropy_manager,
+         {riak_core_entropy_manager, start_link,
+          [sniffle_hypervisor, sniffle_hypervisor_vnode]},
+         permanent, 30000, worker, [riak_core_entropy_manager]},
+
+    EntropyManagerVm =
+        {sniffle_vm_entropy_manager,
+         {riak_core_entropy_manager, start_link,
+          [sniffle_vm, sniffle_vm_vnode]},
+         permanent, 30000, worker, [riak_core_entropy_manager]},
+
+    EntropyManagerIPRange =
+        {sniffle_iprange_entropy_manager,
+         {riak_core_entropy_manager, start_link,
+          [sniffle_iprange, sniffle_iprange_vnode]},
+         permanent, 30000, worker, [riak_core_entropy_manager]},
+
+    EntropyManagerNetwork =
+        {sniffle_network_entropy_manager,
+         {riak_core_entropy_manager, start_link,
+          [sniffle_network, sniffle_network_vnode]},
+         permanent, 30000, worker, [riak_core_entropy_manager]},
+
+    EntropyManagerDataset =
+        {sniffle_dataset_entropy_manager,
+         {riak_core_entropy_manager, start_link,
+          [sniffle_dataset, sniffle_dataset_vnode]},
+         permanent, 30000, worker, [riak_core_entropy_manager]},
+
+    EntropyManagerImg =
+        {sniffle_img_entropy_manager,
+         {riak_core_entropy_manager, start_link,
+          [sniffle_img, sniffle_img_vnode]},
+         permanent, 30000, worker, [riak_core_entropy_manager]},
+
     {ok,
      {{one_for_one, 5, 10},
       [{statman_server, {statman_server, start_link, [1000]},
         permanent, 5000, worker, []},
        {statman_aggregator, {statman_aggregator, start_link, []},
         permanent, 5000, worker, []},
-       CoverageFSMs, WriteFSMs, ReadFSMs, CreateFSMs,
-       VHypervisor, VVM, VIprange, VDataset, VPackage,
-       VImg, VDTrace, VNetwork, DTrace]}}.
+       CoverageFSMs, WriteFSMs, ReadFSMs,
+       CreateFSMs, DTrace,
+       VHypervisor, VVM, VIprange, VDataset, VPackage, VImg, VDTrace, VNetwork,
+       EntropyManagerVm, EntropyManagerHypervisor, EntropyManagerIPRange,
+       EntropyManagerNetwork, EntropyManagerDataset, EntropyManagerImg]}}.

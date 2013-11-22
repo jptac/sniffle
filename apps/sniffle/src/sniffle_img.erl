@@ -1,12 +1,12 @@
 -module(sniffle_img).
 -include("sniffle.hrl").
-                                                %-include_lib("riak_core/include/riak_core_vnode.hrl").
 
 -export([
          create/3,
          delete/1,
          delete/2,
          get/2,
+         get/1,
          list/0,
          list/1
         ]).
@@ -41,6 +41,12 @@ get(Img, Idx) ->
     sniffle_entity_read_fsm:start(
       {sniffle_img_vnode, sniffle_img},
       get, {Img, Idx}
+     ).
+
+get(ImgAndIdx) ->
+    sniffle_entity_read_fsm:start(
+      {sniffle_img_vnode, sniffle_img},
+      get, ImgAndIdx
      ).
 
 -spec list() ->
