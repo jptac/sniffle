@@ -141,14 +141,14 @@ delete(Preflist, ReqID, Network) ->
                                    {fsm, undefined, self()},
                                    ?MASTER).
 
-add_iprange(Preflist, ReqID, Network, Network) ->
+add_iprange(Preflist, ReqID, Network, IPRange) ->
     riak_core_vnode_master:command(Preflist,
-                                   {add_iprange, ReqID, Network, Network},
+                                   {add_iprange, ReqID, Network, IPRange},
                                    {fsm, undefined, self()},
                                    ?MASTER).
-remove_iprange(Preflist, ReqID, Network, Network) ->
+remove_iprange(Preflist, ReqID, Network, IPRange) ->
     riak_core_vnode_master:command(Preflist,
-                                   {remove_iprange, ReqID, Network, Network},
+                                   {remove_iprange, ReqID, Network, IPRange},
                                    {fsm, undefined, self()},
                                    ?MASTER).
 
@@ -283,13 +283,13 @@ handle_command({set,
 
 handle_command({add_iprange,
                 {ReqID, Coordinator}, Network,
-                Network}, _Sender, State) ->
+                IPRange}, _Sender, State) ->
     case fifo_db:get(State#state.db, <<"network">>, Network) of
         {ok, #sniffle_obj{val=H0} = O} ->
             H1 = statebox:modify({fun sniffle_network_state:load/1,[]}, H0),
             H2 = statebox:modify(
                    {fun sniffle_network_state:add_iprange/2,
-                    [Network]}, H1),
+                    [IPRange]}, H1),
             H3 = statebox:expire(?STATEBOX_EXPIRE, H2),
             Obj = sniffle_obj:update(H3, Coordinator, O),
             do_put(Network, Obj, State),
@@ -301,13 +301,13 @@ handle_command({add_iprange,
 
 handle_command({remove_iprange,
                 {ReqID, Coordinator}, Network,
-                Network}, _Sender, State) ->
+                IPRange}, _Sender, State) ->
     case fifo_db:get(State#state.db, <<"network">>, Network) of
         {ok, #sniffle_obj{val=H0} = O} ->
             H1 = statebox:modify({fun sniffle_network_state:load/1,[]}, H0),
             H2 = statebox:modify(
                    {fun sniffle_network_state:remove_iprange/2,
-                    [Network]}, H1),
+                    [IPRange]}, H1),
             H3 = statebox:expire(?STATEBOX_EXPIRE, H2),
             Obj = sniffle_obj:update(H3, Coordinator, O),
             do_put(Network, Obj, State),
