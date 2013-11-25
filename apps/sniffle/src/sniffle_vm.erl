@@ -530,14 +530,14 @@ delete_snapshot(Vm, UUID) ->
         {ok, V} ->
             case jsxd:get([<<"snapshots">>, UUID, <<"timestamp">>], V) of
                 {ok, _} ->
-                    {ok, Snapshots} = jsxd:get(<<"snapshots">>, V),
                     {ok, H} = jsxd:get(<<"hypervisor">>, V),
                     {Server, Port} = get_hypervisor(H),
                     case libchunter:delete_snapshot(Server, Port, Vm, UUID) of
                         ok ->
-                            Snapshots1 = jsxd:delete(UUID, Snapshots),
-                            do_write(Vm, set, [{[<<"snapshots">>], Snapshots1}]),
-                            log(Vm, <<"Deleted snapshot ", UUID/binary, ".">>),
+                            Prefix = [<<"snapshots">>, UUID],
+                            do_write(Vm, set,
+                                     [{Prefix ++ [<<"state">>], <<"deleting">>}]),
+                            log(Vm, <<"Deleting snapshot ", UUID/binary, ".">>),
                             ok;
                         E ->
                             {error, E}
