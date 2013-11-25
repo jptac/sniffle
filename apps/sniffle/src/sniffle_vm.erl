@@ -505,8 +505,11 @@ snapshot(Vm, Comment) ->
             TimeStamp = (Mega*1000000+Sec)*1000000+Micro,
             case libchunter:snapshot(Server, Port, Vm, UUID) of
                 ok ->
-                    do_write(Vm, set, [{[<<"snapshots">>, UUID, <<"timestamp">>], TimeStamp},
-                                       {[<<"snapshots">>, UUID, <<"comment">>], Comment}]),
+                    Prefix = [<<"snapshots">>, UUID],
+                    do_write(Vm, set,
+                             [{Prefix ++ [<<"timestamp">>], TimeStamp},
+                              {Prefix ++ [<<"comment">>], Comment},
+                              {Prefix ++ [<<"state">>], <<"pending">>}]),
                     log(Vm, <<"Created snapshot ", UUID/binary, ": ", Comment/binary>>),
                     {ok, UUID};
                 E ->
