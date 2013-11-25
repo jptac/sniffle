@@ -138,6 +138,13 @@ message({vm, snapshot, rollback, Vm, UUID}, State) when
      sniffle_vm:rollback_snapshot(Vm, UUID),
      State};
 
+message({vm, snapshot, commit_rollback, Vm, UUID}, State) when
+      is_binary(Vm),
+      is_binary(UUID) ->
+    {reply,
+     sniffle_vm:commit_snapshot_rollback(Vm, UUID),
+     State};
+
 message({vm, snapshot, promote, Vm, UUID, Config}, State) when
       is_binary(Vm),
       is_binary(UUID) ->
