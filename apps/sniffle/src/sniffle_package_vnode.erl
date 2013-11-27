@@ -107,8 +107,8 @@ set(Preflist, ReqID, Vm, Data) ->
 %%% VNode
 %%%===================================================================
 
-init([Partition]) ->
-    sniffle_vnode:init(Partition, <<"package">>, ?SERVICE).
+init([Part]) ->
+    sniffle_vnode:init(Part, <<"package">>, ?SERVICE, sniffle_package_state).
 
 %%%===================================================================
 %%% General
@@ -124,33 +124,6 @@ handle_command({create, {ReqID, Coordinator}, UUID, [Package]},
     HObject = #sniffle_obj{val=I2, vclock=VC},
     sniffle_vnode:put(UUID, HObject, State),
     {reply, {ok, ReqID}, State};
-
-handle_command({delete, {ReqID, _Coordinator}, Package}, _Sender, State) ->
-    fifo_db:delete(State#vstate.db, <<"package">>, Package),
-    riak_core_index_hashtree:delete({<<"package">>, Package}, State#vstate.hashtrees),
-    {reply, {ok, ReqID}, State};
-
-handle_command({set,
-                {ReqID, Coordinator}, Package,
-                Resources}, _Sender, State) ->
-    case fifo_db:get(State#vstate.db, <<"package">>, Package) of
-        {ok, #sniffle_obj{val=H0} = O} ->
-            H1 = statebox:modify({fun sniffle_package_state:load/1,[]}, H0),
-            H2 = lists:foldr(
-                   fun ({Resource, Value}, H) ->
-                           statebox:modify(
-                             {fun sniffle_package_state:set/3,
-                              [Resource, Value]}, H)
-                   end, H1, Resources),
-            H3 = statebox:expire(?STATEBOX_EXPIRE, H2),
-            Obj = sniffle_obj:update(H3, Coordinator, O),
-            sniffle_vnode:put(Package, Obj, State),
-            {reply, {ok, ReqID}, State};
-        _ ->
-            lager:error("[packages] tried to write to a non existing package."),
-            {reply, {ok, ReqID, not_found}, State}
-
-    end;
 
 handle_command(Message, Sender, State) ->
     sniffle_vnode:handle_command(Message, Sender, State).

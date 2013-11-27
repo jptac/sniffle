@@ -111,8 +111,8 @@ set(Preflist, ReqID, Dtrace, Data) ->
 %%% VNode
 %%%===================================================================
 
-init([Partition]) ->
-    sniffle_vnode:init(Partition, <<"dtrace">>, ?SERVICE).
+init([Part]) ->
+    sniffle_vnode:init(Part, <<"dtrace">>, ?SERVICE, sniffle_dtrace_state).
 
 %%%===================================================================
 %%% General
@@ -129,32 +129,6 @@ handle_command({create, {ReqID, Coordinator}, Dtrace, [Name, Script]},
     Obj = #sniffle_obj{val=I3, vclock=VC},
     sniffle_vnode:put(Dtrace, Obj, State),
     {reply, {ok, ReqID}, State};
-
-handle_command({delete, {ReqID, _Coordinator}, Dtrace}, _Sender, State) ->
-    fifo_db:delete(State#vstate.db, <<"dtrace">>, Dtrace),
-    riak_core_index_hashtree:delete({<<"dtrace">>, Dtrace}, State#vstate.hashtrees),
-    {reply, {ok, ReqID}, State};
-
-handle_command({set,
-                {ReqID, Coordinator}, Dtrace,
-                Resources}, _Sender, State) ->
-    case fifo_db:get(State#vstate.db, <<"dtrace">>, Dtrace) of
-        {ok, #sniffle_obj{val=H0} = O} ->
-            H1 = statebox:modify({fun sniffle_dtrace_state:load/1,[]}, H0),
-            H2 = lists:foldr(
-                   fun ({Resource, Value}, H) ->
-                           statebox:modify(
-                             {fun sniffle_dtrace_state:set/3,
-                              [Resource, Value]}, H)
-                   end, H1, Resources),
-            H3 = statebox:expire(?STATEBOX_EXPIRE, H2),
-            Obj = sniffle_obj:update(H3, Coordinator, O),
-            sniffle_vnode:put(Dtrace, Obj, State),
-            {reply, {ok, ReqID}, State};
-        R ->
-            lager:error("[dtraces] tried to write to a non existing dtrace: ~p", [R]),
-            {reply, {ok, ReqID, not_found}, State}
-    end;
 
 handle_command(Message, Sender, State) ->
     sniffle_vnode:handle_command(Message, Sender, State).

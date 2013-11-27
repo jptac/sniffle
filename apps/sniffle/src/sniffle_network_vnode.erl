@@ -129,8 +129,8 @@ set(Preflist, ReqID, Hypervisor, Data) ->
 %%% VNode
 %%%===================================================================
 
-init([Partition]) ->
-    sniffle_vnode:init(Partition, <<"network">>, ?SERVICE).
+init([Part]) ->
+    sniffle_vnode:init(Part, <<"network">>, ?SERVICE, sniffle_network_state).
 
 %%%===================================================================
 %%% General
@@ -150,27 +150,6 @@ handle_command({create, {ReqID, Coordinator}, UUID,
     HObject = #sniffle_obj{val=I1, vclock=VC},
     sniffle_vnode:put(UUID, HObject, State),
     {reply, {ok, ReqID}, State};
-
-handle_command({set,
-                {ReqID, Coordinator}, Network,
-                Resources}, _Sender, State) ->
-    case fifo_db:get(State#vstate.db, <<"network">>, Network) of
-        {ok, #sniffle_obj{val=H0} = O} ->
-            H1 = statebox:modify({fun sniffle_network_state:load/1,[]}, H0),
-            H2 = lists:foldr(
-                   fun ({Resource, Value}, H) ->
-                           statebox:modify(
-                             {fun sniffle_network_state:set_metadata/3,
-                              [Resource, Value]}, H)
-                   end, H1, Resources),
-            H3 = statebox:expire(?STATEBOX_EXPIRE, H2),
-            Obj = sniffle_obj:update(H3, Coordinator, O),
-            sniffle_vnode:put(Network, Obj, State),
-            {reply, {ok, ReqID}, State};
-        R ->
-            lager:error("[hypervisors] tried to write to a non existing hypervisor: ~p", [R]),
-            {reply, {ok, ReqID, not_found}, State}
-    end;
 
 handle_command({add_iprange,
                 {ReqID, Coordinator}, Network,

@@ -98,7 +98,7 @@ register(Preflist, ReqID, Hypervisor, Data) ->
 
 unregister(Preflist, ReqID, Hypervisor) ->
     riak_core_vnode_master:command(Preflist,
-                                   {unregister, ReqID, Hypervisor},
+                                   {delete, ReqID, Hypervisor},
                                    {fsm, undefined, self()},
                                    ?MASTER).
 
@@ -112,8 +112,8 @@ set(Preflist, ReqID, Hypervisor, Data) ->
 %%% VNode
 %%%===================================================================
 
-init([Partition]) ->
-    sniffle_vnode:init(Partition, <<"hypervisor">>, ?SERVICE).
+init([Part]) ->
+    sniffle_vnode:init(Part, <<"hypervisor">>, ?SERVICE, sniffle_hypervisor_state).
 
 %%%===================================================================
 %%% Node Specific
@@ -131,33 +131,6 @@ handle_command({register, {ReqID, Coordinator}, Hypervisor, [Ip, Port]}, _Sender
 
     sniffle_vnode:put(Hypervisor, HObject, State),
     {reply, {ok, ReqID}, State};
-
-handle_command({unregister, {ReqID, _Coordinator}, Hypervisor}, _Sender, State) ->
-    fifo_db:delete(State#vstate.db, <<"hypervisor">>, Hypervisor),
-    riak_core_index_hashtree:delete({<<"hypervisor">>, Hypervisor}, State#vstate.hashtrees),
-    {reply, {ok, ReqID}, State};
-
-handle_command({set,
-                {ReqID, Coordinator}, Hypervisor,
-                Resources}, _Sender, State) ->
-    case fifo_db:get(State#vstate.db, <<"hypervisor">>, Hypervisor) of
-        {ok, #sniffle_obj{val=H0} = O} ->
-            H1 = statebox:modify({fun sniffle_hypervisor_state:load/1,[]}, H0),
-            H2 = lists:foldr(
-                   fun ({Resource, Value}, H) ->
-                           statebox:modify(
-                             {fun sniffle_hypervisor_state:set/3,
-                              [Resource, Value]}, H)
-                   end, H1, Resources),
-            H3 = statebox:truncate(?STATEBOX_TRUNCATE, statebox:expire(?STATEBOX_EXPIRE, H2)),
-            Obj = sniffle_obj:update(H3, Coordinator, O),
-            sniffle_vnode:put(Hypervisor, Obj, State),
-            {reply, {ok, ReqID}, State};
-        R ->
-            lager:error("[hypervisors] tried to write to a non existing hypervisor ~p, causing read repair", [R]),
-            spawn(sniffle_hypervisor, get, [Hypervisor]),
-            {reply, {ok, ReqID, not_found}, State}
-    end;
 
 handle_command(Message, Sender, State) ->
     sniffle_vnode:handle_command(Message, Sender, State).

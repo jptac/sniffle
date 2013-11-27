@@ -3,7 +3,7 @@
 -include("sniffle.hrl").
 -include_lib("riak_core/include/riak_core_vnode.hrl").
 
--export([init/3,
+-export([init/4,
          list_keys/2,
          list_keys/4,
          is_empty/1,
@@ -15,7 +15,7 @@
          handle_command/3,
          handle_info/2]).
 
-init(Partition, Bucket, Service) ->
+init(Partition, Bucket, Service, StateMod) ->
     DB = list_to_atom(integer_to_list(Partition)),
     fifo_db:start(DB),
     HT = riak_core_aae_vnode:maybe_create_hashtrees(Service, Partition,
@@ -24,7 +24,7 @@ init(Partition, Bucket, Service) ->
     FoldWorkerPool = {pool, sniffle_worker, WorkerPoolSize, []},
     {ok,
      #vstate{db = DB, hashtrees = HT, partition = Partition, node = node(),
-             service = Service, bucket = Bucket},
+             service = Service, bucket = Bucket, state = StateMod},
      [FoldWorkerPool]}.
 
 list_keys(Sender, State=#vstate{db=DB, bucket=Bucket}) ->
@@ -144,6 +144,30 @@ handle_command({delete, {ReqID, _Coordinator}, UUID}, _Sender, State) ->
     riak_core_index_hashtree:delete(
       {State#vstate.bucket, UUID}, State#vstate.hashtrees),
     {reply, {ok, ReqID}, State};
+
+
+handle_command({set,
+                {ReqID, Coordinator}, Dataset,
+                Resources}, _Sender,
+               State = #vstate{db=DB, state=Mod, bucket=Bucket}) ->
+    case fifo_db:get(DB, Bucket, Dataset) of
+        {ok, #sniffle_obj{val=H0} = O} ->
+            H1 = statebox:modify({fun Mod:load/1,[]}, H0),
+            H2 = lists:foldr(
+                   fun ({Resource, Value}, H) ->
+                           statebox:modify(
+                             {fun Mod:set/3,
+                              [Resource, Value]}, H)
+                   end, H1, Resources),
+            H3 = statebox:expire(?STATEBOX_EXPIRE, H2),
+            Obj = sniffle_obj:update(H3, Coordinator, O),
+            sniffle_vnode:put(Dataset, Obj, State),
+            {reply, {ok, ReqID}, State};
+        R ->
+            lager:error("[~s] tried to write to a non existing dataset: ~p",
+                        [Bucket, R]),
+            {reply, {ok, ReqID, not_found}, State}
+    end;
 
 %%%===================================================================
 %%% AAE

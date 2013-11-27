@@ -112,8 +112,8 @@ set(Preflist, ReqID, Dataset, Data) ->
 %%% VNode
 %%%===================================================================
 
-init([Partition]) ->
-    sniffle_vnode:init(Partition, <<"dataset">>, ?SERVICE).
+init([Part]) ->
+    sniffle_vnode:init(Part, <<"dataset">>, ?SERVICE, sniffle_dataset_state).
 
 handle_command({create, {ReqID, Coordinator}, Dataset, []},
                _Sender, State) ->
@@ -124,32 +124,6 @@ handle_command({create, {ReqID, Coordinator}, Dataset, []},
     Obj = #sniffle_obj{val=I1, vclock=VC},
     sniffle_vnode:put(Dataset, Obj, State),
     {reply, {ok, ReqID}, State};
-
-handle_command({delete, {ReqID, _Coordinator}, Dataset}, _Sender, State) ->
-    fifo_db:delete(State#vstate.db, <<"dataset">>, Dataset),
-    riak_core_index_hashtree:delete({<<"dataset">>, Dataset}, State#vstate.hashtrees),
-    {reply, {ok, ReqID}, State};
-
-handle_command({set,
-                {ReqID, Coordinator}, Dataset,
-                Resources}, _Sender, State) ->
-    case fifo_db:get(State#vstate.db, <<"dataset">>, Dataset) of
-        {ok, #sniffle_obj{val=H0} = O} ->
-            H1 = statebox:modify({fun sniffle_dataset_state:load/1,[]}, H0),
-            H2 = lists:foldr(
-                   fun ({Resource, Value}, H) ->
-                           statebox:modify(
-                             {fun sniffle_dataset_state:set/3,
-                              [Resource, Value]}, H)
-                   end, H1, Resources),
-            H3 = statebox:expire(?STATEBOX_EXPIRE, H2),
-            Obj = sniffle_obj:update(H3, Coordinator, O),
-            sniffle_vnode:put(Dataset, Obj, State),
-            {reply, {ok, ReqID}, State};
-        R ->
-            lager:error("[datasets] tried to write to a non existing dataset: ~p", [R]),
-            {reply, {ok, ReqID, not_found}, State}
-    end;
 
 handle_command(Message, Sender, State) ->
     sniffle_vnode:handle_command(Message, Sender, State).
