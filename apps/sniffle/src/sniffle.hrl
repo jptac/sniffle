@@ -6,6 +6,8 @@
                  EnvValue
          end)).
 
+-record(vstate, {db, partition, service, bucket, node, hashtrees, internal}).
+
 -define(N, ?ENV(n, 3)).
 -define(R, ?ENV(r, 2)).
 -define(W, ?ENV(w, 3)).
