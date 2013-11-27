@@ -232,13 +232,14 @@ get_server(_Event, State = #state{
     {ok, Type} = jsxd:get(<<"type">>, Dataset),
     case libsnarl:user_cache(Creator) of
         {ok, Permissions} ->
-            Conditions0 = jsxd:get(<<"requirements">>, [], Package),
-            Conditions1 = Conditions0 ++ jsxd:get(<<"requirements">>, [], Dataset),
-            Conditions2 = [{must, 'allowed', Permission, Permissions},
+            Conditions0 = jsxd:get(<<"requirements">>, [], Package)
+                ++ jsxd:get(<<"requirements">>, [], Dataset)
+                ++ jsxd:get(<<"requirements">>, [], Config),
+            Conditions1 = [{must, 'allowed', Permission, Permissions},
                            {must, 'element', <<"virtualisation">>, Type},
                            {must, '>=', <<"resources.free-memory">>, Ram}] ++
-                lists:map(fun(C) -> make_condition(C, Permissions) end, Conditions1),
-            {UUID, Config, Conditions} = eplugin:fold('create:conditions', {UUID, Config, Conditions2}),
+                lists:map(fun(C) -> make_condition(C, Permissions) end, Conditions0),
+            {UUID, Config, Conditions} = eplugin:fold('create:conditions', {UUID, Config, Conditions1}),
             CondB = list_to_binary(io_lib:format("~p", [Conditions])),
             sniffle_vm:log(UUID, <<"Finding hypervisor ", CondB/binary>>),
             {ok, Hypervisors} = sniffle_hypervisor:list(Conditions),
