@@ -34,6 +34,8 @@
          parse_bin/1
         ]).
 
+-ignore_xref([load/1, set/3]).
+
 load(Iprange) ->
     Iprange.
 

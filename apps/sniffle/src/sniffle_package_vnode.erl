@@ -28,10 +28,7 @@
 
 -export([master/0,
          aae_repair/2,
-         hashtree_pid/1,
-         rehash/3,
-         hash_object/2,
-         request_hashtree_pid/1]).
+         hash_object/2]).
 
 -ignore_xref([create/4,
               delete/3,
@@ -60,33 +57,6 @@ aae_repair(_, Key) ->
     lager:debug("AAE Repair: ~p", [Key]),
     sniffle_package:get(Key).
 
-hashtree_pid(Partition) ->
-    riak_core_vnode_master:sync_command({Partition, node()},
-                                        {hashtree_pid, node()},
-                                        ?MASTER,
-                                        infinity).
-
-%% Asynchronous version of {@link hashtree_pid/1} that sends a message back to
-%% the calling process. Used by the {@link riak_core_entropy_manager}.
-request_hashtree_pid(Partition) ->
-    ReqId = {hashtree_pid, Partition},
-    riak_core_vnode_master:command({Partition, node()},
-                                   {hashtree_pid, node()},
-                                   {raw, ReqId, self()},
-                                   ?MASTER).
-
-%% Used by {@link riak_core_exchange_fsm} to force a vnode to update the hashtree
-%% for repaired keys. Typically, repairing keys will trigger read repair that
-%% will update the AAE hash in the write path. However, if the AAE tree is
-%% divergent from the KV data, it is possible that AAE will try to repair keys
-%% that do not have divergent KV replicas. In that case, read repair is never
-%% triggered. Always rehashing keys after any attempt at repair ensures that
-%% AAE does not try to repair the same non-divergent keys over and over.
-rehash(Preflist, _, Key) ->
-    riak_core_vnode_master:command(Preflist,
-                                   {rehash, Key},
-                                   ignore,
-                                   ?MASTER).
 
 %%%===================================================================
 %%% API
@@ -137,8 +107,8 @@ set(Preflist, ReqID, Vm, Data) ->
 %%% VNode
 %%%===================================================================
 
-init([Partition]) ->
-    sniffle_vnode:init(Partition, <<"package">>, ?SERVICE).
+init([Part]) ->
+    sniffle_vnode:init(Part, <<"package">>, ?SERVICE, sniffle_package_state).
 
 %%%===================================================================
 %%% General
@@ -154,33 +124,6 @@ handle_command({create, {ReqID, Coordinator}, UUID, [Package]},
     HObject = #sniffle_obj{val=I2, vclock=VC},
     sniffle_vnode:put(UUID, HObject, State),
     {reply, {ok, ReqID}, State};
-
-handle_command({delete, {ReqID, _Coordinator}, Package}, _Sender, State) ->
-    fifo_db:delete(State#vstate.db, <<"package">>, Package),
-    riak_core_index_hashtree:delete({<<"package">>, Package}, State#vstate.hashtrees),
-    {reply, {ok, ReqID}, State};
-
-handle_command({set,
-                {ReqID, Coordinator}, Package,
-                Resources}, _Sender, State) ->
-    case fifo_db:get(State#vstate.db, <<"package">>, Package) of
-        {ok, #sniffle_obj{val=H0} = O} ->
-            H1 = statebox:modify({fun sniffle_package_state:load/1,[]}, H0),
-            H2 = lists:foldr(
-                   fun ({Resource, Value}, H) ->
-                           statebox:modify(
-                             {fun sniffle_package_state:set/3,
-                              [Resource, Value]}, H)
-                   end, H1, Resources),
-            H3 = statebox:expire(?STATEBOX_EXPIRE, H2),
-            Obj = sniffle_obj:update(H3, Coordinator, O),
-            sniffle_vnode:put(Package, Obj, State),
-            {reply, {ok, ReqID}, State};
-        _ ->
-            lager:error("[packages] tried to write to a non existing package."),
-            {reply, {ok, ReqID, not_found}, State}
-
-    end;
 
 handle_command(Message, Sender, State) ->
     sniffle_vnode:handle_command(Message, Sender, State).

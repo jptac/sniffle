@@ -18,6 +18,8 @@
          set/3
         ]).
 
+-ignore_xref([load/1, set/3]).
+
 load(H) ->
     H.
 
