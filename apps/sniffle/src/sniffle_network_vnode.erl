@@ -53,8 +53,6 @@
               handle_info/2
              ]).
 
--record(state, {db, partition, node, hashtrees}).
-
 -define(SERVICE, sniffle_network).
 
 -define(MASTER, sniffle_network_vnode_master).
@@ -163,82 +161,11 @@ set(Preflist, ReqID, Hypervisor, Data) ->
 %%%===================================================================
 
 init([Partition]) ->
-    DB = list_to_atom(integer_to_list(Partition)),
-    fifo_db:start(DB),
-    HT = riak_core_aae_vnode:maybe_create_hashtrees(?SERVICE,
-                                                    Partition,
-                                                    undefined),
-    {ok, #state{db = DB, hashtrees = HT, partition = Partition, node = node()}}.
-
-handle_command(ping, _Sender, State) ->
-    {reply, {pong, State#state.partition}, State};
-
-handle_command({repair, Network, VClock, Obj}, _Sender, State) ->
-    case fifo_db:get(State#state.db, <<"network">>, Network) of
-        {ok, #sniffle_obj{vclock = VC1}} when VC1 =:= VClock ->
-            do_put(Network, Obj, State);
-        not_found ->
-            do_put(Network, Obj, State);
-        _ ->
-            lager:error("[uprange] Read repair failed, data was updated too recent.")
-    end,
-    {noreply, State};
-
-%%%===================================================================
-%%% AAE
-%%%===================================================================
-
-handle_command({hashtree_pid, Node}, _, State=#state{hashtrees=HT}) ->
-    %% Handle riak_core request forwarding during ownership handoff.
-    %% Following is necessary in cases where anti-entropy was enabled
-    %% after the vnode was already running
-    case {node(), HT} of
-        {Node, undefined} ->
-            HT1 =  riak_core_aae_vnode:maybe_create_hashtrees(
-                     ?SERVICE,
-                     State#state.partition,
-                     HT),
-            {reply, {ok, HT1}, State#state{hashtrees = HT1}};
-        {Node, _} ->
-            {reply, {ok, HT}, State};
-        _ ->
-            {reply, {error, wrong_node}, State}
-    end;
-
-handle_command({rehash, Key}, _, State=#state{db=DB}) ->
-    case fifo_db:get(DB, <<"network">>, Key) of
-        {ok, Term} ->
-            riak_core_aae_vnode:update_hashtree(<<"network">>, Key,
-                                                term_to_binary(Term),
-                                                State#state.hashtrees);
-        _ ->
-            %% Make sure hashtree isn't tracking deleted data
-            riak_core_index_hashtree:delete({<<"network">>, Key},
-                                            State#state.hashtrees)
-    end,
-    {noreply, State};
-
-handle_command(?FOLD_REQ{foldfun=Fun, acc0=Acc0}, _Sender, State) ->
-    lager:debug("Fold on ~p", [State#state.partition]),
-    Acc = fifo_db:fold(State#state.db, <<"network">>,
-                       fun(K, V, O) ->
-                               Fun({<<"network">>, K}, V, O)
-                       end, Acc0),
-    {reply, Acc, State};
+    sniffle_vnode:init(Partition, <<"network">>, ?SERVICE).
 
 %%%===================================================================
 %%% General
 %%%===================================================================
-
-handle_command({get, ReqID, Network}, _Sender, State) ->
-    Res = case fifo_db:get(State#state.db, <<"network">>, Network) of
-              {ok, R} ->
-                  R;
-              not_found ->
-                  not_found
-          end,
-    NodeIdx = {State#state.partition, State#state.node},
-    {reply, {ok, ReqID, NodeIdx, Res}, State};
 
 handle_command({create, {ReqID, Coordinator}, UUID,
                 [Name]},
@@ -252,18 +179,13 @@ handle_command({create, {ReqID, Coordinator}, UUID,
     VC0 = vclock:fresh(),
     VC = vclock:increment(Coordinator, VC0),
     HObject = #sniffle_obj{val=I1, vclock=VC},
-    do_put(UUID, HObject, State),
-    {reply, {ok, ReqID}, State};
-
-handle_command({delete, {ReqID, _Coordinator}, Network}, _Sender, State) ->
-    fifo_db:delete(State#state.db, <<"network">>, Network),
-    riak_core_index_hashtree:delete({<<"network">>, Network}, State#state.hashtrees),
+    sniffle_vnode:put(UUID, HObject, State),
     {reply, {ok, ReqID}, State};
 
 handle_command({set,
                 {ReqID, Coordinator}, Network,
                 Resources}, _Sender, State) ->
-    case fifo_db:get(State#state.db, <<"network">>, Network) of
+    case fifo_db:get(State#vstate.db, <<"network">>, Network) of
         {ok, #sniffle_obj{val=H0} = O} ->
             H1 = statebox:modify({fun sniffle_network_state:load/1,[]}, H0),
             H2 = lists:foldr(
@@ -274,7 +196,7 @@ handle_command({set,
                    end, H1, Resources),
             H3 = statebox:expire(?STATEBOX_EXPIRE, H2),
             Obj = sniffle_obj:update(H3, Coordinator, O),
-            do_put(Network, Obj, State),
+            sniffle_vnode:put(Network, Obj, State),
             {reply, {ok, ReqID}, State};
         R ->
             lager:error("[hypervisors] tried to write to a non existing hypervisor: ~p", [R]),
@@ -284,7 +206,7 @@ handle_command({set,
 handle_command({add_iprange,
                 {ReqID, Coordinator}, Network,
                 IPRange}, _Sender, State) ->
-    case fifo_db:get(State#state.db, <<"network">>, Network) of
+    case fifo_db:get(State#vstate.db, <<"network">>, Network) of
         {ok, #sniffle_obj{val=H0} = O} ->
             H1 = statebox:modify({fun sniffle_network_state:load/1,[]}, H0),
             H2 = statebox:modify(
@@ -292,7 +214,7 @@ handle_command({add_iprange,
                     [IPRange]}, H1),
             H3 = statebox:expire(?STATEBOX_EXPIRE, H2),
             Obj = sniffle_obj:update(H3, Coordinator, O),
-            do_put(Network, Obj, State),
+            sniffle_vnode:put(Network, Obj, State),
             {reply, {ok, ReqID}, State};
         R ->
             lager:error("[hypervisors] tried to write to a non existing hypervisor: ~p", [R]),
@@ -302,7 +224,7 @@ handle_command({add_iprange,
 handle_command({remove_iprange,
                 {ReqID, Coordinator}, Network,
                 IPRange}, _Sender, State) ->
-    case fifo_db:get(State#state.db, <<"network">>, Network) of
+    case fifo_db:get(State#vstate.db, <<"network">>, Network) of
         {ok, #sniffle_obj{val=H0} = O} ->
             H1 = statebox:modify({fun sniffle_network_state:load/1,[]}, H0),
             H2 = statebox:modify(
@@ -310,20 +232,18 @@ handle_command({remove_iprange,
                     [IPRange]}, H1),
             H3 = statebox:expire(?STATEBOX_EXPIRE, H2),
             Obj = sniffle_obj:update(H3, Coordinator, O),
-            do_put(Network, Obj, State),
+            sniffle_vnode:put(Network, Obj, State),
             {reply, {ok, ReqID}, State};
         R ->
             lager:error("[hypervisors] tried to write to a non existing hypervisor: ~p", [R]),
             {reply, {ok, ReqID, not_found}, State}
     end;
 
-handle_command(Message, _Sender, State) ->
-    lager:error("[networks] Unknown command: ~p", [Message]),
-    {noreply, State}.
+handle_command(Message, Sender, State) ->
+    sniffle_vnode:handle_command(Message, Sender, State).
 
 handle_handoff_command(?FOLD_REQ{foldfun=Fun, acc0=Acc0}, _Sender, State) ->
-    Acc = fifo_db:fold(State#state.db,
-                       <<"network">>, Fun, Acc0),
+    Acc = fifo_db:fold(State#vstate.db, <<"network">>, Fun, Acc0),
     {reply, Acc, State};
 
 handle_handoff_command({get, _ReqID, _Vm} = Req, Sender, State) ->
@@ -349,74 +269,29 @@ handoff_finished(_TargetNode, State) ->
 
 handle_handoff_data(Data, State) ->
     {Network, HObject} = binary_to_term(Data),
-    fifo_db:put(State#state.db, <<"network">>, Network, HObject),
-    do_put(Network, HObject, State),
+    sniffle_vnode:put(Network, HObject, State),
     {reply, ok, State}.
 
 encode_handoff_item(Network, Data) ->
     term_to_binary({Network, Data}).
 
 is_empty(State) ->
-    fifo_db:fold_keys(State#state.db,
-                      <<"network">>,
-                      fun (_, _) ->
-                              {false, State}
-                      end, {true, State}).
+    sniffle_vnode:is_empty(State).
 
 delete(State) ->
-    Trans = fifo_db:fold_keys(State#state.db,
-                              <<"network">>,
-                              fun (K, A) ->
-                                      [{delete, <<"network", K/binary>>} | A]
-                              end, []),
-    fifo_db:transact(State#state.db, Trans),
-    {ok, State}.
+    sniffle_vnode:delete(State).
 
-handle_coverage({lookup, Name}, _KeySpaces, {_, ReqID, _}, State) ->
-    Res = fifo_db:fold(State#state.db,
-                       <<"network">>,
-                       fun (_U, #sniffle_obj{val=SB}, Res) ->
-                               V = statebox:value(SB),
-                               case jsxd:get(<<"name">>, V) of
-                                   {ok, Name} ->
-                                       V;
-                                   _ ->
-                                       Res
-                               end
-                       end, not_found),
-    {reply,
-     {ok, ReqID, {State#state.partition, State#state.node}, [Res]},
-     State};
+handle_coverage({lookup, Name}, _KeySpaces, Sender, State) ->
+    sniffle_vnode:lookup(Name, Sender, State);
 
-handle_coverage({list, Requirements}, _KeySpaces, {_, ReqID, _}, State) ->
-    Getter = fun(#sniffle_obj{val=S0}, V) ->
-                     jsxd:get(V, 0, statebox:value(S0))
+handle_coverage(list, _KeySpaces, Sender, State) ->
+    sniffle_vnode:list_keys(Sender, State);
+
+handle_coverage({list, Requirements}, _KeySpaces, Sender, State) ->
+    Getter = fun(#sniffle_obj{val=S0}, Resource) ->
+                     jsxd:get(Resource, 0, statebox:value(S0))
              end,
-    List = fifo_db:fold(State#state.db,
-                        <<"network">>,
-                        fun (Key, E, C) ->
-                                case rankmatcher:match(E, Getter, Requirements) of
-                                    false ->
-                                        C;
-                                    Pts ->
-                                        [{Pts, Key} | C]
-                                end
-                        end, []),
-    {reply,
-     {ok, ReqID, {State#state.partition, State#state.node}, List},
-     State};
-
-
-handle_coverage(list, _KeySpaces, {_, ReqID, _}, State) ->
-    List = fifo_db:fold_keys(State#state.db,
-                             <<"network">>,
-                             fun (K, L) ->
-                                     [K|L]
-                             end, []),
-
-    {reply,
-     {ok, ReqID, {State#state.partition,State#state.node}, List},
-     State};
+    sniffle_vnode:list_keys(Getter, Requirements, Sender, State);
 
 handle_coverage(_Req, _KeySpaces, _Sender, State) ->
     {stop, not_implemented, State}.
@@ -431,29 +306,5 @@ terminate(_Reason, _State) ->
 %%% AAE
 %%%===================================================================
 
-handle_info(retry_create_hashtree, State=#state{
-                                            hashtrees=undefined,
-                                            partition=Idx
-                                           }) ->
-    lager:debug("~p/~p retrying to create a hash tree.", [?SERVICE, Idx]),
-    HT = riak_core_aae_vnode:maybe_create_hashtrees(?SERVICE, State#state.partition,
-                                                    undefined),
-    {ok, State#state{hashtrees = HT}};
-handle_info(retry_create_hashtree, State) ->
-    {ok, State};
-handle_info({'DOWN', _, _, Pid, _}, State=#state{
-                                             hashtrees=Pid,
-                                             partition=Idx
-                                            }) ->
-    lager:debug("~p/~p hashtree ~p went down.", [?SERVICE, Idx, Pid]),
-    erlang:send_after(1000, self(), retry_create_hashtree),
-    {ok, State#state{hashtrees = undefined}};
-handle_info({'DOWN', _, _, _, _}, State) ->
-    {ok, State};
-handle_info(_, State) ->
-    {ok, State}.
-
-do_put(Key, Obj, State) ->
-    fifo_db:put(State#state.db, <<"network">>, Key, Obj),
-    riak_core_aae_vnode:update_hashtree(<<"network">>, Key, term_to_binary(Obj),
-                                        State#state.hashtrees).
+handle_info(Msg, State) ->
+    sniffle_vnode:handle_info(Msg, State).

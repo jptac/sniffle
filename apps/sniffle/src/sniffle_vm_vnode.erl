@@ -49,8 +49,6 @@
               handle_info/2
              ]).
 
--record(state, {db, partition, node, hashtrees}).
-
 -define(SERVICE, sniffle_vm).
 
 -define(MASTER, sniffle_vm_vnode_master).
@@ -163,12 +161,7 @@ set(Preflist, ReqID, Vm, Data) ->
 %%%===================================================================
 
 init([Partition]) ->
-    DB = list_to_atom(integer_to_list(Partition)),
-    fifo_db:start(DB),
-    HT = riak_core_aae_vnode:maybe_create_hashtrees(?SERVICE,
-                                                    Partition,
-                                                    undefined),
-    {ok, #state{db = DB, hashtrees = HT, partition = Partition, node = node()}}.
+    sniffle_vnode:init(Partition, <<"vm">>, ?SERVICE).
 
 -type vm_command() ::
         ping |
@@ -186,69 +179,12 @@ init([Partition]) ->
                             {reply, any(), any()} |
                             {noreply, any()}.
 
-handle_command(ping, _Sender, State) ->
-    {reply, {pong, State#state.partition}, State};
-
-handle_command({repair, Vm, VClock, Obj}, _Sender, State) ->
-    case fifo_db:get(State#state.db, <<"vm">>, Vm) of
-        {ok, #sniffle_obj{vclock = VC1}} when VC1 =:= VClock ->
-            do_put(Vm, Obj, State);
-        not_found ->
-            do_put(Vm, Obj, State);
-        _ ->
-            lager:error("[vms] Read repair failed, data was updated too recent.")
-    end,
-    {noreply, State};
-
 %%%===================================================================
-%%% AAE
+%%% Node Specific
 %%%===================================================================
-
-handle_command({hashtree_pid, Node}, _, State=#state{hashtrees=HT}) ->
-    %% Handle riak_core request forwarding during ownership handoff.
-    %% Following is necessary in cases where anti-entropy was enabled
-    %% after the vnode was already running
-    case {node(), HT} of
-        {Node, undefined} ->
-            HT1 =  riak_core_aae_vnode:maybe_create_hashtrees(
-                     ?SERVICE,
-                     State#state.partition,
-                     HT),
-            {reply, {ok, HT1}, State#state{hashtrees = HT1}};
-        {Node, _} ->
-            {reply, {ok, HT}, State};
-        _ ->
-            {reply, {error, wrong_node}, State}
-    end;
-
-handle_command({rehash, Key}, _, State=#state{db=DB}) ->
-    case fifo_db:get(DB, <<"vm">>, Key) of
-        {ok, Term} ->
-            riak_core_aae_vnode:update_hashtree(<<"vm">>, Key,
-                                                term_to_binary(Term),
-                                                State#state.hashtrees);
-        _ ->
-            %% Make sure hashtree isn't tracking deleted data
-            riak_core_index_hashtree:delete({<<"vm">>, Key}, State#state.hashtrees)
-    end,
-    {noreply, State};
-
-%%%===================================================================
-%%% General
-%%%===================================================================
-
-handle_command({get, ReqID, Vm}, _Sender, State) ->
-    Res = case fifo_db:get(State#state.db, <<"vm">>, Vm) of
-              {ok, R} ->
-                  R;
-              not_found ->
-                  not_found
-          end,
-    NodeIdx = {State#state.partition, State#state.node},
-    {reply, {ok, ReqID, NodeIdx, Res}, State};
 
 handle_command({register, {ReqID, Coordinator}, Vm, Hypervisor}, _Sender, State) ->
-    HObject = case fifo_db:get(State#state.db, <<"vm">>, Vm) of
+    HObject = case fifo_db:get(State#vstate.db, <<"vm">>, Vm) of
                   not_found ->
                       H0 = statebox:new(fun sniffle_vm_state:new/0),
                       H1 = statebox:modify({fun sniffle_vm_state:uuid/2, [Vm]}, H0),
@@ -262,18 +198,18 @@ handle_command({register, {ReqID, Coordinator}, Vm, Hypervisor}, _Sender, State)
                       H3 = statebox:expire(?STATEBOX_EXPIRE, H2),
                       sniffle_obj:update(H3, Coordinator, O)
               end,
-    do_put(Vm, HObject, State),
+    sniffle_vnode:put(Vm, HObject, State),
     {reply, {ok, ReqID}, State};
 
 handle_command({unregister, {ReqID, _Coordinator}, Vm}, _Sender, State) ->
-    fifo_db:delete(State#state.db, <<"vm">>, Vm),
-    riak_core_index_hashtree:delete({<<"vm">>, Vm}, State#state.hashtrees),
+    fifo_db:delete(State#vstate.db, <<"vm">>, Vm),
+    riak_core_index_hashtree:delete({<<"vm">>, Vm}, State#vstate.hashtrees),
     {reply, {ok, ReqID}, State};
 
 handle_command({set,
                 {ReqID, Coordinator}, Vm,
                 Resources}, _Sender, State) ->
-    case fifo_db:get(State#state.db, <<"vm">>, Vm) of
+    case fifo_db:get(State#vstate.db, <<"vm">>, Vm) of
         {ok, #sniffle_obj{val=H0} = O} ->
             H1 = statebox:modify({fun sniffle_vm_state:load/1,[]}, H0),
             H2 = lists:foldr(
@@ -284,7 +220,7 @@ handle_command({set,
                    end, H1, Resources),
             H3 = statebox:expire(?STATEBOX_EXPIRE, H2),
             Obj = sniffle_obj:update(H3, Coordinator, O),
-            do_put(Vm, Obj, State),
+            sniffle_vnode:put(Vm, Obj, State),
             {reply, {ok, ReqID}, State};
         R ->
             lager:error("[vms] tried to write to a non existing vm: ~p", [R]),
@@ -294,13 +230,13 @@ handle_command({set,
 handle_command({log,
                 {ReqID, Coordinator}, Vm,
                 {Time, Log}}, _Sender, State) ->
-    case fifo_db:get(State#state.db, <<"vm">>, Vm) of
+    case fifo_db:get(State#vstate.db, <<"vm">>, Vm) of
         {ok, #sniffle_obj{val=H0} = O} ->
             H1 = statebox:modify({fun sniffle_vm_state:load/1,[]}, H0),
             H2 = statebox:modify({fun sniffle_vm_state:log/3, [Time, Log]}, H1),
             H3 = statebox:expire(?STATEBOX_EXPIRE, H2),
             Obj = sniffle_obj:update(H3, Coordinator, O),
-            do_put(Vm, Obj, State),
+            sniffle_vnode:put(Vm, Obj, State),
             {reply, {ok, ReqID}, State};
         R ->
             lager:error("[vms] tried to write to a non existing vm: ~p", [R]),
@@ -308,23 +244,14 @@ handle_command({log,
     end;
 
 %%%===================================================================
-%%% AAE
+%%% Generic
 %%%===================================================================
 
-handle_command(?FOLD_REQ{foldfun=Fun, acc0=Acc0}, _Sender, State) ->
-    lager:debug("Fold on ~p", [State#state.partition]),
-    Acc = fifo_db:fold(State#state.db, <<"vm">>,
-                       fun(K, V, O) ->
-                               Fun({<<"vm">>, K}, V, O)
-                       end, Acc0),
-    {reply, Acc, State};
-
-handle_command(Message, _Sender, State) ->
-    lager:error("[vms] Unknown command: ~p", [Message]),
-    {noreply, State}.
+handle_command(Message, Sender, State) ->
+    sniffle_vnode:handle_command(Message, Sender, State).
 
 handle_handoff_command(?FOLD_REQ{foldfun=Fun, acc0=Acc0}, _Sender, State) ->
-    Acc = fifo_db:fold(State#state.db, <<"vm">>, Fun, Acc0),
+    Acc = fifo_db:fold(State#vstate.db, <<"vm">>, Fun, Acc0),
     {reply, Acc, State};
 
 handle_handoff_command({get, _ReqID, _Vm} = Req, Sender, State) ->
@@ -350,57 +277,26 @@ handoff_finished(_TargetNode, State) ->
 
 handle_handoff_data(Data, State) ->
     {Vm, HObject} = binary_to_term(Data),
-    do_put(Vm, HObject, State),
+    sniffle_vnode:put(Vm, HObject, State),
     {reply, ok, State}.
 
 encode_handoff_item(Vm, Data) ->
     term_to_binary({Vm, Data}).
 
 is_empty(State) ->
-    fifo_db:fold_keys(State#state.db,
-                      <<"vm">>,
-                      fun (_, _) ->
-                              {false, State}
-                      end, {true, State}).
+    sniffle_vnode:is_empty(State).
 
 delete(State) ->
-    Trans = fifo_db:fold_keys(State#state.db,
-                              <<"vm">>,
-                              fun (K, A) ->
-                                      [{delete, <<"vm", K/binary>>} | A]
-                              end, []),
-    fifo_db:transact(State#state.db, Trans),
-    {ok, State}.
+    sniffle_vnode:delete(State).
 
-handle_coverage(list, _KeySpaces, {_, ReqID, _}, State) ->
-    List = fifo_db:fold_keys(
-             State#state.db,
-             <<"vm">>,
-             fun (K, L) ->
-                     [K|L]
-             end, []),
+handle_coverage(list, _KeySpaces, Sender, State) ->
+    sniffle_vnode:list_keys(Sender, State);
 
-    {reply,
-     {ok, ReqID, {State#state.partition,State#state.node}, List},
-     State};
-
-handle_coverage({list, Requirements}, _KeySpaces, {_, ReqID, _}, State) ->
+handle_coverage({list, Requirements}, _KeySpaces, Sender, State) ->
     Getter = fun(#sniffle_obj{val=S0}, Resource) ->
                      jsxd:get(Resource, 0, statebox:value(S0))
              end,
-    List = fifo_db:fold(State#state.db,
-                        <<"vm">>,
-                        fun (Key, E, C) ->
-                                case rankmatcher:match(E, Getter, Requirements) of
-                                    false ->
-                                        C;
-                                    Pts ->
-                                        [{Pts, Key} | C]
-                                end
-                        end, []),
-    {reply,
-     {ok, ReqID, {State#state.partition, State#state.node}, List},
-     State};
+    sniffle_vnode:list_keys(Getter, Requirements, Sender, State);
 
 handle_coverage(_Req, _KeySpaces, _Sender, State) ->
     {stop, not_implemented, State}.
@@ -415,30 +311,5 @@ terminate(_Reason, _State) ->
 %%% AAE
 %%%===================================================================
 
-handle_info(retry_create_hashtree, State=#state{
-                                            hashtrees=undefined,
-                                            partition=Idx
-                                           }) ->
-    lager:debug("~p/~p retrying to create a hash tree.", [?SERVICE, Idx]),
-    HT = riak_core_aae_vnode:maybe_create_hashtrees(?SERVICE, State#state.partition,
-                                                    undefined),
-    {ok, State#state{hashtrees = HT}};
-handle_info(retry_create_hashtree, State) ->
-    {ok, State};
-handle_info({'DOWN', _, _, Pid, _}, State=#state{
-                                             hashtrees=Pid,
-                                             partition=Idx
-                                            }) ->
-    lager:debug("~p/~p hashtree ~p went down.", [?SERVICE, Idx, Pid]),
-    erlang:send_after(1000, self(), retry_create_hashtree),
-    {ok, State#state{hashtrees = undefined}};
-handle_info({'DOWN', _, _, _, _}, State) ->
-    {ok, State};
-handle_info(_, State) ->
-    {ok, State}.
-
-do_put(Key, Obj, State) ->
-    fifo_db:put(State#state.db, <<"vm">>, Key, Obj),
-    riak_core_aae_vnode:update_hashtree(<<"vm">>, Key,
-                                        term_to_binary(Obj),
-                                        State#state.hashtrees).
+handle_info(Msg, State) ->
+    sniffle_vnode:handle_info(Msg, State).
