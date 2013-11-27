@@ -31,10 +31,7 @@
 -export([
          master/0,
          aae_repair/2,
-         hashtree_pid/1,
-         rehash/3,
-         hash_object/2,
-         request_hashtree_pid/1
+         hash_object/2
         ]).
 
 %% those functions do not get called directly.
@@ -67,34 +64,6 @@ hash_object(BKey, RObj) ->
 aae_repair(_, Key) ->
     lager:debug("AAE Repair: ~p", [Key]),
     sniffle_vm:get(Key).
-
-hashtree_pid(Partition) ->
-    riak_core_vnode_master:sync_command({Partition, node()},
-                                        {hashtree_pid, node()},
-                                        ?MASTER,
-                                        infinity).
-
-%% Asynchronous version of {@link hashtree_pid/1} that sends a message back to
-%% the calling process. Used by the {@link riak_core_entropy_manager}.
-request_hashtree_pid(Partition) ->
-    ReqId = {hashtree_pid, Partition},
-    riak_core_vnode_master:command({Partition, node()},
-                                   {hashtree_pid, node()},
-                                   {raw, ReqId, self()},
-                                   ?MASTER).
-
-%% Used by {@link riak_core_exchange_fsm} to force a vnode to update the hashtree
-%% for repaired keys. Typically, repairing keys will trigger read repair that
-%% will update the AAE hash in the write path. However, if the AAE tree is
-%% divergent from the KV data, it is possible that AAE will try to repair keys
-%% that do not have divergent KV replicas. In that case, read repair is never
-%% triggered. Always rehashing keys after any attempt at repair ensures that
-%% AAE does not try to repair the same non-divergent keys over and over.
-rehash(Preflist, _, Key) ->
-    riak_core_vnode_master:command(Preflist,
-                                   {rehash, Key},
-                                   ignore,
-                                   ?MASTER).
 
 %%%===================================================================
 %%% API

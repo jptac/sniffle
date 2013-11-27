@@ -166,7 +166,8 @@ handle_command({hashtree_pid, Node}, _, State) ->
             {reply, {error, wrong_node}, State}
     end;
 
-handle_command({rehash, UUID}, _, State=#vstate{bucket=Bucket, hashtrees=HT}) ->
+handle_command({rehash, {_, UUID}}, _,
+               State=#vstate{bucket=Bucket, hashtrees=HT}) ->
     case get(UUID, State) of
         {ok, Term} ->
             Bin = term_to_binary(Term),
