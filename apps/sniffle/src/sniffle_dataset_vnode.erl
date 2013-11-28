@@ -113,7 +113,8 @@ set(Preflist, ReqID, Dataset, Data) ->
 %%%===================================================================
 
 init([Part]) ->
-    sniffle_vnode:init(Part, <<"dataset">>, ?SERVICE, sniffle_dataset_state).
+    sniffle_vnode:init(Part, <<"dataset">>, ?SERVICE, ?MODULE,
+                       sniffle_dataset_state).
 
 handle_command({create, {ReqID, Coordinator}, Dataset, []},
                _Sender, State) ->

@@ -112,7 +112,8 @@ set(Preflist, ReqID, Dtrace, Data) ->
 %%%===================================================================
 
 init([Part]) ->
-    sniffle_vnode:init(Part, <<"dtrace">>, ?SERVICE, sniffle_dtrace_state).
+    sniffle_vnode:init(Part, <<"dtrace">>, ?SERVICE, ?MODULE,
+                       sniffle_dtrace_state).
 
 %%%===================================================================
 %%% General

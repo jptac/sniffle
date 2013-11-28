@@ -113,7 +113,8 @@ set(Preflist, ReqID, Hypervisor, Data) ->
 %%%===================================================================
 
 init([Part]) ->
-    sniffle_vnode:init(Part, <<"hypervisor">>, ?SERVICE, sniffle_hypervisor_state).
+    sniffle_vnode:init(Part, <<"hypervisor">>, ?SERVICE, ?MODULE,
+                       sniffle_hypervisor_state).
 
 %%%===================================================================
 %%% Node Specific
