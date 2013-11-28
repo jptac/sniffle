@@ -20,6 +20,7 @@
 %% ===================================================================
 
 start(_StartType, _StartArgs) ->
+    riak_core_entropy_info:create_table(),
     case application:get_env(fifo_db, db_path) of
         {ok, _} ->
             ok;

@@ -130,7 +130,8 @@ set(Preflist, ReqID, Vm, Data) ->
 %%%===================================================================
 
 init([Part]) ->
-    sniffle_vnode:init(Part, <<"vm">>, ?SERVICE, sniffle_vm_state).
+    sniffle_vnode:init(Part, <<"vm">>, ?SERVICE, ?MODULE,
+                       sniffle_vm_state).
 
 -type vm_command() ::
         ping |

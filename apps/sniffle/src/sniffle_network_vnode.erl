@@ -130,7 +130,8 @@ set(Preflist, ReqID, Hypervisor, Data) ->
 %%%===================================================================
 
 init([Part]) ->
-    sniffle_vnode:init(Part, <<"network">>, ?SERVICE, sniffle_network_state).
+    sniffle_vnode:init(Part, <<"network">>, ?SERVICE, ?MODULE,
+                       sniffle_network_state).
 
 %%%===================================================================
 %%% General

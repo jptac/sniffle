@@ -108,7 +108,8 @@ set(Preflist, ReqID, Vm, Data) ->
 %%%===================================================================
 
 init([Part]) ->
-    sniffle_vnode:init(Part, <<"package">>, ?SERVICE, sniffle_package_state).
+    sniffle_vnode:init(Part, <<"package">>, ?SERVICE, ?MODULE,
+                       sniffle_package_state).
 
 %%%===================================================================
 %%% General

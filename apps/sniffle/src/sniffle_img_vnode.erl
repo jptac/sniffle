@@ -124,9 +124,8 @@ init([Partition]) ->
     PartStr = integer_to_list(Partition),
     {ok, DBLoc} = application:get_env(fifo_db, db_path),
     DB = bitcask:open(DBLoc ++ "/" ++ PartStr ++ ".img", [read_write]),
-    HT = riak_core_aae_vnode:maybe_create_hashtrees(?SERVICE,
-                                                    Partition,
-                                                    undefined),
+    HT = riak_core_aae_vnode:maybe_create_hashtrees(?SERVICE, Partition,
+                                                    ?MODULE, undefined),
     {ok, #state{db = DB, hashtrees = HT, partition = Partition, node = node()}}.
 
 handle_command(ping, _Sender, State) ->
@@ -154,9 +153,7 @@ handle_command({hashtree_pid, Node}, _, State=#state{hashtrees=HT}) ->
     case {node(), HT} of
         {Node, undefined} ->
             HT1 =  riak_core_aae_vnode:maybe_create_hashtrees(
-                     ?SERVICE,
-                     State#state.partition,
-                     HT),
+                     ?SERVICE, State#state.partition, ?MODULE, HT),
             {reply, {ok, HT1}, State#state{hashtrees = HT1}};
         {Node, _} ->
             {reply, {ok, HT}, State};
@@ -164,8 +161,8 @@ handle_command({hashtree_pid, Node}, _, State=#state{hashtrees=HT}) ->
             {reply, {error, wrong_node}, State}
     end;
 
-handle_command({rehash, Key}, _, State=#state{db=DB}) ->
-    case fifo_db:get(DB, <<"img">>, Key) of
+handle_command({rehash, {_Bucket, Key}}, _, State=#state{db=DB}) ->
+    case bitcask:get(DB, Key) of
         {ok, Term} ->
             riak_core_aae_vnode:update_hashtree(<<"img">>, Key,
                                                 term_to_binary(Term),
@@ -179,7 +176,7 @@ handle_command({rehash, Key}, _, State=#state{db=DB}) ->
 
 handle_command(?FOLD_REQ{foldfun=Fun, acc0=Acc0}, _Sender, State) ->
     lager:debug("Fold on ~p", [State#state.partition]),
-    Acc = fifo_db:fold(State#state.db, <<"img">>,
+    Acc = bitcask:fold(State#state.db,
                        fun(K, V, O) ->
                                Fun({<<"img">>, K}, V, O)
                        end, Acc0),
@@ -341,8 +338,9 @@ handle_info(retry_create_hashtree, State=#state{
                                             partition=Idx
                                            }) ->
     lager:debug("~p/~p retrying to create a hash tree.", [?SERVICE, Idx]),
-    HT = riak_core_aae_vnode:maybe_create_hashtrees(?SERVICE, State#state.partition,
-                                                    undefined),
+    HT = riak_core_aae_vnode:maybe_create_hashtrees(?SERVICE,
+                                                    State#state.partition,
+                                                    ?MODULE,  undefined),
     {ok, State#state{hashtrees = HT}};
 handle_info(retry_create_hashtree, State) ->
     {ok, State};

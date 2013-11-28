@@ -3,7 +3,7 @@
 -include("sniffle.hrl").
 -include_lib("riak_core/include/riak_core_vnode.hrl").
 
--export([init/4,
+-export([init/5,
          list_keys/2,
          list_keys/4,
          is_empty/1,
@@ -15,16 +15,16 @@
          handle_command/3,
          handle_info/2]).
 
-init(Partition, Bucket, Service, StateMod) ->
+init(Partition, Bucket, Service, VNode, StateMod) ->
     DB = list_to_atom(integer_to_list(Partition)),
     fifo_db:start(DB),
-    HT = riak_core_aae_vnode:maybe_create_hashtrees(Service, Partition,
+    HT = riak_core_aae_vnode:maybe_create_hashtrees(Service, Partition, VNode,
                                                     undefined),
     WorkerPoolSize = application:get_env(sniffle, async_workers, 5),
     FoldWorkerPool = {pool, sniffle_worker, WorkerPoolSize, []},
     {ok,
-     #vstate{db = DB, hashtrees = HT, partition = Partition, node = node(),
-             service = Service, bucket = Bucket, state = StateMod},
+     #vstate{db=DB, hashtrees=HT, partition=Partition, node=node(),
+             service=Service, bucket=Bucket, state=StateMod, vnode=VNode},
      [FoldWorkerPool]}.
 
 list_keys(Sender, State=#vstate{db=DB, bucket=Bucket}) ->
@@ -97,23 +97,6 @@ delete(State=#vstate{db=DB, bucket=Bucket}) ->
     fifo_db:transact(State#vstate.db, Trans),
     {ok, State}.
 
-handle_info(retry_create_hashtree,
-            State=#vstate{service=Srv, hashtrees=undefined, partition=Idx}) ->
-    lager:debug("~p/~p retrying to create a hash tree.", [Srv, Idx]),
-    HT = riak_core_aae_vnode:maybe_create_hashtrees(Srv, Idx, undefined),
-    {ok, State#vstate{hashtrees = HT}};
-handle_info(retry_create_hashtree, State) ->
-    {ok, State};
-handle_info({'DOWN', _, _, Pid, _},
-            State=#vstate{service=Service, hashtrees=Pid, partition=Idx}) ->
-    lager:debug("~p/~p hashtree ~p went down.", [Service, Idx, Pid]),
-    erlang:send_after(1000, self(), retry_create_hashtree),
-    {ok, State#vstate{hashtrees = undefined}};
-handle_info({'DOWN', _, _, _, _}, State) ->
-    {ok, State};
-handle_info(_, State) ->
-    {ok, State}.
-
 handle_command(ping, _Sender, State) ->
     {reply, {pong, State#vstate.partition}, State};
 
@@ -182,6 +165,7 @@ handle_command({hashtree_pid, Node}, _, State) ->
             HT1 =  riak_core_aae_vnode:maybe_create_hashtrees(
                      State#vstate.service,
                      State#vstate.partition,
+                     State#vstate.vnode,
                      undefined),
             {reply, {ok, HT1}, State#vstate{hashtrees = HT1}};
         {Node, HT} ->
@@ -214,3 +198,21 @@ reply(Reply, {_, ReqID, _} = Sender, #vstate{node=N, partition=P}) ->
 
 get(UUID, State) ->
     fifo_db:get(State#vstate.db, State#vstate.bucket, UUID).
+
+handle_info(retry_create_hashtree,
+            State=#vstate{service=Srv, hashtrees=undefined, partition=Idx,
+                          vnode=VNode}) ->
+    lager:debug("~p/~p retrying to create a hash tree.", [Srv, Idx]),
+    HT = riak_core_aae_vnode:maybe_create_hashtrees(Srv, Idx, VNode, undefined),
+    {ok, State#vstate{hashtrees = HT}};
+handle_info(retry_create_hashtree, State) ->
+    {ok, State};
+handle_info({'DOWN', _, _, Pid, _},
+            State=#vstate{service=Service, hashtrees=Pid, partition=Idx}) ->
+    lager:debug("~p/~p hashtree ~p went down.", [Service, Idx, Pid]),
+    erlang:send_after(1000, self(), retry_create_hashtree),
+    {ok, State#vstate{hashtrees = undefined}};
+handle_info({'DOWN', _, _, _, _}, State) ->
+    {ok, State};
+handle_info(_, State) ->
+    {ok, State}.

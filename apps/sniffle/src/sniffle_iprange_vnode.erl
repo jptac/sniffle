@@ -130,7 +130,8 @@ set(Preflist, ReqID, Hypervisor, Data) ->
 %%%===================================================================
 
 init([Part]) ->
-    sniffle_vnode:init(Part, <<"iprange">>, ?SERVICE, sniffle_iprange_state).
+    sniffle_vnode:init(Part, <<"iprange">>, ?SERVICE, ?MODULE,
+                       sniffle_iprange_state).
 
 handle_command({create, {ReqID, Coordinator}, UUID,
                 [Iprange, Network, Gateway, Netmask, First, Last, Tag, Vlan]},
