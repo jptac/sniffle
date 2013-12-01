@@ -140,11 +140,8 @@ read_image(UUID, TotalSize, Url, Acc, Idx) when is_binary(Url) ->
     case hackney:request(get, Url, [], <<>>, http_opts()) of
         {ok, 200, _, Client} ->
             read_image(UUID, TotalSize, Client, Acc, Idx);
-        {ok, E, _, _} ->
-            libhowl:send(UUID,
-                         [{<<"event">>, <<"error">>},
-                          {<<"data">>, [{<<"message">>, E},
-                                        {<<"index">>, 0}]}])
+        {ok, Reason, _, _} ->
+            fail_import(UUID, Reason, 0)
     end;
 
 read_image(UUID, TotalSize, Client, <<MB:1048576/binary, Acc/binary>>, Idx) ->
@@ -172,16 +169,17 @@ read_image(UUID, TotalSize, Client, Acc, Idx) ->
             hackney:close(Client2),
             read_image(UUID, TotalSize, done, Acc, Idx);
         {error, Reason} ->
-            sniffle_dataset:set(UUID, <<"imported">>, <<"failed">>),
-            libhowl:send(UUID,
-                         [{<<"event">>, <<"error">>},
-                          {<<"data">>, [{<<"message">>, <<"failed">>},
-                                        {<<"index">>, Idx}]}]),
-            libhowl:send(UUID,
-                         [{<<"event">>, <<"progress">>},
-                          {<<"data">>, [{<<"imported">>, <<"failed">>}]}]),
-            lager:error("Error importing image ~s: ~p", [UUID, Reason])
+            fail_import(UUID, Reason, Idx)
     end.
+
+fail_import(UUID, Reason, Idx) ->
+    lager:error("[~s] Could not import dataset: ~p", [UUID, Reason]),
+    libhowl:send(UUID,
+                 [{<<"event">>, <<"error">>},
+                  {<<"data">>, [{<<"message">>, Reason},
+                                {<<"index">>, Idx}]}]),
+    sniffle_dataset:set(UUID, <<"imported">>, <<"failed">>).
+
 
 http_opts() ->
     case os:getenv("https_proxy") of
