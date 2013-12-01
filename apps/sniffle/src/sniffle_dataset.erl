@@ -142,8 +142,9 @@ read_image(UUID, TotalSize, Url, Acc, Idx) when is_binary(Url) ->
             read_image(UUID, TotalSize, Client, Acc, Idx);
         {ok, E, _, _} ->
             libhowl:send(UUID,
-                         [{<<"event">>, <<"error">>}, {<<"data">>, [{<<"message">>, E},
-                                                                    {<<"index">>, 0}]}])
+                         [{<<"event">>, <<"error">>},
+                          {<<"data">>, [{<<"message">>, E},
+                                        {<<"index">>, 0}]}])
     end;
 
 read_image(UUID, TotalSize, Client, <<MB:1048576/binary, Acc/binary>>, Idx) ->
@@ -171,13 +172,14 @@ read_image(UUID, TotalSize, Client, Acc, Idx) ->
             hackney:close(Client2),
             read_image(UUID, TotalSize, done, Acc, Idx);
         {error, Reason} ->
+            sniffle_dataset:set(UUID, <<"imported">>, <<"failed">>),
             libhowl:send(UUID,
                          [{<<"event">>, <<"error">>},
                           {<<"data">>, [{<<"message">>, <<"failed">>},
                                         {<<"index">>, Idx}]}]),
             libhowl:send(UUID,
                          [{<<"event">>, <<"progress">>},
-                          {<<"data">>, [{<<"imported">>, 0}]}]),
+                          {<<"data">>, [{<<"imported">>, <<"failed">>}]}]),
             lager:error("Error importing image ~s: ~p", [UUID, Reason])
     end.
 
