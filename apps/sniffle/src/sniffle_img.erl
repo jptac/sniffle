@@ -2,7 +2,7 @@
 -include("sniffle.hrl").
 
 -export([
-         create/3,
+         create/4,
          delete/1,
          delete/2,
          get/2,
@@ -15,53 +15,100 @@
 
 -spec create(Img::fifo:dataset_id(),
              Idx::integer(),
-             Data::binary()) ->
+             Data::binary(),
+             Ref::term()) ->
                     {error, timeout} | ok.
-create(Img, Idx, Data) ->
-    do_write({Img, Idx}, create, Data).
+
+create(_Img, done, _, Ref) ->
+    case backend() of
+        s3 ->
+            sniffle_s3:complete_upload(Ref);
+        internal ->
+            ok
+    end;
+
+create(Img, Idx, Data, Ref) ->
+    case backend() of
+        s3 ->
+            ImgS = binary_to_list(Img),
+            U = case Ref of
+                    undefined ->
+                        {ok, U1} = sniffle_s3:new_upload(image, ImgS),
+                        U1;
+                    _ ->
+                        Ref
+                end,
+            sniffle_s3:put_upload(Idx+1, Data, U);
+        internal ->
+            {do_write({Img, Idx}, create, Data), undefined}
+    end.
 
 -spec delete(Img::fifo:dataset_id(),
              Idx::integer()) ->
                     not_found | {error, timeout} | ok.
 delete(Img, Idx) ->
-    do_write({Img, Idx}, delete).
+    case backend() of
+        s3 ->
+            ok;
+        internal ->
+            do_write({Img, Idx}, delete)
+    end.
 
 -spec delete(Img::fifo:dataset_id()) ->
                     not_found | {error, timeout} | ok.
 delete(Img) ->
-    {ok, Idxs} = list(Img),
-    [do_write({Img, Idx}, delete) || Idx <- Idxs],
-    ok.
+    case backend() of
+        s3 ->
+            sniffle_s3:delete(image, binary_to_list(Img));
+        internal ->
+            {ok, Idxs} = list(Img),
+            [do_write({Img, Idx}, delete) || Idx <- Idxs],
+            ok
+    end.
 
 -spec get(Img::fifo:dataset_id(),
           Idx::integer()) ->
                  not_found | {error, timeout} | {ok, Data::binary()}.
 get(Img, Idx) ->
-    lager:debug("<IMG> ~s[~p]", [Img, Idx]),
-    sniffle_entity_read_fsm:start(
-      {sniffle_img_vnode, sniffle_img},
-      get, {Img, Idx}
-     ).
+    case backend() of
+        s3 ->
+            {ok, S} = sniffle_s3:new_stream(image, binary_to_list(Img)),
+            sniffle_s3:get_part(Idx, S);
+        internal ->
+            lager:debug("<IMG> ~s[~p]", [Img, Idx]),
+            sniffle_entity_read_fsm:start(
+              {sniffle_img_vnode, sniffle_img},
+              get, {Img, Idx})
+    end.
 
-get(ImgAndIdx) ->
-    sniffle_entity_read_fsm:start(
-      {sniffle_img_vnode, sniffle_img},
-      get, ImgAndIdx
-     ).
+get({Img, Idx}) ->
+    get(Img, Idx).
 
 -spec list() ->
                   {ok, [Img::fifo:dataset_id()]} | {error, timeout}.
 list() ->
-    sniffle_coverage:start(
-      sniffle_img_vnode_master, sniffle_img,
-      list).
+    case backend() of
+        s3 ->
+            sniffle_s3:list(image);
+        internal ->
+            sniffle_coverage:start(
+              sniffle_img_vnode_master, sniffle_img,
+              list)
+    end.
 
 -spec list(Img::fifo:dataset_id()) ->
                   {ok, [Idx::integer()]} | {error, timeout}.
 list(Img) ->
-    sniffle_coverage:start(
-      sniffle_img_vnode_master, sniffle_img,
-      {list, Img} ).
+    case backend() of
+        s3 ->
+            {ok, S} = sniffle_s3:new_stream(image, binary_to_list(Img)),
+            Size = sniffle_s3:stream_length(S),
+            lists:seq(0, Size - 1);
+        internal ->
+            sniffle_coverage:start(
+              sniffle_img_vnode_master, sniffle_img,
+              {list, Img})
+    end.
 
 %%%===================================================================
 %%% Internal Functions
@@ -72,3 +119,6 @@ do_write(Img, Op) ->
 
 do_write(Img, Op, Val) ->
     sniffle_entity_write_fsm:write({sniffle_img_vnode, sniffle_img}, Img, Op, Val).
+
+backend() ->
+    application:get_env(sniffle, large_data_backend, internal).

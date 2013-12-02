@@ -349,10 +349,13 @@ message({dataset, import, URL}, State) ->
 %%%  Img Functions
 %%%===================================================================
 
-message({img, create, Img, Idx, Data}, State) when
+message({img, create, Img, Idx, Data}, State) ->
+    message({img, create, Img, Idx, Data, undefined}, State);
+
+message({img, create, Img, Idx, Data, Ref}, State) when
       is_binary(Img) ->
     {reply,
-     sniffle_img:create(Img, Idx, Data),
+     sniffle_img:create(Img, Idx, Data, Ref),
      State};
 
 message({img, delete, Img, Idx}, State) when

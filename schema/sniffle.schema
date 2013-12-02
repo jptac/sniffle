@@ -43,6 +43,7 @@
   {commented, 120},
   {datatype, {duration, s}}]}.
 
+
 %% @doc The path data gets stored into.
 {mapping, "data_dir", "riak_core.platform_data_dir",
  [{default, "{{platform_data_dir}}"},
@@ -76,12 +77,59 @@
  end
 }.
 
+%% @doc The Backend to store large data objects in, this applies to snapshots
+%% and images. Objects stored in one backend will not be migrated to another if
+%% this is changed.
+{mapping, "large_data_backend", "sniffle.large_data_backend",
+ [{default, internal},
+  {datatype, {enum, [internal, s3]}}]}.
+
+{mapping, "s3.bucket.image", "sniffle.image_bucket",
+ [{default, "fifo_images"},
+  {datatype, string}]}.
+
+{mapping, "s3.bucket.snapshot", "sniffle.snapshot_bucket",
+ [{default, "fifo_snapshots"},
+  {datatype, string}]}.
+
+{mapping, "s3.bucket.general", "sniffle.general_bucket",
+ [{default, "fifo"},
+  {datatype, string}]}.
+
+{mapping, "s3.access_key", "sniffle.s3_access_key",
+ [{default, ""},
+  {datatype, string}]}.
+{mapping, "s3.secret_key", "sniffle.s3_secret_key",
+ [{default, ""},
+  {datatype, string}]}.
+
+{mapping, "s3.host", "sniffle.s3_host",
+ [{default, {"{{sniffle_ip}}", 8443}},
+  {datatype, ip}]}.
+
+{translation,
+ "sniffle.s3_host",
+ fun(Conf) ->
+         {IP, _Port} = cuttlefish_util:conf_get_value("s3.host", Conf),
+         IP
+ end
+}.
+
+{translation,
+ "sniffle.s3_port",
+ fun(Conf) ->
+         {_IP, Port} = cuttlefish_util:conf_get_value("s3.host", Conf),
+         Port
+ end
+}.
+
 %% @doc The default TCP handler, there is very very very
 %% rarely any reason to change this.
 {mapping, "tcp_callback", "mdns_server_lib.handler",
  [{datatype, string},
   {level, advanced},
   {default, "sniffle_tcp_handler"}]}.
+
 
 {translation,
  "mdns_server_lib.handler",
@@ -90,7 +138,6 @@
          list_to_atom(Setting)
  end
 }.
-
 
 %% @doc The default Service that is announced, ther eis very very
 %% rarely any reason to change this.
