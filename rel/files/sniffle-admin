@@ -99,6 +99,10 @@ case "$1" in
         shift
         run sniffle_console vms $@
         ;;
+    config)
+        shift
+        run sniffle_console config $@
+        ;;
     hypervisors)
         shift
         run sniffle_console hvs $@

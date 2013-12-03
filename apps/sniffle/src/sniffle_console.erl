@@ -15,6 +15,7 @@
          ds/1,
          dtrace/1,
          ips/1,
+         config/1,
          down/1,
          pp_json/1,
          staged_join/1,
@@ -35,6 +36,7 @@
               pkgs/1,
               dtrace/1,
               remove/1,
+              config/1,
               staged_join/1,
               reip/1,
               ringready/1
@@ -96,6 +98,32 @@ ips([]) ->
 
 ips(R) ->
     sniffle_console_ipranges:command(text, R).
+
+config(["show"]) ->
+    io:format("Storage~n  General Section~n"),
+    print_config(storage, backend),
+    io:format("  S3 Section~n"),
+    print_config(storage, s3),
+    ok;
+
+config(["set", Ks, V]) ->
+    Ks1 = [binary_to_list(K) || K <- re:split(Ks, "\\.")],
+    config(["set" | Ks1] ++ [V]);
+
+config(["set" | R]) ->
+    [K1, K2, K3, V] = R,
+    Ks = [K1, K2, K3],
+    case sniffle_opt:set(Ks, V) of
+        {invalid, key, K} ->
+            io:format("Invalid key: ~p~n", [K]),
+            error;
+        {invalid, type, T} ->
+            io:format("Invalid type: ~p~n", [T]),
+            error;
+        _ ->
+            io:format("Setting cahnged~n", []),
+            ok
+    end.
 
 %%compied from riak_kv
 
@@ -312,6 +340,20 @@ fields([{_, S}|R], [V | Vs], {Fmt, Vars}) ->
 
 fields([], [], {Fmt, Vars}) ->
     io:format(Fmt, Vars).
+
+print_config(Prefix, SubPrefix) ->
+    Fmt = [{"Key", 20}, {"Value", 50}],
+    hdr(Fmt),
+    PrintFn = fun({K, [V|_]}, _) ->
+                      fields(Fmt, [key(Prefix, SubPrefix, K), V])
+              end,
+    riak_core_metadata:fold(PrintFn, ok, {Prefix, SubPrefix}).
+
+key(Prefix, SubPrefix, Key) ->
+    io_lib:format("~p.~p.~p", [Prefix, SubPrefix, Key]).
+%%%===================================================================
+%%% Tests
+%%%===================================================================
 
 -ifdef(TEST).
 

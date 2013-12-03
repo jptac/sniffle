@@ -121,4 +121,4 @@ do_write(Img, Op, Val) ->
     sniffle_entity_write_fsm:write({sniffle_img_vnode, sniffle_img}, Img, Op, Val).
 
 backend() ->
-    application:get_env(sniffle, large_data_backend, internal).
+    sniffle_opt:get(storage, general, backend, large_data_backend, internal).

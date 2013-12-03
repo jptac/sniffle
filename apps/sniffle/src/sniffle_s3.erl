@@ -199,11 +199,11 @@ find_size([O|R], File) ->
     end.
 
 get_bucket(image) ->
-    application:get_env(sniffle, image_bucket, "fifo_images");
+    get_opt(image_bucket, "fifo_images");
 get_bucket(snapshot) ->
-    application:get_env(sniffle, snapshot_bucket, "fifo_snapshots");
+    get_opt(snapshot_bucket, "fifo_snapshots");
 get_bucket(_) ->
-    application:get_env(sniffle, general_bucket, "fifo").
+    get_opt(general_bucket, "fifo").
 
 
 get_config() ->
@@ -211,10 +211,16 @@ get_config() ->
                     get_host(), get_port()).
 
 get_access_key() ->
-    application:get_env(sniffle, s3_access_key, "").
+    get_opt(access_key, s3_access_key, "").
 get_secret_key() ->
-    application:get_env(sniffle, s3_secret_key, "").
+    get_opt(secret_key, s3_secret_key, "").
 get_host() ->
-    application:get_env(sniffle, s3_host, "").
+    get_opt(host, s3_host, "").
 get_port() ->
-    application:get_env(sniffle, s3_port, "").
+    get_opt(port, s3_port, "").
+
+get_opt(Key, Dflt) ->
+    sniffle_opt:get(storage, s3, Key, Key, Dflt).
+
+get_opt(Key, EnvKey, Dflt) ->
+    sniffle_opt:get(storage, s3, Key, EnvKey, Dflt).
