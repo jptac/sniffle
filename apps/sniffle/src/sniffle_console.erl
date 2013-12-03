@@ -101,7 +101,7 @@ ips(R) ->
 
 config(["show"]) ->
     io:format("Storage~n  General Section~n"),
-    print_config(storage, backend),
+    print_config(storage, general),
     io:format("  S3 Section~n"),
     print_config(storage, s3),
     ok;
