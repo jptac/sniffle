@@ -97,10 +97,11 @@
   {datatype, string}]}.
 
 {mapping, "s3.access_key", "sniffle.s3_access_key",
- [{default, ""},
+ [{commented, "access_key"},
   {datatype, string}]}.
+
 {mapping, "s3.secret_key", "sniffle.s3_secret_key",
- [{default, ""},
+ [{commented, "secret_key"},
   {datatype, string}]}.
 
 {mapping, "s3.host", "sniffle.s3_host",
