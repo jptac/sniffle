@@ -103,7 +103,7 @@ list(Img) ->
         s3 ->
             {ok, S} = sniffle_s3:new_stream(image, binary_to_list(Img)),
             Size = sniffle_s3:stream_length(S),
-            lists:seq(0, Size - 1);
+            {ok, lists:seq(0, Size - 1)};
         internal ->
             sniffle_coverage:start(
               sniffle_img_vnode_master, sniffle_img,
