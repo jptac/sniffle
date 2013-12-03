@@ -85,11 +85,11 @@
   {datatype, {enum, [internal, s3]}}]}.
 
 {mapping, "s3.bucket.image", "sniffle.image_bucket",
- [{default, "fifo_images"},
+ [{default, "fifo-images"},
   {datatype, string}]}.
 
 {mapping, "s3.bucket.snapshot", "sniffle.snapshot_bucket",
- [{default, "fifo_snapshots"},
+ [{default, "fifo-snapshots"},
   {datatype, string}]}.
 
 {mapping, "s3.bucket.general", "sniffle.general_bucket",
