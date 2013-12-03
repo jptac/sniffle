@@ -44,10 +44,19 @@ init(_Args) ->
       sniffle_dataset_vnode_master,
       { riak_core_vnode_master, start_link, [sniffle_dataset_vnode]},
       permanent, 5000, worker, [sniffle_dataset_vnode_master]},
-    VImg = {
-      sniffle_img_vnode_master,
-      { riak_core_vnode_master, start_link, [sniffle_img_vnode]},
-      permanent, 5000, worker, [sniffle_img_vnode_master]},
+    Img = case sniffle_opt:get(storage, general, backend, large_data_backend, internal) of
+              internal ->
+                  [{sniffle_img_vnode_master,
+                    {riak_core_vnode_master, start_link, [sniffle_img_vnode]},
+                    permanent, 5000, worker, [sniffle_img_vnode_master]},
+                   {sniffle_img_entropy_manager,
+                    {riak_core_entropy_manager, start_link,
+                     [sniffle_img, sniffle_img_vnode]},
+                    permanent, 30000, worker, [riak_core_entropy_manager]}];
+              O ->
+                  lager:info("[img] VNode disabled since images are handed by ~p", [O]),
+                  []
+          end,
     VDTrace = {
       sniffle_dtrace_vnode_master,
       { riak_core_vnode_master, start_link, [sniffle_dtrace_vnode]},
@@ -121,12 +130,6 @@ init(_Args) ->
           [sniffle_dataset, sniffle_dataset_vnode]},
          permanent, 30000, worker, [riak_core_entropy_manager]},
 
-    EntropyManagerImg =
-        {sniffle_img_entropy_manager,
-         {riak_core_entropy_manager, start_link,
-          [sniffle_img, sniffle_img_vnode]},
-         permanent, 30000, worker, [riak_core_entropy_manager]},
-
     EntropyManagerDtrace =
         {sniffle_dtrace_entropy_manager,
          {riak_core_entropy_manager, start_link,
@@ -150,8 +153,8 @@ init(_Args) ->
        %% Logic
        CreateFSMs, DTrace,
        %% VNodes
-       VHypervisor, VVM, VIprange, VDataset, VPackage, VImg, VDTrace, VNetwork,
+       VHypervisor, VVM, VIprange, VDataset, VPackage, VDTrace, VNetwork,
        %% AAE
        EntropyManagerVm, EntropyManagerHypervisor, EntropyManagerIPRange,
-       EntropyManagerNetwork, EntropyManagerDataset, EntropyManagerImg,
-       EntropyManagerDtrace, EntropyManagerPackage]}}.
+       EntropyManagerNetwork, EntropyManagerDataset, EntropyManagerDtrace,
+       EntropyManagerPackage] ++ Img}}.

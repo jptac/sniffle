@@ -21,7 +21,9 @@ set(Ks, Val) ->
         {true, V1} ->
             [Prefix, SubPrefix, Key] =
                 [list_to_atom(K) || K <- Ks],
-            set(Prefix, SubPrefix, Key, V1)
+            set(Prefix, SubPrefix, Key, V1);
+        E ->
+            E
     end.
 
 set(Prefix, SubPrefix, Key, Val) ->
