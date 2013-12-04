@@ -1,5 +1,9 @@
 -module(sniffle_s3).
 
+-ifdef(TEST).
+-include_lib("eunit/include/eunit.hrl").
+-endif.
+
 -export([
          get_config/0,
          delete/2,
@@ -110,14 +114,7 @@ stream_length(#download{size=S, chunk=C}) ->
     end.
 
 get_part(P, #download{bucket=B, key=K, conf=Conf, chunk=C, size=Size}) ->
-    Start = P*C,
-    Last = Size - 1,
-    End = case (P+1)*C of
-              EndX when EndX > Last ->
-                  Last;
-              EndX ->
-                  EndX
-          end,
+    {Start, End} = start_stop(P, C, Size),
     Range = build_range(Start, End),
     try erlcloud_s3:get_object(B, K, [{range, Range}], Conf) of
         Data ->
@@ -131,6 +128,16 @@ get_part(P, #download{bucket=B, key=K, conf=Conf, chunk=C, size=Size}) ->
         _:E ->
             {error, E}
     end.
+
+start_stop(P, Size, Max) ->
+    Start = P*Size,
+    End = case (P+1)*Size of
+              EndX when EndX > Max ->
+                  Max;
+              EndX ->
+                  EndX
+          end,
+    {Start, End - 1}.
 
 
 get_stream(#download{part=P, size=S, chunk=C})
@@ -224,3 +231,19 @@ get_opt(Key, Dflt) ->
 
 get_opt(Key, EnvKey, Dflt) ->
     sniffle_opt:get(storage, s3, Key, EnvKey, Dflt).
+
+
+%%%===================================================================
+%%% Tests
+%%%===================================================================
+
+-ifdef(TEST).
+
+start_stop_test() ->
+    Size = 10,
+    Max = 25,
+    ?assertEqual({0, 9}, start_stop(0, Size, Max)),
+    ?assertEqual({10, 19}, start_stop(1, Size, Max)),
+    ?assertEqual({20, 24}, start_stop(2, Size, Max)).
+
+-endif.
