@@ -183,6 +183,19 @@
   {default, 3},
   {commented, 3}]}.
 
+{mapping, "dataset.aae", "sniffle.sniffle_dataset_aae",
+ [{datatype, {enum, [on, off]}},
+  {default, on}]}.
+{translation,
+  "sniffle.sniffle_dataset_aae",
+  fun(Conf) ->
+          case cuttlefish_util:conf_get_value("dataset.aae", Conf) of
+              on -> true;
+              _ -> false
+          end
+  end
+}.
+
 %% @doc The number of copies of the data that is keeped.
 %% For good consistency N  < (R + W) should be true.
 {mapping, "dataset.n", "sniffle.sniffle_dataset",
@@ -217,6 +230,19 @@
           R = cuttlefish_util:conf_get_value("dataset.r", Conf),
           W = cuttlefish_util:conf_get_value("dataset.w", Conf),
           {N, R, W}
+  end
+}.
+
+{mapping, "hypervisor.aae", "sniffle.sniffle_hypervisor_aae",
+ [{datatype, {enum, [on, off]}},
+  {default, on}]}.
+{translation,
+  "sniffle.sniffle_hypervisor_aae",
+  fun(Conf) ->
+          case cuttlefish_util:conf_get_value("hypervisor.aae", Conf) of
+              on -> true;
+              _ -> false
+          end
   end
 }.
 
@@ -257,6 +283,19 @@
   end
 }.
 
+{mapping, "vm.aae", "sniffle.sniffle_vm_aae",
+ [{datatype, {enum, [on, off]}},
+  {default, on}]}.
+{translation,
+  "sniffle.sniffle_vm_aae",
+  fun(Conf) ->
+          case cuttlefish_util:conf_get_value("vm.aae", Conf) of
+              on -> true;
+              _ -> false
+          end
+  end
+}.
+
 %% @doc The number of copies of the data that is keeped.
 %% For good consistency N  < (R + W) should be true.
 {mapping, "vm.n", "sniffle.sniffle_vm",
@@ -291,6 +330,19 @@
           R = cuttlefish_util:conf_get_value("vm.r", Conf),
           W = cuttlefish_util:conf_get_value("vm.w", Conf),
           {N, R, W}
+  end
+}.
+
+{mapping, "iprange.aae", "sniffle.sniffle_iprange_aae",
+ [{datatype, {enum, [on, off]}},
+  {default, on}]}.
+{translation,
+  "sniffle.sniffle_iprange_aae",
+  fun(Conf) ->
+          case cuttlefish_util:conf_get_value("iprange.aae", Conf) of
+              on -> true;
+              _ -> false
+          end
   end
 }.
 
@@ -331,6 +383,19 @@
   end
 }.
 
+{mapping, "network.aae", "sniffle.sniffle_network_aae",
+ [{datatype, {enum, [on, off]}},
+  {default, on}]}.
+{translation,
+  "sniffle.sniffle_network_aae",
+  fun(Conf) ->
+          case cuttlefish_util:conf_get_value("network.aae", Conf) of
+              on -> true;
+              _ -> false
+          end
+  end
+}.
+
 %% @doc The number of copies of the data that is keeped.
 %% For good consistency N  < (R + W) should be true.
 {mapping, "network.n", "sniffle.sniffle_network",
@@ -365,6 +430,19 @@
           R = cuttlefish_util:conf_get_value("network.r", Conf),
           W = cuttlefish_util:conf_get_value("network.w", Conf),
           {N, R, W}
+  end
+}.
+
+{mapping, "img.aae", "sniffle.sniffle_img_aae",
+ [{datatype, {enum, [on, off]}},
+  {default, on}]}.
+{translation,
+  "sniffle.sniffle_img_aae",
+  fun(Conf) ->
+          case cuttlefish_util:conf_get_value("img.aae", Conf) of
+              on -> true;
+              _ -> false
+          end
   end
 }.
 
@@ -404,6 +482,20 @@
           {N, R, W}
   end
 }.
+
+{mapping, "dtrace.aae", "sniffle.sniffle_dtrace_aae",
+ [{datatype, {enum, [on, off]}},
+  {default, on}]}.
+{translation,
+  "sniffle.sniffle_dtrace_aae",
+  fun(Conf) ->
+          case cuttlefish_util:conf_get_value("dtrace.aae", Conf) of
+              on -> true;
+              _ -> false
+          end
+  end
+}.
+
 %% @doc The number of copies of the data that is keeped.
 %% For good consistency N  < (R + W) should be true.
 {mapping, "dtrace.n", "sniffle.sniffle_dtrace",
@@ -438,6 +530,19 @@
           R = cuttlefish_util:conf_get_value("dtrace.r", Conf),
           W = cuttlefish_util:conf_get_value("dtrace.w", Conf),
           {N, R, W}
+  end
+}.
+
+{mapping, "package.aae", "sniffle.sniffle_package_aae",
+ [{datatype, {enum, [on, off]}},
+  {default, on}]}.
+{translation,
+  "sniffle.sniffle_package_aae",
+  fun(Conf) ->
+          case cuttlefish_util:conf_get_value("package.aae", Conf) of
+              on -> true;
+              _ -> false
+          end
   end
 }.
 
