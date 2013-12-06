@@ -89,7 +89,7 @@ get(Img, Idx) ->
 get({Img, Idx}) ->
     get(Img, Idx);
 
-get(<<Img:36/binary, Idx:4>>) ->
+get(<<Img:36/binary, Idx:32/integer>>) ->
     get(Img, Idx).
 
 -spec list() ->
