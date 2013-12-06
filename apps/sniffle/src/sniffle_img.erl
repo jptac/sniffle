@@ -87,6 +87,9 @@ get(Img, Idx) ->
     end.
 
 get({Img, Idx}) ->
+    get(Img, Idx);
+
+get(<<Img:36/binary, Idx:4>>) ->
     get(Img, Idx).
 
 -spec list() ->
