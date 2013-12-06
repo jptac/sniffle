@@ -131,6 +131,8 @@ init([Partition]) ->
 handle_command(ping, _Sender, State) ->
     {reply, {pong, State#state.partition}, State};
 
+handle_command({repair, <<Img:36/binary, Idx:32/integer>>, VClock, Obj}, Sender, State) ->
+    handle_command({repair, {Img, Idx}, VClock, Obj}, Sender, State);
 handle_command({repair, {Img, Idx}, VClock, Obj}, _Sender, State) ->
     case get(State#state.db, <<Img/binary, Idx:32>>) of
         {ok, #sniffle_obj{vclock = VC1}} when VC1 =:= VClock ->
