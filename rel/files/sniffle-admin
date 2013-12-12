@@ -150,6 +150,12 @@ case "$1" in
         run sniffle_console remove $@
         ;;
 
+    aae-status)
+    aae_status)
+        shift
+        run sniffle_console aae_status $@
+        ;;
+    member-status)
     member_status)
         if [ $# -ne 1 ]; then
             echo "Usage: $SCRIPT member_status"
@@ -160,6 +166,7 @@ case "$1" in
         run riak_core_console member_status $@
         ;;
 
+    ring-status)
     ring_status)
         if [ $# -ne 1 ]; then
             echo "Usage: $SCRIPT ring_status"
@@ -211,9 +218,9 @@ case "$1" in
 
     *)
         echo "Usage: $SCRIPT { join | leave | reip | ringready | remove |"
-        echo "                 services | wait-for-service | member_status |"
-        echo "                 ring_status | vms | hypervisors | packages |"
-        echo "                 datasets | networks }"
+        echo "                 services | wait-for-service | member-status |"
+        echo "                 ring-status | aae-status | vms | hypervisors |"
+        echo "                 packages | datasets | networks | config }"
         exit 1
         ;;
 esac
