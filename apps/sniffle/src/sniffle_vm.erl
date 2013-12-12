@@ -102,18 +102,37 @@ add_nic(Vm, Network) ->
                     lager:info("[NIC ADD] Checking requirements: ~p.", [Requirements]),
                     case sniffle_network:claim_ip(Network, Requirements) of
                         {ok, IPRange, {Tag, IP, Net, Gw}} ->
-                            NicSpec =
-                                jsxd:from_list([{<<"ip">>, sniffle_iprange_state:to_bin(IP)},
-                                                {<<"gateway">>, sniffle_iprange_state:to_bin(Gw)},
-                                                {<<"netmask">>, sniffle_iprange_state:to_bin(Net)},
+                            {ok, Range} = sniffle_iprange:get(IPRange),
+                            IPb = sniffle_iprange_state:to_bin(IP),
+                            Netb = sniffle_iprange_state:to_bin(Net),
+                            GWb = sniffle_iprange_state:to_bin(Gw),
+
+                            NicSpec0 =
+                                jsxd:from_list([{<<"ip">>, IPb},
+                                                {<<"gateway">>, GWb},
+                                                {<<"netmask">>, Netb},
                                                 {<<"nic_tag">>, Tag }]),
-                            NicSpec1 = case jsxd:get([<<"config">>, <<"networks">>], V) of
-                                           {ok, [_|_]} ->
-                                               NicSpec;
-                                           _ ->
-                                               jsxd:set([<<"primary">>], true, NicSpec)
-                                       end,
-                            UR = [{<<"add_nics">>, [NicSpec1]}],
+                            NicSpec1 =
+                                case jsxd:get([<<"config">>, <<"networks">>], V) of
+                                    {ok, [_|_]} ->
+                                        NicSpec0;
+                                    _ ->
+                                        jsxd:set([<<"primary">>], true, NicSpec0)
+                                end,
+                            NicSpec2 =
+                                case jsxd:get(<<"vlan">>, 0, Range) of
+                                    0 ->
+                                        eplugin:apply(
+                                          'vm:ip_assigned',
+                                          [Vm, update, <<"unknown">>, Tag, IPb, Netb, GWb, none]),
+                                        NicSpec1;
+                                    VLAN ->
+                                        eplugin:apply(
+                                          'vm:ip_assigned',
+                                          [Vm, update, <<"unknown">>, Tag, IPb, Netb, GWb, VLAN]),
+                                        jsxd:set(<<"vlan_id">>, VLAN, NicSpec1)
+                                end,
+                            UR = [{<<"add_nics">>, [NicSpec2]}],
                             ok = libchunter:update_machine(Server, Port, Vm, [], UR),
                             M = [{<<"network">>, IPRange},
                                  {<<"ip">>, IP}],
