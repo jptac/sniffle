@@ -138,6 +138,7 @@ do_write(Dataset, Op, Val) ->
 read_image(UUID, TotalSize, Url, Acc, Idx, Ref) when is_binary(Url) ->
     case hackney:request(get, Url, [], <<>>, http_opts()) of
         {ok, 200, _, Client} ->
+            sniffle_dataset:set(UUID, <<"status">>, <<"importing">>),
             read_image(UUID, TotalSize, Client, Acc, Idx, Ref);
         {ok, Reason, _, _} ->
             fail_import(UUID, Reason, 0)
@@ -156,6 +157,7 @@ read_image(UUID, TotalSize, Client, <<MB:1048576/binary, Acc/binary>>, Idx, Ref)
 read_image(UUID, _TotalSize, done, Acc, Idx, Ref) ->
     libhowl:send(UUID,
                  [{<<"event">>, <<"progress">>}, {<<"data">>, [{<<"imported">>, 1}]}]),
+    sniffle_dataset:set(UUID, <<"status">>, <<"imported">>),
     sniffle_dataset:set(UUID, <<"imported">>, 1),
     {ok, Ref1} = sniffle_img:create(UUID, Idx, Acc, Ref),
     io:format("~p~n", [Ref1]),
@@ -179,7 +181,7 @@ fail_import(UUID, Reason, Idx) ->
                  [{<<"event">>, <<"error">>},
                   {<<"data">>, [{<<"message">>, Reason},
                                 {<<"index">>, Idx}]}]),
-    sniffle_dataset:set(UUID, <<"imported">>, <<"failed">>).
+    sniffle_dataset:set(UUID, <<"status">>, <<"failed">>).
 
 http_opts() ->
     case os:getenv("https_proxy") of
