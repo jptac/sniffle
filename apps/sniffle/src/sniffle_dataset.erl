@@ -102,7 +102,8 @@ transform_dataset(D1) ->
             D2 = jsxd:thread(
                    [{select,[<<"os">>, <<"metadata">>, <<"name">>,
                              <<"version">>, <<"description">>,
-                             <<"disk_driver">>, <<"nic_driver">>]},
+                             <<"disk_driver">>, <<"nic_driver">>,
+                             <<"users">>]},
                     {set, <<"dataset">>, ID},
                     {set, <<"image_size">>,
                      ensure_integer(jsxd:get(<<"image_size">>, 0, D1))},
