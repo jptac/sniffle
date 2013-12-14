@@ -561,7 +561,11 @@ message({package, list, Requirements}, State) when
 message({cloud, status}, State) ->
     {reply,
      sniffle_hypervisor:status(),
-     State}.
+     State};
+
+message(Message, State) ->
+    io:format("Unsuppored TCP message: ~p", [Message]),
+    {noreply, State}.
 
 %%%===================================================================
 %%%  Internal Functions
