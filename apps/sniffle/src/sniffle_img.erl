@@ -22,7 +22,7 @@
 create(_Img, done, _, Ref) ->
     case backend() of
         s3 ->
-            sniffle_s3:complete_upload(Ref);
+            fifo_s3:complete_upload(Ref);
         internal ->
             ok
     end;
@@ -38,7 +38,7 @@ create(Img, Idx, Data, Ref) ->
                     _ ->
                         Ref
                 end,
-            sniffle_s3:put_upload(Idx+1, Data, U);
+            fifo_s3:put_upload(Idx+1, Data, U);
         internal ->
             {do_write({Img, Idx}, create, Data), undefined}
     end.
@@ -78,7 +78,7 @@ get(Img, Idx) ->
     case backend() of
         s3 ->
             {ok, S} = sniffle_s3:new_stream(image, binary_to_list(Img)),
-            sniffle_s3:get_part(Idx, S);
+            fifo_s3:get_part(Idx, S);
         internal ->
             lager:debug("<IMG> ~s[~p]", [Img, Idx]),
             sniffle_entity_read_fsm:start(
@@ -110,7 +110,7 @@ list(Img) ->
     case backend() of
         s3 ->
             {ok, S} = sniffle_s3:new_stream(image, binary_to_list(Img)),
-            Size = sniffle_s3:stream_length(S),
+            Size = fifo_s3:stream_length(S),
             {ok, lists:seq(0, Size - 1)};
         internal ->
             sniffle_coverage:start(
