@@ -86,7 +86,7 @@ create_backup(Vm, incremental, Comment, Opts) ->
     case sniffle_vm:get(Vm) of
         {ok, V} ->
             Parent = proplists:get_value(parent, Opts),
-            case jsxd:get(V, [<<"backups">>, Parent, <<"local">>]) of
+            case jsxd:get([<<"backups">>, Parent, <<"local">>], V) of
                 {ok, true} ->
                     do_snap(Vm, V, Comment, Opts);
                 _ ->
