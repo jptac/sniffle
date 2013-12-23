@@ -6,7 +6,8 @@
 
 -export([
          delete/2,
-         list/1
+         list/1,
+         config/1
         ]).
 
 -export([
@@ -34,11 +35,11 @@ new_upload(Type, Key) ->
 %%%===================================================================
 
 get_bucket(image) ->
-    get_opt(image_bucket, "fifo_images");
+    get_opt(image_bucket, "");
 get_bucket(snapshot) ->
-    get_opt(snapshot_bucket, "fifo_snapshots");
+    get_opt(snapshot_bucket, "");
 get_bucket(_) ->
-    get_opt(general_bucket, "fifo").
+    get_opt(general_bucket, "").
 
 get_config() ->
     erlcloud_s3:new(get_access_key(), get_secret_key(),
@@ -58,3 +59,21 @@ get_opt(Key, Dflt) ->
 
 get_opt(Key, EnvKey, Dflt) ->
     sniffle_opt:get(storage, s3, Key, EnvKey, Dflt).
+
+config(Type) ->
+    R = {get_host(), get_port(), get_access_key(), get_secret_key(),
+         get_bucket(Type)},
+    case R of
+        {"", _, _, _, _} ->
+            error;
+        {_, "", _, _, _} ->
+            error;
+        {_, _, "", _, _} ->
+            error;
+        {_, _, _, "", _} ->
+            error;
+        {_, _, _, _, ""} ->
+            error;
+        _ ->
+            {ok, R}
+    end.
