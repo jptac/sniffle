@@ -128,7 +128,7 @@ message({vm, backup, full, Vm, Comment, Opts}, State) when
       is_binary(Vm),
       is_binary(Comment) ->
     {reply,
-     sniffle_vm:create_backup(Vm, fukk, Comment, Opts),
+     sniffle_vm:create_backup(Vm, full, Comment, Opts),
      State};
 
 message({vm, backup, incremental, Vm, Parent, Comment, Opts}, State) when
