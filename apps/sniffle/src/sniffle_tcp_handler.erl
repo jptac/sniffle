@@ -124,6 +124,29 @@ message({vm, snapshot, Vm, Comment}, State) when
      sniffle_vm:snapshot(Vm, Comment),
      State};
 
+message({vm, backup, full, Vm, Comment, Opts}, State) when
+      is_binary(Vm),
+      is_binary(Comment) ->
+    {reply,
+     sniffle_vm:create_backup(Vm, Comment, full, Opts),
+     State};
+
+message({vm, backup, incremental, Vm, Parent, Comment, Opts}, State) when
+      is_binary(Vm),
+      is_binary(Comment),
+      is_binary(Parent) ->
+    {reply,
+     sniffle_vm:create_backup(Vm, Comment, incremental,
+                              [{parent, Parent} | Opts]),
+     State};
+
+message({vm, backup, restore, Vm, Backup}, State) when
+      is_binary(Vm),
+      is_binary(Backup) ->
+    {reply,
+     sniffle_vm:restore_backup(Vm, Backup),
+     State};
+
 message({vm, snapshot, delete, Vm, UUID}, State) when
       is_binary(Vm),
       is_binary(UUID) ->
