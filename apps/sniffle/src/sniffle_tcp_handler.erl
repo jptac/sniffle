@@ -147,6 +147,13 @@ message({vm, backup, restore, Vm, Backup}, State) when
      sniffle_vm:restore_backup(Vm, Backup),
      State};
 
+message({vm, backup, restore, Vm, Backup, _Hypervisor}, State) when
+      is_binary(Vm),
+      is_binary(Backup) ->
+    {reply,
+     sniffle_vm:restore_backup(Vm, Backup),
+     State};
+
 message({vm, snapshot, delete, Vm, UUID}, State) when
       is_binary(Vm),
       is_binary(UUID) ->
