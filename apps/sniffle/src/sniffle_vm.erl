@@ -50,7 +50,7 @@ restore_backup(Vm, Snap) ->
             {ok, H} = jsxd:get(<<"hypervisor">>, V),
             {Server, Port} = get_hypervisor(H),
 
-            case jsxd:get(V, [<<"backups">>, Snap]) of
+            case jsxd:get([<<"backups">>, Snap], V) of
                 {ok, _} ->
                     case sniffle_s3:config(snapshot) of
                         error ->
