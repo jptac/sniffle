@@ -817,7 +817,7 @@ do_delete_backup(UUID, VM, BID) ->
     [sniffle_s3:delete(snapshot, F) || F <- Fs],
     {ok, H} = jsxd:get(<<"hypervisor">>, VM),
     {Server, Port} = get_hypervisor(H),
-    libchunter:delete_backup(Server, Port, UUID, BID),
+    libchunter:delete_snapshot(Server, Port, UUID, BID),
     sniffle_vm:set(UUID, [<<"backups">>, BID], delete),
     libhowl:send(UUID, [{<<"event">>, <<"delete-backup">>},
                         {<<"data">>, [{<<"uuid">>, BID}]}]).
