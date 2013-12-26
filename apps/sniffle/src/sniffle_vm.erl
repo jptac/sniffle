@@ -1,5 +1,9 @@
 -module(sniffle_vm).
 
+-ifdef(TEST).
+-include_lib("eunit/include/eunit.hrl").
+-endif.
+
 -include("sniffle.hrl").
 
 -export([
@@ -22,6 +26,7 @@
          delete/1,
          snapshot/2,
          delete_snapshot/2,
+         delete_backup/2,
          rollback_snapshot/2,
          commit_snapshot_rollback/2,
          promote_to_image/3,
@@ -30,15 +35,28 @@
          primary_nic/2,
          set_owner/2,
          create_backup/4,
-         restore_backup/2
+         restore_backup/2,
+         children/2
         ]).
 
--ignore_xref([logs/1]).
+-ignore_xref([logs/1,
+              children/2]).
 
 -type backup_opts() ::
         delete |
         {delete, parent} |
         xml.
+
+delete_backup(VM, BID) ->
+    case sniffle_vm:get(VM) of
+        {ok, V} ->
+            Children = children(V, BID, true),
+            [do_delete_backup(VM, V, C) || C <- Children],
+            do_delete_backup(VM, V, BID);
+        _ ->
+            not_found
+    end.
+
 
 -spec restore_backup(Vm::fifo:uuid(), Snap::fifo:uuid()) ->
                             not_found |
@@ -768,3 +786,61 @@ make_nic_map(V) ->
 timestamp() ->
     {Mega,Sec,Micro} = erlang:now(),
     (Mega*1000000+Sec)*1000000+Micro.
+
+children(VM, Parent) ->
+    children(VM, Parent, false).
+
+children(VM, Parent, Recursive) ->
+    case jsxd:get([<<"backups">>], VM) of
+        {ok, Backups} ->
+            R = [U ||
+                    {U, B} <- Backups,
+                    jsxd:get(<<"parent">>, B) =:= {ok, Parent}],
+            case Recursive of
+                true ->
+                    lists:flatten([children(VM, C, true) || C <- R]) ++ R;
+                false ->
+                    R
+            end;
+        _ ->
+            []
+    end.
+
+do_delete_backup(UUID, VM, BID) ->
+    {ok, Files} = jsxd:get([<<"backups">>, BID, <<"files">>], VM),
+    Fs = case jsxd:get([<<"backups">>, BID, <<"xml">>], false, VM) of
+             true ->
+                 [<<BID/binary, ".xml">> | Files];
+             false ->
+                 Files
+         end,
+    [sniffle_s3:delete(snapshot, F) || F <- Fs],
+    {ok, H} = jsxd:get(<<"hypervisor">>, VM),
+    {Server, Port} = get_hypervisor(H),
+    libchunter:delete_backup(Server, Port, UUID, BID),
+    sniffle_vm:set(UUID, [<<"backups">>, BID], delete),
+    libhowl:send(UUID, [{<<"event">>, <<"delete-backup">>},
+                        {<<"data">>, [{<<"uuid">>, BID}]}]).
+
+
+-ifdef(TEST).
+
+children_test() ->
+    VM = [{<<"backups">>,
+           [{<<"b">>,
+             [{<<"parent">>, <<"a">>}]},
+            {<<"c">>,
+             [{<<"parent">>, <<"b">>}]},
+            {<<"e">>,
+             [{<<"parent">>, <<"c">>}]},
+            {<<"d">>,
+             [{<<"parent">>, <<"a">>}]},
+            {<<"a">>, []}
+           ]}],
+    C = children(VM, <<"a">>),
+    C1 = children(VM, <<"a">>, true),
+    ?assertEqual(C, [<<"b">>, <<"d">>]),
+    ?assertEqual(C1, [<<"e">>, <<"c">>, <<"b">>, <<"d">>]),
+    ok.
+
+-endif.
