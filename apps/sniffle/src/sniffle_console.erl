@@ -181,7 +181,7 @@ config(["set" | R]) ->
             io:format("Invalid type: ~p~n", [T]),
             error;
         _ ->
-            io:format("Setting cahnged~n", []),
+            io:format("Setting changed~n", []),
             ok
     end.
 
