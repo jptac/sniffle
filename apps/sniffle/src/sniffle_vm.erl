@@ -27,6 +27,7 @@
          snapshot/2,
          delete_snapshot/2,
          delete_backup/2,
+         remove_backup/2,
          rollback_snapshot/2,
          commit_snapshot_rollback/2,
          promote_to_image/3,
@@ -46,6 +47,22 @@
         delete |
         {delete, parent} |
         xml.
+
+%% Removes a backup from the hypervisor
+remove_backup(Vm, BID) ->
+    case sniffle_vm:get(Vm) of
+        {ok, V} ->
+            {ok, H} = jsxd:get(<<"hypervisor">>, V),
+            {Server, Port} = get_hypervisor(H),
+            case jsxd:get([<<"backups">>, BID], V) of
+                {ok, _} ->
+                    libchunter:delete_backup(Server, Port, Vm, BID);
+                _ ->
+                    not_found
+            end;
+        _ ->
+            not_found
+    end.
 
 delete_backup(VM, BID) ->
     case sniffle_vm:get(VM) of
