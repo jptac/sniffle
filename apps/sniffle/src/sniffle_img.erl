@@ -109,7 +109,8 @@ list() ->
 list(Img) ->
     case backend() of
         s3 ->
-            {S3Host, S3Port, AKey, SKey, Bucket} = sniffle_s3:config(image),
+
+            {ok,{S3Host, S3Port, AKey, SKey, Bucket}} = sniffle_s3:config(image),
             {ok, AKey, SKey, S3Host, S3Port, Bucket, Img};
         internal ->
             sniffle_coverage:start(
