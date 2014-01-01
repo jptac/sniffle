@@ -109,9 +109,8 @@ list() ->
 list(Img) ->
     case backend() of
         s3 ->
-            {ok, S} = sniffle_s3:new_stream(image, binary_to_list(Img)),
-            Size = fifo_s3:stream_length(S),
-            {ok, lists:seq(0, Size - 1)};
+            {S3Host, S3Port, AKey, SKey, Bucket} = sniffle_s3:config(image),
+            {ok, AKey, SKey, S3Host, S3Port, Bucket, Img};
         internal ->
             sniffle_coverage:start(
               sniffle_img_vnode_master, sniffle_img,
