@@ -200,7 +200,8 @@ do_snap(Vm, V, Comment, Opts) ->
                                    SKey, Bucket, Opts1) of
                 ok ->
                     C = [{[<<"backups">>, UUID, <<"comment">>], Comment},
-                         {[<<"backups">>, UUID, <<"timestamp">>], timestamp()}],
+                         {[<<"backups">>, UUID, <<"timestamp">>], timestamp()},
+                         {[<<"backups">>, UUID, <<"state">>], <<"pending">>}],
                     sniffle_vm:set(Vm, C),
                     {ok, UUID};
                 E ->
