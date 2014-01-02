@@ -68,7 +68,7 @@ store(Vm) ->
 
 has_xml([]) ->
     false;
-has_xml([B | Bs]) ->
+has_xml([{_, B} | Bs]) ->
     case jsxd:get(<<"xml">>, B) of
         true ->
             true;
