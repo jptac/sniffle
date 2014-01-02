@@ -147,11 +147,11 @@ message({vm, backup, restore, Vm, Backup}, State) when
      sniffle_vm:restore_backup(Vm, Backup),
      State};
 
-message({vm, backup, restore, Vm, Backup, _Hypervisor}, State) when
+message({vm, backup, restore, Vm, Backup, Hypervisor}, State) when
       is_binary(Vm),
       is_binary(Backup) ->
     {reply,
-     sniffle_vm:restore_backup(Vm, Backup),
+     sniffle_vm:restore(Vm, Backup, Hypervisor),
      State};
 
 message({vm, backup, delete, Vm, Backup}, State) when
@@ -233,6 +233,12 @@ message({vm, delete, Vm}, State) when
       is_binary(Vm) ->
     {reply,
      sniffle_vm:delete(Vm),
+     State};
+
+message({vm, store, Vm}, State) when
+      is_binary(Vm) ->
+    {reply,
+     sniffle_vm:store(Vm),
      State};
 
 message({vm, stop, Vm}, State) when
