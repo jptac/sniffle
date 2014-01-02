@@ -5,8 +5,9 @@
 -endif.
 
 -include("sniffle.hrl").
-
 -export([
+         restore/3,
+         store/1,
          register/2,
          unregister/1,
          create/3,
@@ -47,6 +48,60 @@
         delete |
         {delete, parent} |
         xml.
+
+store(Vm) ->
+    case sniffle_vm:get(Vm) of
+        {ok, V} ->
+            Bs = jsxd:get(<<"backups">>, [], V),
+            case has_xml(Bs) of
+                true ->
+                    {ok, H} = jsxd:get(<<"hypervisor">>, V),
+                    set(Vm, <<"state">>, <<"deleting">>),
+                    {Host, Port} = get_hypervisor(H),
+                    libchunter:delete_machine(Host, Port, Vm);
+                false ->
+                    {error, no_backup}
+            end;
+        _ ->
+            not_found
+    end.
+
+has_xml([]) ->
+    false;
+has_xml([B | Bs]) ->
+    case jsxd:get(<<"xml">>, B) of
+        true ->
+            true;
+        false ->
+            has_xml(Bs)
+    end.
+
+restore(Vm, BID, Hypervisor) ->
+    case sniffle_vm:get(Vm) of
+        {ok, V} ->
+            case jsxd:get(<<"hypervisor">>, V) of
+                {ok, _} ->
+                    already_deployed;
+                _ ->
+                    {Server, Port} = get_hypervisor(Hypervisor),
+                    case jsxd:get([<<"backups">>, BID, <<"xml">>], true, V) of
+                        true ->
+                            case sniffle_s3:config(snapshot) of
+                                error ->
+                                    {error, not_supported};
+                                {ok, {S3Host, S3Port, AKey, SKey, Bucket}} ->
+                                    libchunter:restore_backup(Server, Port, Vm,
+                                                              BID, S3Host,
+                                                              S3Port, Bucket,
+                                                              AKey, SKey)
+                            end;
+                        false ->
+                            no_xml
+                    end
+            end;
+        _ ->
+            not_found
+    end.
 
 %% Removes a backup from the hypervisor
 remove_backup(Vm, BID) ->
@@ -499,23 +554,26 @@ delete(Vm) ->
         {ok, V} ->
             case jsxd:get(<<"hypervisor">>, V) of
                 undefined ->
-                    sniffle_vm:unregister(Vm),
-                    libhowl:send(Vm, [{<<"event">>, <<"delete">>}]);
+                    finish_delete(Vm);
                 {ok, <<"pending">>} ->
-                    sniffle_vm:unregister(Vm),
-                    libhowl:send(Vm, [{<<"event">>, <<"delete">>}]);
+                    finish_delete(Vm);
                 {ok, H} ->
                     case jsxd:get(<<"state">>, V) of
                         undefined ->
-                            sniffle_vm:unregister(Vm),
-                            libhowl:send(Vm, [{<<"event">>, <<"delete">>}]);
+                            finish_delete(Vm);
                         {ok, <<"deleting">>} ->
-                            sniffle_vm:unregister(Vm),
-                            libhowl:send(Vm, [{<<"event">>, <<"delete">>}]);
+                            finish_delete(Vm);
                         %% When the vm was in failed state it got never handed off to the hypervisor
                         {ok, <<"failed-", _/binary>>} ->
-                            sniffle_vm:unregister(Vm),
-                            libhowl:send(Vm, [{<<"event">>, <<"delete">>}]);
+                            finish_delete(Vm);
+                        {ok, <<"storing">>} ->
+                            libhowl:send(<<"command">>,
+                                         [{<<"event">>, <<"vm-stored">>},
+                                          {<<"uuid">>, uuid:uuid4s()},
+                                          {<<"data">>,
+                                           [{<<"uuid">>, Vm}]}]),
+                            set(Vm, [{<<"state">>, <<"stored">>},
+                                     {<<"hypervisor">>, delete}]);
                         _ ->
                             set(Vm, <<"state">>, <<"deleting">>),
                             {Host, Port} = get_hypervisor(H),
@@ -526,6 +584,15 @@ delete(Vm) ->
         E ->
             E
     end.
+
+finish_delete(Vm) ->
+    sniffle_vm:unregister(Vm),
+    libhowl:send(Vm, [{<<"event">>, <<"delete">>}]),
+    libhowl:send(<<"command">>,
+                 [{<<"event">>, <<"vm-delete">>},
+                  {<<"uuid">>, uuid:uuid4s()},
+                  {<<"data">>,
+                   [{<<"uuid">>, Vm}]}]).
 
 %%--------------------------------------------------------------------
 %% @doc Triggers the start of a VM on the hypervisor.
