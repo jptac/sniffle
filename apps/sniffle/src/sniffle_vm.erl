@@ -56,7 +56,7 @@ store(Vm) ->
             case has_xml(Bs) of
                 true ->
                     {ok, H} = jsxd:get(<<"hypervisor">>, V),
-                    set(Vm, <<"state">>, <<"deleting">>),
+                    set(Vm, <<"state">>, <<"storing">>),
                     {Host, Port} = get_hypervisor(H),
                     libchunter:delete_machine(Host, Port, Vm);
                 false ->
