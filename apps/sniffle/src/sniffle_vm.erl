@@ -910,7 +910,7 @@ do_delete_backup(UUID, VM, BID) ->
     libchunter:delete_snapshot(Server, Port, UUID, BID),
     sniffle_vm:set(UUID, [<<"backups">>, BID], delete),
     libhowl:send(UUID, [{<<"event">>, <<"backup">>},
-                        {<<"data">>, [{<<"action">>, <<"delete">>},
+                        {<<"data">>, [{<<"action">>, <<"deleted">>},
                                       {<<"uuid">>, BID}]}]).
 
 
