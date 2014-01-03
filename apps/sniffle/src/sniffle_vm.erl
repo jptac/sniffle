@@ -900,7 +900,7 @@ do_delete_backup(UUID, VM, BID) ->
     {ok, Files} = jsxd:get([<<"backups">>, BID, <<"files">>], VM),
     Fs = case jsxd:get([<<"backups">>, BID, <<"xml">>], false, VM) of
              true ->
-                 [<<VM/binary, "/", BID/binary, ".xml">> | Files];
+                 [<<UUID/binary, "/", BID/binary, ".xml">> | Files];
              false ->
                  Files
          end,
