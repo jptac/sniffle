@@ -124,6 +124,14 @@ message({vm, snapshot, Vm, Comment}, State) when
      sniffle_vm:snapshot(Vm, Comment),
      State};
 
+message({vm, snapshot, delete, Vm, Snap}, State) when
+      is_binary(Vm),
+      is_binary(Snap) ->
+    {reply,
+     sniffle_vm:delete_backup(Vm, Snap),
+     State};
+
+
 message({vm, backup, full, Vm, Comment, Opts}, State) when
       is_binary(Vm),
       is_binary(Comment) ->
