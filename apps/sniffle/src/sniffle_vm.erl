@@ -122,9 +122,14 @@ remove_backup(Vm, BID) ->
 delete_backup(VM, BID) ->
     case sniffle_vm:get(VM) of
         {ok, V} ->
-            Children = children(V, BID, true),
-            [do_delete_backup(VM, V, C) || C <- Children],
-            do_delete_backup(VM, V, BID);
+            case jsxd:get([<<"backups">>, BID], V) of
+                {ok, _} ->
+                    Children = children(V, BID, true),
+                    [do_delete_backup(VM, V, C) || C <- Children],
+                    do_delete_backup(VM, V, BID);
+                _ ->
+                    not_found
+            end;
         _ ->
             not_found
     end.
@@ -895,7 +900,7 @@ do_delete_backup(UUID, VM, BID) ->
     {ok, Files} = jsxd:get([<<"backups">>, BID, <<"files">>], VM),
     Fs = case jsxd:get([<<"backups">>, BID, <<"xml">>], false, VM) of
              true ->
-                 [<<BID/binary, ".xml">> | Files];
+                 [<<VM/binary, "/", BID/binary, ".xml">> | Files];
              false ->
                  Files
          end,
