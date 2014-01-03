@@ -128,7 +128,7 @@ message({vm, snapshot, delete, Vm, Snap}, State) when
       is_binary(Vm),
       is_binary(Snap) ->
     {reply,
-     sniffle_vm:delete_backup(Vm, Snap),
+     sniffle_vm:delete_snapshot(Vm, Snap),
      State};
 
 
@@ -173,7 +173,7 @@ message({vm, backup, delete, Vm, UUID, cloud}, State) when
       is_binary(Vm),
       is_binary(UUID) ->
     {reply,
-     sniffle_vm:delete_snapshot(Vm, UUID),
+     sniffle_vm:delete_backup(Vm, UUID),
      State};
 
 message({vm, backup, delete, Vm, UUID, hypervisor}, State) when
