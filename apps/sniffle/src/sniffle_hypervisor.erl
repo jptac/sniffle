@@ -45,7 +45,14 @@ get(Hypervisor) ->
                   {ok, {Resources::fifo:object(),
                         Warnings::fifo:object()}}.
 status() ->
-    {ok, {Resources, Warnings}} = sniffle_cloud_status:start(),
+    {ok, {Resources0, Warnings}} = sniffle_cloud_status:start(),
+    Storage = case sniffle_opt:get(storage, general, backend, large_data_backend, internal) of
+                  internal ->
+                      <<"internal">>;
+                  s3 ->
+                      <<"s3">>
+              end,
+    Resources = [{<<"storage">>, Storage} | Resources0],
     Warnings1 = case riak_core_status:transfers() of
                     {[], []} ->
                         Warnings;
