@@ -7,7 +7,7 @@
          delete/1,
          get/1,
          list/0,
-         list/1,
+         list/2,
          set/2,
          set/3,
          import/1,
@@ -58,6 +58,20 @@ list(Requirements) ->
     Res1 = rankmatcher:apply_scales(Res),
     {ok,  lists:sort(Res1)}.
 
+
+%%--------------------------------------------------------------------
+%% @doc Lists all vm's and fiters by a given matcher set.
+%% @end
+%%--------------------------------------------------------------------
+-spec list([fifo:matcher()], boolean()) -> {error, timeout} | {ok, [fifo:uuid()]}.
+
+list(Requirements, true) ->
+    {ok, Ls} = list(Requirements),
+    Ls1 = [{V, {UUID, sniffle_dataset:get(UUID)}} || {V, UUID} <- Ls],
+    Ls2 = [{V, {UUID, D}} || {V, {UUID, {ok, D}}} <- Ls1],
+    {ok,  Ls2};
+list(Requirements, false) ->
+    list(Requirements).
 
 -spec set(UUID::fifo:dataset_id(),
           Attribute::fifo:keys(),
