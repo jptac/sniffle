@@ -43,7 +43,6 @@
         ]).
 
 -ignore_xref([logs/1,
-              list/2,
               children/2]).
 
 -type backup_opts() ::
@@ -558,7 +557,7 @@ list(Requirements) ->
 
 list(Requirements, true) ->
     {ok, Ls} = list(Requirements),
-    Ls1 = [{V, {UUID, sniffle_vm:get(UUID)}} || {V, UUID} <- Ls],
+    Ls1 = [{V, {UUID, ?MODULE:get(UUID)}} || {V, UUID} <- Ls],
     Ls2 = [{V, {UUID, D}} || {V, {UUID, {ok, D}}} <- Ls1],
     {ok,  Ls2};
 list(Requirements, false) ->

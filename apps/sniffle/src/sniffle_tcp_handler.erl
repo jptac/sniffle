@@ -59,8 +59,11 @@ message({dtrace, list}, State) ->
      State};
 
 message({dtrace, list, Requreiments}, State) ->
+    message({dtrace, list, Requreiments, false}, State);
+
+message({dtrace, list, Requreiments, Full}, State) ->
     {reply,
-     sniffle_dtrace:list(Requreiments),
+     sniffle_dtrace:list(Requreiments, Full),
      State};
 
 message({dtrace, set, ID, Attribute, Value}, State) when
@@ -298,10 +301,13 @@ message({vm, list}, State) ->
      sniffle_vm:list(),
      State};
 
-message({vm, list, Requirements}, State) when
+message({vm, list, Requirements}, State) ->
+    message({vm, list, Requirements, false}, State);
+
+message({vm, list, Requirements, Full}, State) when
       is_list(Requirements) ->
     {reply,
-     sniffle_vm:list(Requirements),
+     sniffle_vm:list(Requirements, Full),
      State};
 
 %%%===================================================================
@@ -345,10 +351,13 @@ message({hypervisor, list}, State) ->
      sniffle_hypervisor:list(),
      State};
 
-message({hypervisor, list, Requirements}, State) when
+message({hypervisor, list, Requirements}, State) ->
+    message({hypervisor, list, Requirements, false}, State);
+
+message({hypervisor, list, Requirements, Full}, State) when
       is_list(Requirements) ->
     {reply,
-     sniffle_hypervisor:list(Requirements),
+     sniffle_hypervisor:list(Requirements, Full),
      State};
 
 %%%===================================================================
@@ -391,10 +400,13 @@ message({dataset, list}, State) ->
      sniffle_dataset:list(),
      State};
 
-message({dataset, list, Requirements}, State) when
+message({dataset, list, Requirements}, State) ->
+    message({dataset, list, Requirements, false}, State);
+
+message({dataset, list, Requirements, Full}, State) when
       is_list(Requirements) ->
     {reply,
-     sniffle_dataset:list(Requirements),
+     sniffle_dataset:list(Requirements, Full),
      State};
 
 message({dataset, import, URL}, State) ->
@@ -499,8 +511,11 @@ message({network, list}, State) ->
      State};
 
 message({network, list, Requirements}, State) ->
+    message({network, list, Requirements, false}, State);
+
+message({network, list, Requirements, Full}, State) ->
     {reply,
-     sniffle_network:list(Requirements),
+     sniffle_network:list(Requirements, Full),
      State};
 
 %%%===================================================================
@@ -546,10 +561,13 @@ message({iprange, list}, State) ->
      sniffle_iprange:list(),
      State};
 
-message({iprange, list, Requirements}, State) when
+message({iprange, list, Requirements}, State) ->
+    message({iprange, list, Requirements, false}, State);
+
+message({iprange, list, Requirements, Full}, State) when
       is_list(Requirements)->
     {reply,
-     sniffle_iprange:list(Requirements),
+     sniffle_iprange:list(Requirements, Full),
      State};
 
 message({iprange, set, Iprange, Attribute, Value}, State) when
@@ -606,10 +624,13 @@ message({package, list}, State) ->
      sniffle_package:list(),
      State};
 
-message({package, list, Requirements}, State) when
+message({package, list, Requirements}, State) ->
+      message({package, list, Requirements, false}, State);
+
+message({package, list, Requirements, Full}, State) when
       is_list(Requirements) ->
     {reply,
-     sniffle_package:list(Requirements),
+     sniffle_package:list(Requirements, Full),
      State};
 
 %%%===================================================================
