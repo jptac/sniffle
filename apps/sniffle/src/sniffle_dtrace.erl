@@ -9,7 +9,6 @@
     set/2,
     set/3,
     list/0,
-    list/1,
     list/2,
     delete/1
    ]
@@ -22,7 +21,7 @@
     set/2,
     set/3,
     list/0,
-    list/1,
+    list/2,
     delete/1
    ]
   ).
@@ -55,15 +54,6 @@ list() ->
       sniffle_dtrace_vnode_master, sniffle_dtrace,
       list).
 
--spec list(Reqs::[fifo:matcher()]) ->
-                  {ok, [UUID::fifo:dtrace_id()]} | {error, timeout}.
-list(Requirements) ->
-    {ok, Res} = sniffle_coverage:start(
-                  sniffle_dtrace_vnode_master, sniffle_dtrace,
-                  {list, Requirements}),
-    Res1 = rankmatcher:apply_scales(Res),
-    {ok,  lists:sort(Res1)}.
-
 %%--------------------------------------------------------------------
 %% @doc Lists all vm's and fiters by a given matcher set.
 %% @end
@@ -71,12 +61,18 @@ list(Requirements) ->
 -spec list([fifo:matcher()], boolean()) -> {error, timeout} | {ok, [fifo:uuid()]}.
 
 list(Requirements, true) ->
-    {ok, Ls} = list(Requirements),
-    Ls1 = [{V, {UUID, ?MODULE:get(UUID)}} || {V, UUID} <- Ls],
-    Ls2 = [{V, {UUID, D}} || {V, {UUID, {ok, D}}} <- Ls1],
-    {ok,  Ls2};
+    {ok, Res} = sniffle_full_coverage:start(
+                  sniffle_dtrace_vnode_master, sniffle_dtrace,
+                  {list, Requirements, true}),
+    Res1 = rankmatcher:apply_scales(Res),
+    {ok,  lists:sort(Res1)};
+
 list(Requirements, false) ->
-    list(Requirements).
+    {ok, Res} = sniffle_coverage:start(
+                  sniffle_dtrace_vnode_master, sniffle_dtrace,
+                  {list, Requirements}),
+    Res1 = rankmatcher:apply_scales(Res),
+    {ok,  lists:sort(Res1)}.
 
 
 -spec set(UUID::fifo:dtrace_id(),

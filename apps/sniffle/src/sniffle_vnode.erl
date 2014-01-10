@@ -4,16 +4,27 @@
 -include_lib("riak_core/include/riak_core_vnode.hrl").
 
 -export([init/5,
-         list_keys/2,
-         list_keys/4,
          is_empty/1,
          delete/1,
-         %%fold_with_bucket/4,
-         lookup/3,
          put/3,
          fold/4,
          handle_command/3,
-         handle_info/2]).
+         handle_coverage/4,
+         handle_info/2,
+         mkid/0,
+         mkid/1]).
+
+-ignore_xref([mkid/0, mkid/1]).
+
+mkid() ->
+    mkid(node()).
+
+mkid(Actor) ->
+    {mk_reqid(), Actor}.
+
+mk_reqid() ->
+    {MegaSecs,Secs,MicroSecs} = erlang:now(),
+    (MegaSecs*1000000 + Secs)*1000000 + MicroSecs.
 
 init(Partition, Bucket, Service, VNode, StateMod) ->
     DB = list_to_atom(integer_to_list(Partition)),
@@ -26,6 +37,18 @@ init(Partition, Bucket, Service, VNode, StateMod) ->
      #vstate{db=DB, hashtrees=HT, partition=Partition, node=node(),
              service=Service, bucket=Bucket, state=StateMod, vnode=VNode},
      [FoldWorkerPool]}.
+
+list(Getter, Requirements, Sender, State=#vstate{state=StateMod}) ->
+    FoldFn = fun (Key, E, C) ->
+                     E1 = E#sniffle_obj{val=StateMod:load(E#sniffle_obj.val)},
+                     case rankmatcher:match(E1, Getter, Requirements) of
+                         false ->
+                             C;
+                         Pts ->
+                             [{Pts, {Key, E1}} | C]
+                     end
+             end,
+    fold(FoldFn, [], Sender, State).
 
 list_keys(Sender, State=#vstate{db=DB, bucket=Bucket}) ->
     FoldFn = fun (K, L) ->
@@ -73,19 +96,6 @@ put(Key, Obj, State) ->
 %%%===================================================================
 %%% Callbacks
 %%%===================================================================
-lookup(Name, Sender, State) ->
-    FoldFn = fun (_U, #sniffle_obj{val=SB}, [not_found]) ->
-                     V = statebox:value(SB),
-                     case jsxd:get(<<"name">>, V) of
-                         {ok, Name} ->
-                             [V];
-                         _ ->
-                             [not_found]
-                     end;
-                 (_, _, Res) ->
-                     Res
-             end,
-    sniffle_vnode:fold(FoldFn, [not_found], Sender, State).
 
 is_empty(State=#vstate{db=DB, bucket=Bucket}) ->
     FoldFn = fun (_, _) -> {false, State} end,
@@ -97,13 +107,53 @@ delete(State=#vstate{db=DB, bucket=Bucket}) ->
     fifo_db:transact(State#vstate.db, Trans),
     {ok, State}.
 
+load_obj(Mod, Obj = #sniffle_obj{val = V}) ->
+    Obj#sniffle_obj{val = Mod:load(V)}.
+
+handle_coverage({lookup, Name}, _KeySpaces, Sender, State=#vstate{state=Mod}) ->
+    FoldFn = fun (U, #sniffle_obj{val=V}, [not_found]) ->
+                     V1 = statebox:value(Mod:load(V)),
+                     case jsxd:get(<<"name">>, V1) of
+                         {ok, AName} when AName =:= Name ->
+                             [U];
+                         _ ->
+                             [not_found]
+                     end;
+                 (_, O, Res) ->
+                     lager:info("Oops: ~p", [O]),
+                     Res
+             end,
+    fold(FoldFn, [not_found], Sender, State);
+
+handle_coverage(list, _KeySpaces, Sender, State) ->
+    list_keys(Sender, State);
+
+handle_coverage({list, Requirements}, _KeySpaces, Sender, State) ->
+    handle_coverage({list, Requirements, false}, _KeySpaces, Sender, State);
+
+handle_coverage({list, Requirements, Full}, _KeySpaces, Sender,
+                State = #vstate{state=Mod}) ->
+    case Full of
+        true ->
+            list(fun Mod:getter/2, Requirements, Sender, State);
+        false ->
+            list_keys(fun Mod:getter/2, Requirements, Sender, State)
+    end;
+handle_coverage(Req, _KeySpaces, _Sender, State) ->
+    lager:warning("Unknown coverage request: ~p", [Req]),
+    {stop, not_implemented, State}.
+
+
 handle_command(ping, _Sender, State) ->
     {reply, {pong, State#vstate.partition}, State};
 
-handle_command({repair, UUID, VClock, Obj}, _Sender, State) ->
+handle_command({repair, UUID, _VClock, Obj}, _Sender,
+               State=#vstate{state=Mod}) ->
     case get(UUID, State) of
-        {ok, #sniffle_obj{vclock = VC1}} when VC1 =:= VClock ->
-            sniffle_vnode:put(UUID, Obj, State);
+        {ok, Old} ->
+            Old1 = load_obj(Mod, Old),
+            Merged = sniffle_obj:merge(sniffle_entity_read_fsm, [Old1, Obj]),
+            sniffle_vnode:put(UUID, Merged, State);
         not_found ->
             sniffle_vnode:put(UUID, Obj, State);
         _ ->

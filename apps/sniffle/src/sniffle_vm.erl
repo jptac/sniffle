@@ -13,7 +13,6 @@
          create/3,
          update/3,
          list/0,
-         list/1,
          list/2,
          get/1,
          log/2,
@@ -539,29 +538,21 @@ list() ->
 %% @doc Lists all vm's and fiters by a given matcher set.
 %% @end
 %%--------------------------------------------------------------------
--spec list([fifo:matcher()]) -> {error, timeout} |
-                                {ok, [{integer(), fifo:uuid()}]}.
+-spec list([fifo:matcher()], boolean()) -> {error, timeout} | {ok, [fifo:uuid()]}.
 
-list(Requirements) ->
+list(Requirements, true) ->
+    {ok, Res} = sniffle_full_coverage:start(
+                  sniffle_vm_vnode_master, sniffle_vm,
+                  {list, Requirements, true}),
+    Res1 = rankmatcher:apply_scales(Res),
+    {ok,  lists:sort(Res1)};
+
+list(Requirements, false) ->
     {ok, Res} = sniffle_coverage:start(
                   sniffle_vm_vnode_master, sniffle_vm,
                   {list, Requirements}),
     Res1 = rankmatcher:apply_scales(Res),
     {ok,  lists:sort(Res1)}.
-
-%%--------------------------------------------------------------------
-%% @doc Lists all vm's and fiters by a given matcher set.
-%% @end
-%%--------------------------------------------------------------------
--spec list([fifo:matcher()], boolean()) -> {error, timeout} | {ok, [fifo:uuid()]}.
-
-list(Requirements, true) ->
-    {ok, Ls} = list(Requirements),
-    Ls1 = [{V, {UUID, ?MODULE:get(UUID)}} || {V, UUID} <- Ls],
-    Ls2 = [{V, {UUID, D}} || {V, {UUID, {ok, D}}} <- Ls1],
-    {ok,  Ls2};
-list(Requirements, false) ->
-    list(Requirements).
 
 %%--------------------------------------------------------------------
 %% @doc Tries to delete a VM, either unregistering it if no

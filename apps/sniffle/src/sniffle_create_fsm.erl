@@ -242,7 +242,7 @@ get_server(_Event, State = #state{
             {UUID, Config, Conditions} = eplugin:fold('create:conditions', {UUID, Config, Conditions1}),
             CondB = list_to_binary(io_lib:format("~p", [Conditions])),
             sniffle_vm:log(UUID, <<"Finding hypervisor ", CondB/binary>>),
-            {ok, Hypervisors} = sniffle_hypervisor:list(Conditions),
+            {ok, Hypervisors} = sniffle_hypervisor:list(Conditions, false),
             Hypervisors1 = eplugin:fold('create:hypervisor_select', Hypervisors),
             Hypervisors2 = lists:reverse(lists:sort(Hypervisors1)),
             lager:debug("[CREATE] Hypervisors found: ~p", [Hypervisors2]),
