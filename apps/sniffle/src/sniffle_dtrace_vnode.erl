@@ -173,20 +173,8 @@ is_empty(State) ->
 delete(State) ->
     sniffle_vnode:delete(State).
 
-handle_coverage({lookup, Name}, _KeySpaces, Sender, State) ->
-    sniffle_vnode:lookup(Name, Sender, State);
-
-handle_coverage(list, _KeySpaces, Sender, State) ->
-    sniffle_vnode:list_keys(Sender, State);
-
-handle_coverage({list, Requirements}, _KeySpaces, Sender, State) ->
-    Getter = fun(#sniffle_obj{val=S0}, Resource) ->
-                     jsxd:get(Resource, 0, statebox:value(S0))
-             end,
-    sniffle_vnode:list_keys(Getter, Requirements, Sender, State);
-
-handle_coverage(_Req, _KeySpaces, _Sender, State) ->
-    {stop, not_implemented, State}.
+handle_coverage(Req, KeySpaces, Sender, State) ->
+    sniffle_vnode:handle_coverage(Req, KeySpaces, Sender, State).
 
 handle_exit(_Pid, _Reason, State) ->
     {noreply, State}.

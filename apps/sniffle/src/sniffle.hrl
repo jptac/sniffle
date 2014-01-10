@@ -88,3 +88,9 @@
           name :: binary(),
           attributes :: dict()
         }).
+
+-define(DATASET, dataset).
+-define(PACKAGE, package).
+-define(IPRANGE, iprange).
+-define(VM, vm).
+-define(HYPERVISOR, hypervisor).

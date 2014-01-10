@@ -8,7 +8,6 @@
          get/1,
          lookup/1,
          list/0,
-         list/1,
          list/2,
          set/3,
          set/2,
@@ -24,7 +23,7 @@
               get/1,
               lookup/1,
               list/0,
-              list/1,
+              list/2,
               set/3,
               set/2,
               add_iprange/2,
@@ -91,16 +90,6 @@ list() ->
     sniffle_coverage:start(
       sniffle_network_vnode_master, sniffle_network,
       list).
-
--spec list(Reqs::[fifo:matcher()]) ->
-                  {ok, [IPR::fifo:network_id()]} | {error, timeout}.
-list(Requirements) ->
-    {ok, Res} = sniffle_coverage:start(
-                  sniffle_network_vnode_master, sniffle_network,
-                   {list, Requirements}),
-    Res1 = rankmatcher:apply_scales(Res),
-    {ok,  lists:sort(Res1)}.
-
 %%--------------------------------------------------------------------
 %% @doc Lists all vm's and fiters by a given matcher set.
 %% @end
@@ -108,12 +97,18 @@ list(Requirements) ->
 -spec list([fifo:matcher()], boolean()) -> {error, timeout} | {ok, [fifo:uuid()]}.
 
 list(Requirements, true) ->
-    {ok, Ls} = list(Requirements),
-    Ls1 = [{V, {UUID, ?MODULE:get(UUID)}} || {V, UUID} <- Ls],
-    Ls2 = [{V, {UUID, D}} || {V, {UUID, {ok, D}}} <- Ls1],
-    {ok,  Ls2};
+    {ok, Res} = sniffle_full_coverage:start(
+                  sniffle_network_vnode_master, sniffle_network,
+                  {list, Requirements, true}),
+    Res1 = rankmatcher:apply_scales(Res),
+    {ok,  lists:sort(Res1)};
+
 list(Requirements, false) ->
-    list(Requirements).
+    {ok, Res} = sniffle_coverage:start(
+                  sniffle_network_vnode_master, sniffle_network,
+                  {list, Requirements}),
+    Res1 = rankmatcher:apply_scales(Res),
+    {ok,  lists:sort(Res1)}.
 
 -spec set(Network::fifo:network_id(),
           Attribute::fifo:keys(),
