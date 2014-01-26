@@ -3,7 +3,7 @@
 %% @doc The TCP endpoint that will be broadcasted.
 {mapping, "ip", "sniffle.endpoint",
  [{default, {"{{sniffle_ip}}", {{sniffle_port}} }},
-o {datatype, ip}]}.
+  {datatype, ip}]}.
 
 {translation,
  "mdns_server_lib.ip",
@@ -594,6 +594,6 @@ o {datatype, ip}]}.
 %% via total_leveldb_mem_percent instead.
 {mapping, "leveldb.total_leveldb_mem", "eleveldb.total_leveldb_mem", [
   {datatype, bytesize},
-  {default, "512MB"}
+  {default, "512MB"},
   {level, advanced}
 ]}.
