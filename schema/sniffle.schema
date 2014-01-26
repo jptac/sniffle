@@ -3,7 +3,7 @@
 %% @doc The TCP endpoint that will be broadcasted.
 {mapping, "ip", "sniffle.endpoint",
  [{default, {"{{sniffle_ip}}", {{sniffle_port}} }},
-  {datatype, ip}]}.
+o {datatype, ip}]}.
 
 {translation,
  "mdns_server_lib.ip",
@@ -148,9 +148,12 @@
 
 %% @doc Default ring creation size.  Make sure it is a power of 2,
 %% e.g. 16, 32, 64, 128, 256, 512 etc
+%% This is set to a default of 4 to work in a one server installation
+%% if you plan to expand your system please set it higher and reads
+%% the manual at http://bit.ly/1ciKRkS
 {mapping, "ring_size", "riak_core.ring_creation_size",
  [{datatype, integer},
-  {default, 64},
+  {default, 4},
   {commented, 64},
   {validators, ["ring_size"]}
  ]}.
@@ -582,3 +585,15 @@
          {N, R, W}
  end
 }.
+
+%% @doc This parameter defines the number of bytes of
+%% server memory to assign to leveldb.  leveldb will dynamically
+%% adjust it internal cache sizes as Riak activates / inactivates
+%% vnodes on this server to stay within this size.  The memory size
+%% can alternately be assigned as percentage of total server memory
+%% via total_leveldb_mem_percent instead.
+{mapping, "leveldb.total_leveldb_mem", "eleveldb.total_leveldb_mem", [
+  {datatype, bytesize},
+  {default, "512MB"}
+  {level, advanced}
+]}.
