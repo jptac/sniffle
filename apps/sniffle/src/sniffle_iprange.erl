@@ -10,6 +10,7 @@
          list/0,
          list/2,
          claim_ip/1,
+         full/1,
          release_ip/2,
          set/3,
          set/2
@@ -160,4 +161,17 @@ claim_ip(Iprange, N) ->
                             R
                     end
             end
+    end.
+
+full(Iprange) ->
+    case sniffle_iprange:get(Iprange) of
+        {ok, Obj} ->
+            case {jsxd:get(<<"free">>, [], Obj), jsxd:get(<<"current">>, 0, Obj), jsxd:get(<<"last">>, 0, Obj)} of
+                {[], FoundIP, Last} when FoundIP > Last ->
+                    true;
+                _ ->
+                    false
+            end;
+        E ->
+            E
     end.
