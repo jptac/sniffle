@@ -440,7 +440,12 @@ test_net(Have, [{ID, Tag} | R]) ->
     lager:info("test_net: ~p ~p", [Have, [{ID, Tag} | R]]),
     case lists:member(Tag, Have) of
         true ->
-            ID;
+            case sniffle_iprange:full(ID) of
+                true ->
+                    test_net(Have, R);
+                false ->
+                    ID
+            end;
         _ ->
             test_net(Have, R)
     end;
