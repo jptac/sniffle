@@ -51,7 +51,6 @@ init({From, ReqID, Requirements}, {VNodeMaster, NodeCheckService, Request}) ->
 
 process_results({ok, _ReqID, _IdxNode, Obj},
                 State = #state{replies = Replies}) ->
-    lager:info("Objs: ~p", [Obj]),
     Replies1 = lists:foldl(fun ({Pts, {Key, V}}, D) ->
                                    dict:append(Key, {Pts, V}, D)
                            end, Replies, Obj),
@@ -69,7 +68,6 @@ finish(clean, State = #state{replies = Replies,
                                               Res;
                                           _ ->
                                               Mgd = merge(Es),
-                                              lager:info("Merged: ~p-> ~p", [Es, Mgd]),
                                               [Mgd | Res]
                                       end
                               end, [], Replies),
