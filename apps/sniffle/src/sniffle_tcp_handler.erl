@@ -333,6 +333,17 @@ message({hypervisor, get, Hypervisor}, State) when
      sniffle_hypervisor:get(Hypervisor),
      State};
 
+message({hypervisor, update, Hypervisor}, State) when
+      is_binary(Hypervisor) ->
+    {reply,
+     sniffle_hypervisor:update(Hypervisor),
+     State};
+
+message({hypervisor, update}, State) ->
+    {reply,
+     sniffle_hypervisor:update(),
+     State};
+
 message({hypervisor, set, Hypervisor, Resource, Value}, State) when
       is_binary(Hypervisor) ->
     {reply,

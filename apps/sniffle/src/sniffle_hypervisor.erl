@@ -11,7 +11,9 @@
     list/2,
     set/3,
     set/2,
-    status/0
+    status/0,
+    update/1,
+    update/0
    ]).
 
 -spec register(Hypervisor::fifo:hypervisor_id(),
@@ -83,6 +85,22 @@ list() ->
     sniffle_coverage:start(
       sniffle_hypervisor_vnode_master, sniffle_hypervisor,
       list).
+
+update(UUID) when is_binary(UUID) ->
+    {ok, HypervisorObj} = sniffle_hypervisor:get(UUID),
+    update(HypervisorObj);
+
+update(HypervisorObj) ->
+    {ok, Port} = jsxd:get(<<"port">>, HypervisorObj),
+    {ok, HostB} = jsxd:get(<<"host">>, HypervisorObj),
+    Host = binary_to_list(HostB),
+    libchunter:update(Host, Port).
+
+
+update() ->
+    {ok, L} = list([], true),
+    [update(O) || {_, O} <- L],
+    ok.
 
 %%--------------------------------------------------------------------
 %% @doc Lists all vm's and fiters by a given matcher set.
