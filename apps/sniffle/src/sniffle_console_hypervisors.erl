@@ -42,23 +42,24 @@ command(text, ["get", ID]) ->
             error
     end;
 
-command(text, ["update", ID]) ->
-    case sniffle_hypervisor:update(list_to_binary(ID)) of
+command(text, ["update"]) ->
+    case sniffle_hypervisor:update() of
         ok ->
-            print("Update started..."),
+            io:format("Update started...~n"),
             ok;
         _ ->
             error
     end;
 
-command(text, ["update", "all"]) ->
-    case sniffle_hypervisor:update() of
+command(text, ["update", ID]) ->
+    case sniffle_hypervisor:update(list_to_binary(ID)) of
         ok ->
-            print("Update started..."),
+            io:format("Update started...~n"),
             ok;
         _ ->
             error
     end;
+
 
 command(json, ["list"]) ->
     case sniffle_hypervisor:list() of
