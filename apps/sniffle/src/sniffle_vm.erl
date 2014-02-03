@@ -6,39 +6,42 @@
 
 -include("sniffle.hrl").
 -export([
-         restore/3,
-         store/1,
-         register/2,
-         unregister/1,
+         add_nic/2,
+         children/2,
+         commit_snapshot_rollback/2,
          create/3,
-         update/3,
+         create_backup/4,
+         delete/1,
+         delete_backup/2,
+         delete_snapshot/2,
+         get/1,
          list/0,
          list/2,
-         get/1,
          log/2,
          logs/1,
+         primary_nic/2,
+         promote_to_image/3,
+         reboot/1,
+         reboot/2,
+         register/2,
+         remove_backup/2,
+         remove_nic/2,
+         restore/3,
+         restore_backup/2,
+         rollback_snapshot/2,
+         service_clear/2,
+         service_disable/2,
+         service_enable/2,
          set/2,
          set/3,
+         set_owner/2,
+         snapshot/2,
          start/1,
          stop/1,
          stop/2,
-         reboot/1,
-         reboot/2,
-         delete/1,
-         snapshot/2,
-         delete_snapshot/2,
-         delete_backup/2,
-         remove_backup/2,
-         rollback_snapshot/2,
-         commit_snapshot_rollback/2,
-         promote_to_image/3,
-         remove_nic/2,
-         add_nic/2,
-         primary_nic/2,
-         set_owner/2,
-         create_backup/4,
-         restore_backup/2,
-         children/2
+         store/1,
+         unregister/1,
+         update/3
         ]).
 
 -ignore_xref([logs/1,
@@ -134,7 +137,6 @@ delete_backup(VM, BID) ->
             not_found
     end.
 
-
 -spec restore_backup(Vm::fifo:uuid(), Snap::fifo:uuid()) ->
                             not_found |
                             {error, not_supported} |
@@ -190,6 +192,37 @@ create_backup(Vm, incremental, Comment, Opts) ->
         _ ->
             not_found
     end.
+
+service_enable(Vm, Service) ->
+    case sniffle_vm:get(Vm) of
+        {ok, V} ->
+            {ok, H} = jsxd:get(<<"hypervisor">>, V),
+            {Server, Port} = get_hypervisor(H),
+            libchunter:service_enable(Server, Port, Vm, Service);
+        _ ->
+            not_found
+    end.
+
+service_disable(Vm, Service) ->
+    case sniffle_vm:get(Vm) of
+        {ok, V} ->
+            {ok, H} = jsxd:get(<<"hypervisor">>, V),
+            {Server, Port} = get_hypervisor(H),
+            libchunter:service_disable(Server, Port, Vm, Service);
+        _ ->
+            not_found
+    end.
+
+service_clear(Vm, Service) ->
+    case sniffle_vm:get(Vm) of
+        {ok, V} ->
+            {ok, H} = jsxd:get(<<"hypervisor">>, V),
+            {Server, Port} = get_hypervisor(H),
+            libchunter:service_clear(Server, Port, Vm, Service);
+        _ ->
+            not_found
+    end.
+
 
 do_snap(Vm, V, Comment, Opts) ->
     UUID = uuid:uuid4s(),
