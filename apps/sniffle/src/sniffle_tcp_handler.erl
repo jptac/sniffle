@@ -120,6 +120,28 @@ message({vm, register, Vm, Hypervisor}, State) when
      sniffle_vm:register(Vm, Hypervisor),
      State};
 
+
+message({vm, service, enable, Vm, Service}, State) when
+      is_binary(Vm),
+      is_binary(Service) ->
+    {reply,
+     sniffle_vm:service_enable(Vm, Service),
+     State};
+
+message({vm, service, disable, Vm, Service}, State) when
+      is_binary(Vm),
+      is_binary(Service) ->
+    {reply,
+     sniffle_vm:service_disable(Vm, Service),
+     State};
+
+message({vm, service, clear, Vm, Service}, State) when
+      is_binary(Vm),
+      is_binary(Service) ->
+    {reply,
+     sniffle_vm:service_clear(Vm, Service),
+     State};
+
 message({vm, snapshot, Vm, Comment}, State) when
       is_binary(Vm),
       is_binary(Comment) ->
