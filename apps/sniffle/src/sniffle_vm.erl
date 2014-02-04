@@ -61,6 +61,10 @@ store(Vm) ->
                     {ok, H} = jsxd:get(<<"hypervisor">>, V),
                     set(Vm, <<"state">>, <<"storing">>),
                     {Host, Port} = get_hypervisor(H),
+                    [sniffle_vm:set(Vm, [<<"backups">>, B, <<"local">>], false)
+                     || {B, _} <- Bs],
+                    [sniffle_vm:set(Vm, [<<"backups">>, B, <<"local_size">>], 0)
+                     || {B, _} <- Bs],
                     libchunter:delete_machine(Host, Port, Vm);
                 false ->
                     {error, no_backup}
