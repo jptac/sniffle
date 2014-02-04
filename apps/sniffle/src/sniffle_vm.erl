@@ -65,6 +65,7 @@ store(Vm) ->
                      || {B, _} <- Bs],
                     [sniffle_vm:set(Vm, [<<"backups">>, B, <<"local_size">>], 0)
                      || {B, _} <- Bs],
+                    sniffle_vm:set(Vm, <<"snapshots">>, delete),
                     libchunter:delete_machine(Host, Port, Vm);
                 false ->
                     {error, no_backup}
