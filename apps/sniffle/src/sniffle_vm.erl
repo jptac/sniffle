@@ -606,7 +606,18 @@ delete(Vm) ->
         {ok, V} ->
             case jsxd:get(<<"hypervisor">>, V) of
                 undefined ->
-                    finish_delete(Vm);
+                    case jsxd:get(<<"state">>, V) of
+                        {ok, <<"storing">>} ->
+                            libhowl:send(<<"command">>,
+                                         [{<<"event">>, <<"vm-stored">>},
+                                          {<<"uuid">>, uuid:uuid4s()},
+                                          {<<"data">>,
+                                           [{<<"uuid">>, Vm}]}]),
+                            set(Vm, [{<<"state">>, <<"stored">>},
+                                     {<<"hypervisor">>, delete}]);
+                        _ ->
+                            finish_delete(Vm)
+                    end;
                 {ok, <<"pending">>} ->
                     finish_delete(Vm);
                 {ok, H} ->
