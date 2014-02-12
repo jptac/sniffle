@@ -188,7 +188,8 @@
 
 {mapping, "dataset.aae", "sniffle.sniffle_dataset_aae",
  [{datatype, {enum, [on, off]}},
-  {default, on}]}.
+  {default, off}]}.
+
 {translation,
   "sniffle.sniffle_dataset_aae",
   fun(Conf) ->
@@ -238,7 +239,7 @@
 
 {mapping, "hypervisor.aae", "sniffle.sniffle_hypervisor_aae",
  [{datatype, {enum, [on, off]}},
-  {default, on}]}.
+  {default, off}]}.
 {translation,
   "sniffle.sniffle_hypervisor_aae",
   fun(Conf) ->
@@ -288,7 +289,7 @@
 
 {mapping, "vm.aae", "sniffle.sniffle_vm_aae",
  [{datatype, {enum, [on, off]}},
-  {default, on}]}.
+  {default, off}]}.
 {translation,
   "sniffle.sniffle_vm_aae",
   fun(Conf) ->
@@ -338,7 +339,7 @@
 
 {mapping, "iprange.aae", "sniffle.sniffle_iprange_aae",
  [{datatype, {enum, [on, off]}},
-  {default, on}]}.
+  {default, off}]}.
 {translation,
   "sniffle.sniffle_iprange_aae",
   fun(Conf) ->
@@ -388,7 +389,7 @@
 
 {mapping, "network.aae", "sniffle.sniffle_network_aae",
  [{datatype, {enum, [on, off]}},
-  {default, on}]}.
+  {default, off}]}.
 {translation,
   "sniffle.sniffle_network_aae",
   fun(Conf) ->
@@ -438,7 +439,7 @@
 
 {mapping, "img.aae", "sniffle.sniffle_img_aae",
  [{datatype, {enum, [on, off]}},
-  {default, on}]}.
+  {default, off}]}.
 {translation,
   "sniffle.sniffle_img_aae",
   fun(Conf) ->
@@ -488,7 +489,7 @@
 
 {mapping, "dtrace.aae", "sniffle.sniffle_dtrace_aae",
  [{datatype, {enum, [on, off]}},
-  {default, on}]}.
+  {default, off}]}.
 {translation,
   "sniffle.sniffle_dtrace_aae",
   fun(Conf) ->
@@ -538,7 +539,7 @@
 
 {mapping, "package.aae", "sniffle.sniffle_package_aae",
  [{datatype, {enum, [on, off]}},
-  {default, on}]}.
+  {default, off}]}.
 {translation,
   "sniffle.sniffle_package_aae",
   fun(Conf) ->
