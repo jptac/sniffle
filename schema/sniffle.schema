@@ -43,7 +43,6 @@
   {commented, 120},
   {datatype, {duration, s}}]}.
 
-
 %% @doc The path data gets stored into.
 {mapping, "data_dir", "riak_core.platform_data_dir",
  [{default, "{{platform_data_dir}}"},
@@ -76,6 +75,7 @@
          cuttlefish_util:conf_get_value("data_dir", Conf)
  end
 }.
+
 
 %% @doc The Backend to store large data objects in, this applies to snapshots
 %% and images. Objects stored in one backend will not be migrated to another if
@@ -163,6 +163,12 @@
          Size > 1 andalso (Size band (Size-1) =:= 0)
  end}.
 
+%% @doc enable active anti-entropy subsystem
+{mapping, "anti_entropy", "riak_core.anti_entropy", [
+  {datatype, {enum, [on, off, debug]}},
+  {default, off}
+]}.
+
 %% @doc The number of copies of the data that is keeped.
 %% For good consistency N  < (R + W) should be true.
 {mapping, "n", "sniffle.n",
@@ -188,7 +194,8 @@
 
 {mapping, "dataset.aae", "sniffle.sniffle_dataset_aae",
  [{datatype, {enum, [on, off]}},
-  {default, on}]}.
+  {default, off}]}.
+
 {translation,
   "sniffle.sniffle_dataset_aae",
   fun(Conf) ->
@@ -238,7 +245,7 @@
 
 {mapping, "hypervisor.aae", "sniffle.sniffle_hypervisor_aae",
  [{datatype, {enum, [on, off]}},
-  {default, on}]}.
+  {default, off}]}.
 {translation,
   "sniffle.sniffle_hypervisor_aae",
   fun(Conf) ->
@@ -288,7 +295,7 @@
 
 {mapping, "vm.aae", "sniffle.sniffle_vm_aae",
  [{datatype, {enum, [on, off]}},
-  {default, on}]}.
+  {default, off}]}.
 {translation,
   "sniffle.sniffle_vm_aae",
   fun(Conf) ->
@@ -338,7 +345,7 @@
 
 {mapping, "iprange.aae", "sniffle.sniffle_iprange_aae",
  [{datatype, {enum, [on, off]}},
-  {default, on}]}.
+  {default, off}]}.
 {translation,
   "sniffle.sniffle_iprange_aae",
   fun(Conf) ->
@@ -388,7 +395,7 @@
 
 {mapping, "network.aae", "sniffle.sniffle_network_aae",
  [{datatype, {enum, [on, off]}},
-  {default, on}]}.
+  {default, off}]}.
 {translation,
   "sniffle.sniffle_network_aae",
   fun(Conf) ->
@@ -438,7 +445,7 @@
 
 {mapping, "img.aae", "sniffle.sniffle_img_aae",
  [{datatype, {enum, [on, off]}},
-  {default, on}]}.
+  {default, off}]}.
 {translation,
   "sniffle.sniffle_img_aae",
   fun(Conf) ->
@@ -488,7 +495,7 @@
 
 {mapping, "dtrace.aae", "sniffle.sniffle_dtrace_aae",
  [{datatype, {enum, [on, off]}},
-  {default, on}]}.
+  {default, off}]}.
 {translation,
   "sniffle.sniffle_dtrace_aae",
   fun(Conf) ->
@@ -538,7 +545,7 @@
 
 {mapping, "package.aae", "sniffle.sniffle_package_aae",
  [{datatype, {enum, [on, off]}},
-  {default, on}]}.
+  {default, off}]}.
 {translation,
   "sniffle.sniffle_package_aae",
   fun(Conf) ->

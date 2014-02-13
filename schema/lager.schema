@@ -44,29 +44,32 @@
                          end,
          ErrorHandler = case cuttlefish_util:conf_get_value("log.error.file", Conf) of
                             undefined -> [];
-                            ErrorFilename -> [{lager_file_backend, [{file, ErrorFilename},
-                                                                    {level, error},
-                                                                    {size, 10485760},
-                                                                    {date, "$D0"},
-                                                                    {count, 5}]}]
+                            ErrorFilename -> [{lager_file_backend,
+                                               [{file, ErrorFilename},
+                                                {level, error},
+                                                {size, 10485760},
+                                                {date, "$D0"},
+                                                {count, 5}]}]
                         end,
          DebugHandler = case cuttlefish_util:conf_get_value("log.debug.file", Conf) of
                             undefined -> [];
-                            DebugFilename -> [{lager_file_backend, [{file, DebugFilename},
-                                                                    {level, debug},
-                                                                    {size, 10485760},
-                                                                    {date, "$D0"},
-                                                                    {count, 5}]}]
+                            DebugFilename -> [{lager_file_backend,
+                                               [{file, DebugFilename},
+                                                {level, debug},
+                                                {size, 10485760},
+                                                {date, "$D0"},
+                                                {count, 5}]}]
                         end,
          ConsoleLogLevel = cuttlefish_util:conf_get_value("log.console.level", Conf),
          ConsoleLogFile = cuttlefish_util:conf_get_value("log.console.file", Conf),
 
          ConsoleHandler = {lager_console_backend, ConsoleLogLevel},
-         ConsoleFileHandler = {lager_file_backend, [{file, ConsoleLogFile},
-                                                    {level, ConsoleLogLevel},
-                                                    {size, 10485760},
-                                                    {date, "$D0"},
-                                                    {count, 5}]},
+         ConsoleFileHandler = {lager_file_backend,
+                               [{file, ConsoleLogFile},
+                                {level, ConsoleLogLevel},
+                                {size, 10485760},
+                                {date, "$D0"},
+                                {count, 5}]},
 
          ConsoleHandlers = case cuttlefish_util:conf_get_value("log.console", Conf) of
                                off -> [];
