@@ -43,7 +43,6 @@
   {commented, 120},
   {datatype, {duration, s}}]}.
 
-
 %% @doc The path data gets stored into.
 {mapping, "data_dir", "riak_core.platform_data_dir",
  [{default, "{{platform_data_dir}}"},
@@ -76,6 +75,7 @@
          cuttlefish_util:conf_get_value("data_dir", Conf)
  end
 }.
+
 
 %% @doc The Backend to store large data objects in, this applies to snapshots
 %% and images. Objects stored in one backend will not be migrated to another if
@@ -162,6 +162,12 @@
  fun(Size) ->
          Size > 1 andalso (Size band (Size-1) =:= 0)
  end}.
+
+%% @doc enable active anti-entropy subsystem
+{mapping, "anti_entropy", "riak_core.anti_entropy", [
+  {datatype, {enum, [on, off, debug]}},
+  {default, off}
+]}.
 
 %% @doc The number of copies of the data that is keeped.
 %% For good consistency N  < (R + W) should be true.
