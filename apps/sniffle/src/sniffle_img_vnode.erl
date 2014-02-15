@@ -61,6 +61,9 @@
 master() ->
     ?MASTER.
 
+hash_object(BKey, #sniffle_obj{vclock = RObj}) ->
+    lager:debug("Hashing Key: ~p", [BKey]),
+    list_to_binary(integer_to_list(erlang:phash2({BKey, RObj})));
 hash_object(BKey, RObj) ->
     lager:debug("Hashing Key: ~p", [BKey]),
     list_to_binary(integer_to_list(erlang:phash2({BKey, RObj}))).
@@ -190,8 +193,15 @@ handle_command(?FOLD_REQ{foldfun=Fun, acc0=Acc0}, _Sender, State) ->
 
 handle_command({get, ReqID, ImgAndIdx}, _Sender, State) ->
     Res = case get(State#state.db, ImgAndIdx) of
-              {ok, R} ->
-                  R;
+              {ok, R = #sniffle_obj{val=V}} ->
+                  case statebox:is_statebox(V) of
+                      true ->
+                          R1 = R#sniffle_obj{val=statebox:value(V)},
+                          put(State#state.db, ImgAndIdx, R1),
+                          R1;
+                      false  ->
+                          R
+                  end;
               not_found ->
                   not_found
           end,
@@ -200,12 +210,9 @@ handle_command({get, ReqID, ImgAndIdx}, _Sender, State) ->
 
 handle_command({create, {ReqID, Coordinator}, {Img, Idx}, Data},
                _Sender, State) ->
-    I0 = statebox:new(fun sniffle_img_state:new/0),
-    I1 = statebox:modify({fun sniffle_img_state:data/2, [Data]}, I0),
-    I2 = statebox:truncate(0, I1),
     VC0 = vclock:fresh(),
     VC = vclock:increment(Coordinator, VC0),
-    HObject = #sniffle_obj{val=I2, vclock=VC},
+    HObject = #sniffle_obj{val=Data, vclock=VC},
     put(State, <<Img/binary, Idx:32>>, HObject),
     {reply, {ok, ReqID}, State};
 

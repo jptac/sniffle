@@ -55,6 +55,9 @@
 master() ->
     ?MASTER.
 
+hash_object(BKey, #sniffle_obj{vclock = RObj}) ->
+    lager:debug("Hashing Key: ~p", [BKey]),
+    list_to_binary(integer_to_list(erlang:phash2({BKey, RObj})));
 hash_object(BKey, RObj) ->
     lager:debug("Hashing Key: ~p", [BKey]),
     list_to_binary(integer_to_list(erlang:phash2({BKey, RObj}))).

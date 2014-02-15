@@ -110,5 +110,10 @@ merge([{_Score1, V} | R], _Score2, Vs) when _Score1 =/= _Score2->
 merge_obj(Vs) ->
     case sniffle_obj:merge(sniffle_entity_read_fsm, Vs) of
         #sniffle_obj{val = V} ->
-            statebox:value(V)
+            case statebox:is_statebox(V) of
+                true ->
+                    statebox:value(V);
+                false ->
+                    V
+            end
     end.

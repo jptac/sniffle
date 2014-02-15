@@ -153,7 +153,7 @@
 %% the manual at http://bit.ly/1ciKRkS
 {mapping, "ring_size", "riak_core.ring_creation_size",
  [{datatype, integer},
-  {default, 4},
+  {default, 8},
   {commented, 64},
   {validators, ["ring_size"]}
  ]}.
