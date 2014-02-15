@@ -193,8 +193,15 @@ handle_command(?FOLD_REQ{foldfun=Fun, acc0=Acc0}, _Sender, State) ->
 
 handle_command({get, ReqID, ImgAndIdx}, _Sender, State) ->
     Res = case get(State#state.db, ImgAndIdx) of
-              {ok, R} ->
-                  R;
+              {ok, R = #sniffle_obj{val=V}} ->
+                  case statebox:is_statebox(V) of
+                      true ->
+                          R1 = R#sniffle_obj{val=statebox:value(V)},
+                          put(State#state.db, ImgAndIdx, R1),
+                          R1;
+                      false  ->
+                          R
+                  end;
               not_found ->
                   not_found
           end,
