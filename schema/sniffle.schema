@@ -1,5 +1,24 @@
 %% -*- erlang -*-
 
+%% @doc enable active anti-entropy subsystem
+{mapping, "anti_entropy", "riak_core.anti_entropy", [
+  {datatype, {enum, [on, off, debug]}},
+  {default, on}
+]}.
+
+{ translation,
+  "riak_core.anti_entropy",
+  fun(Conf) ->
+    Setting = cuttlefish_util:conf_get_value("anti_entropy", Conf),
+    case Setting of
+      on -> {on, []};
+      debug -> {on, [debug]};
+      off -> {off, []};
+      _Default -> {on, []}
+    end
+  end
+}.
+
 %% @doc The TCP endpoint that will be broadcasted.
 {mapping, "ip", "sniffle.endpoint",
  [{default, {"{{sniffle_ip}}", {{sniffle_port}} }},
