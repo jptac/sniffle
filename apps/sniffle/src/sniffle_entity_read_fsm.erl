@@ -83,9 +83,7 @@ start(VNodeInfo, Op, Entity, Val) ->
         {ReqID, not_found} ->
             not_found;
         {ReqID, ok, Result} ->
-            {ok, Result};
-        Other ->
-            lager:error("[read] Bad return: ~p", [Other])
+            {ok, Result}
     after ?DEFAULT_TIMEOUT ->
             lager:error("[read] timeout"),
             {error, timeout}
