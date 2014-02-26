@@ -61,7 +61,12 @@ add(UUID, Package, Dataset, Config) ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
-    {ok, #state{}}.
+    case application:get_env(create_pool_size) of
+        {ok, S} ->
+            {ok, #state{size=S}};
+        _ ->
+            {ok, #state{}}
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
