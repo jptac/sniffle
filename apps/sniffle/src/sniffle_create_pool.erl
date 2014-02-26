@@ -97,7 +97,7 @@ handle_call(_Request, _From, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_cast({add, UUID, Package, Dataset, Config},
-            State = #state{workers = Ws}) when length(Ws) < size ->
+            State = #state{workers = Ws, size = Size}) when length(Ws) < Size ->
     {ok, Pid} = sniffle_create_fsm:create(UUID, Package, Dataset, Config),
     Ref = erlang:monitor(process, Pid),
     lager:info("[create] Not throttling ~s", [UUID]),
