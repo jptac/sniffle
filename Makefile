@@ -3,7 +3,7 @@ REBAR = $(shell pwd)/rebar
 .PHONY: deps rel stagedevrel package version all
 
 
-all: cp-hooks deps compile tags
+all: cp-hooks deps compile
 
 cp-hooks:
 	cp hooks/* .git/hooks
