@@ -52,6 +52,7 @@
         {delete, parent} |
         xml.
 
+
 store(Vm) ->
     case sniffle_vm:get(Vm) of
         {ok, V} ->
@@ -545,8 +546,9 @@ unregister(Vm) ->
                     {error, timeout} | {ok, fifo:uuid()}.
 create(Package, Dataset, Config) ->
     UUID = uuid:uuid4s(),
-    do_write(UUID, register, <<"pending">>), %we've to put pending here since undefined will cause a wrong call!
-    sniffle_create_fsm:create(UUID, Package, Dataset, Config),
+    do_write(UUID, register, <<"pooled">>), %we've to put pending here since undefined will cause a wrong call!
+    sniffle_create_pool:add(UUID, Package, Dataset, Config),
+    %%sniffle_create_fsm:create(UUID, Package, Dataset, Config),
     {ok, UUID}.
 
 
