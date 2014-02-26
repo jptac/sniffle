@@ -83,8 +83,7 @@
 %% @end
 %%--------------------------------------------------------------------
 start_link(UUID, Package, Dataset, Config) ->
-    gen_fsm:start_link({local, ?SERVER}, ?MODULE,
-                       [UUID, Package, Dataset, Config], []).
+    gen_fsm:start_link(?MODULE, [UUID, Package, Dataset, Config], []).
 
 create(UUID, Package, Dataset, Config) ->
     supervisor:start_child(sniffle_create_fsm_sup, [UUID, Package, Dataset, Config]).
