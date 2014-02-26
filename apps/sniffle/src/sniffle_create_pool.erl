@@ -119,11 +119,20 @@ handle_cast({add, UUID, Package, Dataset, Config},
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-
 handle_info({'DOWN', Ref, process, Pid, _Reason},
             State = #state{reqs = [], rev_reqs = [], workers = Ws}) ->
     lager:info("[create] Finished task.", []),
     {noreply, State#state{workers=lists:delete({Ref, Pid}, Ws)}};
+
+handle_info({'DOWN', Ref, process, Pid, _Reason},
+            State = #state{rev_reqs = [{UUID, Package, Dataset, Config} |Rs],
+                           workers = Ws}) ->
+    lager:info("[create] Finished task.", []),
+    lager:info("[create] Taking ~s of the buffer.", [UUID]),
+    {ok, Pid1} = sniffle_create_fsm:create(UUID, Package, Dataset, Config),
+    Ref1 = erlang:monitor(process, Pid),
+    Ws1 = lists:delete({Ref, Pid}, Ws),
+    {noreply, State#state{workers=[{Ref1, Pid1} | Ws1], reqs = Rs}};
 
 handle_info({'DOWN', Ref, process, Pid, _Reason},
             State = #state{reqs = Rs, rev_reqs = [], workers = Ws}) ->
@@ -134,17 +143,8 @@ handle_info({'DOWN', Ref, process, Pid, _Reason},
     Ref1 = erlang:monitor(process, Pid),
     Ws1 = lists:delete({Ref, Pid}, Ws),
     {noreply, State#state{workers=[{Ref1, Pid1} | Ws1],
-                          reqs = [], rev_reqs = Rs1}};
+                          reqs = [], rev_reqs = Rs1}}.
 
-handle_info({'DOWN', Ref, process, Pid, _Reason},
-            State = #state{reqs = [{UUID, Package, Dataset, Config} |Rs],
-                           workers = Ws}) ->
-    lager:info("[create] Finished task.", []),
-    lager:info("[create] Taking ~s of the buffer.", [UUID]),
-    {ok, Pid1} = sniffle_create_fsm:create(UUID, Package, Dataset, Config),
-    Ref1 = erlang:monitor(process, Pid),
-    Ws1 = lists:delete({Ref, Pid}, Ws),
-    {noreply, State#state{workers=[{Ref1, Pid1} | Ws1], reqs = Rs}}.
 
 %%--------------------------------------------------------------------
 %% @private

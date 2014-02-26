@@ -620,6 +620,8 @@ delete(Vm) ->
                         _ ->
                             finish_delete(Vm)
                     end;
+                {ok, <<"pooled">>} ->
+                    finish_delete(Vm);
                 {ok, <<"pending">>} ->
                     finish_delete(Vm);
                 {ok, H} ->
@@ -907,10 +909,14 @@ do_write(VM, Op, Val) ->
     sniffle_entity_write_fsm:write({sniffle_vm_vnode, sniffle_vm}, VM, Op, Val).
 
 get_hypervisor(Hypervisor) ->
-    {ok, HypervisorObj} = sniffle_hypervisor:get(Hypervisor),
-    {ok, Port} = jsxd:get(<<"port">>, HypervisorObj),
-    {ok, Host} = jsxd:get(<<"host">>, HypervisorObj),
-    {binary_to_list(Host), Port}.
+    case sniffle_hypervisor:get(Hypervisor) of
+        {ok, HypervisorObj} ->
+            {ok, Port} = jsxd:get(<<"port">>, HypervisorObj),
+            {ok, Host} = jsxd:get(<<"host">>, HypervisorObj),
+            {binary_to_list(Host), Port};
+        E ->
+            E
+    end.
 
 fetch_hypervisor(Vm) ->
     case sniffle_vm:get(Vm) of
