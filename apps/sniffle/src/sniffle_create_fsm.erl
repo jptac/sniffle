@@ -431,8 +431,30 @@ test_net(Have, [{ID, Tag} | R]) ->
 
 test_net(_Have, []) ->
     lager:info("test_net: false"),
-
     false.
+
+test_hypervisors(UUID, [{_, HypervisorID} | R], Nets) ->
+    lager:info("test_hypervisors: ~p ~p",
+               [HypervisorID, Nets]),
+    {ok, H} = sniffle_hypervisor:get(HypervisorID),
+    case test_hypervisor(UUID, jsxd:get([<<"networks">>], [], H), Nets, []) of
+        {ok, Nets1} ->
+            {ok, Port} = jsxd:get(<<"port">>, H),
+            {ok, Host} = jsxd:get(<<"host">>, H),
+            HostS = binary_to_list(Host),
+            case libchunter:lock(HostS, Port, UUID) of
+                ok ->
+                    {ok, HypervisorID, {HostS, Port}, Nets1};
+                _ ->
+                    test_hypervisors(UUID, R, Nets)
+            end;
+        _ ->
+            test_hypervisors(UUID, R, Nets)
+    end;
+
+test_hypervisors(_, [], _) ->
+    {error, no_hypervisors}.
+
 
 test_hypervisor(UUID, H, [{NetName, Posibilities} | Nets], Acc) ->
     lager:info("test_hypervisor: ~p ~p ~p",
@@ -447,27 +469,6 @@ test_hypervisor(UUID, H, [{NetName, Posibilities} | Nets], Acc) ->
 test_hypervisor(_UUID, _, [], Acc) ->
     {ok, Acc}.
 
-test_hypervisors(UUID, [{_, HypervisorID} | R], Nets) ->
-    lager:info("test_hypervisors: ~p ~p",
-               [HypervisorID, Nets]),
-    {ok, H} = sniffle_hypervisor:get(HypervisorID),
-    case test_hypervisor(UUID, jsxd:get([<<"networks">>], [], H), Nets, []) of
-        {ok, Nets1} ->
-            {ok, Port} = jsxd:get(<<"port">>, H),
-            {ok, Host} = jsxd:get(<<"host">>, H),
-            HostS = binary_to_list(Host),
-            case libchunter:lock(HostS, Port, UUID) of
-                pong ->
-                    {ok, HypervisorID, {HostS, Port}, Nets1};
-                _ ->
-                    test_hypervisors(UUID, R, Nets)
-            end;
-        _ ->
-            test_hypervisors(UUID, R, Nets)
-    end;
-
-test_hypervisors(_, [], _) ->
-    {error, no_hypervisors}.
 
 make_condition(C, Permissions) ->
     case jsxd:get(<<"weight">>, <<"must">>, C) of
