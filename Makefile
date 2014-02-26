@@ -3,7 +3,7 @@ REBAR = $(shell pwd)/rebar
 .PHONY: deps rel stagedevrel package version all
 
 
-all: cp-hooks deps compile
+all: cp-hooks deps compile tags
 
 cp-hooks:
 	cp hooks/* .git/hooks
@@ -122,3 +122,6 @@ cleanplt:
 	@echo
 	sleep 5
 	rm $(COMBO_PLT)
+
+tags:
+	find . -name "*.[he]rl" -print | etags -
