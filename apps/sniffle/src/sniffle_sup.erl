@@ -148,6 +148,8 @@ init(_Args) ->
         permanent, 5000, worker, []},
        {statman_aggregator, {statman_aggregator, start_link, []},
         permanent, 5000, worker, []},
+       {sniffle_create_pool, {sniffle_create_pool, start_link, []},
+        permanent, 5000, worker, [sniffle_create_pool]},
        %% General FSM's
        CoverageFSMs, WriteFSMs, ReadFSMs,
        %% Logic
