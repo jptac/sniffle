@@ -248,14 +248,18 @@ get_server(_Event, State = #state{
             Hypervisors1 = eplugin:fold('create:hypervisor_select', Hypervisors),
             Hypervisors2 = lists:reverse(lists:sort(Hypervisors1)),
             lager:debug("[CREATE] Hypervisors found: ~p", [Hypervisors2]),
-            {ok, HypervisorID, H, Nets1} =  test_hypervisors(UUID, Hypervisors2, Nets),
-            sniffle_vm:log(UUID, <<"Deploying on hypervisor ", HypervisorID/binary>>),
-            eplugin:call('create:handoff', UUID, HypervisorID),
-            {next_state, get_ips,
-             State#state{hypervisor = H,
-                         nets = Nets1}, 0};
+            case test_hypervisors(UUID, Hypervisors2, Nets) of
+                {ok, HypervisorID, H, Nets1} ->
+                    sniffle_vm:log(UUID, <<"Deploying on hypervisor ", HypervisorID/binary>>),
+                    eplugin:call('create:handoff', UUID, HypervisorID),
+                    {next_state, get_ips,
+                     State#state{hypervisor = H,
+                                 nets = Nets1}, 0};
+                _ ->
+                    {next_state, get_server, State, 1000}
+            end;
         _ ->
-            {next_state, get_server, State, 10000}
+            {next_state, get_server, State, 1000}
     end.
 
 get_ips(_Event, State = #state{nets = Nets,
