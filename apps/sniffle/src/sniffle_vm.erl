@@ -743,6 +743,7 @@ logs(Vm) ->
 -spec set_owner(Vm::fifo:uuid(), Owner::fifo:uuid()) ->
                        not_found | {error, timeout} | [fifo:log()].
 set_owner(Vm, Owner) ->
+    libsnarl:org_execute_trigger(Owner, vm_create, Vm),
     set(Vm, <<"owner">>, Owner).
 
 %%--------------------------------------------------------------------

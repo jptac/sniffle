@@ -121,7 +121,7 @@ handle_cast({add, UUID, Package, Dataset, Config},
 %%--------------------------------------------------------------------
 handle_info({'DOWN', Ref, process, _Pid, _Reason},
             State = #state{reqs = [], rev_reqs = [], workers = Ws}) ->
-    lager:info("[cregit ate] Finished task.", []),
+    lager:info("[create] Finished task.", []),
     {noreply, State#state{workers=lists:delete(Ref, Ws)}};
 
 handle_info({'DOWN', Ref, process, _Pid, _Reason},
