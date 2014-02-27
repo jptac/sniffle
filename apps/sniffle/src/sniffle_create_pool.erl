@@ -138,22 +138,10 @@ handle_info({'DOWN', Ref, process, _Pid, _Reason},
             {noreply, State}
     end;
 
-handle_info({'DOWN', Ref, process, _Pid, _Reason},
-            State = #state{reqs = Rs, workers = Ws}) ->
-    case lists:member(Ref, Ws) of
-        true ->
-            lager:info("[create] Finished task.", []),
-            [{UUID, Package, Dataset, Config} | Rs1] = lists:reverse(Rs),
-            lager:info("[create] Taking ~s of the buffer.", [UUID]),
-            {ok, Pid1} = sniffle_create_fsm:create(UUID, Package, Dataset, Config),
-            Ref1 = erlang:monitor(process, Pid1),
-            Ws1 = lists:delete(Ref, Ws),
-            {noreply, State#state{workers=[Ref1 | Ws1],
-                                  reqs = [], rev_reqs = Rs1}};
-        false ->
-            {noreply, State}
-    end.
-
+handle_info({'DOWN', Ref, process, Pid, Reason},
+            State = #state{reqs = Rs}) ->
+    handle_info({'DOWN', Ref, process, Pid, Reason},
+                State = #state{reqs = [], rev_reqs = lists:reverse(Rs)}).
 
 %%--------------------------------------------------------------------
 %% @private
