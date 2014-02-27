@@ -1,5 +1,18 @@
 %% -*- erlang -*-
 
+
+%% @doc When a failure occurs during create the process will retry starting
+%% from to find a new server.
+{mapping, "create_retry_delay", "sniffle.create_retry_delay",
+ [{default, "5s"},
+  {datatype, {duration, ms}}]}.
+
+%% @doc The Amount of paralell create processes allowed to run at the same time
+%% this does not include tasks running on the hypervisor.
+{mapping, "create_pool_size", "sniffle.create_pool_size",
+ [{default, 1},
+  {datatype, integer}]}.
+
 %% @doc enable active anti-entropy subsystem
 {mapping, "anti_entropy", "riak_core.anti_entropy", [
   {datatype, {enum, [on, off, debug]}},
