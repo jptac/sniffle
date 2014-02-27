@@ -141,7 +141,7 @@ handle_info({'DOWN', Ref, process, _Pid, _Reason},
 handle_info({'DOWN', Ref, process, Pid, Reason},
             State = #state{reqs = Rs}) ->
     handle_info({'DOWN', Ref, process, Pid, Reason},
-                State = #state{reqs = [], rev_reqs = lists:reverse(Rs)}).
+                State#state{reqs = [], rev_reqs = lists:reverse(Rs)}).
 
 %%--------------------------------------------------------------------
 %% @private
