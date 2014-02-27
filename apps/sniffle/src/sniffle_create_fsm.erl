@@ -66,7 +66,8 @@
           nets,
           hypervisor,
           mapping = [],
-          old_nics
+          old_nics,
+          delay = 5000
          }).
 
 %%%===================================================================
@@ -112,6 +113,12 @@ init([UUID, Package, Dataset, Config]) ->
     %% We're transforming the networks map {nic -> networkid} into
     %% an array that is close to what it will look after the VM was
     %% created, that way the structure stays consistant.
+    Delay = case application:get_env(create_retry_delay) of
+                {ok, D} ->
+                    D;
+                _ ->
+                    5000
+            end,
     Config2 = jsxd:update(<<"networks">>,
                           fun (N) ->
                                   jsxd:from_list(
@@ -125,7 +132,8 @@ init([UUID, Package, Dataset, Config]) ->
                                 uuid = UUID,
                                 package_name = Package,
                                 dataset_name = Dataset,
-                                config = Config1
+                                config = Config1,
+                                delay = Delay
                                }, 0}.
 
 %%--------------------------------------------------------------------
@@ -222,7 +230,8 @@ get_server(_Event, State = #state{
                               creator = Creator,
                               config = Config,
                               nets = Nets,
-                              package = Package}) ->
+                              package = Package,
+                              delay = Delay}) ->
     lager:info("get_server: ~p", [Nets]),
     sniffle_vm:log(UUID, <<"Assigning owner ", Creator/binary>>),
     {ok, Ram} = jsxd:get(<<"ram">>, Package),
@@ -255,23 +264,24 @@ get_server(_Event, State = #state{
                      State#state{hypervisor = H,
                                  nets = Nets1}, 0};
                 _ ->
-                    {next_state, get_server, State, 1000}
+                    {next_state, get_server, State, Delay}
             end;
         _ ->
-            {next_state, get_server, State, 1000}
+            {next_state, get_server, State, Delay}
     end.
 
 get_ips(_Event, State = #state{nets = Nets,
                                uuid = UUID,
                                config = Config,
-                               dataset = Dataset}) ->
+                               dataset = Dataset,
+                               delay = Delay}) ->
     lager:info("get_ips: ~p", [Nets]),
     {ok, Nics0} = jsxd:get(<<"networks">>, Dataset),
     case update_nics(UUID, Nics0, Config, Nets) of
         {error, E, Mapping} ->
             lager:error("[create] Failed to get ips: ~p", [E]),
             [sniffle_iprange:release_ip(Range, IP) ||{Range, IP} <- Mapping],
-            {next_state, get_server, State, 10000};
+            {next_state, get_server, State, Delay};
         {Nics1, Mapping} ->
             Dataset1 = jsxd:set(<<"networks">>, Nics1, Dataset),
             MappingsJSON = jsxd:from_list([[{<<"ip">>, IP},
@@ -308,7 +318,8 @@ create(_Event, State = #state{
                           config = Config,
                           hypervisor = {Host, Port},
                           mapping = Mapping,
-                          old_nics = Nics}) ->
+                          old_nics = Nics,
+                          delay = Delay}) ->
     sniffle_vm:log(UUID, <<"Handing off to hypervisor.">>),
     sniffle_vm:set(UUID, <<"state">>, <<"creating">>),
     case libchunter:create_machine(Host, Port, UUID, Package, Dataset, Config) of
@@ -317,7 +328,7 @@ create(_Event, State = #state{
             {next_state, get_server,
              State#state{
                dataset = jsxd:set(<<"networks">>, Nics, Dataset)
-              }, 10000};
+              }, Delay};
         ok ->
             {stop, normal, State}
     end.
