@@ -108,6 +108,7 @@ create(UUID, Package, Dataset, Config) ->
 %% @end
 %%--------------------------------------------------------------------
 init([UUID, Package, Dataset, Config]) ->
+    lager:info("[create] Starting FSM for ~s", [UUID]),
     process_flag(trap_exit, true),
     Config1 = jsxd:from_list(Config),
     %% We're transforming the networks map {nic -> networkid} into
@@ -232,7 +233,7 @@ get_server(_Event, State = #state{
                               nets = Nets,
                               package = Package,
                               delay = Delay}) ->
-    lager:info("get_server: ~p", [Nets]),
+    lager:debug("get_server: ~p", [Nets]),
     sniffle_vm:log(UUID, <<"Assigning owner ", Creator/binary>>),
     {ok, Ram} = jsxd:get(<<"ram">>, Package),
     RamB = list_to_binary(integer_to_list(Ram)),
@@ -275,7 +276,7 @@ get_ips(_Event, State = #state{nets = Nets,
                                config = Config,
                                dataset = Dataset,
                                delay = Delay}) ->
-    lager:info("get_ips: ~p", [Nets]),
+    lager:debug("get_ips: ~p", [Nets]),
     {ok, Nics0} = jsxd:get(<<"networks">>, Dataset),
     case update_nics(UUID, Nics0, Config, Nets) of
         {error, E, Mapping} ->
@@ -430,7 +431,7 @@ merge_keys(Keys) ->
     [[Key, "\n"] || {_ID, Key} <- Keys].
 
 test_net(Have, [{ID, Tag} | R]) ->
-    lager:info("test_net: ~p ~p", [Have, [{ID, Tag} | R]]),
+    lager:debug("test_net: ~p ~p", [Have, [{ID, Tag} | R]]),
     case lists:member(Tag, Have) of
         true ->
             case sniffle_iprange:full(ID) of
@@ -444,11 +445,11 @@ test_net(Have, [{ID, Tag} | R]) ->
     end;
 
 test_net(_Have, []) ->
-    lager:info("test_net: false"),
+    lager:debug("test_net: false"),
     false.
 
 test_hypervisors(UUID, [{_, HypervisorID} | R], Nets) ->
-    lager:info("test_hypervisors: ~p ~p",
+    lager:debug("test_hypervisors: ~p ~p",
                [HypervisorID, Nets]),
     {ok, H} = sniffle_hypervisor:get(HypervisorID),
     case test_hypervisor(UUID, jsxd:get([<<"networks">>], [], H), Nets, []) of
@@ -471,7 +472,7 @@ test_hypervisors(_, [], _) ->
 
 
 test_hypervisor(UUID, H, [{NetName, Posibilities} | Nets], Acc) ->
-    lager:info("test_hypervisor: ~p ~p ~p",
+    lager:debug("test_hypervisor: ~p ~p ~p",
                [H, [{NetName, Posibilities} | Nets], Acc]),
     case test_net(H, Posibilities) of
         false ->
