@@ -744,6 +744,9 @@ logs(Vm) ->
                        not_found | {error, timeout} | [fifo:log()].
 set_owner(Vm, Owner) ->
     libsnarl:org_execute_trigger(Owner, vm_create, Vm),
+    libhowl:send(Vm, [{<<"event">>, <<"update">>},
+                      {<<"data">>,
+                       [{<<"owner">>, Owner}]}]),
     set(Vm, <<"owner">>, Owner).
 
 %%--------------------------------------------------------------------
