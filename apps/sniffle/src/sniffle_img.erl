@@ -97,7 +97,12 @@ get(<<Img:36/binary, Idx:32/integer>>) ->
 list() ->
     case backend() of
         s3 ->
-            sniffle_s3:list(image);
+            case sniffle_s3:list(image) of
+                Is when is_list(Is) ->
+                    {ok, [list_to_binary(I) || I <- Is]};
+                R ->
+                    R
+            end;
         internal ->
             sniffle_coverage:start(
               sniffle_img_vnode_master, sniffle_img,
