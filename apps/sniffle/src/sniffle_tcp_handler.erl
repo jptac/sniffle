@@ -349,6 +349,13 @@ message({hypervisor, unregister, Hypervisor}, State) when
      sniffle_hypervisor:unregister(Hypervisor),
      State};
 
+message({hypervisor, service, Hypervisor, Action, Service}, State) when
+      is_binary(Hypervisor),
+      (Action =:= enable orelse Action =:= disable orelse Action =:= clear) ->
+    {reply,
+     sniffle_hypervisor:service(Hypervisor, Action, Service),
+     State};
+
 message({hypervisor, get, Hypervisor}, State) when
       is_binary(Hypervisor) ->
     {reply,
