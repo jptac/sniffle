@@ -12,6 +12,7 @@
     set/3,
     set/2,
     status/0,
+    service/3,
     update/1,
     update/0
    ]).
@@ -85,6 +86,23 @@ list() ->
     sniffle_coverage:start(
       sniffle_hypervisor_vnode_master, sniffle_hypervisor,
       list).
+
+service(UUID, Action, Service) ->
+    case sniffle_hypervisor:get(UUID) of
+        {ok, HypervisorObj} ->
+            {ok, Port} = jsxd:get(<<"port">>, HypervisorObj),
+            {ok, HostB} = jsxd:get(<<"host">>, HypervisorObj),
+            Host = binary_to_list(HostB),
+            service(Host, Port, Action, Service);
+        E ->
+            E
+    end.
+service(Host, Port, enable, Service) ->
+    libchunter:service_enable(Host, Port, Service);
+service(Host, Port, disable, Service) ->
+    libchunter:service_disable(Host, Port, Service);
+service(Host, Port, clear, Service) ->
+    libchunter:service_clear(Host, Port, Service).
 
 update(UUID) when is_binary(UUID) ->
     {ok, HypervisorObj} = sniffle_hypervisor:get(UUID),
