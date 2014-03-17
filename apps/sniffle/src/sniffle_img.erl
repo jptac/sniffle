@@ -51,12 +51,7 @@ delete(Img, Idx) ->
         s3 ->
             ok;
         internal ->
-            case do_write({Img, Idx}, delete) of
-                [{delete_marker,false},{version_id,"null"}] ->
-                    ok;
-                E ->
-                    E
-            end
+            do_write({Img, Idx}, delete)
     end.
 
 -spec delete(Img::fifo:dataset_id()) ->

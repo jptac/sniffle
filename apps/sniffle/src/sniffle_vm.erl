@@ -240,18 +240,14 @@ do_snap(Vm, V, Comment, Opts) ->
         error ->
             {error, not_supported};
         {ok, {S3Host, S3Port, AKey, SKey, Bucket}} ->
-            case libchunter:backup(Server, Port, Vm, UUID,
-                                   S3Host, S3Port, Bucket, AKey,
-                                   SKey, Bucket, Opts1) of
-                ok ->
-                    C = [{[<<"backups">>, UUID, <<"comment">>], Comment},
-                         {[<<"backups">>, UUID, <<"timestamp">>], timestamp()},
-                         {[<<"backups">>, UUID, <<"state">>], <<"pending">>}],
-                    sniffle_vm:set(Vm, C),
-                    {ok, UUID};
-                E ->
-                    E
-            end
+            libchunter:backup(Server, Port, Vm, UUID,
+                              S3Host, S3Port, Bucket, AKey,
+                              SKey, Bucket, Opts1),
+            C = [{[<<"backups">>, UUID, <<"comment">>], Comment},
+                 {[<<"backups">>, UUID, <<"timestamp">>], timestamp()},
+                 {[<<"backups">>, UUID, <<"state">>], <<"pending">>}],
+            sniffle_vm:set(Vm, C),
+            {ok, UUID}
     end.
 
 promote_to_image(Vm, SnapID, Config) ->
@@ -782,18 +778,14 @@ snapshot(Vm, Comment) ->
             {Server, Port} = get_hypervisor(H),
             UUID = uuid:uuid4s(),
             TimeStamp = timestamp(),
-            case libchunter:snapshot(Server, Port, Vm, UUID) of
-                ok ->
-                    Prefix = [<<"snapshots">>, UUID],
-                    do_write(Vm, set,
-                             [{Prefix ++ [<<"timestamp">>], TimeStamp},
-                              {Prefix ++ [<<"comment">>], Comment},
-                              {Prefix ++ [<<"state">>], <<"pending">>}]),
-                    log(Vm, <<"Created snapshot ", UUID/binary, ": ", Comment/binary>>),
-                    {ok, UUID};
-                E ->
-                    E
-            end;
+            libchunter:snapshot(Server, Port, Vm, UUID),
+            Prefix = [<<"snapshots">>, UUID],
+            do_write(Vm, set,
+                     [{Prefix ++ [<<"timestamp">>], TimeStamp},
+                      {Prefix ++ [<<"comment">>], Comment},
+                      {Prefix ++ [<<"state">>], <<"pending">>}]),
+            log(Vm, <<"Created snapshot ", UUID/binary, ": ", Comment/binary>>),
+            {ok, UUID};
         E ->
             E
     end.
@@ -811,16 +803,12 @@ delete_snapshot(Vm, UUID) ->
                 {ok, _} ->
                     {ok, H} = jsxd:get(<<"hypervisor">>, V),
                     {Server, Port} = get_hypervisor(H),
-                    case libchunter:delete_snapshot(Server, Port, Vm, UUID) of
-                        ok ->
-                            Prefix = [<<"snapshots">>, UUID],
-                            do_write(Vm, set,
-                                     [{Prefix ++ [<<"state">>], <<"deleting">>}]),
-                            log(Vm, <<"Deleting snapshot ", UUID/binary, ".">>),
-                            ok;
-                        E ->
-                            {error, E}
-                    end;
+                    libchunter:delete_snapshot(Server, Port, Vm, UUID),
+                    Prefix = [<<"snapshots">>, UUID],
+                    do_write(Vm, set,
+                             [{Prefix ++ [<<"state">>], <<"deleting">>}]),
+                    log(Vm, <<"Deleting snapshot ", UUID/binary, ".">>),
+                    ok;
                 undefined ->
                     {error, not_found}
             end;
@@ -883,7 +871,7 @@ commit_snapshot_rollback(Vm, UUID) ->
 %% @doc Sets a attribute on the VM object.
 %% @end
 %%--------------------------------------------------------------------
--spec set(Vm::fifo:uuid(), Attribute::fifo:keys(), Value::fifo:value()) ->
+-spec set(Vm::fifo:uuid(), Attribute::fifo:keys(), Value::fifo:value()|delete) ->
                  {error, timeout} | not_found | ok.
 set(Vm, Attribute, Value) ->
     do_write(Vm, set, [{Attribute, Value}]).
