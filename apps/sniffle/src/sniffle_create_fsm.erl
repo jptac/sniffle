@@ -450,7 +450,7 @@ test_net(_Have, []) ->
 
 test_hypervisors(UUID, [{_, HypervisorID} | R], Nets) ->
     lager:debug("test_hypervisors: ~p ~p",
-               [HypervisorID, Nets]),
+                [HypervisorID, Nets]),
     {ok, H} = sniffle_hypervisor:get(HypervisorID),
     case test_hypervisor(UUID, jsxd:get([<<"networks">>], [], H), Nets, []) of
         {ok, Nets1} ->
@@ -473,7 +473,7 @@ test_hypervisors(_, [], _) ->
 
 test_hypervisor(UUID, H, [{NetName, Posibilities} | Nets], Acc) ->
     lager:debug("test_hypervisor: ~p ~p ~p",
-               [H, [{NetName, Posibilities} | Nets], Acc]),
+                [H, [{NetName, Posibilities} | Nets], Acc]),
     case test_net(H, Posibilities) of
         false ->
             false;
