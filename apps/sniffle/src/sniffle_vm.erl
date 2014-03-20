@@ -295,7 +295,15 @@ promote_to_image(Vm, SnapID, Config) ->
                         end,
                     ok = sniffle_dataset:create(Img),
                     sniffle_dataset:set(Img, Config3),
-                    ok = libchunter:store_snapshot(Server, Port, Vm, SnapID, Img),
+                    case sniffle_s3:config(image) of
+                        error ->
+                            ok = libchunter:store_snapshot(Server, Port, Vm,
+                                                           SnapID, Img);
+                        {ok, {S3Host, S3Port, AKey, SKey, Bucket}} ->
+                            ok = libchunter:store_snapshot(
+                                   Server, Port, Vm, SnapID, Img, S3Host,
+                                   S3Port, Bucket, AKey, SKey, [])
+                        end,
                     {ok, Img};
                 undefined ->
                     not_found
