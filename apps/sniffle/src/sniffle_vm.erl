@@ -295,14 +295,14 @@ promote_to_image(Vm, SnapID, Config) ->
                         end,
                     ok = sniffle_dataset:create(Img),
                     sniffle_dataset:set(Img, Config3),
-                    case sniffle_s3:config(image) of
-                        error ->
-                            ok = libchunter:store_snapshot(Server, Port, Vm,
-                                                           SnapID, Img);
-                        {ok, {S3Host, S3Port, AKey, SKey, Bucket}} ->
+                    case {backend(), sniffle_s3:config(image)} of
+                        {s3, {ok, {S3Host, S3Port, AKey, SKey, Bucket}}} ->
                             ok = libchunter:store_snapshot(
                                    Server, Port, Vm, SnapID, Img, S3Host,
-                                   S3Port, Bucket, AKey, SKey, [])
+                                   S3Port, Bucket, AKey, SKey, []);
+                        _ ->
+                            ok = libchunter:store_snapshot(Server, Port, Vm,
+                                                           SnapID, Img)
                         end,
                     {ok, Img};
                 undefined ->
@@ -977,6 +977,9 @@ do_delete_backup(UUID, VM, BID) ->
     libhowl:send(UUID, [{<<"event">>, <<"backup">>},
                         {<<"data">>, [{<<"action">>, <<"deleted">>},
                                       {<<"uuid">>, BID}]}]).
+
+backend() ->
+    sniffle_opt:get(storage, general, backend, large_data_backend, internal).
 
 
 -ifdef(TEST).

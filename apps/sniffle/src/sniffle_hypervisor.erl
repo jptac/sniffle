@@ -49,7 +49,7 @@ get(Hypervisor) ->
                         Warnings::fifo:object()}}.
 status() ->
     {ok, {Resources0, Warnings}} = sniffle_cloud_status:start(),
-    Storage = case sniffle_opt:get(storage, general, backend, large_data_backend, internal) of
+    Storage = case backend() of
                   internal ->
                       <<"internal">>;
                   s3 ->
@@ -175,3 +175,6 @@ server_errors(Servers) ->
                          {<<"type">>, <<"critical">>},
                          {<<"message">>, bin_fmt("Sniffle server ~s down.", [Server])}])
               end, Servers).
+
+backend() ->
+    sniffle_opt:get(storage, general, backend, large_data_backend, internal).
