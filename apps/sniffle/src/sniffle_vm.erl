@@ -551,6 +551,20 @@ unregister(Vm) ->
 create(Package, Dataset, Config) ->
     UUID = uuid:uuid4s(),
     do_write(UUID, register, <<"pooled">>), %we've to put pending here since undefined will cause a wrong call!
+    Config1 = jsxd:from_list(Config),
+    Config2 = jsxd:update(<<"networks">>,
+                          fun (N) ->
+                                  jsxd:from_list(
+                                    lists:map(fun ({Iface, Net}) ->
+                                                      [{<<"interface">>, Iface},
+                                                       {<<"network">>, Net}]
+                                              end, N))
+                          end, [], Config1),
+    sniffle_vm:set(UUID, <<"config">>, Config2),
+    libhowl:send(UUID, [{<<"event">>, <<"update">>},
+                        {<<"data">>,
+                         [{<<"config">>, Config2},
+                          {<<"package">>, Package}]}]),
     sniffle_create_pool:add(UUID, Package, Dataset, Config),
     %%sniffle_create_fsm:create(UUID, Package, Dataset, Config),
     {ok, UUID}.
