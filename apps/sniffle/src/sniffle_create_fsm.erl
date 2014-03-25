@@ -132,7 +132,7 @@ init([UUID, Package, Dataset, Config]) ->
     libhowl:send(UUID, [{<<"event">>, <<"update">>},
                         {<<"data">>,
                          [{<<"config">>, Config2},
-                          {<<"package">>, jsxd:get(<<"uuid">>, <<>>, Package)}]}]),
+                          {<<"package">>, Package}]}]),
 
     {ok, create_permissions, #state{
                                 uuid = UUID,
