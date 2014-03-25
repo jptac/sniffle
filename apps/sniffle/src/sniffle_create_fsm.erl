@@ -120,20 +120,6 @@ init([UUID, Package, Dataset, Config]) ->
                 _ ->
                     5000
             end,
-    Config2 = jsxd:update(<<"networks">>,
-                          fun (N) ->
-                                  jsxd:from_list(
-                                    lists:map(fun ({Iface, Net}) ->
-                                                      [{<<"interface">>, Iface},
-                                                       {<<"network">>, Net}]
-                                              end, N))
-                          end, [], Config1),
-    sniffle_vm:set(UUID, <<"config">>, Config2),
-    libhowl:send(UUID, [{<<"event">>, <<"update">>},
-                        {<<"data">>,
-                         [{<<"config">>, Config2},
-                          {<<"package">>, Package}]}]),
-
     {ok, create_permissions, #state{
                                 uuid = UUID,
                                 package_name = Package,
