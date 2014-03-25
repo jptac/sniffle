@@ -561,6 +561,9 @@ create(Package, Dataset, Config) ->
                                               end, N))
                           end, [], Config1),
     sniffle_vm:set(UUID, <<"config">>, Config2),
+    sniffle_vm:set(UUID, <<"state">>, <<"pooled">>),
+    sniffle_vm:set(UUID, <<"package">>, Package),
+    sniffle_vm:set(UUID, <<"dataset">>, Dataset),
     libhowl:send(UUID, [{<<"event">>, <<"update">>},
                         {<<"data">>,
                          [{<<"config">>, Config2},
