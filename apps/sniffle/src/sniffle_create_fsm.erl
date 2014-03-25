@@ -160,6 +160,8 @@ create_permissions(_Event, State = #state{
                     libsnarl:org_execute_trigger(Org, vm_create, UUID),
                     Org
             end,
+    libhowl:send(UUID, [{<<"event">>, <<"update">>},
+                        {<<"data">>, [{<<"owner">>, Owner}]}]),
     Config1 = jsxd:set([<<"owner">>], Owner, Config),
     {next_state, get_package,
      State#state{
@@ -225,7 +227,6 @@ get_server(_Event, State = #state{
                               package = Package,
                               delay = Delay}) ->
     lager:debug("get_server: ~p", [Nets]),
-    sniffle_vm:log(UUID, <<"Assigning owner ", Creator/binary>>),
     {ok, Ram} = jsxd:get(<<"ram">>, Package),
     RamB = list_to_binary(integer_to_list(Ram)),
     sniffle_vm:log(UUID, <<"Assigning memory ", RamB/binary>>),
