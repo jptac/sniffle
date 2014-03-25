@@ -129,6 +129,11 @@ init([UUID, Package, Dataset, Config]) ->
                                               end, N))
                           end, [], Config1),
     sniffle_vm:set(UUID, <<"config">>, Config2),
+    libhowl:send(UUID, [{<<"event">>, <<"update">>},
+                        {<<"data">>,
+                         [{<<"config">>, Config2},
+                          {<<"package">>, jsxd:get(<<"uuid">>, <<>>, Package)}]}]),
+
     {ok, create_permissions, #state{
                                 uuid = UUID,
                                 package_name = Package,
