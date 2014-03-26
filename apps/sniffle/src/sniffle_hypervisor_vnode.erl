@@ -191,7 +191,8 @@ handle_coverage(status, _KeySpaces, Sender, State) ->
                                      {<<"element">>, K},
                                      {<<"type">>, <<"critical">>},
                                      {<<"message">>,
-                                      bin_fmt("Chunter server ~s down.", [K])}]) |
+                                      bin_fmt("Chunter server ~s down.",
+                                              [jsxd:get(<<"alias">>, Host, H)])}]) |
                                   Warnings];
                              pong ->
                                  Warnings
