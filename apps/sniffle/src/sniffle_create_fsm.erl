@@ -228,8 +228,6 @@ get_server(_Event, State = #state{
                               delay = Delay}) ->
     lager:debug("get_server: ~p", [Nets]),
     {ok, Ram} = jsxd:get(<<"ram">>, Package),
-    RamB = list_to_binary(integer_to_list(Ram)),
-    sniffle_vm:log(UUID, <<"Assigning memory ", RamB/binary>>),
     sniffle_vm:set(UUID, <<"state">>, <<"fetching_server">>),
     Permission = [<<"hypervisors">>, {<<"res">>, <<"name">>}, <<"create">>],
     {ok, Type} = jsxd:get(<<"type">>, Dataset),
@@ -243,14 +241,15 @@ get_server(_Event, State = #state{
                            {must, '>=', <<"resources.free-memory">>, Ram}] ++
                 lists:map(fun(C) -> make_condition(C, Permissions) end, Conditions0),
             {UUID, Config, Conditions} = eplugin:fold('create:conditions', {UUID, Config, Conditions1}),
-            CondB = list_to_binary(io_lib:format("~p", [Conditions])),
-            sniffle_vm:log(UUID, <<"Finding hypervisor ", CondB/binary>>),
+            lager:debug("[CREATE] Finding hypervisor: ~p", [Conditions]),
             {ok, Hypervisors} = sniffle_hypervisor:list(Conditions, false),
             Hypervisors1 = eplugin:fold('create:hypervisor_select', Hypervisors),
             Hypervisors2 = lists:reverse(lists:sort(Hypervisors1)),
             lager:debug("[CREATE] Hypervisors found: ~p", [Hypervisors2]),
             case test_hypervisors(UUID, Hypervisors2, Nets) of
                 {ok, HypervisorID, H, Nets1} ->
+                    RamB = list_to_binary(integer_to_list(Ram)),
+                    sniffle_vm:log(UUID, <<"Assigning memory ", RamB/binary>>),
                     sniffle_vm:log(UUID, <<"Deploying on hypervisor ", HypervisorID/binary>>),
                     eplugin:call('create:handoff', UUID, HypervisorID),
                     {next_state, get_ips,
