@@ -4,13 +4,11 @@
 -include("sniffle.hrl").
 -include_lib("riak_core/include/riak_core_vnode.hrl").
 
--export([
-         repair/4,
+-export([repair/4,
          get/3,
          register/4,
          unregister/3,
-         set/4
-        ]).
+         set/4]).
 
 -export([start_vnode/1,
          init/1,
@@ -28,21 +26,17 @@
          handle_exit/3,
          handle_info/2]).
 
--export([
-         master/0,
+-export([master/0,
          aae_repair/2,
-         hash_object/2
-        ]).
+         hash_object/2]).
 
--ignore_xref([
-              get/3,
+-ignore_xref([get/3,
               register/4,
               repair/4,
               set/4,
               start_vnode/1,
               unregister/3,
-              handle_info/2
-             ]).
+              handle_info/2]).
 
 -define(SERVICE, sniffle_hypervisor).
 
@@ -183,7 +177,7 @@ handle_coverage(status, _KeySpaces, Sender, State) ->
                      H=statebox:value(S0),
                      {ok, Host} = jsxd:get(<<"host">>, H),
                      {ok, Port} = jsxd:get(<<"port">>, H),
-                     Warnings1 =
+                     W1 =
                          case libchunter:ping(binary_to_list(Host), Port) of
                              {error,connection_failed} ->
                                  [jsxd:from_list(
@@ -200,36 +194,12 @@ handle_coverage(status, _KeySpaces, Sender, State) ->
                      {Res1, W2} =
                          case jsxd:get(<<"pools">>, H) of
                              undefined ->
-                                 {jsxd:get(<<"resources">>, [], H), Warnings1};
+                                 {jsxd:get(<<"resources">>, [], H), W1};
                              {ok, Pools} ->
                                  jsxd:fold(
-                                   fun (Name, Pool, {ResAcc, WarningsAcc}) ->
-                                           Size = jsxd:get(<<"size">>, 0, Pool),
-                                           Used = jsxd:get(<<"used">>, 0, Pool),
-                                           ResAcc1 =
-                                               jsxd:thread([{update, <<"size">>,
-                                                             fun(C) ->
-                                                                     C + Size
-                                                             end, Size},
-                                                            {update, <<"used">>,
-                                                             fun(C) ->
-                                                                     C + Used
-                                                             end, Used}],
-                                                           ResAcc),
-                                           case jsxd:get(<<"health">>, <<"ONLINE">>, Pool) of
-                                               <<"ONLINE">> ->
-                                                   {ResAcc1, WarningsAcc};
-                                               PoolState ->
-                                                   {ResAcc1,
-                                                    [jsxd:from_list(
-                                                       [{<<"category">>, <<"chunter">>},
-                                                        {<<"element">>, Name},
-                                                        {<<"type">>, <<"critical">>},
-                                                        {<<"message">>,
-                                                         bin_fmt("Zpool ~s in state ~s.", [Name, PoolState])}])|
-                                                     WarningsAcc]}
-                                           end
-                                   end,{jsxd:get(<<"resources">>, [], H), Warnings1}, Pools)
+                                   fun status_fold/3,
+                                   {jsxd:get(<<"resources">>, [], H), W1},
+                                   Pools)
                          end,
                      {[{K, Res1} | Res], W2}
              end,
@@ -257,3 +227,31 @@ handle_info(Msg, State) ->
 
 bin_fmt(F, L) ->
     list_to_binary(io_lib:format(F, L)).
+
+
+status_fold(Name, Pool, {ResAcc, WarningsAcc}) ->
+    Size = jsxd:get(<<"size">>, 0, Pool),
+    Used = jsxd:get(<<"used">>, 0, Pool),
+    ResAcc1 =
+        jsxd:thread([{update, <<"size">>,
+                      fun(C) ->
+                              C + Size
+                      end, Size},
+                     {update, <<"used">>,
+                      fun(C) ->
+                              C + Used
+                      end, Used}],
+                    ResAcc),
+    case jsxd:get(<<"health">>, <<"ONLINE">>, Pool) of
+        <<"ONLINE">> ->
+            {ResAcc1, WarningsAcc};
+        PoolState ->
+            {ResAcc1,
+             [jsxd:from_list(
+                [{<<"category">>, <<"chunter">>},
+                 {<<"element">>, Name},
+                 {<<"type">>, <<"critical">>},
+                 {<<"message">>,
+                  bin_fmt("Zpool ~s in state ~s.", [Name, PoolState])}])|
+              WarningsAcc]}
+    end.
