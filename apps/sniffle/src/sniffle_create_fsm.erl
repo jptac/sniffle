@@ -256,10 +256,10 @@ get_server(_Event, State = #state{
                      State#state{hypervisor = H,
                                  nets = Nets1}, 0};
                 _ ->
-                    {next_state, get_server, State, Delay}
+                    {next_state, get_networks, State, Delay}
             end;
         _ ->
-            {next_state, get_server, State, Delay}
+            {next_state, get_networks, State, Delay}
     end.
 
 get_ips(_Event, State = #state{nets = Nets,
@@ -273,7 +273,7 @@ get_ips(_Event, State = #state{nets = Nets,
         {error, E, Mapping} ->
             lager:error("[create] Failed to get ips: ~p", [E]),
             [sniffle_iprange:release_ip(Range, IP) ||{Range, IP} <- Mapping],
-            {next_state, get_server, State, Delay};
+            {next_state, get_networks, State, Delay};
         {Nics1, Mapping} ->
             Dataset1 = jsxd:set(<<"networks">>, Nics1, Dataset),
             MappingsJSON = jsxd:from_list([[{<<"ip">>, IP},
@@ -317,7 +317,7 @@ create(_Event, State = #state{
     case libchunter:create_machine(Host, Port, UUID, Package, Dataset, Config) of
         {error, lock} ->
             [sniffle_iprange:release_ip(Range, IP) ||{Range, IP} <- Mapping],
-            {next_state, get_server,
+            {next_state, get_networks,
              State#state{
                dataset = jsxd:set(<<"networks">>, Nics, Dataset)
               }, Delay};
