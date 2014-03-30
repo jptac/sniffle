@@ -83,7 +83,6 @@ keys(get, <<"image">>) ->
     {ok, L} = sniffle_img:list(),
     {value, length(L)}.
 
-
 p999(get, Prefix) ->
     percentile_get(p999, Prefix, total).
 
@@ -166,5 +165,3 @@ generate_percentile(Prefix, Grouping) ->
 %% {p95,19912},
 %% {p99,19912},
 %% {p999,19912}]
-
-

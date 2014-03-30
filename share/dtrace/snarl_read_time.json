@@ -1,0 +1,11 @@
+{
+    "config": {
+        "end": 63,
+        "start": 0,
+        "step": 2
+    },
+    "name": "snarl_read_times",
+    "script": "erlang*:::user_trace*\n/ arg2 == 4202 && arg3 == 1 /\n{\n  /*\n  * We cache the relevant strings\n  */\n  self->_t[copyinstr(arg0), copyinstr(arg8), copyinstr(arg7)] = timestamp;\n}\n\nerlang*:::user_trace*\n/ arg2 == 4202 && arg3 == 2 /\n{\n  /*\n   * We cache the relevant strings\n   */\n  op = copyinstr(arg8);\n  key = copyinstr(arg7);\n  @[key] = lquantize((timestamp - self->_t[copyinstr(arg0), op, key])/1000000, $start$, $end$, $step$);\n}",
+    "uuid": "13358198-d560-4488-87d6-d7b4a37ce6c1",
+    "version": "0.1.0"
+}

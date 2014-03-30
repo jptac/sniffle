@@ -8,8 +8,9 @@
          get/1,
          lookup/1,
          list/0,
-         list/1,
+         list/2,
          claim_ip/1,
+         full/1,
          release_ip/2,
          set/3,
          set/2
@@ -69,9 +70,20 @@ list() ->
       sniffle_iprange_vnode_master, sniffle_iprange,
       list).
 
--spec list(Reqs::[fifo:matcher()]) ->
-                  {ok, [IPR::fifo:iprange_id()]} | {error, timeout}.
-list(Requirements) ->
+%%--------------------------------------------------------------------
+%% @doc Lists all vm's and fiters by a given matcher set.
+%% @end
+%%--------------------------------------------------------------------
+-spec list([fifo:matcher()], boolean()) -> {error, timeout} | {ok, [fifo:uuid()]}.
+
+list(Requirements, true) ->
+    {ok, Res} = sniffle_full_coverage:start(
+                  sniffle_iprange_vnode_master, sniffle_iprange,
+                  {list, Requirements, true}),
+    Res1 = rankmatcher:apply_scales(Res),
+    {ok,  lists:sort(Res1)};
+
+list(Requirements, false) ->
     {ok, Res} = sniffle_coverage:start(
                   sniffle_iprange_vnode_master, sniffle_iprange,
                   {list, Requirements}),
@@ -149,4 +161,17 @@ claim_ip(Iprange, N) ->
                             R
                     end
             end
+    end.
+
+full(Iprange) ->
+    case sniffle_iprange:get(Iprange) of
+        {ok, Obj} ->
+            case {jsxd:get(<<"free">>, [], Obj), jsxd:get(<<"current">>, 0, Obj), jsxd:get(<<"last">>, 0, Obj)} of
+                {[], FoundIP, Last} when FoundIP > Last ->
+                    true;
+                _ ->
+                    false
+            end;
+        E ->
+            E
     end.

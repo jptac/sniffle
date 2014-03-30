@@ -20,13 +20,20 @@
          uuid/2,
          add_iprange/2,
          remove_iprange/2,
-         set_metadata/3
+         set/3,
+         getter/2
         ]).
+
+-ignore_xref([load/1, set/3, getter/2]).
 
 -ignore_xref([
               add_iprange/2,
               remove_iprange/2
              ]).
+
+
+getter(#sniffle_obj{val=S0}, Resource) ->
+    jsxd:get(Resource, 0, statebox:value(S0)).
 
 load(Iprange) ->
     Iprange.
@@ -60,10 +67,10 @@ remove_iprange(Iprange, Network) when
                         ordsets:del_element(Iprange, R)
                 end, [Iprange], Network).
 
-set_metadata(Ks, delete, Network) ->
+set(Ks, delete, Network) ->
     jsxd:delete([<<"metadata">> | Ks], Network);
 
-set_metadata(Ks, V, Network) ->
+set(Ks, V, Network) ->
     jsxd:set([<<"metadata">> | Ks], V, Network).
 
 -ifdef(TEST).

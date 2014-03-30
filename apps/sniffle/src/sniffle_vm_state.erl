@@ -18,15 +18,20 @@
          uuid/2,
          log/3,
          hypervisor/2,
-         set/3
+         set/3,
+         getter/2
         ]).
+
+-ignore_xref([load/1, set/3, getter/2]).
+
+getter(#sniffle_obj{val=S0}, Resource) ->
+    jsxd:get(Resource, 0, statebox:value(S0)).
 
 load(H) ->
     H.
 
 new() ->
     jsxd:new().
-
 
 uuid(UUID, Vm) ->
     jsxd:set(<<"uuid">>, UUID, Vm).

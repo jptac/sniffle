@@ -20,6 +20,9 @@
 ^newrelic.erl
 ^glc_code.erl
 ^lager
+^erlcloud
+^conf_parse
+^cuttlefish_escript
 ^supervisor_pre_r14b04.erl:1250:
 ^sniffle_dataset_vnode.erl:2: Callback info about the riak_core_vnode behaviour is not available
 ^sniffle_hypervisor_vnode.erl:2: Callback info about the riak_core_vnode behaviour is not available
@@ -38,3 +41,17 @@
 ^neotoma
 ^sniffle_cloud_status.erl:3: Callback info about the riak_core_coverage_fsm behaviour is not available
 ^sniffle_coverage.erl:3: Callback info about the riak_core_coverage_fsm behaviour is not available
+^fifo_s3.erl:219:
+^fifo_s3.erl:228:
+^fifo_s3_download_worker.erl:3: Callback info about the poolboy_worker behaviour is not available
+^fifo_s3_upload_worker.erl:3: Callback info about the poolboy_worker behaviour is not available
+^sniffle_dataset_vnode.erl:3: Callback info about the riak_core_aae_vnode behaviour is not available
+^sniffle_dtrace_vnode.erl:3: Callback info about the riak_core_aae_vnode behaviour is not available
+^sniffle_full_coverage.erl:5: Callback info about the riak_core_coverage_fsm behaviour is not available
+^sniffle_hypervisor_vnode.erl:3: Callback info about the riak_core_aae_vnode behaviour is not available
+^sniffle_worker.erl:2: Callback info about the riak_core_vnode_worker behaviour is not available
+^sniffle_img_vnode.erl:3: Callback info about the riak_core_aae_vnode behaviour is not available
+^sniffle_iprange_vnode.erl:3: Callback info about the riak_core_aae_vnode behaviour is not available
+^sniffle_network_vnode.erl:3: Callback info about the riak_core_aae_vnode behaviour is not available
+^sniffle_package_vnode.erl:3: Callback info about the riak_core_aae_vnode behaviour is not available
+^sniffle_vm_vnode.erl:3: Callback info about the riak_core_aae_vnode behaviour is not available

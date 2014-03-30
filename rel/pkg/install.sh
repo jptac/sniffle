@@ -5,7 +5,7 @@ GROUP=$USER
 
 case $2 in
     PRE-INSTALL)
-        if grep '^Image: base64 13.2.*$' /etc/product
+        if grep '^Image: base64 13.[23].*$' /etc/product
 	then
 	    echo "Image version supported"
 	else
@@ -40,24 +40,14 @@ case $2 in
         fi
         ;;
     POST-INSTALL)
-        if svcs svc:/network/sniffle:default > /dev/null 2>&1
-        then
-            echo Service already existings ...
-        else
-            echo Importing service ...
-            svccfg import /opt/local/fifo-sniffle/share/sniffle.xml
-        fi
+        echo Importing service ...
+        svccfg import /opt/local/fifo-sniffle/share/sniffle.xml
         echo Trying to guess configuration ...
         IP=`ifconfig net0 | grep inet | awk -e '{print $2}'`
-        if [ ! -f /opt/local/fifo-sniffle/etc/vm.args ]
+        if [ ! -f /opt/local/fifo-sniffle/etc/sniffle.conf ]
         then
-            cp /opt/local/fifo-sniffle/etc/vm.args.example /opt/local/fifo-sniffle/etc/vm.args
-            sed --in-place -e "s/127.0.0.1/${IP}/g" /opt/local/fifo-sniffle/etc/vm.args
-        fi
-        if [ ! -f /opt/local/fifo-sniffle/etc/app.config ]
-        then
-            cp /opt/local/fifo-sniffle/etc/app.config.example /opt/local/fifo-sniffle/etc/app.config
-            sed --in-place -e "s/127.0.0.1/${IP}/g" /opt/local/fifo-sniffle/etc/app.config
+            cp /opt/local/fifo-sniffle/etc/sniffle.conf.example /opt/local/fifo-sniffle/etc/sniffle.conf
+            sed --in-place -e "s/127.0.0.1/${IP}/g" /opt/local/fifo-sniffle/etc/sniffle.conf
         fi
         cp /opt/local/fifo-sniffle/bin/fifoadm /opt/local/sbin
         ;;

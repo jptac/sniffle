@@ -122,3 +122,6 @@ cleanplt:
 	@echo
 	sleep 5
 	rm $(COMBO_PLT)
+
+tags:
+	find . -name "*.[he]rl" -print | etags -

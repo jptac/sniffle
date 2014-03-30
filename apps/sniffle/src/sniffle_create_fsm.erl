@@ -64,7 +64,10 @@
           creator,
           type,
           nets,
-          hypervisor
+          hypervisor,
+          mapping = [],
+          old_nics,
+          delay = 5000
          }).
 
 %%%===================================================================
@@ -81,8 +84,7 @@
 %% @end
 %%--------------------------------------------------------------------
 start_link(UUID, Package, Dataset, Config) ->
-    gen_fsm:start_link({local, ?SERVER}, ?MODULE,
-                       [UUID, Package, Dataset, Config], []).
+    gen_fsm:start_link(?MODULE, [UUID, Package, Dataset, Config], []).
 
 create(UUID, Package, Dataset, Config) ->
     supervisor:start_child(sniffle_create_fsm_sup, [UUID, Package, Dataset, Config]).
@@ -106,25 +108,24 @@ create(UUID, Package, Dataset, Config) ->
 %% @end
 %%--------------------------------------------------------------------
 init([UUID, Package, Dataset, Config]) ->
+    lager:info("[create] Starting FSM for ~s", [UUID]),
     process_flag(trap_exit, true),
     Config1 = jsxd:from_list(Config),
     %% We're transforming the networks map {nic -> networkid} into
     %% an array that is close to what it will look after the VM was
     %% created, that way the structure stays consistant.
-    Config2 = jsxd:update(<<"networks">>,
-                          fun (N) ->
-                                  jsxd:from_list(
-                                    lists:map(fun ({Iface, Net}) ->
-                                                      [{<<"interface">>, Iface},
-                                                       {<<"network">>, Net}]
-                                              end, N))
-                          end, [], Config1),
-    sniffle_vm:set(UUID, <<"config">>, Config2),
+    Delay = case application:get_env(create_retry_delay) of
+                {ok, D} ->
+                    D;
+                _ ->
+                    5000
+            end,
     {ok, create_permissions, #state{
                                 uuid = UUID,
                                 package_name = Package,
                                 dataset_name = Dataset,
-                                config = Config1
+                                config = Config1,
+                                delay = Delay
                                }, 0}.
 
 %%--------------------------------------------------------------------
@@ -159,6 +160,8 @@ create_permissions(_Event, State = #state{
                     libsnarl:org_execute_trigger(Org, vm_create, UUID),
                     Org
             end,
+    libhowl:send(UUID, [{<<"event">>, <<"update">>},
+                        {<<"data">>, [{<<"owner">>, Owner}]}]),
     Config1 = jsxd:set([<<"owner">>], Owner, Config),
     {next_state, get_package,
      State#state{
@@ -221,96 +224,68 @@ get_server(_Event, State = #state{
                               creator = Creator,
                               config = Config,
                               nets = Nets,
-                              package = Package}) ->
-    lager:info("get_server: ~p", [Nets]),
-    sniffle_vm:log(UUID, <<"Assigning owner ", Creator/binary>>),
+                              package = Package,
+                              delay = Delay}) ->
+    lager:debug("get_server: ~p", [Nets]),
     {ok, Ram} = jsxd:get(<<"ram">>, Package),
-    RamB = list_to_binary(integer_to_list(Ram)),
-    sniffle_vm:log(UUID, <<"Assigning memory ", RamB/binary>>),
     sniffle_vm:set(UUID, <<"state">>, <<"fetching_server">>),
     Permission = [<<"hypervisors">>, {<<"res">>, <<"name">>}, <<"create">>],
     {ok, Type} = jsxd:get(<<"type">>, Dataset),
     case libsnarl:user_cache(Creator) of
         {ok, Permissions} ->
-            Conditions0 = jsxd:get(<<"requirements">>, [], Package),
-            Conditions1 = Conditions0 ++ jsxd:get(<<"requirements">>, [], Dataset),
-            Conditions2 = [{must, 'allowed', Permission, Permissions},
+            Conditions0 = jsxd:get(<<"requirements">>, [], Package)
+                ++ jsxd:get(<<"requirements">>, [], Dataset)
+                ++ jsxd:get(<<"requirements">>, [], Config),
+            Conditions1 = [{must, 'allowed', Permission, Permissions},
                            {must, 'element', <<"virtualisation">>, Type},
                            {must, '>=', <<"resources.free-memory">>, Ram}] ++
-                lists:map(fun(C) -> make_condition(C, Permissions) end, Conditions1),
-            {UUID, Config, Conditions} = eplugin:fold('create:conditions', {UUID, Config, Conditions2}),
-            CondB = list_to_binary(io_lib:format("~p", [Conditions])),
-            sniffle_vm:log(UUID, <<"Finding hypervisor ", CondB/binary>>),
-            {ok, Hypervisors} = sniffle_hypervisor:list(Conditions),
+                lists:map(fun(C) -> make_condition(C, Permissions) end, Conditions0),
+            {UUID, Config, Conditions} = eplugin:fold('create:conditions', {UUID, Config, Conditions1}),
+            lager:debug("[CREATE] Finding hypervisor: ~p", [Conditions]),
+            {ok, Hypervisors} = sniffle_hypervisor:list(Conditions, false),
             Hypervisors1 = eplugin:fold('create:hypervisor_select', Hypervisors),
             Hypervisors2 = lists:reverse(lists:sort(Hypervisors1)),
             lager:debug("[CREATE] Hypervisors found: ~p", [Hypervisors2]),
-            {ok, HypervisorID, H, Nets1} =  test_hypervisors(Hypervisors2, Nets),
-            sniffle_vm:log(UUID, <<"Deploying on hypervisor ", HypervisorID/binary>>),
-            eplugin:call('create:handoff', UUID, HypervisorID),
-            {next_state, get_ips,
-             State#state{hypervisor = H,
-                         nets = Nets1}, 0};
+            case test_hypervisors(UUID, Hypervisors2, Nets) of
+                {ok, HypervisorID, H, Nets1} ->
+                    RamB = list_to_binary(integer_to_list(Ram)),
+                    sniffle_vm:log(UUID, <<"Assigning memory ", RamB/binary>>),
+                    sniffle_vm:log(UUID, <<"Deploying on hypervisor ", HypervisorID/binary>>),
+                    eplugin:call('create:handoff', UUID, HypervisorID),
+                    {next_state, get_ips,
+                     State#state{hypervisor = H,
+                                 nets = Nets1}, 0};
+                _ ->
+                    {next_state, get_networks, State, Delay}
+            end;
         _ ->
-            {next_state, get_server, State, 10000}
+            {next_state, get_networks, State, Delay}
     end.
 
 get_ips(_Event, State = #state{nets = Nets,
                                uuid = UUID,
                                config = Config,
-                               dataset = Dataset}) ->
-    lager:info("get_ips: ~p", [Nets]),
-    Dataset1 =
-        jsxd:update(
-          <<"networks">>,
-          fun(Nics) ->
-                  {Nics1, Mappings} =
-                      jsxd:fold(
-                        fun(K, Nic, {NicsF, Mappings}) ->
-                                {ok, Name} = jsxd:get(<<"name">>, Nic),
-                                {ok, NicTag} = jsxd:get(Name, Nets),
-                                sniffle_vm:log(UUID, <<"Fetching network ", NicTag/binary, " for NIC ", Name/binary>>),
-                                {ok, {Tag, IP, Net, Gw}} =
-                                    sniffle_iprange:claim_ip(NicTag),
-                                {ok, Range} = sniffle_iprange:get(NicTag),
-                                IPb = sniffle_iprange_state:to_bin(IP),
-                                Netb = sniffle_iprange_state:to_bin(Net),
-                                GWb = sniffle_iprange_state:to_bin(Gw),
-                                sniffle_vm:log(UUID,
-                                               <<"Assigning IP ", IPb/binary,
-                                                 " netmask ", Netb/binary,
-                                                 " gateway ", GWb/binary,
-                                                 " tag ", Tag/binary>>),
-                                Mappings1 = jsxd:append(
-                                              [],
-                                              jsxd:from_list([{<<"network">>, NicTag},
-                                                              {<<"ip">>, IP}]),
-                                              Mappings),
-                                Res = jsxd:from_list([{<<"nic_tag">>, Tag},
-                                                      {<<"ip">>, IPb},
-                                                      {<<"netmask">>, Netb},
-                                                      {<<"gateway">>, GWb}]),
-                                Res1 = case jsxd:get(<<"vlan">>, 0, Range) of
-                                           0 ->
-                                               eplugin:apply(
-                                                 'vm:ip_assigned',
-                                                 [UUID, Config, Name, Tag, IPb, Netb, GWb, none]),
-                                               Res;
-                                           VLAN ->
-                                               eplugin:apply(
-                                                 'vm:ip_assigned',
-                                                 [UUID, Config, Name, Tag, IPb, Netb, GWb, VLAN]),
-                                               jsxd:set(<<"vlan_id">>, VLAN, Res)
-                                       end,
-                                NicsF1 = jsxd:set(K, Res1, NicsF),
-                                {NicsF1, Mappings1}
-                        end, {[], []}, Nics),
-                  sniffle_vm:set(UUID,
-                                 <<"network_mappings">>,
-                                 Mappings),
-                  Nics1
-          end, Dataset),
-    {next_state, build_key, State#state{dataset = Dataset1}, 0}.
+                               dataset = Dataset,
+                               delay = Delay}) ->
+    lager:debug("get_ips: ~p", [Nets]),
+    {ok, Nics0} = jsxd:get(<<"networks">>, Dataset),
+    case update_nics(UUID, Nics0, Config, Nets) of
+        {error, E, Mapping} ->
+            lager:error("[create] Failed to get ips: ~p", [E]),
+            [sniffle_iprange:release_ip(Range, IP) ||{Range, IP} <- Mapping],
+            {next_state, get_networks, State, Delay};
+        {Nics1, Mapping} ->
+            Dataset1 = jsxd:set(<<"networks">>, Nics1, Dataset),
+            MappingsJSON = jsxd:from_list([[{<<"ip">>, IP},
+                                            {<<"network">>, Range}]
+                                           || {Range, IP} <- Mapping]),
+            sniffle_vm:set(UUID,
+                           <<"network_mappings">>,
+                           MappingsJSON),
+            {next_state, build_key,
+             State#state{dataset = Dataset1, mapping = Mapping, old_nics = Nics0},
+             0}
+    end.
 
 build_key(_Event, State = #state{
                              creator = Creator,
@@ -333,11 +308,22 @@ create(_Event, State = #state{
                           package = Package,
                           uuid = UUID,
                           config = Config,
-                          hypervisor = {Host, Port}}) ->
+                          hypervisor = {Host, Port},
+                          mapping = Mapping,
+                          old_nics = Nics,
+                          delay = Delay}) ->
     sniffle_vm:log(UUID, <<"Handing off to hypervisor.">>),
     sniffle_vm:set(UUID, <<"state">>, <<"creating">>),
-    libchunter:create_machine(Host, Port, UUID, Package, Dataset, Config),
-    {stop, normal, State}.
+    case libchunter:create_machine(Host, Port, UUID, Package, Dataset, Config) of
+        {error, lock} ->
+            [sniffle_iprange:release_ip(Range, IP) ||{Range, IP} <- Mapping],
+            {next_state, get_networks,
+             State#state{
+               dataset = jsxd:set(<<"networks">>, Nics, Dataset)
+              }, Delay};
+        ok ->
+            {stop, normal, State}
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -371,6 +357,7 @@ handle_event(_Event, StateName, State) ->
 %%                   {stop, Reason, Reply, NewState}
 %% @end
 %%--------------------------------------------------------------------
+
 handle_sync_event(_Event, _From, StateName, State) ->
     Reply = ok,
     {reply, Reply, StateName, State}.
@@ -435,53 +422,59 @@ merge_keys(Keys) ->
     [[Key, "\n"] || {_ID, Key} <- Keys].
 
 test_net(Have, [{ID, Tag} | R]) ->
-    lager:info("test_net: ~p ~p", [Have, [{ID, Tag} | R]]),
+    lager:debug("test_net: ~p ~p", [Have, [{ID, Tag} | R]]),
     case lists:member(Tag, Have) of
         true ->
-            ID;
+            case sniffle_iprange:full(ID) of
+                true ->
+                    test_net(Have, R);
+                false ->
+                    ID
+            end;
         _ ->
             test_net(Have, R)
     end;
 
 test_net(_Have, []) ->
-    lager:info("test_net: false"),
-
+    lager:debug("test_net: false"),
     false.
 
-test_hypervisor(H, [{NetName, Posibilities} | Nets], Acc) ->
-    lager:info("test_hypervisor: ~p ~p ~p",
-               [H, [{NetName, Posibilities} | Nets], Acc]),
-    case test_net(H, Posibilities) of
-        false ->
-            false;
-        ID ->
-            test_hypervisor(H, Nets, [{NetName, ID} | Acc])
-    end;
-
-test_hypervisor(_, [], Acc) ->
-    {ok, Acc}.
-
-test_hypervisors([{_, HypervisorID} | R], Nets) ->
-    lager:info("test_hypervisors: ~p ~p",
-               [HypervisorID, Nets]),
+test_hypervisors(UUID, [{_, HypervisorID} | R], Nets) ->
+    lager:debug("test_hypervisors: ~p ~p",
+                [HypervisorID, Nets]),
     {ok, H} = sniffle_hypervisor:get(HypervisorID),
-    case test_hypervisor(jsxd:get([<<"networks">>], [], H), Nets, []) of
+    case test_hypervisor(UUID, jsxd:get([<<"networks">>], [], H), Nets, []) of
         {ok, Nets1} ->
             {ok, Port} = jsxd:get(<<"port">>, H),
             {ok, Host} = jsxd:get(<<"host">>, H),
             HostS = binary_to_list(Host),
-            case libchunter:ping(HostS, Port) of
-                pong ->
+            case libchunter:lock(HostS, Port, UUID) of
+                ok ->
                     {ok, HypervisorID, {HostS, Port}, Nets1};
                 _ ->
-                    test_hypervisors(R, Nets)
+                    test_hypervisors(UUID, R, Nets)
             end;
         _ ->
-            test_hypervisors(R, Nets)
+            test_hypervisors(UUID, R, Nets)
     end;
 
-test_hypervisors([], _) ->
+test_hypervisors(_, [], _) ->
     {error, no_hypervisors}.
+
+
+test_hypervisor(UUID, H, [{NetName, Posibilities} | Nets], Acc) ->
+    lager:debug("test_hypervisor: ~p ~p ~p",
+                [H, [{NetName, Posibilities} | Nets], Acc]),
+    case test_net(H, Posibilities) of
+        false ->
+            false;
+        ID ->
+            test_hypervisor(UUID, H, Nets, [{NetName, ID} | Acc])
+    end;
+
+test_hypervisor(_UUID, _, [], Acc) ->
+    {ok, Acc}.
+
 
 make_condition(C, Permissions) ->
     case jsxd:get(<<"weight">>, <<"must">>, C) of
@@ -530,3 +523,47 @@ make_random(Weight, C) ->
     {ok, Low} = jsxd:get(<<"low">>, C),
     {ok, High} = jsxd:get(<<"high">>, C),
     {Weight, Low, High}.
+
+
+update_nics(UUID, Nics, Config, Nets) ->
+    jsxd:fold(
+      fun (_, _, {error, E, Mps}) ->
+              {error, E, Mps};
+          (K, Nic, {NicsF, Mappings}) ->
+              {ok, Name} = jsxd:get(<<"name">>, Nic),
+              {ok, NicTag} = jsxd:get(Name, Nets),
+              sniffle_vm:log(UUID, <<"Fetching network ", NicTag/binary, " for NIC ", Name/binary>>),
+              case sniffle_iprange:claim_ip(NicTag) of
+                  {ok, {Tag, IP, Net, Gw}} ->
+                      {ok, Range} = sniffle_iprange:get(NicTag),
+                      IPb = sniffle_iprange_state:to_bin(IP),
+                      Netb = sniffle_iprange_state:to_bin(Net),
+                      GWb = sniffle_iprange_state:to_bin(Gw),
+                      sniffle_vm:log(UUID,
+                                     <<"Assigning IP ", IPb/binary,
+                                       " netmask ", Netb/binary,
+                                       " gateway ", GWb/binary,
+                                       " tag ", Tag/binary>>),
+                      Res = jsxd:from_list([{<<"nic_tag">>, Tag},
+                                            {<<"ip">>, IPb},
+                                            {<<"netmask">>, Netb},
+                                            {<<"gateway">>, GWb}]),
+                      Res1 = case jsxd:get(<<"vlan">>, 0, Range) of
+                                 0 ->
+                                     eplugin:apply(
+                                       'vm:ip_assigned',
+                                       [UUID, Config, Name, Tag, IPb, Netb, GWb, none]),
+                                     Res;
+                                 VLAN ->
+                                     eplugin:apply(
+                                       'vm:ip_assigned',
+                                       [UUID, Config, Name, Tag, IPb, Netb, GWb, VLAN]),
+                                     jsxd:set(<<"vlan_id">>, VLAN, Res)
+                             end,
+                      NicsF1 = jsxd:set(K, Res1, NicsF),
+                      Mappings1 = [{NicTag, IP} | Mappings],
+                      {NicsF1, Mappings1};
+                  E ->
+                      {error, E, Mappings}
+              end
+      end, {[], []}, Nics).

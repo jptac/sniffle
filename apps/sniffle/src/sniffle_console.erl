@@ -1,4 +1,6 @@
 %% @doc Interface for sniffle-admin commands.
+%% A lot of the code is taken from
+%% https://github.com/basho/riak_kv/blob/develop/src/riak_kv_console.erl
 -module(sniffle_console).
 
 -ifdef(TEST).
@@ -6,39 +8,99 @@
 -endif.
 
 -export([
+         aae_status/1,
+         down/1,
          join/1,
          leave/1,
+         reip/1,
          remove/1,
-         vms/1,
-         hvs/1,
-         pkgs/1,
+         ringready/1,
+         staged_join/1
+        ]).
+
+-export([
+         config/1,
          ds/1,
          dtrace/1,
+         hvs/1,
          ips/1,
-         down/1,
+         pkgs/1,
+         vms/1
+        ]).
+
+-export([
          pp_json/1,
-         staged_join/1,
-         reip/1,
-         ringready/1,
          hdr/1,
          fields/2
         ]).
 
 -ignore_xref([
+              aae_status/1,
+              config/1,
+              down/1,
+              ds/1,
+              dtrace/1,
+              hvs/1,
+              ips/1,
               join/1,
               leave/1,
-              vms/1,
-              ds/1,
-              ips/1,
-              hvs/1,
-              down/1,
               pkgs/1,
-              dtrace/1,
-              remove/1,
-              staged_join/1,
               reip/1,
-              ringready/1
+              remove/1,
+              ringready/1,
+              staged_join/1,
+              vms/1
              ]).
+
+aae_status([]) ->
+    Services = [{sniffle_hypervisor, "Hypervisor"}, {sniffle_vm, "VM"},
+                {sniffle_iprange, "IP Range"}, {sniffle_package, "Package"},
+                {sniffle_dataset, "Dataset"}, {sniffle_network, "Network"},
+                {sniffle_dtrace, "DTrace"}],
+    Services1 = case sniffle_opt:get(storage, general, backend,
+                                     large_data_backend, internal) of
+                    internal ->
+                        [{sniffle_img, "Image"} | Services];
+                    _ ->
+                        Services
+                end,
+    [aae_status(E) || E <- Services1];
+
+aae_status({System, Name}) ->
+    ExchangeInfo = riak_core_entropy_info:compute_exchange_info(System),
+    io:format("~s~n~n", [Name]),
+    aae_exchange_status(ExchangeInfo),
+    io:format("~n"),
+    aae_tree_status(System),
+    io:format("~n"),
+    aae_repair_status(ExchangeInfo).
+
+reip([OldNode, NewNode]) ->
+    try
+        %% reip is called when node is down (so riak_core_ring_manager is not running),
+        %% so it has to use the basic ring operations.
+        %%
+        %% Do *not* convert to use riak_core_ring_manager:ring_trans.
+        %%
+        application:load(riak_core),
+        RingStateDir = app_helper:get_env(riak_core, ring_state_dir),
+        {ok, RingFile} = riak_core_ring_manager:find_latest_ringfile(),
+        BackupFN = filename:join([RingStateDir, filename:basename(RingFile)++".BAK"]),
+        {ok, _} = file:copy(RingFile, BackupFN),
+        io:format("Backed up existing ring file to ~p~n", [BackupFN]),
+        Ring = riak_core_ring_manager:read_ringfile(RingFile),
+        NewRing = riak_core_ring:rename_node(Ring, OldNode, NewNode),
+        riak_core_ring_manager:do_write_ringfile(NewRing),
+        io:format("New ring file written to ~p~n",
+            [element(2, riak_core_ring_manager:find_latest_ringfile())])
+    catch
+        Exception:Reason ->
+            lager:error("Reip failed ~p:~p", [Exception,
+                    Reason]),
+            io:format("Reip failed, see log for details~n"),
+            error
+    end.
+
 
 dtrace([C, "-j" | R]) ->
     sniffle_console_dtrace:command(json, [C | R]);
@@ -96,6 +158,32 @@ ips([]) ->
 
 ips(R) ->
     sniffle_console_ipranges:command(text, R).
+
+config(["show"]) ->
+    io:format("Storage~n  General Section~n"),
+    print_config(storage, general),
+    io:format("  S3 Section~n"),
+    print_config(storage, s3),
+    ok;
+
+config(["set", Ks, V]) ->
+    Ks1 = [binary_to_list(K) || K <- re:split(Ks, "\\.")],
+    config(["set" | Ks1] ++ [V]);
+
+config(["set" | R]) ->
+    [K1, K2, K3, V] = R,
+    Ks = [K1, K2, K3],
+    case sniffle_opt:set(Ks, V) of
+        {invalid, key, K} ->
+            io:format("Invalid key: ~p~n", [K]),
+            error;
+        {invalid, type, T} ->
+            io:format("Invalid type: ~p~n", [T]),
+            error;
+        _ ->
+            io:format("Setting changed~n", []),
+            ok
+    end.
 
 %%compied from riak_kv
 
@@ -214,31 +302,6 @@ down([Node]) ->
             error
     end.
 
-reip([OldNode, NewNode]) ->
-    try
-        %% reip is called when node is down (so riak_core_ring_manager is not running),
-        %% so it has to use the basic ring operations.
-        %%
-        %% Do *not* convert to use riak_core_ring_manager:ring_trans.
-        %%
-        application:load(riak_core),
-        RingStateDir = app_helper:get_env(riak_core, ring_state_dir),
-        {ok, RingFile} = riak_core_ring_manager:find_latest_ringfile(),
-        BackupFN = filename:join([RingStateDir, filename:basename(RingFile)++".BAK"]),
-        {ok, _} = file:copy(RingFile, BackupFN),
-        io:format("Backed up existing ring file to ~p~n", [BackupFN]),
-        Ring = riak_core_ring_manager:read_ringfile(RingFile),
-        NewRing = riak_core_ring:rename_node(Ring, OldNode, NewNode),
-        riak_core_ring_manager:do_write_ringfile(NewRing),
-        io:format("New ring file written to ~p~n",
-                  [element(2, riak_core_ring_manager:find_latest_ringfile())])
-    catch
-        Exception:Reason ->
-            lager:error("Reip failed ~p:~p", [Exception,
-                                              Reason]),
-            io:format("Reip failed, see log for details~n"),
-            error
-    end.
 
 -spec(ringready([]) -> ok | error).
 ringready([]) ->
@@ -259,6 +322,10 @@ ringready([]) ->
             io:format("Ringready failed, see log for details~n"),
             error
     end.
+
+%%%===================================================================
+%%% Private
+%%%===================================================================
 
 pp_json(Obj) ->
     io:format("~s~n", [jsx:prettify(jsx:encode(Obj))]).
@@ -313,6 +380,68 @@ fields([{_, S}|R], [V | Vs], {Fmt, Vars}) ->
 fields([], [], {Fmt, Vars}) ->
     io:format(Fmt, Vars).
 
+print_config(Prefix, SubPrefix) ->
+    Fmt = [{"Key", 20}, {"Value", 50}],
+    hdr(Fmt),
+    PrintFn = fun({K, [V|_]}, _) ->
+                      fields(Fmt, [key(Prefix, SubPrefix, K), V])
+              end,
+    riak_core_metadata:fold(PrintFn, ok, {Prefix, SubPrefix}).
+
+key(Prefix, SubPrefix, Key) ->
+    io_lib:format("~p.~p.~p", [Prefix, SubPrefix, Key]).
+
+aae_exchange_status(ExchangeInfo) ->
+    io:format("~s~n", [string:centre(" Exchanges ", 79, $=)]),
+    io:format("~-49s  ~-12s  ~-12s~n", ["Index", "Last (ago)", "All (ago)"]),
+    io:format("~79..-s~n", [""]),
+    [begin
+         Now = os:timestamp(),
+         LastStr = format_timestamp(Now, LastTS),
+         AllStr = format_timestamp(Now, AllTS),
+         io:format("~-49b  ~-12s  ~-12s~n", [Index, LastStr, AllStr]),
+         ok
+     end || {Index, LastTS, AllTS, _Repairs} <- ExchangeInfo],
+    ok.
+
+aae_repair_status(ExchangeInfo) ->
+    io:format("~s~n", [string:centre(" Keys Repaired ", 79, $=)]),
+    io:format("~-49s  ~s  ~s  ~s~n", ["Index",
+                                      string:centre("Last", 8),
+                                      string:centre("Mean", 8),
+                                      string:centre("Max", 8)]),
+    io:format("~79..-s~n", [""]),
+    [begin
+         io:format("~-49b  ~s  ~s  ~s~n", [Index,
+                                           string:centre(integer_to_list(Last), 8),
+                                           string:centre(integer_to_list(Mean), 8),
+                                           string:centre(integer_to_list(Max), 8)]),
+         ok
+     end || {Index, _, _, {Last,_Min,Max,Mean}} <- ExchangeInfo],
+    ok.
+
+aae_tree_status(System) ->
+    TreeInfo = riak_core_entropy_info:compute_tree_info(System),
+    io:format("~s~n", [string:centre(" Entropy Trees ", 79, $=)]),
+    io:format("~-49s  Built (ago)~n", ["Index"]),
+    io:format("~79..-s~n", [""]),
+    [begin
+         Now = os:timestamp(),
+         BuiltStr = format_timestamp(Now, BuiltTS),
+         io:format("~-49b  ~s~n", [Index, BuiltStr]),
+         ok
+     end || {Index, BuiltTS} <- TreeInfo],
+    ok.
+
+format_timestamp(_Now, undefined) ->
+    "--";
+format_timestamp(Now, TS) ->
+    riak_core_format:human_time_fmt("~.1f", timer:now_diff(Now, TS)).
+
+%%%===================================================================
+%%% Tests
+%%%===================================================================
+
 -ifdef(TEST).
 
 named_test() ->
@@ -324,3 +453,4 @@ named_test() ->
               100,<<"1.6.1">>,<<"smartos64">>, <<"smartos">>,
               <<"f4c23828-7981-11e1-912f-8b6d67c68076">>])).
 -endif.
+

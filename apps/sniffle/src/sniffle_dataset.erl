@@ -7,12 +7,11 @@
          delete/1,
          get/1,
          list/0,
-         list/1,
+         list/2,
          set/2,
          set/3,
          import/1,
-         read_image/5,
-         transform_dataset/1
+         read_image/6
         ]).
 
 -spec create(UUID::fifo:dataset_id()) ->
@@ -50,15 +49,25 @@ list() ->
       sniffle_dataset_vnode_master, sniffle_dataset,
       list).
 
--spec list(Reqs::[fifo:matcher()]) ->
-                  {ok, [UUID::fifo:dataset_id()]} | {error, timeout}.
-list(Requirements) ->
+%%--------------------------------------------------------------------
+%% @doc Lists all vm's and fiters by a given matcher set.
+%% @end
+%%--------------------------------------------------------------------
+-spec list([fifo:matcher()], boolean()) -> {error, timeout} | {ok, [fifo:uuid()]}.
+
+list(Requirements, true) ->
+    {ok, Res} = sniffle_full_coverage:start(
+                  sniffle_dataset_vnode_master, sniffle_dataset,
+                  {list, Requirements, true}),
+    Res1 = rankmatcher:apply_scales(Res),
+    {ok,  lists:sort(Res1)};
+
+list(Requirements, false) ->
     {ok, Res} = sniffle_coverage:start(
                   sniffle_dataset_vnode_master, sniffle_dataset,
                   {list, Requirements}),
     Res1 = rankmatcher:apply_scales(Res),
     {ok,  lists:sort(Res1)}.
-
 
 -spec set(UUID::fifo:dataset_id(),
           Attribute::fifo:keys(),
@@ -86,7 +95,7 @@ import(URL) ->
             sniffle_dataset:create(UUID),
             sniffle_dataset:set(UUID, Dataset),
             sniffle_dataset:set(UUID, <<"imported">>, 0),
-            spawn(?MODULE, read_image, [UUID, TotalSize, ImgURL, <<>>, 0]),
+            spawn(?MODULE, read_image, [UUID, TotalSize, ImgURL, <<>>, 0, undefined]),
             {ok, UUID};
         {ok, E, _, _} ->
             {error, E}
@@ -103,7 +112,8 @@ transform_dataset(D1) ->
             D2 = jsxd:thread(
                    [{select,[<<"os">>, <<"metadata">>, <<"name">>,
                              <<"version">>, <<"description">>,
-                             <<"disk_driver">>, <<"nic_driver">>]},
+                             <<"disk_driver">>, <<"nic_driver">>,
+                             <<"users">>]},
                     {set, <<"dataset">>, ID},
                     {set, <<"image_size">>,
                      ensure_integer(jsxd:get(<<"image_size">>, 0, D1))},
@@ -136,50 +146,53 @@ do_write(Dataset, Op, Val) ->
     sniffle_entity_write_fsm:write({sniffle_dataset_vnode, sniffle_dataset}, Dataset, Op, Val).
 
 %% If more then one MB is in the accumulator read store it in 1MB chunks
-read_image(UUID, TotalSize, Url, Acc, Idx) when is_binary(Url) ->
+read_image(UUID, TotalSize, Url, Acc, Idx, Ref) when is_binary(Url) ->
     case hackney:request(get, Url, [], <<>>, http_opts()) of
         {ok, 200, _, Client} ->
-            read_image(UUID, TotalSize, Client, Acc, Idx);
-        {ok, E, _, _} ->
-            libhowl:send(UUID,
-                         [{<<"event">>, <<"error">>}, {<<"data">>, [{<<"message">>, E},
-                                                                    {<<"index">>, 0}]}])
+            sniffle_dataset:set(UUID, <<"status">>, <<"importing">>),
+            read_image(UUID, TotalSize, Client, Acc, Idx, Ref);
+        {ok, Reason, _, _} ->
+            fail_import(UUID, Reason, 0)
     end;
 
-read_image(UUID, TotalSize, Client, <<MB:1048576/binary, Acc/binary>>, Idx) ->
-    sniffle_img:create(UUID, Idx, binary:copy(MB)),
+read_image(UUID, TotalSize, Client, <<MB:1048576/binary, Acc/binary>>, Idx, Ref) ->
+    {ok, Ref1} = sniffle_img:create(UUID, Idx, binary:copy(MB), Ref),
     Idx1 = Idx + 1,
     Done = (Idx1 * 1024*1024) / TotalSize,
     sniffle_dataset:set(UUID, <<"imported">>, Done),
     libhowl:send(UUID,
                  [{<<"event">>, <<"progress">>}, {<<"data">>, [{<<"imported">>, Done}]}]),
-    read_image(UUID, TotalSize, Client, binary:copy(Acc), Idx1);
+    read_image(UUID, TotalSize, Client, binary:copy(Acc), Idx1, Ref1);
 
 %% If we're done (and less then one MB is left, store the rest)
-read_image(UUID, _TotalSize, done, Acc, Idx) ->
+read_image(UUID, _TotalSize, done, Acc, Idx, Ref) ->
     libhowl:send(UUID,
                  [{<<"event">>, <<"progress">>}, {<<"data">>, [{<<"imported">>, 1}]}]),
+    sniffle_dataset:set(UUID, <<"status">>, <<"imported">>),
     sniffle_dataset:set(UUID, <<"imported">>, 1),
-    sniffle_img:create(UUID, Idx, Acc);
+    {ok, Ref1} = sniffle_img:create(UUID, Idx, Acc, Ref),
+    io:format("~p~n", [Ref1]),
+    sniffle_img:create(UUID, done, <<>>, Ref1);
 
-read_image(UUID, TotalSize, Client, Acc, Idx) ->
+read_image(UUID, TotalSize, Client, Acc, Idx, Ref) ->
     case hackney:stream_body(Client) of
         {ok, Data, Client1} ->
             read_image(UUID, TotalSize, Client1,
-                       binary:copy(<<Acc/binary, Data/binary>>), Idx);
+                       binary:copy(<<Acc/binary, Data/binary>>), Idx, Ref);
         {done, Client2} ->
             hackney:close(Client2),
-            read_image(UUID, TotalSize, done, Acc, Idx);
+            read_image(UUID, TotalSize, done, Acc, Idx, Ref);
         {error, Reason} ->
-            libhowl:send(UUID,
-                         [{<<"event">>, <<"error">>},
-                          {<<"data">>, [{<<"message">>, <<"failed">>},
-                                        {<<"index">>, Idx}]}]),
-            libhowl:send(UUID,
-                         [{<<"event">>, <<"progress">>},
-                          {<<"data">>, [{<<"imported">>, 0}]}]),
-            lager:error("Error importing image ~s: ~p", [UUID, Reason])
+            fail_import(UUID, Reason, Idx)
     end.
+
+fail_import(UUID, Reason, Idx) ->
+    lager:error("[~s] Could not import dataset: ~p", [UUID, Reason]),
+    libhowl:send(UUID,
+                 [{<<"event">>, <<"error">>},
+                  {<<"data">>, [{<<"message">>, Reason},
+                                {<<"index">>, Idx}]}]),
+    sniffle_dataset:set(UUID, <<"status">>, <<"failed">>).
 
 http_opts() ->
     case os:getenv("https_proxy") of

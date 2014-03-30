@@ -1,5 +1,6 @@
 -module(sniffle_dataset_vnode).
 -behaviour(riak_core_vnode).
+-behaviour(riak_core_aae_vnode).
 -include("sniffle.hrl").
 -include_lib("riak_core/include/riak_core_vnode.hrl").
 
@@ -25,14 +26,15 @@
          handle_handoff_data/2,
          encode_handoff_item/2,
          handle_coverage/4,
-         handle_exit/3
+         handle_exit/3,
+         handle_info/2
         ]).
 
--record(state, {
-          db,
-          partition,
-          node
-         }).
+-export([
+         master/0,
+         aae_repair/2,
+         hash_object/2
+        ]).
 
 -ignore_xref([
               create/4,
@@ -40,10 +42,31 @@
               get/3,
               repair/4,
               set/4,
-              start_vnode/1
+              start_vnode/1,
+              handle_info/2
              ]).
 
+-define(SERVICE, sniffle_dataset).
+
 -define(MASTER, sniffle_dataset_vnode_master).
+
+%%%===================================================================
+%%% AAE
+%%%===================================================================
+
+master() ->
+    ?MASTER.
+
+hash_object(BKey, #sniffle_obj{vclock = RObj}) ->
+    lager:debug("Hashing Key: ~p", [BKey]),
+    list_to_binary(integer_to_list(erlang:phash2({BKey, RObj})));
+hash_object(BKey, RObj) ->
+    lager:debug("Hashing Key: ~p", [BKey]),
+    list_to_binary(integer_to_list(erlang:phash2({BKey, RObj}))).
+
+aae_repair(_, Key) ->
+    lager:debug("AAE Repair: ~p", [Key]),
+    sniffle_dataset:get(Key).
 
 %%%===================================================================
 %%% API
@@ -92,37 +115,9 @@ set(Preflist, ReqID, Dataset, Data) ->
 %%% VNode
 %%%===================================================================
 
-init([Partition]) ->
-    DB = list_to_atom(integer_to_list(Partition)),
-    fifo_db:start(DB),
-    {ok, #state{
-            db = DB,
-            partition = Partition,
-            node = node()}}.
-
-handle_command(ping, _Sender, State) ->
-    {reply, {pong, State#state.partition}, State};
-
-handle_command({repair, Dataset, VClock, Obj}, _Sender, State) ->
-    case fifo_db:get(State#state.db, <<"dataset">>, Dataset) of
-        {ok, #sniffle_obj{vclock = VC1}} when VC1 =:= VClock ->
-            fifo_db:put(State#state.db, <<"dataset">>, Dataset, Obj);
-        not_found ->
-            fifo_db:put(State#state.db, <<"dataset">>, Dataset, Obj);
-        _ ->
-            lager:error("[datasets] Read repair failed, data was updated too recent.")
-    end,
-    {noreply, State};
-
-handle_command({get, ReqID, Dataset}, _Sender, State) ->
-    Res = case fifo_db:get(State#state.db, <<"dataset">>, Dataset) of
-              {ok, R} ->
-                  R;
-              not_found ->
-                  not_found
-          end,
-    NodeIdx = {State#state.partition, State#state.node},
-    {reply, {ok, ReqID, NodeIdx, Res}, State};
+init([Part]) ->
+    sniffle_vnode:init(Part, <<"dataset">>, ?SERVICE, ?MODULE,
+                       sniffle_dataset_state).
 
 handle_command({create, {ReqID, Coordinator}, Dataset, []},
                _Sender, State) ->
@@ -130,44 +125,15 @@ handle_command({create, {ReqID, Coordinator}, Dataset, []},
     I1 = statebox:modify({fun sniffle_dataset_state:name/2, [Dataset]}, I0),
     VC0 = vclock:fresh(),
     VC = vclock:increment(Coordinator, VC0),
-    HObject = #sniffle_obj{val=I1, vclock=VC},
-    fifo_db:put(State#state.db, <<"dataset">>, Dataset, HObject),
+    Obj = #sniffle_obj{val=I1, vclock=VC},
+    sniffle_vnode:put(Dataset, Obj, State),
     {reply, {ok, ReqID}, State};
 
-handle_command({delete, {ReqID, _Coordinator}, Dataset}, _Sender, State) ->
-    fifo_db:delete(State#state.db, <<"dataset">>, Dataset),
-    {reply, {ok, ReqID}, State};
-
-handle_command({set,
-                {ReqID, Coordinator}, Dataset,
-                Resources}, _Sender, State) ->
-    case fifo_db:get(State#state.db, <<"dataset">>, Dataset) of
-        {ok, #sniffle_obj{val=H0} = O} ->
-            H1 = statebox:modify({fun sniffle_dataset_state:load/1,[]}, H0),
-            H2 = lists:foldr(
-                   fun ({Resource, Value}, H) ->
-                           statebox:modify(
-                             {fun sniffle_dataset_state:set/3,
-                              [Resource, Value]}, H)
-                   end, H1, Resources),
-            H3 = statebox:expire(?STATEBOX_EXPIRE, H2),
-            fifo_db:put(State#state.db, <<"dataset">>, Dataset,
-                        sniffle_obj:update(H3, Coordinator, O)),
-            {reply, {ok, ReqID}, State};
-        R ->
-            lager:error("[datasets] tried to write to a non existing dataset: ~p", [R]),
-            {reply, {ok, ReqID, not_found}, State}
-    end;
-
-handle_command(?FOLD_REQ{foldfun=Fun, acc0=Acc0}, _Sender, State) ->
-    Acc = fifo_db:fold(State#state.db, <<"dataset">>, Fun, Acc0),
-    {reply, Acc, State};
-
-handle_command(_Message, _Sender, State) ->
-    {noreply, State}.
+handle_command(Message, Sender, State) ->
+    sniffle_vnode:handle_command(Message, Sender, State).
 
 handle_handoff_command(?FOLD_REQ{foldfun=Fun, acc0=Acc0}, _Sender, State) ->
-    Acc = fifo_db:fold(State#state.db, <<"dataset">>, Fun, Acc0),
+    Acc = fifo_db:fold(State#vstate.db, <<"dataset">>, Fun, Acc0),
     {reply, Acc, State};
 
 handle_handoff_command({get, _ReqID, _Vm} = Req, Sender, State) ->
@@ -182,7 +148,6 @@ handle_handoff_command(Req, Sender, State) ->
          end,
     {forward, S1}.
 
-
 handoff_starting(_TargetNode, State) ->
     {true, State}.
 
@@ -193,62 +158,31 @@ handoff_finished(_TargetNode, State) ->
     {ok, State}.
 
 handle_handoff_data(Data, State) ->
-    {Dataset, HObject} = binary_to_term(Data),
-    fifo_db:put(State#state.db, <<"dataset">>, Dataset, HObject),
+    {Dataset, Obj} = binary_to_term(Data),
+    sniffle_vnode:put(Dataset, Obj, State),
     {reply, ok, State}.
 
 encode_handoff_item(Dataset, Data) ->
     term_to_binary({Dataset, Data}).
 
 is_empty(State) ->
-    fifo_db:fold_keys(State#state.db,
-                      <<"dataset">>,
-                      fun (_, _) ->
-                              {false, State}
-                      end, {true, State}).
+    sniffle_vnode:is_empty(State).
 
 delete(State) ->
-    Trans = fifo_db:fold_keys(State#state.db,
-                              <<"dataset">>,
-                              fun (K, A) ->
-                                      [{delete, <<"dataset", K/binary>>} | A]
-                              end, []),
-    fifo_db:transact(State#state.db, Trans),
-    {ok, State}.
+    sniffle_vnode:delete(State).
 
-handle_coverage(list, _KeySpaces, {_, ReqID, _}, State) ->
-    List = fifo_db:fold_keys(State#state.db,
-                             <<"dataset">>,
-                             fun (K, L) ->
-                                     [K|L]
-                             end, []),
-    {reply,
-     {ok, ReqID, {State#state.partition,State#state.node}, List},
-     State};
-
-handle_coverage({list, Requirements}, _KeySpaces, {_, ReqID, _}, State) ->
-    Getter = fun(#sniffle_obj{val=S0}, Resource) ->
-                     jsxd:get(Resource, 0, statebox:value(S0))
-             end,
-    List = fifo_db:fold(State#state.db,
-                        <<"dataset">>,
-                        fun (Key, E, C) ->
-                                case rankmatcher:match(E, Getter, Requirements) of
-                                    false ->
-                                        C;
-                                    Pts ->
-                                        [{Pts, Key} | C]
-                                end
-                        end, []),
-    {reply,
-     {ok, ReqID, {State#state.partition, State#state.node}, List},
-     State};
-
-handle_coverage(_Req, _KeySpaces, _Sender, State) ->
-    {stop, not_implemented, State}.
+handle_coverage(Req, KeySpaces, Sender, State) ->
+    sniffle_vnode:handle_coverage(Req, KeySpaces, Sender, State).
 
 handle_exit(_Pid, _Reason, State) ->
     {noreply, State}.
 
 terminate(_Reason,  _State) ->
     ok.
+
+%%%===================================================================
+%%% AAE
+%%%===================================================================
+
+handle_info(Msg, State) ->
+    sniffle_vnode:handle_info(Msg, State).

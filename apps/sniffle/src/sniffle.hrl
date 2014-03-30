@@ -6,6 +6,18 @@
                  EnvValue
          end)).
 
+-record(vstate, {
+          db,
+          partition,
+          service,
+          bucket,
+          node,
+          hashtrees,
+          internal,
+          state,
+          vnode
+        }).
+
 -define(N, ?ENV(n, 3)).
 -define(R, ?ENV(r, 2)).
 -define(W, ?ENV(w, 3)).
@@ -76,3 +88,9 @@
           name :: binary(),
           attributes :: dict()
         }).
+
+-define(DATASET, dataset).
+-define(PACKAGE, package).
+-define(IPRANGE, iprange).
+-define(VM, vm).
+-define(HYPERVISOR, hypervisor).

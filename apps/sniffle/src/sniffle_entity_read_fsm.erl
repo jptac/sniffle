@@ -83,9 +83,7 @@ start(VNodeInfo, Op, Entity, Val) ->
         {ReqID, not_found} ->
             not_found;
         {ReqID, ok, Result} ->
-            {ok, Result};
-        Other ->
-            lager:error("[read] Bad return: ~p", [Other])
+            {ok, Result}
     after ?DEFAULT_TIMEOUT ->
             lager:error("[read] timeout"),
             {error, timeout}
@@ -164,7 +162,12 @@ waiting({ok, ReqID, IdxNode, Obj},
                     From ! {ReqID, not_found};
                 Merged ->
                     Reply = sniffle_obj:val(Merged),
-                    From ! {ReqID, ok, statebox:value(Reply)}
+                    case statebox:is_statebox(Reply) of
+                        true ->
+                            From ! {ReqID, ok, statebox:value(Reply)};
+                        false  ->
+                            From ! {ReqID, ok, Reply}
+                    end
             end,
             statman_histogram:record_value(
               {list_to_binary(stat_name(SD0#state.vnode) ++ "/read"), total},
@@ -202,7 +205,8 @@ finalize(timeout, SD=#state{
     case needs_repair(MObj, Replies) of
         true ->
             Start = now(),
-            lager:error("[read] performing read repair on '~p'.", [Entity]),
+            lager:warning("[~p] performing read repair on '~p'.",
+                          [SD#state.vnode, Entity]),
             repair(VNode, Entity, MObj, Replies),
             statman_histogram:record_value(
               {list_to_binary(stat_name(SD#state.vnode) ++ "/repair"), total},
@@ -243,8 +247,13 @@ merge(Replies) ->
 %% @doc Reconcile conflicts among conflicting values.
 -spec reconcile([A :: statebox:statebox()]) -> A :: statebox:statebox().
 
-reconcile(Vals) ->
-    statebox:merge(Vals).
+reconcile([V0 | _ ] = Vals) ->
+    case statebox:is_statebox(V0) of
+        true ->
+            statebox:merge(Vals);
+        false ->
+            V0
+    end.
 
 %% @pure
 %%

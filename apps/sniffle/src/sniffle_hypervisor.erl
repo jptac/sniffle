@@ -8,10 +8,13 @@
     unregister/1,
     get/1,
     list/0,
-    list/1,
+    list/2,
     set/3,
     set/2,
-    status/0
+    status/0,
+    service/3,
+    update/1,
+    update/0
    ]).
 
 -spec register(Hypervisor::fifo:hypervisor_id(),
@@ -29,6 +32,9 @@ register(Hypervisor, IP, Port) ->
 -spec unregister(Hypervisor::fifo:hypervisor_id()) ->
                         not_found | {error, timeout} | ok.
 unregister(Hypervisor) ->
+    {ok, VMs} = sniffle_vm:list([{must, '=:=', <<"hypervisor">>, Hypervisor}], false),
+    Values = [{<<"state">>, <<"limbo">>}, {<<"hypervisor">>, delete}],
+    [sniffle_vm:set(VM, Values) || {_, VM} <- VMs],
     do_write(Hypervisor, unregister).
 
 -spec get(Hypervisor::fifo:hypervisor_id()) ->
@@ -42,7 +48,14 @@ get(Hypervisor) ->
                   {ok, {Resources::fifo:object(),
                         Warnings::fifo:object()}}.
 status() ->
-    {ok, {Resources, Warnings}} = sniffle_cloud_status:start(),
+    {ok, {Resources0, Warnings}} = sniffle_cloud_status:start(),
+    Storage = case backend() of
+                  internal ->
+                      <<"internal">>;
+                  s3 ->
+                      <<"s3">>
+              end,
+    Resources = [{<<"storage">>, Storage} | Resources0],
     Warnings1 = case riak_core_status:transfers() of
                     {[], []} ->
                         Warnings;
@@ -74,14 +87,59 @@ list() ->
       sniffle_hypervisor_vnode_master, sniffle_hypervisor,
       list).
 
--spec list(Reqs::[fifo:matcher()]) ->
-                  {ok, [IPR::fifo:hypervisor_id()]} | {error, timeout}.
-list(Requirements) ->
+service(UUID, Action, Service) ->
+    case sniffle_hypervisor:get(UUID) of
+        {ok, HypervisorObj} ->
+            {ok, Port} = jsxd:get(<<"port">>, HypervisorObj),
+            {ok, HostB} = jsxd:get(<<"host">>, HypervisorObj),
+            Host = binary_to_list(HostB),
+            service(Host, Port, Action, Service);
+        E ->
+            E
+    end.
+service(Host, Port, enable, Service) ->
+    libchunter:service_enable(Host, Port, Service);
+service(Host, Port, disable, Service) ->
+    libchunter:service_disable(Host, Port, Service);
+service(Host, Port, clear, Service) ->
+    libchunter:service_clear(Host, Port, Service).
+
+update(UUID) when is_binary(UUID) ->
+    {ok, HypervisorObj} = sniffle_hypervisor:get(UUID),
+    update(HypervisorObj);
+
+update(HypervisorObj) ->
+    {ok, Port} = jsxd:get(<<"port">>, HypervisorObj),
+    {ok, HostB} = jsxd:get(<<"host">>, HypervisorObj),
+    Host = binary_to_list(HostB),
+    libchunter:update(Host, Port).
+
+
+update() ->
+    {ok, L} = list([], true),
+    [update(O) || {_, O} <- L],
+    ok.
+
+%%--------------------------------------------------------------------
+%% @doc Lists all vm's and fiters by a given matcher set.
+%% @end
+%%--------------------------------------------------------------------
+-spec list([fifo:matcher()], boolean()) -> {error, timeout} | {ok, [fifo:uuid()]}.
+
+list(Requirements, true) ->
+    {ok, Res} = sniffle_full_coverage:start(
+                  sniffle_hypervisor_vnode_master, sniffle_hypervisor,
+                  {list, Requirements, true}),
+    Res1 = rankmatcher:apply_scales(Res),
+    {ok,  lists:sort(Res1)};
+
+list(Requirements, false) ->
     {ok, Res} = sniffle_coverage:start(
                   sniffle_hypervisor_vnode_master, sniffle_hypervisor,
                   {list, Requirements}),
     Res1 = rankmatcher:apply_scales(Res),
     {ok,  lists:sort(Res1)}.
+
 
 -spec set(Hypervisor::fifo:hypervisor_id(),
           Attribute::fifo:keys(),
@@ -117,3 +175,6 @@ server_errors(Servers) ->
                          {<<"type">>, <<"critical">>},
                          {<<"message">>, bin_fmt("Sniffle server ~s down.", [Server])}])
               end, Servers).
+
+backend() ->
+    sniffle_opt:get(storage, general, backend, large_data_backend, internal).

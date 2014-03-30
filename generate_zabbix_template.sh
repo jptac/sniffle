@@ -20,8 +20,15 @@ cat <<EOF > $DST
             </groups>
             <applications>
                 <application>
-                    <name>General</name>
+                    <name>Sniffle</name>
                 </application>
+                <application><name>hypervisor</name></application>
+                <application><name>dtrace</name></application>
+                <application><name>vm</name></application>
+                <application><name>iprange</name></application>
+                <application><name>dataset</name></application>
+                <application><name>package</name></application>
+                <application><name>image</name></application>
             </applications>
             <items>
 EOF
@@ -74,7 +81,25 @@ EOF
                     <port/>
                     <description/>
                     <inventory_link>0</inventory_link>
-                    <applications/>
+                    <applications>
+EOF
+    if echo $param | grep '^\(hypervisor\|dtrace\|vm\|iprange\|dataset\|package\|image\)'
+    then
+        app=$(echo $param | sed -e 's/^\([a-z]*\).*/\1/g')
+        cat <<EOF >> $DST
+                        <application>
+                            <name>$app</name>
+                        </application>
+EOF
+    else
+        cat <<EOF >> $DST
+                        <application>
+                            <name>Sniffle</name>
+                        </application>
+EOF
+    fi
+    cat <<EOF >> $DST
+                    </applications>
                     <valuemap/>
                 </item>
 EOF

@@ -59,8 +59,11 @@ message({dtrace, list}, State) ->
      State};
 
 message({dtrace, list, Requreiments}, State) ->
+    message({dtrace, list, Requreiments, false}, State);
+
+message({dtrace, list, Requreiments, Full}, State) ->
     {reply,
-     sniffle_dtrace:list(Requreiments),
+     sniffle_dtrace:list(Requreiments, Full),
      State};
 
 message({dtrace, set, ID, Attribute, Value}, State) when
@@ -117,6 +120,28 @@ message({vm, register, Vm, Hypervisor}, State) when
      sniffle_vm:register(Vm, Hypervisor),
      State};
 
+
+message({vm, service, enable, Vm, Service}, State) when
+      is_binary(Vm),
+      is_binary(Service) ->
+    {reply,
+     sniffle_vm:service_enable(Vm, Service),
+     State};
+
+message({vm, service, disable, Vm, Service}, State) when
+      is_binary(Vm),
+      is_binary(Service) ->
+    {reply,
+     sniffle_vm:service_disable(Vm, Service),
+     State};
+
+message({vm, service, clear, Vm, Service}, State) when
+      is_binary(Vm),
+      is_binary(Service) ->
+    {reply,
+     sniffle_vm:service_clear(Vm, Service),
+     State};
+
 message({vm, snapshot, Vm, Comment}, State) when
       is_binary(Vm),
       is_binary(Comment) ->
@@ -124,11 +149,63 @@ message({vm, snapshot, Vm, Comment}, State) when
      sniffle_vm:snapshot(Vm, Comment),
      State};
 
-message({vm, snapshot, delete, Vm, UUID}, State) when
+message({vm, snapshot, delete, Vm, Snap}, State) when
+      is_binary(Vm),
+      is_binary(Snap) ->
+    {reply,
+     sniffle_vm:delete_snapshot(Vm, Snap),
+     State};
+
+
+message({vm, backup, full, Vm, Comment, Opts}, State) when
+      is_binary(Vm),
+      is_binary(Comment) ->
+    {reply,
+     sniffle_vm:create_backup(Vm, full, Comment, Opts),
+     State};
+
+message({vm, backup, incremental, Vm, Parent, Comment, Opts}, State) when
+      is_binary(Vm),
+      is_binary(Comment),
+      is_binary(Parent) ->
+    {reply,
+     sniffle_vm:create_backup(Vm, incremental, Comment,
+                              [{parent, Parent} | Opts]),
+     State};
+
+message({vm, backup, restore, Vm, Backup}, State) when
+      is_binary(Vm),
+      is_binary(Backup) ->
+    {reply,
+     sniffle_vm:restore_backup(Vm, Backup),
+     State};
+
+message({vm, backup, restore, Vm, Backup, Hypervisor}, State) when
+      is_binary(Vm),
+      is_binary(Backup) ->
+    {reply,
+     sniffle_vm:restore(Vm, Backup, Hypervisor),
+     State};
+
+message({vm, backup, delete, Vm, Backup}, State) when
+      is_binary(Vm),
+      is_binary(Backup) ->
+    {reply,
+     sniffle_vm:delete_backup(Vm, Backup),
+     State};
+
+message({vm, backup, delete, Vm, UUID, cloud}, State) when
       is_binary(Vm),
       is_binary(UUID) ->
     {reply,
-     sniffle_vm:delete_snapshot(Vm, UUID),
+     sniffle_vm:delete_backup(Vm, UUID),
+     State};
+
+message({vm, backup, delete, Vm, UUID, hypervisor}, State) when
+      is_binary(Vm),
+      is_binary(UUID) ->
+    {reply,
+     sniffle_vm:remove_backup(Vm, UUID),
      State};
 
 message({vm, snapshot, rollback, Vm, UUID}, State) when
@@ -136,6 +213,13 @@ message({vm, snapshot, rollback, Vm, UUID}, State) when
       is_binary(UUID) ->
     {reply,
      sniffle_vm:rollback_snapshot(Vm, UUID),
+     State};
+
+message({vm, snapshot, commit_rollback, Vm, UUID}, State) when
+      is_binary(Vm),
+      is_binary(UUID) ->
+    {reply,
+     sniffle_vm:commit_snapshot_rollback(Vm, UUID),
      State};
 
 message({vm, snapshot, promote, Vm, UUID, Config}, State) when
@@ -184,6 +268,12 @@ message({vm, delete, Vm}, State) when
      sniffle_vm:delete(Vm),
      State};
 
+message({vm, store, Vm}, State) when
+      is_binary(Vm) ->
+    {reply,
+     sniffle_vm:store(Vm),
+     State};
+
 message({vm, stop, Vm}, State) when
       is_binary(Vm) ->
     {reply,
@@ -214,6 +304,13 @@ message({vm, set, Vm, Attribute, Value}, State) when
      sniffle_vm:set(Vm, Attribute, Value),
      State};
 
+message({vm, owner, Vm, Owner}, State) when
+      is_binary(Vm),
+      is_binary(Owner) ->
+    {reply,
+     sniffle_vm:set_owner(Vm, Owner),
+     State};
+
 message({vm, set, Vm, Attributes}, State) when
       is_binary(Vm),
       is_list(Attributes) ->
@@ -226,10 +323,13 @@ message({vm, list}, State) ->
      sniffle_vm:list(),
      State};
 
-message({vm, list, Requirements}, State) when
+message({vm, list, Requirements}, State) ->
+    message({vm, list, Requirements, false}, State);
+
+message({vm, list, Requirements, Full}, State) when
       is_list(Requirements) ->
     {reply,
-     sniffle_vm:list(Requirements),
+     sniffle_vm:list(Requirements, Full),
      State};
 
 %%%===================================================================
@@ -249,10 +349,28 @@ message({hypervisor, unregister, Hypervisor}, State) when
      sniffle_hypervisor:unregister(Hypervisor),
      State};
 
+message({hypervisor, service, Hypervisor, Action, Service}, State) when
+      is_binary(Hypervisor),
+      (Action =:= enable orelse Action =:= disable orelse Action =:= clear) ->
+    {reply,
+     sniffle_hypervisor:service(Hypervisor, Action, Service),
+     State};
+
 message({hypervisor, get, Hypervisor}, State) when
       is_binary(Hypervisor) ->
     {reply,
      sniffle_hypervisor:get(Hypervisor),
+     State};
+
+message({hypervisor, update, Hypervisor}, State) when
+      is_binary(Hypervisor) ->
+    {reply,
+     sniffle_hypervisor:update(Hypervisor),
+     State};
+
+message({hypervisor, update}, State) ->
+    {reply,
+     sniffle_hypervisor:update(),
      State};
 
 message({hypervisor, set, Hypervisor, Resource, Value}, State) when
@@ -273,10 +391,13 @@ message({hypervisor, list}, State) ->
      sniffle_hypervisor:list(),
      State};
 
-message({hypervisor, list, Requirements}, State) when
+message({hypervisor, list, Requirements}, State) ->
+    message({hypervisor, list, Requirements, false}, State);
+
+message({hypervisor, list, Requirements, Full}, State) when
       is_list(Requirements) ->
     {reply,
-     sniffle_hypervisor:list(Requirements),
+     sniffle_hypervisor:list(Requirements, Full),
      State};
 
 %%%===================================================================
@@ -319,10 +440,13 @@ message({dataset, list}, State) ->
      sniffle_dataset:list(),
      State};
 
-message({dataset, list, Requirements}, State) when
+message({dataset, list, Requirements}, State) ->
+    message({dataset, list, Requirements, false}, State);
+
+message({dataset, list, Requirements, Full}, State) when
       is_list(Requirements) ->
     {reply,
-     sniffle_dataset:list(Requirements),
+     sniffle_dataset:list(Requirements, Full),
      State};
 
 message({dataset, import, URL}, State) ->
@@ -335,10 +459,13 @@ message({dataset, import, URL}, State) ->
 %%%  Img Functions
 %%%===================================================================
 
-message({img, create, Img, Idx, Data}, State) when
+message({img, create, Img, Idx, Data}, State) ->
+    message({img, create, Img, Idx, Data, undefined}, State);
+
+message({img, create, Img, Idx, Data, Ref}, State) when
       is_binary(Img) ->
     {reply,
-     sniffle_img:create(Img, Idx, Data),
+     sniffle_img:create(Img, Idx, Data, Ref),
      State};
 
 message({img, delete, Img, Idx}, State) when
@@ -424,8 +551,11 @@ message({network, list}, State) ->
      State};
 
 message({network, list, Requirements}, State) ->
+    message({network, list, Requirements, false}, State);
+
+message({network, list, Requirements, Full}, State) ->
     {reply,
-     sniffle_network:list(Requirements),
+     sniffle_network:list(Requirements, Full),
      State};
 
 %%%===================================================================
@@ -471,10 +601,13 @@ message({iprange, list}, State) ->
      sniffle_iprange:list(),
      State};
 
-message({iprange, list, Requirements}, State) when
+message({iprange, list, Requirements}, State) ->
+    message({iprange, list, Requirements, false}, State);
+
+message({iprange, list, Requirements, Full}, State) when
       is_list(Requirements)->
     {reply,
-     sniffle_iprange:list(Requirements),
+     sniffle_iprange:list(Requirements, Full),
      State};
 
 message({iprange, set, Iprange, Attribute, Value}, State) when
@@ -531,10 +664,13 @@ message({package, list}, State) ->
      sniffle_package:list(),
      State};
 
-message({package, list, Requirements}, State) when
+message({package, list, Requirements}, State) ->
+      message({package, list, Requirements, false}, State);
+
+message({package, list, Requirements, Full}, State) when
       is_list(Requirements) ->
     {reply,
-     sniffle_package:list(Requirements),
+     sniffle_package:list(Requirements, Full),
      State};
 
 %%%===================================================================
@@ -544,7 +680,11 @@ message({package, list, Requirements}, State) when
 message({cloud, status}, State) ->
     {reply,
      sniffle_hypervisor:status(),
-     State}.
+     State};
+
+message(Message, State) ->
+    io:format("Unsuppored TCP message: ~p", [Message]),
+    {noreply, State}.
 
 %%%===================================================================
 %%%  Internal Functions
