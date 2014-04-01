@@ -213,9 +213,12 @@ callbacks(_Event, State = #state{
                                  config = Config1}, 0}.
 
 get_networks(_event, State = #state{uuid = UUID, retry = R, max_retries = Max})
-  when Max > R ->
+  when R > Max ->
     sniffle_vm:set(UUID, <<"state">>, <<"failed">>),
-    sniffle_vm:log(UUID, <<"Failed after too many retries.">>),
+    BR = list_to_binary(integer_to_list(R)),
+    BMax= list_to_binary(integer_to_list(Max)),
+    sniffle_vm:log(UUID, <<"Failed after too many retries: ", BR/binary, " > ",
+                         BMax/binary>>),
     {stop, failed, State};
 
 get_networks(_Event, State = #state{config = Config, retry = Try}) ->
