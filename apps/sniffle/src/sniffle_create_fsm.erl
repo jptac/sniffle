@@ -67,7 +67,9 @@
           hypervisor,
           mapping = [],
           old_nics,
-          delay = 5000
+          delay = 5000,
+          retry = 0,
+          max_retries = 0
          }).
 
 %%%===================================================================
@@ -120,12 +122,19 @@ init([UUID, Package, Dataset, Config]) ->
                 _ ->
                     5000
             end,
+    MaxRetries = case application:get_env(create_max_retries) of
+                     {ok, D1} ->
+                         D1;
+                     _ ->
+                         5
+                 end,
     {ok, create_permissions, #state{
                                 uuid = UUID,
                                 package_name = Package,
                                 dataset_name = Dataset,
                                 config = Config1,
-                                delay = Delay
+                                delay = Delay,
+                                max_retries = MaxRetries
                                }, 0}.
 
 %%--------------------------------------------------------------------
@@ -203,7 +212,13 @@ callbacks(_Event, State = #state{
                                  package = Package1,
                                  config = Config1}, 0}.
 
-get_networks(_Event, State = #state{config = Config}) ->
+get_networks(_event, State = #state{uuid = UUID, retry = R, max_retries = Max})
+  when Max > R ->
+    sniffle_vm:set(UUID, <<"state">>, <<"failed">>),
+    sniffle_vm:log(UUID, <<"Failed after too many retries.">>),
+    {stop, failed, State};
+
+get_networks(_Event, State = #state{config = Config, retry = Try}) ->
     Nets = jsxd:get([<<"networks">>], [], Config),
     Nets1 = lists:map(fun({Name, Network}) ->
                               {ok, N} = sniffle_network:get(Network),
@@ -216,7 +231,7 @@ get_networks(_Event, State = #state{config = Config}) ->
                                               end, Rs2),
                               {Name, Rs3}
                       end, Nets),
-    {next_state, get_server, State#state{nets = Nets1}, 0}.
+    {next_state, get_server, State#state{nets = Nets1, retry = Try + 1}, 0}.
 
 get_server(_Event, State = #state{
                               dataset = Dataset,
