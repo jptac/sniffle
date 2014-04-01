@@ -1,11 +1,18 @@
 %% -*- erlang -*-
 
 
+
 %% @doc When a failure occurs during create the process will retry starting
 %% from to find a new server.
 {mapping, "create_retry_delay", "sniffle.create_retry_delay",
  [{default, "5s"},
   {datatype, {duration, ms}}]}.
+
+%% @doc Maximum number of retries before a creation fails. This means a failed
+%% create will hang around at maximum create_max_retries*create_retry_delay.
+{mapping, "create_max_retries", "sniffle.create_max_retries",
+ [{default, "5"},
+  {datatype, integer}]}.
 
 %% @doc The Amount of paralell create processes allowed to run at the same time
 %% this does not include tasks running on the hypervisor.
