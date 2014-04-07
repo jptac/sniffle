@@ -526,11 +526,11 @@ unregister(Vm) ->
                 _ ->
                     ok
             end,
-            case libsnarl:group_list() of
-                {ok, Groups} ->
+            case libsnarl:role_list() of
+                {ok, Roles} ->
                     spawn(fun () ->
-                                  [libsnarl:group_revoke_prefix(G, VmPrefix) || G <- Groups],
-                                  [libsnarl:group_revoke_prefix(G, ChannelPrefix) || G <- Groups]
+                                  [libsnarl:role_revoke_prefix(G, VmPrefix) || G <- Roles],
+                                  [libsnarl:role_revoke_prefix(G, ChannelPrefix) || G <- Roles]
                           end);
                 _ ->
                     ok
