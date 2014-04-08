@@ -20,7 +20,6 @@
                   ssl,
                   hackney,
                   erlcloud,
-                  newrelic,
                   snmp,
                   mnesia,
                   eplugin,
