@@ -7,7 +7,12 @@
 
 -module(sniffle_vm_state).
 
+
 -include("sniffle.hrl").
+
+-ifdef(TEST).
+-include_lib("eunit/include/eunit.hrl").
+-endif.
 
 -define(LOGLEN, 100).
 
@@ -63,3 +68,36 @@ set(Attribute, delete, Vm) ->
 
 set(Attribute, Value, Vm) ->
     jsxd:set(Attribute, Value, Vm).
+
+-ifdef(TEST).
+fold_test() ->
+    H0 = statebox:new(fun sniffle_vm_state:new/0),
+    H1 = statebox:modify({fun sniffle_vm_state:uuid/2, [<<"u">>]}, H0),
+    H2 = statebox:modify({fun sniffle_vm_state:hypervisor/2, [<<"h">>]}, H1),
+
+    H2a = statebox:modify({fun sniffle_vm_state:set/3, [[<<"nested">>, <<"key">>], 2]}, H2),
+    H2b = statebox:modify({fun sniffle_vm_state:set/3, [<<"key">>, 2]}, H2a),
+
+    Resources =
+        [
+         {[<<"nested">>, <<"1">>], 1},
+         {[<<"nested">>, <<"2">>], 2}
+        ],
+    H3 = statebox:modify({fun load/1, []}, H2b),
+    H4 = lists:foldr(
+           fun ({Resource, Value}, H) ->
+                   statebox:modify(
+                     {fun set/3,
+                      [Resource, Value]}, H)
+           end, H3, Resources),
+    H5 = statebox:expire(?STATEBOX_EXPIRE, H4),
+    V1 = statebox:value(load(H5)),
+    Expected = [{<<"hypervisor">>, <<"h">>},
+                {<<"key">>, 2},
+                {<<"nested">>,
+                 [{<<"1">>, 1},
+                  {<<"2">>, 2},
+                  {<<"key">>, 2}]},
+                {<<"uuid">>,<<"u">>}],
+    ?assertEqual(Expected, V1).
+-endif.
