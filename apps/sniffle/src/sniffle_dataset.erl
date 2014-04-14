@@ -120,11 +120,17 @@ transform_dataset(D1) ->
                     {set, <<"networks">>,
                      jsxd:get(<<"requirements.networks">>, [], D1)}],
                    D1),
+            D3 = case jsxd:get(<<"homepage">>, D1) of
+                     {ok, HomePage} ->
+                         jsxd:set([<<"metadata">>, <<"homepage">>], HomePage, D2);
+                     _ ->
+                         D2
+                 end,
             case jsxd:get(<<"os">>, D1) of
                 {ok, <<"smartos">>} ->
-                    jsxd:set(<<"type">>, <<"zone">>, D2);
+                    jsxd:set(<<"type">>, <<"zone">>, D3);
                 {ok, _} ->
-                    jsxd:set(<<"type">>, <<"kvm">>, D2)
+                    jsxd:set(<<"type">>, <<"kvm">>, D3)
             end;
         _ ->
             jsxd:set(<<"image_size">>,
