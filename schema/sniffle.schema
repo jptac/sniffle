@@ -1,7 +1,4 @@
 %% -*- erlang -*-
-
-
-
 %% @doc When a failure occurs during create the process will retry starting
 %% from to find a new server.
 {mapping, "create_retry_delay", "sniffle.create_retry_delay",
@@ -39,29 +36,24 @@
   end
 }.
 
+
 %% @doc The TCP endpoint that will be broadcasted.
-{mapping, "ip", "sniffle.endpoint",
- [{default, {"{{sniffle_ip}}", {{sniffle_port}} }},
+{mapping, "ip", "mdns_server_lib.listener",
+ [{default, {"{{snarl_ip}}", {{snarl_port}} }},
   {datatype, ip}]}.
 
 {translation,
- "mdns_server_lib.ip",
+ "mdns_client_lib.interface",
  fun(Conf) ->
          {IP, _Port} = cuttlefish:conf_get("ip", Conf),
-         IP
+         [A, B, C, D] = [list_to_integer(O) ||
+                            O <- re:split(IP, "\\.", [{return, list}])],
+         {A, B, C, D}
  end
 }.
 
 {translation,
- "mdns_server_lib.port",
- fun(Conf) ->
-         {_IP, Port} = cuttlefish:conf_get("ip", Conf),
-         Port
- end
-}.
-
-{translation,
- "mdns_client_lib.interface",
+ "mdns_server_lib.interface",
  fun(Conf) ->
          {IP, _Port} = cuttlefish:conf_get("ip", Conf),
          [A, B, C, D] = [list_to_integer(O) ||
