@@ -8,7 +8,8 @@
          get/2,
          get/1,
          list/0,
-         list/1
+         list/1,
+         backend/0
         ]).
 
 -ignore_xref([read_image/5]).

@@ -95,7 +95,17 @@ import(URL) ->
             sniffle_dataset:create(UUID),
             sniffle_dataset:set(UUID, Dataset),
             sniffle_dataset:set(UUID, <<"imported">>, 0),
-            spawn(?MODULE, read_image, [UUID, TotalSize, ImgURL, <<>>, 0, undefined]),
+            case sniffle_img:backend() of
+                s3 ->
+                    {Host, Port, AKey, SKey, Bucket} =
+                        {sniffle_s3:get_host(), sniffle_s3:get_port(),
+                         sniffle_s3:get_access_key(), sniffle_s3:get_secret_key(),
+                         sniffle_s3:get_bucket(image)},
+                    {ok, U} = fifo_s3_upload:new(AKey, SKey, Host, Port, Bucket, UUID),
+                    spawn(?MODULE, read_image, [UUID, TotalSize, ImgURL, <<>>, 0, U]);
+                internal ->
+                    spawn(?MODULE, read_image, [UUID, TotalSize, ImgURL, <<>>, 0, undefined])
+            end,
             {ok, UUID};
         {ok, E, _, _} ->
             {error, E}
@@ -162,7 +172,18 @@ read_image(UUID, TotalSize, Url, Acc, Idx, Ref) when is_binary(Url) ->
     end;
 
 read_image(UUID, TotalSize, Client, <<MB:1048576/binary, Acc/binary>>, Idx, Ref) ->
-    {ok, Ref1} = sniffle_img:create(UUID, Idx, binary:copy(MB), Ref),
+    {ok, Ref1} = case sniffle_img:backend() of
+                     internal ->
+                         sniffle_img:create(UUID, Idx, binary:copy(MB), Ref);
+                     s3 ->
+                         case  fifo_s3_upload:part(Ref, binary:copy(MB)) of
+                             ok ->
+                                 {ok, Ref};
+                             E ->
+                                 fail_import(UUID, E, Idx),
+                                 E
+                         end
+                 end,
     Idx1 = Idx + 1,
     Done = (Idx1 * 1024*1024) / TotalSize,
     sniffle_dataset:set(UUID, <<"imported">>, Done),
