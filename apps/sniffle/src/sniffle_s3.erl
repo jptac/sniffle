@@ -18,6 +18,14 @@
          new_upload/2
         ]).
 
+-export([
+         get_host/0,
+         get_port/0,
+         get_access_key/0,
+         get_secret_key/0,
+         get_bucket/1
+        ]).
+
 list(Type) ->
     fifo_s3:list(get_bucket(Type), get_config()).
 
