@@ -60,7 +60,8 @@ delete(Img, Idx) ->
 delete(Img) ->
     case backend() of
         s3 ->
-            sniffle_s3:delete(image, binary_to_list(Img));
+            sniffle_s3:delete(image, binary_to_list(Img)),
+            ok;
         internal ->
             {ok, Idxs} = list(Img),
             [do_write({Img, Idx}, delete) || Idx <- Idxs],
