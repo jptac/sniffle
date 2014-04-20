@@ -1,7 +1,14 @@
 #!/usr/bin/env bash
 
 case $1 in
-    groups|users)
+    diag)
+        echo "Running diagnostics for installed services."
+        [ -f /opt/local/fifo-snarl/share/snarl-diag ] && /opt/local/fifo-snarl/share/snarl-diag
+        [ -f /opt/local/fifo-snarl/share/sniffle-diag ] && /opt/local/fifo-snarl/share/sniffle-diag
+        [ -f /opt/local/fifo-snarl/share/howl-diag ] && /opt/local/fifo-snarl/share/howl-diag
+        [ -f /opt/local/fifo-snarl/share/wiggle-diag ] && /opt/local/fifo-snarl/share/wiggle-diag
+        ;;
+    roles|users)
         if [ -f /opt/local/fifo-snarl/bin/snarl-admin ]
         then
             /opt/local/fifo-snarl/bin/snarl-admin $@
@@ -41,9 +48,9 @@ EOF
         ;;
     *)
         echo "Unknown command $1, valid are: "
-        echo "  snarl:   groups, users"
+        echo "  snarl:   roles, users"
         echo "  sniffle: vms, hypervisors, packages, datasets, networks, dtrace"
-        echo "  general: help"
+        echo "  general: help, diag"
         exit 1
         ;;
 esac

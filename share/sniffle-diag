@@ -1,0 +1,61 @@
+#!/usr/bin/bash
+
+admin=/opt/local/fifo-sniffle/bin/sniffle-admin
+
+date=$(date +%F-%H-%M-%S)
+base=/var/tmp/sniffle-diag
+dir=$base/$date
+mkdir -p $dir
+log_file=$dir/sniffle-diag.log
+echo '========================================' > $log_file
+echo "Sniffle Diagnostics ${date}" >> $log_file
+echo '========================================' >> $log_file
+function log_run(){
+  echo >> $log_file
+  echo >> $log_file
+  echo '----------------------------------------' >> $log_file
+  echo $* >> $log_file
+  echo '----------------------------------------' >> $log_file
+  $* >> $log_file
+}
+echo "Gathering System information."
+log_run ifconfig
+echo >> $log_file >> $log_file
+echo >> $log_file
+echo '----------------------------------------' >> $log_file
+echo 'pkgin list | grep fifo-sniffle' >> $log_file
+echo '----------------------------------------' >> $log_file
+pkgin list | grep fifo-sniffle >> $log_file
+log_run svcs svc:/network/sniffle:default
+log_run df -h
+log_run zonememstat
+log_run prstat 1 1
+log_run sysinfo
+
+echo "Gathering Cluster information."
+log_run $admin status
+log_run $admin ringready
+log_run $admin services
+log_run $admin ring_status
+log_run $admin member_status
+log_run $admin aae-status
+
+pid=$(pgrep -f /opt/local/fifo-sniffle/*/bin/beam.smp)
+log_run lsof -P $pid
+log_run lsof -F $pid
+
+echo "Copying Logfiles"
+cp -r /var/log/sniffle $dir/logs
+cp /var/svc/log/network-sniffle:default.log $dir/logs
+
+echo "Copying config files"
+mkdir $dir/config
+cp /opt/local/fifo-sniffle/etc/sniffle.conf* $dir/config
+cp -r /var/db/sniffle/generated.configs/ $dir/config
+
+echo "Compressing data"
+(cd $base; tar cfz sniffle-diag-$date.tgz $date)
+
+echo
+echo
+echo Diagnostics run complete the the file can be found in $base/sniffle-diag-$date.tgz the data provided can be inspected in $base/$date.

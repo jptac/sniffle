@@ -5,7 +5,7 @@ _fifoadm_complete_generic() {
 }
 
 _fifoadm_complete_group() {
-    fifoadm groups list | tail +3 | awk '{print $2}'
+    fifoadm roles list | tail +3 | awk '{print $2}'
 }
 
 _fifoadm_complete_user() {
@@ -182,7 +182,7 @@ _fifoadm_users() {
                     return 0
                 elif [[ ${COMP_CWORD} == 4 ]]
                 then
-                    opts=`_fifoadm_complete_group`
+                    opts=`_fifoadm_complete_role`
                     COMPREPLY=( $(compgen -W "${opts}" -- ${cur}) )
                     return 0
                 fi
@@ -199,7 +199,7 @@ _fifoadm_users() {
     fi
 }
 
-_fifoadm_groups() {
+_fifoadm_roles() {
     local cur prev opts
     COMPREPLY=()
     cur="${COMP_WORDS[COMP_CWORD]}"
@@ -214,7 +214,7 @@ _fifoadm_groups() {
             grant|revoke)
                 if [[ ${COMP_CWORD} == 3 ]]
                 then
-                    opts=`_fifoadm_complete_group`
+                    opts=`_fifoadm_complete_role`
                     COMPREPLY=( $(compgen -W "${opts}" -- ${cur}) )
                     return 0
                 fi
@@ -223,7 +223,7 @@ _fifoadm_groups() {
     fi
 }
 
-#  snarl:   groups, users
+#  snarl:   roles, users
 #  sniffle: vms, hypervisors, packages, datasets, networks, dtrace
 #  general: help
 _fifoadm()
@@ -232,7 +232,7 @@ _fifoadm()
     COMPREPLY=()
     cur="${COMP_WORDS[COMP_CWORD]}"
     prev="${COMP_WORDS[COMP_CWORD-1]}"
-    opts="groups users vms hypervisors packages datasets networks dtrace help"
+    opts="roles users vms hypervisors packages datasets networks ipranges dtrace diag help"
     if [[ ${COMP_CWORD} == 1 ]] ; then
         COMPREPLY=( $(compgen -W "${opts}" -- ${cur}) )
         return 0
@@ -241,17 +241,17 @@ _fifoadm()
             vms)
                 _fifoadm_vms
                 ;;
-            networks|hypervisors|packages)
+            datasets|networks|ipranges|hypervisors|packages)
                 _fifoadm_generic
                 ;;
-            datasets|dtrace)
+            dtrace)
                 _fifoadm_importable
                 ;;
             users)
                 _fifoadm_users
                 ;;
-            groups)
-                _fifoadm_groups
+            roles)
+                _fifoadm_roles
                 ;;
         esac
 
