@@ -4,9 +4,9 @@ case $1 in
     diag)
         echo "Running diagnostics for installed services."
         [ -f /opt/local/fifo-snarl/share/snarl-diag ] && /opt/local/fifo-snarl/share/snarl-diag
-        [ -f /opt/local/fifo-snarl/share/sniffle-diag ] && /opt/local/fifo-snarl/share/sniffle-diag
-        [ -f /opt/local/fifo-snarl/share/howl-diag ] && /opt/local/fifo-snarl/share/howl-diag
-        [ -f /opt/local/fifo-snarl/share/wiggle-diag ] && /opt/local/fifo-snarl/share/wiggle-diag
+        [ -f /opt/local/fifo-sniffle/share/sniffle-diag ] && /opt/local/fifo-sniffle/share/sniffle-diag
+        [ -f /opt/local/fifo-howl/share/howl-diag ] && /opt/local/fifo-howl/share/howl-diag
+        [ -f /opt/local/fifo-wiggle/share/wiggle-diag ] && /opt/local/fifo-wiggle/share/wiggle-diag
         ;;
     roles|users)
         if [ -f /opt/local/fifo-snarl/bin/snarl-admin ]
