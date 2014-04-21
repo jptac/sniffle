@@ -5,16 +5,7 @@
 |                                                                              |
 | Please have a look at the configuraiton files:                               |
 |                                                                              |
-|  * /opt/local/fifo-sniffle/etc/app.config                                    |
-|    * You will need to adjust the IP to the systems ip in the controll        |
-|      network.                                                                |
-|    * And depending on your setup change the domain.                          |
-|                                                                              |
-|  * /opt/local/fifo-sniffle/etc/vm.args                                       |
-|    * You will need to change the IP in the nodename to either a resolvable   |
-|      hostname or the IP in the controll network.                             |
-|    * It is advised to change the cookie to a different value that is shared  |
-|      amongst the Sniffle Cluster.                                            |
+|  * /opt/local/fifo-sniffle/etc/sniffle.conf                                  |
 |                                                                              |
 | Note: To enable Sniffle you first need to enable the epmd service.           |
 |                                                                              |
