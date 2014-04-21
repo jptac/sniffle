@@ -24,6 +24,7 @@
          dtrace/1,
          hvs/1,
          ips/1,
+         networks/1,
          pkgs/1,
          vms/1
         ]).
@@ -42,6 +43,7 @@
               dtrace/1,
               hvs/1,
               ips/1,
+              networks/1,
               join/1,
               leave/1,
               pkgs/1,
@@ -156,11 +158,23 @@ ips([]) ->
     sniffle_console_ipranges:help(),
     ok;
 
+ips([C, "-j" | R]) ->
+    sniffle_console_ipranges:command(json, [C | R]);
+
 ips(R) ->
     sniffle_console_ipranges:command(text, R).
 
-config(["show"]) ->
-    io:format("Storage~n  General Section~n"),
+networks([]) ->
+    sniffle_console_networks:help(),
+    ok;
+
+networks([C, "-j" | R]) ->
+    sniffle_console_networks:command(json, [C | R]);
+
+networks(R) ->
+    sniffle_console_networks:command(text, R).
+
+config(["show"]) ->    io:format("Storage~n  General Section~n"),
     print_config(storage, general),
     io:format("  S3 Section~n"),
     print_config(storage, s3),
@@ -335,7 +349,6 @@ hdr(F) ->
 
 
 hdr_lines([{N, n} | R], {Fmt, Vars, FmtLs, VarLs}) ->
-    %% there is a space that matters here ---------v
     hdr_lines(R, {
                 "~20s " ++ Fmt,
                 [N | Vars],
