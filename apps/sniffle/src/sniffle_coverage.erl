@@ -59,9 +59,6 @@ finish(clean, State = #state{replies = Replies,
                                  (Key, _Count, Keys) ->
                                       [Key | Keys]
                               end, [], Replies),
-    %%    statman_histogram:record_value(
-    %%      {list_to_binary(stat_name(SD0#state.vnode) ++ "/list"), total},
-    %%      SD0#state.start),
     From ! {ok, MergedReplies},
     {stop, normal, State};
 

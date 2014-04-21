@@ -62,7 +62,6 @@ start(_StartType, _StartArgs) ->
             ?SRV_WITH_AAE(sniffle_network_vnode, sniffle_network),
             ?SRV_WITH_AAE(sniffle_dtrace_vnode, sniffle_dtrace),
 
-            statman_server:add_subscriber(statman_aggregator),
             sniffle_snmp_handler:start(),
             {ok, Pid};
         {error, Reason} ->

@@ -121,6 +121,10 @@ case "$1" in
         shift
         run sniffle_console ips $@
         ;;
+    ipranges)
+        shift
+        run sniffle_console ips $@
+        ;;
 
     dtrace)
         shift
