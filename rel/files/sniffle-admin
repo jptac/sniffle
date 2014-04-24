@@ -183,6 +183,12 @@ case "$1" in
     services)
         $NODETOOL rpcterms riak_core_node_watcher services ''
         ;;
+
+    connections)
+        shift
+        run sniffle_console connections $@
+        ;;
+
     ring)
         run sniffle_console get_ring
         ;;
