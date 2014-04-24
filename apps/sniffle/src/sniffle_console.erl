@@ -11,7 +11,8 @@
          db_keys/1,
          db_get/1,
          db_delete/1,
-         get_ring/1
+         get_ring/1,
+         connections/1
         ]).
 
 -export([
@@ -47,6 +48,7 @@
               db_get/1,
               db_delete/1,
               get_ring/1,
+              connections/1,
               aae_status/1,
               config/1,
               down/1,
@@ -64,6 +66,33 @@
               staged_join/1,
               vms/1
              ]).
+
+print_endpoints(Es) ->
+    io:format("Hostname            "
+              "                    "
+              " Node               "
+              " Errors    ~n"),
+    io:format("--------------------"
+              "--------------------"
+              "----------"
+              " ---------------~n", []),
+    [print_endpoint(E) || E <- Es].
+
+print_endpoint([{{Hostname, [{port,Port},{ip,IP}]}, _, Fails}]) ->
+    HostPort = <<IP/binary, ":", Port/binary>>,
+    io:format("~40s ~-19s ~9b~n", [Hostname, HostPort, Fails]).
+
+connections(["snarl"]) ->
+    io:format("Snarl endpoints.~n"),
+    print_endpoints(libsnarl:servers());
+
+connections(["howl"]) ->
+    io:format("Howl endpoints.~n"),
+    print_endpoints(libhowl:servers());
+
+connections([]) ->
+    connections(["snarl"]),
+    connections(["howl"]).
 
 get_ring([]) ->
     {ok, RingData} = riak_core_ring_manager:get_my_ring(),
