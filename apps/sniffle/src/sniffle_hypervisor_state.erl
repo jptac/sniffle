@@ -12,6 +12,7 @@
 -export([
          load/1,
          new/0,
+         uuid/1,
          uuid/2,
          host/2,
          port/2,
@@ -29,6 +30,10 @@ load(H) ->
 
 new() ->
     jsxd:set(<<"version">>, <<"0.1.0">>, jsxd:new()).
+
+uuid(Vm) ->
+    {ok, UUID} = jsxd:get(<<"uuid">>, Vm),
+    UUID.
 
 uuid(Name, Hypervisor) ->
     jsxd:set(<<"uuid">>, Name, Hypervisor).

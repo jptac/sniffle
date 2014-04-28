@@ -1,6 +1,9 @@
 -module(sniffle_package).
 -include("sniffle.hrl").
-%%-include_lib("riak_core/include/riak_core_vnode.hrl").
+
+-define(MASTER, sniffle_package_vnode_master).
+-define(VNODE, sniffle_package_vnode).
+-define(SERVICE, sniffle_package).
 
 -export([
          create/1,
@@ -10,15 +13,29 @@
          list/0,
          list/2,
          set/2,
-         set/3
+         set/3,
+         wipe/1,
+         sync_repair/2,
+         list_/0
         ]).
+
+wipe(UUID) ->
+    sniffle_coverage:start(?MASTER, ?SERVICE, {wipe, UUID}).
+
+sync_repair(UUID, Obj) ->
+    do_write(UUID, sync_repair, Obj).
+
+list_() ->
+    {ok, Res} = sniffle_full_coverage:start(
+                  ?MASTER, ?SERVICE, {list, [], true, true}),
+    Res1 = [R || {_, R} <- Res],
+    {ok,  Res1}.
 
 -spec lookup(Package::binary()) ->
                     not_found | {ok, Pkg::fifo:object()} | {error, timeout}.
 lookup(Package) ->
     {ok, Res} = sniffle_coverage:start(
-                  sniffle_package_vnode_master, sniffle_package,
-                  {lookup, Package}),
+                  ?MASTER, ?SERVICE, {lookup, Package}),
     lists:foldl(fun (not_found, Acc) ->
                         Acc;
                     (R, _) ->
@@ -47,16 +64,12 @@ delete(Package) ->
 -spec get(Package::fifo:package_id()) ->
                  not_found | {ok, Pkg::fifo:object()} | {error, timeout}.
 get(Package) ->
-    sniffle_entity_read_fsm:start(
-      {sniffle_package_vnode, sniffle_package},
-      get, Package).
+    sniffle_entity_read_fsm:start({?VNODE, ?SERVICE}, get, Package).
 
 -spec list() ->
                   {ok, [Pkg::fifo:package_id()]} | {error, timeout}.
 list() ->
-    sniffle_coverage:start(
-      sniffle_package_vnode_master, sniffle_package,
-      list).
+    sniffle_coverage:start(?MASTER, ?SERVICE, list).
 
 %%--------------------------------------------------------------------
 %% @doc Lists all vm's and fiters by a given matcher set.
@@ -66,15 +79,13 @@ list() ->
 
 list(Requirements, true) ->
     {ok, Res} = sniffle_full_coverage:start(
-                  sniffle_package_vnode_master, sniffle_package,
-                  {list, Requirements, true}),
+                  ?MASTER, ?SERVICE, {list, Requirements, true}),
     Res1 = rankmatcher:apply_scales(Res),
     {ok,  lists:sort(Res1)};
 
 list(Requirements, false) ->
     {ok, Res} = sniffle_coverage:start(
-                  sniffle_package_vnode_master, sniffle_package,
-                  {list, Requirements}),
+                  ?MASTER, ?SERVICE, {list, Requirements}),
     Res1 = rankmatcher:apply_scales(Res),
     {ok,  lists:sort(Res1)}.
 
@@ -96,7 +107,7 @@ set(Package, Attributes) ->
 %%%===================================================================
 
 do_write(Package, Op) ->
-    sniffle_entity_write_fsm:write({sniffle_package_vnode, sniffle_package}, Package, Op).
+    sniffle_entity_write_fsm:write({?VNODE, ?SERVICE}, Package, Op).
 
 do_write(Package, Op, Val) ->
-    sniffle_entity_write_fsm:write({sniffle_package_vnode, sniffle_package}, Package, Op, Val).
+    sniffle_entity_write_fsm:write({?VNODE, ?SERVICE}, Package, Op, Val).

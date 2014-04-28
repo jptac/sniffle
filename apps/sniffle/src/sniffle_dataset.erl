@@ -1,6 +1,9 @@
 -module(sniffle_dataset).
 -include("sniffle.hrl").
-%%-include_lib("riak_core/include/riak_core_vnode.hrl").
+
+-define(MASTER, sniffle_dataset_vnode_master).
+-define(VNODE, sniffle_dataset_vnode).
+-define(SERVICE, sniffle_dataset).
 
 -export([
          create/1,
@@ -11,8 +14,23 @@
          set/2,
          set/3,
          import/1,
-         read_image/6
+         read_image/6,
+         wipe/1,
+         sync_repair/2,
+         list_/0
         ]).
+
+wipe(UUID) ->
+    sniffle_coverage:start(?MASTER, ?VNODE, {wipe, UUID}).
+
+sync_repair(UUID, Obj) ->
+    do_write(UUID, sync_repair, Obj).
+
+list_() ->
+    {ok, Res} = sniffle_full_coverage:start(
+                  ?MASTER, ?VNODE, {list, [], true, true}),
+    Res1 = [R || {_, R} <- Res],
+    {ok,  Res1}.
 
 -spec create(UUID::fifo:dataset_id()) ->
                     duplicate | ok | {error, timeout}.
@@ -37,17 +55,12 @@ delete(UUID) ->
 -spec get(UUID::fifo:dtrace_id()) ->
                  not_found | {ok, Dataset::fifo:dataset()} | {error, timeout}.
 get(UUID) ->
-    sniffle_entity_read_fsm:start(
-      {sniffle_dataset_vnode, sniffle_dataset},
-      get, UUID
-     ).
+    sniffle_entity_read_fsm:start({?VNODE, ?SERVICE}, get, UUID).
 
 -spec list() ->
                   {ok, [UUID::fifo:dataset_id()]} | {error, timeout}.
 list() ->
-    sniffle_coverage:start(
-      sniffle_dataset_vnode_master, sniffle_dataset,
-      list).
+    sniffle_coverage:start(?MASTER, ?SERVICE, list).
 
 %%--------------------------------------------------------------------
 %% @doc Lists all vm's and fiters by a given matcher set.
@@ -57,15 +70,13 @@ list() ->
 
 list(Requirements, true) ->
     {ok, Res} = sniffle_full_coverage:start(
-                  sniffle_dataset_vnode_master, sniffle_dataset,
-                  {list, Requirements, true}),
+                  ?MASTER, ?SERVICE, {list, Requirements, true}),
     Res1 = rankmatcher:apply_scales(Res),
     {ok,  lists:sort(Res1)};
 
 list(Requirements, false) ->
     {ok, Res} = sniffle_coverage:start(
-                  sniffle_dataset_vnode_master, sniffle_dataset,
-                  {list, Requirements}),
+                  ?MASTER, ?SERVICE, {list, Requirements}),
     Res1 = rankmatcher:apply_scales(Res),
     {ok,  lists:sort(Res1)}.
 
@@ -156,10 +167,10 @@ ensure_integer(B) when is_binary(B) ->
     list_to_integer(binary_to_list(B)).
 
 do_write(Dataset, Op) ->
-    sniffle_entity_write_fsm:write({sniffle_dataset_vnode, sniffle_dataset}, Dataset, Op).
+    sniffle_entity_write_fsm:write({?VNODE, ?SERVICE}, Dataset, Op).
 
 do_write(Dataset, Op, Val) ->
-    sniffle_entity_write_fsm:write({sniffle_dataset_vnode, sniffle_dataset}, Dataset, Op, Val).
+    sniffle_entity_write_fsm:write({?VNODE, ?SERVICE}, Dataset, Op, Val).
 
 %% If more then one MB is in the accumulator read store it in 1MB chunks
 read_image(UUID, TotalSize, Url, Acc, Idx, Ref) when is_binary(Url) ->

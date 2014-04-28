@@ -1,6 +1,9 @@
 -module(sniffle_network).
 -include("sniffle.hrl").
-%%-include_lib("riak_core/include/riak_core_vnode.hrl").
+
+-define(MASTER, sniffle_network_vnode_master).
+-define(VNODE, sniffle_network_vnode).
+-define(SERVICE, sniffle_network).
 
 -export([
          create/1,
@@ -14,7 +17,10 @@
          add_iprange/2,
          remove_iprange/2,
          claim_ip/1,
-         claim_ip/2
+         claim_ip/2,
+         wipe/1,
+         sync_repair/2,
+         list_/0
         ]).
 
 -ignore_xref([
@@ -34,13 +40,24 @@
 
 -define(MAX_TRIES, 3).
 
+wipe(UUID) ->
+    sniffle_coverage:start(?MASTER, ?SERVICE, {wipe, UUID}).
+
+sync_repair(UUID, Obj) ->
+    do_write(UUID, sync_repair, Obj).
+
+list_() ->
+    {ok, Res} = sniffle_full_coverage:start(
+                  ?MASTER, ?SERVICE, {list, [], true, true}),
+    Res1 = [R || {_, R} <- Res],
+    {ok,  Res1}.
+
 -spec lookup(Network::binary()) ->
                     not_found | {ok, IPR::fifo:object()} | {error, timeout}.
 lookup(Name) when
       is_binary(Name) ->
     {ok, Res} = sniffle_coverage:start(
-                  sniffle_network_vnode_master, sniffle_network,
-                  {lookup, Name}),
+                  ?MASTER, ?SERVICE, {lookup, Name}),
     lists:foldl(fun (not_found, Acc) ->
                         Acc;
                     (R, _) ->
@@ -68,10 +85,7 @@ delete(Network) ->
 -spec get(Network::fifo:network_id()) ->
                  not_found | {ok, IPR::fifo:object()} | {error, timeout}.
 get(Network) ->
-    sniffle_entity_read_fsm:start(
-      {sniffle_network_vnode, sniffle_network},
-      get, Network).
-
+    sniffle_entity_read_fsm:start({?VNODE, ?SERVICE}, get, Network).
 
 add_iprange(Network, IPRange) ->
     case sniffle_iprange:get(IPRange) of
@@ -87,9 +101,7 @@ remove_iprange(Network, IPRange) ->
 -spec list() ->
                   {ok, [IPR::fifo:network_id()]} | {error, timeout}.
 list() ->
-    sniffle_coverage:start(
-      sniffle_network_vnode_master, sniffle_network,
-      list).
+    sniffle_coverage:start(?MASTER, ?SERVICE, list).
 %%--------------------------------------------------------------------
 %% @doc Lists all vm's and fiters by a given matcher set.
 %% @end
@@ -98,15 +110,13 @@ list() ->
 
 list(Requirements, true) ->
     {ok, Res} = sniffle_full_coverage:start(
-                  sniffle_network_vnode_master, sniffle_network,
-                  {list, Requirements, true}),
+                  ?MASTER, ?SERVICE, {list, Requirements, true}),
     Res1 = rankmatcher:apply_scales(Res),
     {ok,  lists:sort(Res1)};
 
 list(Requirements, false) ->
     {ok, Res} = sniffle_coverage:start(
-                  sniffle_network_vnode_master, sniffle_network,
-                  {list, Requirements}),
+                  ?MASTER, ?SERVICE, {list, Requirements}),
     Res1 = rankmatcher:apply_scales(Res),
     {ok,  lists:sort(Res1)}.
 
@@ -141,13 +151,10 @@ claim_ip(UUID, Rules) ->
 %%%===================================================================
 
 do_write(Network, Op) ->
-    sniffle_entity_write_fsm:write({sniffle_network_vnode, sniffle_network},
-                                   Network, Op).
+    sniffle_entity_write_fsm:write({?VNODE, ?SERVICE}, Network, Op).
 
 do_write(Network, Op, Val) ->
-    sniffle_entity_write_fsm:write({sniffle_network_vnode, sniffle_network},
-                                   Network, Op, Val).
-
+    sniffle_entity_write_fsm:write({?VNODE, ?SERVICE}, Network, Op, Val).
 
 get_ip([N | R], []) ->
     case sniffle_iprange:claim_ip(N) of

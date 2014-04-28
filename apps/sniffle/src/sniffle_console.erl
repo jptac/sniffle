@@ -71,7 +71,50 @@
              ]).
 
 db_update([]) ->
-    [db_update([E]) || E <- ["vms"]],
+    [db_update([E]) || E <- ["vms", "datasets", "dtraces", "hypervisors",
+                             "ipranges", "networks", "packages"]],
+    ok;
+
+db_update(["datasets"]) ->
+    {ok, US} = sniffle_dataset:list_(),
+    US1 = [{sniffle_dataset_state:uuid(V), U} || U = #sniffle_obj{val = V} <- US],
+    [sniffle_dataset:wipe(UUID) || {UUID, _} <- US1],
+    [sniffle_dataset:sync_repair(UUID, O) || {UUID, O} <- US1],
+    ok;
+
+db_update(["dtraces"]) ->
+    {ok, US} = sniffle_dtrace:list_(),
+    US1 = [{sniffle_dtrace_state:uuid(V), U} || U = #sniffle_obj{val = V} <- US],
+    [sniffle_dtrace:wipe(UUID) || {UUID, _} <- US1],
+    [sniffle_dtrace:sync_repair(UUID, O) || {UUID, O} <- US1],
+    ok;
+
+db_update(["hypervisors"]) ->
+    {ok, US} = sniffle_hypervisor:list_(),
+    US1 = [{sniffle_hypervisor_state:uuid(V), U} || U = #sniffle_obj{val = V} <- US],
+    [sniffle_hypervisor:wipe(UUID) || {UUID, _} <- US1],
+    [sniffle_hypervisor:sync_repair(UUID, O) || {UUID, O} <- US1],
+    ok;
+
+db_update(["ipranges"]) ->
+    {ok, US} = sniffle_iprange:list_(),
+    US1 = [{sniffle_iprange_state:uuid(V), U} || U = #sniffle_obj{val = V} <- US],
+    [sniffle_iprange:wipe(UUID) || {UUID, _} <- US1],
+    [sniffle_iprange:sync_repair(UUID, O) || {UUID, O} <- US1],
+    ok;
+
+db_update(["networks"]) ->
+    {ok, US} = sniffle_network:list_(),
+    US1 = [{sniffle_network_state:uuid(V), U} || U = #sniffle_obj{val = V} <- US],
+    [sniffle_network:wipe(UUID) || {UUID, _} <- US1],
+    [sniffle_network:sync_repair(UUID, O) || {UUID, O} <- US1],
+    ok;
+
+db_update(["packages"]) ->
+    {ok, US} = sniffle_package:list_(),
+    US1 = [{sniffle_package_state:uuid(V), U} || U = #sniffle_obj{val = V} <- US],
+    [sniffle_package:wipe(UUID) || {UUID, _} <- US1],
+    [sniffle_package:sync_repair(UUID, O) || {UUID, O} <- US1],
     ok;
 
 db_update(["vms"]) ->

@@ -12,6 +12,7 @@
 -export([
          load/1,
          new/0,
+         uuid/1,
          uuid/2,
          name/2,
          set/3,
@@ -38,6 +39,10 @@ new() ->
 
 name(Name, Package) ->
     jsxd:set(<<"name">>, Name, Package).
+
+uuid(Vm) ->
+    {ok, UUID} = jsxd:get(<<"uuid">>, Vm),
+    UUID.
 
 uuid(UUID, Package) ->
     jsxd:set(<<"uuid">>, UUID, Package).

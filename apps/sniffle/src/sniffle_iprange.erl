@@ -1,6 +1,9 @@
 -module(sniffle_iprange).
 -include("sniffle.hrl").
-%%-include_lib("riak_core/include/riak_core_vnode.hrl").
+
+-define(MASTER, sniffle_iprange_vnode_master).
+-define(VNODE, sniffle_iprange_vnode).
+-define(SERVICE, sniffle_iprange).
 
 -export([
          create/8,
@@ -13,18 +16,33 @@
          full/1,
          release_ip/2,
          set/3,
-         set/2
+         set/2,
+         wipe/1,
+         sync_repair/2,
+         list_/0
         ]).
 
 -define(MAX_TRIES, 3).
+
+wipe(UUID) ->
+    sniffle_coverage:start(?MASTER, ?SERVICE, {wipe, UUID}).
+
+sync_repair(UUID, Obj) ->
+    do_write(UUID, sync_repair, Obj).
+
+list_() ->
+    {ok, Res} = sniffle_full_coverage:start(
+                  ?MASTER, ?SERVICE, {list, [], true, true}),
+    Res1 = [R || {_, R} <- Res],
+    {ok,  Res1}.
+
 
 -spec lookup(IPRange::binary()) ->
                     not_found | {ok, IPR::fifo:object()} | {error, timeout}.
 lookup(Name) when
       is_binary(Name) ->
     {ok, Res} = sniffle_coverage:start(
-                  sniffle_iprange_vnode_master, sniffle_iprange,
-                  {lookup, Name}),
+                  ?MASTER, ?SERVICE, {lookup, Name}),
     lists:foldl(fun (not_found, Acc) ->
                         Acc;
                     (R, _) ->
@@ -59,16 +77,12 @@ delete(Iprange) ->
 -spec get(Iprange::fifo:iprange_id()) ->
                  not_found | {ok, IPR::fifo:object()} | {error, timeout}.
 get(Iprange) ->
-    sniffle_entity_read_fsm:start(
-      {sniffle_iprange_vnode, sniffle_iprange},
-      get, Iprange).
+    sniffle_entity_read_fsm:start({?VNODE, ?SERVICE}, get, Iprange).
 
 -spec list() ->
                   {ok, [IPR::fifo:iprange_id()]} | {error, timeout}.
 list() ->
-    sniffle_coverage:start(
-      sniffle_iprange_vnode_master, sniffle_iprange,
-      list).
+    sniffle_coverage:start(?MASTER, ?SERVICE, list).
 
 %%--------------------------------------------------------------------
 %% @doc Lists all vm's and fiters by a given matcher set.
@@ -78,15 +92,13 @@ list() ->
 
 list(Requirements, true) ->
     {ok, Res} = sniffle_full_coverage:start(
-                  sniffle_iprange_vnode_master, sniffle_iprange,
-                  {list, Requirements, true}),
+                  ?MASTER, ?SERVICE, {list, Requirements, true}),
     Res1 = rankmatcher:apply_scales(Res),
     {ok,  lists:sort(Res1)};
 
 list(Requirements, false) ->
     {ok, Res} = sniffle_coverage:start(
-                  sniffle_iprange_vnode_master, sniffle_iprange,
-                  {list, Requirements}),
+                  ?MASTER, ?SERVICE, {list, Requirements}),
     Res1 = rankmatcher:apply_scales(Res),
     {ok,  lists:sort(Res1)}.
 
@@ -125,10 +137,10 @@ set(Iprange, Attributes) ->
 %%%===================================================================
 
 do_write(Iprange, Op) ->
-    sniffle_entity_write_fsm:write({sniffle_iprange_vnode, sniffle_iprange}, Iprange, Op).
+    sniffle_entity_write_fsm:write({?VNODE, ?SERVICE}, Iprange, Op).
 
 do_write(Iprange, Op, Val) ->
-    sniffle_entity_write_fsm:write({sniffle_iprange_vnode, sniffle_iprange}, Iprange, Op, Val).
+    sniffle_entity_write_fsm:write({?VNODE, ?SERVICE}, Iprange, Op, Val).
 
 claim_ip(_Iprange, ?MAX_TRIES) ->
     {error, failed};
