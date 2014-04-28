@@ -302,7 +302,8 @@ handle_coverage({list, Img, true}, _KeySpaces, {_, ReqID, _}, State) ->
             State#vstate.db,
             fun(#bitcask_entry{key = K = <<Img1:S/binary, _>>}, V, L)
                   when Img1 =:= Img ->
-                    [{K, V} | L];
+                    O = term_to_binary(V),
+                    [O#sniffle_obj{val={K, O#sniffle_obj.val}} | L];
                (_, _, L) ->
                     L
             end, []),
