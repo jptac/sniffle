@@ -76,10 +76,34 @@ db_update([]) ->
     ok;
 
 db_update(["datasets"]) ->
+    io:format("Updating datasets...~n"),
     {ok, US} = sniffle_dataset:list_(),
-    US1 = [{sniffle_dataset_state:uuid(V), U} || U = #sniffle_obj{val = V} <- US],
-    [sniffle_dataset:wipe(UUID) || {UUID, _} <- US1],
-    [sniffle_dataset:sync_repair(UUID, O) || {UUID, O} <- US1],
+    io:format("Entries found: ~p~n", [length(US)]),
+
+    io:format("Grabbing UUIDs"),
+    US1 = [begin
+               io:format("."),
+               %%flush(),
+               {sniffle_dataset_state:uuid(V), U}
+           end|| U = #sniffle_obj{val = V} <- US],
+    io:format(" done.~n"),
+
+    io:format("Wiping old entries"),
+    [begin
+         io:format("."),
+         %%flush(),
+         sniffle_dataset:wipe(UUID)
+     end || {UUID, _} <- US1],
+    io:format(" done.~n"),
+
+    io:format("Restoring entries"),
+    [begin
+         io:format("."),
+         %%flush(),
+         sniffle_dataset:sync_repair(UUID, O)
+     end || {UUID, O} <- US1],
+    io:format(" done.~n"),
+    io:format("Update complete.~n"),
     ok;
 
 db_update(["dtraces"]) ->
