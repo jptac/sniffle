@@ -296,6 +296,20 @@ handle_coverage({list, Img}, _KeySpaces, {_, ReqID, _}, State) ->
      {ok, ReqID, {State#vstate.partition,State#vstate.node}, List},
      State};
 
+handle_coverage({list, Img, true}, _KeySpaces, {_, ReqID, _}, State) ->
+    S = byte_size(Img),
+    Acc = bitcask:fold(
+            State#vstate.db,
+            fun(#bitcask_entry{key = K = <<Img1:S/binary, _>>}, V, L)
+                  when Img1 =:= Img ->
+                    [{K, V} | L];
+               (_, _, L) ->
+                    L
+            end, []),
+    {reply,
+     {ok, ReqID, {State#vstate.partition, State#vstate.node}, Acc},
+     State};
+
 handle_coverage(_Req, _KeySpaces, _Sender, State) ->
     {stop, not_implemented, State}.
 

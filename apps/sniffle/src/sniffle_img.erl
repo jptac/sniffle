@@ -1,6 +1,10 @@
 -module(sniffle_img).
 -include("sniffle.hrl").
 
+-define(MASTER, sniffle_img_vnode_master).
+-define(VNODE, sniffle_img_vnode).
+-define(SERVICE, sniffle_img).
+
 -export([
          create/4,
          delete/1,
@@ -9,10 +13,29 @@
          get/1,
          list/0,
          list/1,
-         backend/0
+         backend/0,
+         sync_repair/2,
+         wipe/1,
+         list_/1
         ]).
 
--ignore_xref([read_image/5]).
+-ignore_xref([
+              sync_repair/2,
+              list_/1,
+              wipe/1
+              ]).
+
+wipe(UUID) ->
+    sniffle_coverage:start(?MASTER, ?SERVICE, {wipe, UUID}).
+
+sync_repair(UUID, Obj) ->
+    do_write(UUID, sync_repair, Obj).
+
+list_(Base) ->
+    {ok, Res} = sniffle_full_coverage:start(
+                  ?MASTER, ?SERVICE, {list, Base, true, true}),
+    Res1 = [R || {_, R} <- Res],
+    {ok,  Res1}.
 
 -spec create(Img::fifo:dataset_id(),
              Idx::integer(),
@@ -79,7 +102,7 @@ get(Img, Idx) ->
         internal ->
             lager:debug("<IMG> ~s[~p]", [Img, Idx]),
             sniffle_entity_read_fsm:start(
-              {sniffle_img_vnode, sniffle_img},
+              {?VNODE, ?SERVICE},
               get, {Img, Idx})
     end.
 
@@ -102,7 +125,7 @@ list() ->
             end;
         internal ->
             sniffle_coverage:start(
-              sniffle_img_vnode_master, sniffle_img,
+              ?MASTER, ?SERVICE,
               list)
     end.
 
@@ -116,7 +139,7 @@ list(Img) ->
             {ok, AKey, SKey, S3Host, S3Port, Bucket, Img};
         internal ->
             sniffle_coverage:start(
-              sniffle_img_vnode_master, sniffle_img,
+              ?MASTER, ?SERVICE,
               {list, Img})
     end.
 
@@ -125,10 +148,10 @@ list(Img) ->
 %%%===================================================================
 
 do_write(Img, Op) ->
-    sniffle_entity_write_fsm:write({sniffle_img_vnode, sniffle_img}, Img, Op).
+    sniffle_entity_write_fsm:write({?VNODE, ?SERVICE}, Img, Op).
 
 do_write(Img, Op, Val) ->
-    sniffle_entity_write_fsm:write({sniffle_img_vnode, sniffle_img}, Img, Op, Val).
+    sniffle_entity_write_fsm:write({?VNODE, ?SERVICE}, Img, Op, Val).
 
 backend() ->
     sniffle_opt:get(storage, general, backend, large_data_backend, internal).
