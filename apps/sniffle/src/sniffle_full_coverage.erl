@@ -31,7 +31,7 @@ start(VNodeMaster, NodeCheckService, Request = {list, Requirements, true, _}) ->
     end.
 
 %% The first is the vnode service used
-init({From, ReqID, Requirements}, {VNodeMaster, NodeCheckService, Request, Raw}) ->
+init({From, ReqID, Requirements}, {VNodeMaster, NodeCheckService, {list, Requirements, Full, Raw}}) ->
     {NVal, R, _W} = ?NRW(NodeCheckService),
     %% all - full coverage; allup - partial coverage
     VNodeSelector = allup,
@@ -39,6 +39,7 @@ init({From, ReqID, Requirements}, {VNodeMaster, NodeCheckService, Request, Raw})
     PrimaryVNodeCoverage = R,
     %% We timeout after 5s
     Timeout = 5000,
+    Request = {list, Requirements, Full},
     State = #state{replies = dict:new(), r = R,
                    from = From, reqid = ReqID,
                    reqs = Requirements, raw = Raw},
