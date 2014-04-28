@@ -31,7 +31,8 @@ start(VNodeMaster, NodeCheckService, Request = {list, Requirements, true, _}) ->
     end.
 
 %% The first is the vnode service used
-init({From, ReqID, Requirements}, {VNodeMaster, NodeCheckService, {list, Requirements, Full, Raw}}) ->
+init({From, ReqID, Requirements},
+     {VNodeMaster, NodeCheckService, {list, Requirements, Full, Raw}}) ->
     {NVal, R, _W} = ?NRW(NodeCheckService),
     %% all - full coverage; allup - partial coverage
     VNodeSelector = allup,
