@@ -95,10 +95,10 @@ raw_merge([{Score, V} | R]) ->
     raw_merge(R, Score, [V]).
 
 raw_merge([], recalculate, Vs) ->
-    {0, merge_obj(Vs)};
+    {0, sniffle_obj:merge(sniffle_entity_read_fsm, Vs)};
 
 raw_merge([], Score, Vs) ->
-    {Score, merge_obj(Vs)};
+    {Score, sniffle_obj:merge(sniffle_entity_read_fsm, Vs)};
 
 raw_merge([{Score, V} | R], Score, Vs) ->
     raw_merge(R, Score, [V | Vs]);
@@ -106,15 +106,15 @@ raw_merge([{Score, V} | R], Score, Vs) ->
 raw_merge([{_Score1, V} | R], _Score2, Vs) when _Score1 =/= _Score2->
     raw_merge(R, recalculate, [V | Vs]).
 
+
 merge([{Score, V} | R]) ->
     merge(R, Score, [V]).
 
 merge([], recalculate, Vs) ->
-    {0, sniffle_obj:merge(sniffle_entity_read_fsm, Vs)};
+    {0, merge_obj(Vs)};
 
 merge([], Score, Vs) ->
-    {Score, sniffle_obj:merge(sniffle_entity_read_fsm, Vs)};
-
+    {Score, merge_obj(Vs)};
 
 merge([{Score, V} | R], Score, Vs) ->
     merge(R, Score, [V | Vs]);
