@@ -28,7 +28,7 @@ sync_repair(UUID, Obj) ->
 
 list_() ->
     {ok, Res} = sniffle_full_coverage:start(
-                  ?MASTER, ?VNODE, {list, [], true, true}),
+                  ?MASTER, ?SERVICE, {list, [], true, true}),
     Res1 = [R || {_, R} <- Res],
     {ok,  Res1}.
 

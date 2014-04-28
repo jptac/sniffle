@@ -143,6 +143,7 @@ handle_coverage({list, Requirements, Full}, _KeySpaces, Sender,
         false ->
             list_keys(fun Mod:getter/2, Requirements, Sender, State)
     end;
+
 handle_coverage(Req, _KeySpaces, _Sender, State) ->
     lager:warning("Unknown coverage request: ~p", [Req]),
     {stop, not_implemented, State}.

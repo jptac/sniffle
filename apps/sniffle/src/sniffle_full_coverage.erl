@@ -80,7 +80,7 @@ finish(clean, State = #state{replies = Replies,
     {stop, normal, State};
 
 finish(How, State) ->
-    lager:error("Unknown process results call: ~p ~p", [How, State]),
+    lager:error("Unknown finish results call: ~p ~p", [How, State]),
     {error, failed}.
 
 %%%===================================================================
