@@ -29,7 +29,10 @@
     set/3,
     list/0,
     list/2,
-    delete/1
+    delete/1,
+    sync_repair/2,
+    list_/0,
+    wipe/1
    ]
   ).
 

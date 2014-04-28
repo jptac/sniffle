@@ -53,6 +53,9 @@
         ]).
 
 -ignore_xref([logs/1,
+              sync_repair/2,
+              list_/0,
+              wipe/1,
               children/2]).
 
 -type backup_opts() ::

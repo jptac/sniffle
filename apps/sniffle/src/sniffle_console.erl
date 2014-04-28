@@ -77,76 +77,31 @@ db_update([]) ->
 
 db_update(["datasets"]) ->
     io:format("Updating datasets...~n"),
-    {ok, US} = sniffle_dataset:list_(),
-    io:format("Entries found: ~p~n", [length(US)]),
-
-    io:format("Grabbing UUIDs"),
-    US1 = [begin
-               io:format("."),
-               %%flush(),
-               {sniffle_dataset_state:uuid(V), U}
-           end|| U = #sniffle_obj{val = V} <- US],
-    io:format(" done.~n"),
-
-    io:format("Wiping old entries"),
-    [begin
-         io:format("."),
-         %%flush(),
-         sniffle_dataset:wipe(UUID)
-     end || {UUID, _} <- US1],
-    io:format(" done.~n"),
-
-    io:format("Restoring entries"),
-    [begin
-         io:format("."),
-         %%flush(),
-         sniffle_dataset:sync_repair(UUID, O)
-     end || {UUID, O} <- US1],
-    io:format(" done.~n"),
-    io:format("Update complete.~n"),
-    ok;
+    do_update(sniffle_dataset, sniffle_dataset_state);
 
 db_update(["dtraces"]) ->
-    {ok, US} = sniffle_dtrace:list_(),
-    US1 = [{sniffle_dtrace_state:uuid(V), U} || U = #sniffle_obj{val = V} <- US],
-    [sniffle_dtrace:wipe(UUID) || {UUID, _} <- US1],
-    [sniffle_dtrace:sync_repair(UUID, O) || {UUID, O} <- US1],
-    ok;
+    io:format("Updating dtrace scripts...~n"),
+    do_update(sniffle_dtrace, sniffle_dtrace_state);
 
 db_update(["hypervisors"]) ->
-    {ok, US} = sniffle_hypervisor:list_(),
-    US1 = [{sniffle_hypervisor_state:uuid(V), U} || U = #sniffle_obj{val = V} <- US],
-    [sniffle_hypervisor:wipe(UUID) || {UUID, _} <- US1],
-    [sniffle_hypervisor:sync_repair(UUID, O) || {UUID, O} <- US1],
-    ok;
+    io:format("Updating hypervisors...~n"),
+    do_update(sniffle_hypervisor, sniffle_hypervisor_state);
 
 db_update(["ipranges"]) ->
-    {ok, US} = sniffle_iprange:list_(),
-    US1 = [{sniffle_iprange_state:uuid(V), U} || U = #sniffle_obj{val = V} <- US],
-    [sniffle_iprange:wipe(UUID) || {UUID, _} <- US1],
-    [sniffle_iprange:sync_repair(UUID, O) || {UUID, O} <- US1],
-    ok;
+    io:format("Updating ipranges...~n"),
+    do_update(sniffle_iprange, sniffle_iprange_state);
 
 db_update(["networks"]) ->
-    {ok, US} = sniffle_network:list_(),
-    US1 = [{sniffle_network_state:uuid(V), U} || U = #sniffle_obj{val = V} <- US],
-    [sniffle_network:wipe(UUID) || {UUID, _} <- US1],
-    [sniffle_network:sync_repair(UUID, O) || {UUID, O} <- US1],
-    ok;
+    io:format("Updating networks...~n"),
+    do_update(sniffle_network, sniffle_network_state);
 
 db_update(["packages"]) ->
-    {ok, US} = sniffle_package:list_(),
-    US1 = [{sniffle_package_state:uuid(V), U} || U = #sniffle_obj{val = V} <- US],
-    [sniffle_package:wipe(UUID) || {UUID, _} <- US1],
-    [sniffle_package:sync_repair(UUID, O) || {UUID, O} <- US1],
-    ok;
+    io:format("Updating packages...~n"),
+    do_update(sniffle_package, sniffle_package_state);
 
 db_update(["vms"]) ->
-    {ok, US} = sniffle_vm:list_(),
-    US1 = [{sniffle_vm_state:uuid(V), U} || U = #sniffle_obj{val = V} <- US],
-    [sniffle_vm:wipe(UUID) || {UUID, _} <- US1],
-    [sniffle_vm:sync_repair(UUID, O) || {UUID, O} <- US1],
-    ok.
+    io:format("Updating vms...~n"),
+    do_update(sniffle_vm, sniffle_vm_state).
 
 print_endpoints(Es) ->
     io:format("Hostname            "
@@ -665,6 +620,37 @@ format_timestamp(_Now, undefined) ->
     "--";
 format_timestamp(Now, TS) ->
     riak_core_format:human_time_fmt("~.1f", timer:now_diff(Now, TS)).
+
+
+do_update(MainMod, StateMod) ->
+    {ok, US} = MainMod:list_(),
+    io:format("Entries found: ~p~n", [length(US)]),
+
+    io:format("Grabbing UUIDs"),
+    US1 = [begin
+               io:format("."),
+               %%flush(),
+               {StateMod:uuid(V), U}
+           end|| U = #sniffle_obj{val = V} <- US],
+    io:format(" done.~n"),
+
+    io:format("Wiping old entries"),
+    [begin
+         io:format("."),
+         %%flush(),
+         MainMod:wipe(UUID)
+     end || {UUID, _} <- US1],
+    io:format(" done.~n"),
+
+    io:format("Restoring entries"),
+    [begin
+         io:format("."),
+         %%flush(),
+         MainMod:sync_repair(UUID, O)
+     end || {UUID, O} <- US1],
+    io:format(" done.~n"),
+    io:format("Update complete.~n"),
+    ok.
 
 %%%===================================================================
 %%% Tests

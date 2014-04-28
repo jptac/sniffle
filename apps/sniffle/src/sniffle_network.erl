@@ -35,7 +35,10 @@
               add_iprange/2,
               remove_iprange/2,
               claim_ip/1,
-              claim_ip/2
+              claim_ip/2,
+              sync_repair/2,
+              list_/0,
+              wipe/1
              ]).
 
 -define(MAX_TRIES, 3).

@@ -22,6 +22,12 @@
          list_/0
         ]).
 
+-ignore_xref([
+              sync_repair/2,
+              list_/0,
+              wipe/1
+              ]).
+
 -define(MAX_TRIES, 3).
 
 wipe(UUID) ->

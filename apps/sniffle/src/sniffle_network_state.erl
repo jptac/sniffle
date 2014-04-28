@@ -25,7 +25,7 @@
          getter/2
         ]).
 
--ignore_xref([load/1, set/3, getter/2]).
+-ignore_xref([load/1, set/3, getter/2, uuid/1]).
 
 -ignore_xref([
               add_iprange/2,

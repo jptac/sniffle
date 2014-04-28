@@ -19,6 +19,12 @@
          list_/0
         ]).
 
+-ignore_xref([
+              sync_repair/2,
+              list_/0,
+              wipe/1
+              ]).
+
 wipe(UUID) ->
     sniffle_coverage:start(?MASTER, ?SERVICE, {wipe, UUID}).
 
