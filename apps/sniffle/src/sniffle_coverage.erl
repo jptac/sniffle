@@ -48,6 +48,9 @@ process_results({ok, _ReqID, _IdxNode, Obj},
                           end, Replies, Obj),
     {done, State#state{replies = Replies1}};
 
+process_results({ok, _ReqID, _IdxNode}, State) ->
+    {done, State};
+
 process_results(Result, State) ->
     lager:error("Unknown process results call: ~p ~p", [Result, State]),
     {done, State}.
