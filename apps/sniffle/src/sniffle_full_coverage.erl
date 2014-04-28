@@ -11,10 +11,12 @@
          start/3
         ]).
 
--record(state, {replies, r, reqid, from, reqs}).
+-record(state, {replies, r, reqid, from, reqs, raw=false}).
 
+start(VNodeMaster, NodeCheckService, {list, Requirements, true}) ->
+    start(VNodeMaster, NodeCheckService, {list, Requirements, true, false});
 
-start(VNodeMaster, NodeCheckService, Request = {list, Requirements, true}) ->
+start(VNodeMaster, NodeCheckService, Request = {list, Requirements, true, _}) ->
     ReqID = mk_reqid(),
     sniffle_coverage_sup:start_coverage(
       ?MODULE, {self(), ReqID, Requirements},
@@ -24,16 +26,12 @@ start(VNodeMaster, NodeCheckService, Request = {list, Requirements, true}) ->
             ok;
         {ok, Result} ->
             {ok, Result}
-            %%;
-            %%Else ->
-            %%lager:error("Unknown coverage reply: ~p", [Else]),
-            %%{error, unknown_reply}
     after 10000 ->
             {error, timeout}
     end.
 
 %% The first is the vnode service used
-init({From, ReqID, Requirements}, {VNodeMaster, NodeCheckService, Request}) ->
+init({From, ReqID, Requirements}, {VNodeMaster, NodeCheckService, Request, Raw}) ->
     {NVal, R, _W} = ?NRW(NodeCheckService),
     %% all - full coverage; allup - partial coverage
     VNodeSelector = allup,
@@ -43,7 +41,7 @@ init({From, ReqID, Requirements}, {VNodeMaster, NodeCheckService, Request}) ->
     Timeout = 5000,
     State = #state{replies = dict:new(), r = R,
                    from = From, reqid = ReqID,
-                   reqs = Requirements},
+                   reqs = Requirements, raw = Raw},
     {Request, VNodeSelector, NVal, PrimaryVNodeCoverage,
      NodeCheckService, VNodeMaster, Timeout, State}.
 
@@ -67,7 +65,12 @@ finish(clean, State = #state{replies = Replies,
                                           _L when _L < R ->
                                               Res;
                                           _ ->
-                                              Mgd = merge(Es),
+                                              Mgd = case State#state.raw of
+                                                        false ->
+                                                            merge(Es);
+                                                        true ->
+                                                            raw_merge(Es)
+                                                    end,
                                               [Mgd | Res]
                                       end
                               end, [], Replies),
@@ -86,15 +89,29 @@ mk_reqid() ->
     {MegaSecs,Secs,MicroSecs} = erlang:now(),
     (MegaSecs*1000000 + Secs)*1000000 + MicroSecs.
 
+raw_merge([{Score, V} | R]) ->
+    raw_merge(R, Score, [V]).
+
+raw_merge([], recalculate, Vs) ->
+    {0, merge_obj(Vs)};
+
+raw_merge([], Score, Vs) ->
+    {Score, merge_obj(Vs)};
+
+raw_merge([{Score, V} | R], Score, Vs) ->
+    raw_merge(R, Score, [V | Vs]);
+
+raw_merge([{_Score1, V} | R], _Score2, Vs) when _Score1 =/= _Score2->
+    raw_merge(R, recalculate, [V | Vs]).
 
 merge([{Score, V} | R]) ->
     merge(R, Score, [V]).
 
 merge([], recalculate, Vs) ->
-    {0, merge_obj(Vs)};
+    {0, sniffle_obj:merge(sniffle_entity_read_fsm, Vs)};
 
 merge([], Score, Vs) ->
-    {Score, merge_obj(Vs)};
+    {Score, sniffle_obj:merge(sniffle_entity_read_fsm, Vs)};
 
 
 merge([{Score, V} | R], Score, Vs) ->
@@ -102,7 +119,6 @@ merge([{Score, V} | R], Score, Vs) ->
 
 merge([{_Score1, V} | R], _Score2, Vs) when _Score1 =/= _Score2->
     merge(R, recalculate, [V | Vs]).
-
 
 merge_obj(Vs) ->
     case sniffle_obj:merge(sniffle_entity_read_fsm, Vs) of

@@ -3,6 +3,7 @@
 %% https://github.com/basho/riak_kv/blob/develop/src/riak_kv_console.erl
 -module(sniffle_console).
 
+-include_lib("sniffle.hrl").
 -ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").
 -endif.
@@ -12,7 +13,8 @@
          db_get/1,
          db_delete/1,
          get_ring/1,
-         connections/1
+         connections/1,
+         db_update/1
         ]).
 
 -export([
@@ -64,8 +66,20 @@
               remove/1,
               ringready/1,
               staged_join/1,
-              vms/1
+              vms/1,
+              db_update/1
              ]).
+
+db_update([]) ->
+    [db_update([E]) || E <- ["vms"]],
+    ok;
+
+db_update(["vms"]) ->
+    {ok, US} = sniffle_vm:list_(),
+    US1 = [{sniffle_vm_state:uuid(V), U} || U = #sniffle_obj{val = V} <- US],
+    [sniffle_vm:wipe(UUID) || {UUID, _} <- US1],
+    [sniffle_vm:sync_repair(UUID, O) || {UUID, O} <- US1],
+    ok.
 
 print_endpoints(Es) ->
     io:format("Hostname            "

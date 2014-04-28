@@ -20,6 +20,7 @@
 -export([
          load/1,
          new/0,
+         uuid/1,
          uuid/2,
          log/3,
          hypervisor/2,
@@ -31,6 +32,10 @@
 
 getter(#sniffle_obj{val=S0}, Resource) ->
     jsxd:get(Resource, 0, statebox:value(S0)).
+
+uuid(Vm) ->
+    {ok, UUID} = jsxd:get(<<"uuid">>, Vm),
+    UUID.
 
 load(H) ->
     H.

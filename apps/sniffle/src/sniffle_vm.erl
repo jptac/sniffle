@@ -16,6 +16,7 @@
          delete_snapshot/2,
          get/1,
          list/0,
+         list_/0,
          list/2,
          log/2,
          logs/1,
@@ -41,7 +42,9 @@
          stop/2,
          store/1,
          unregister/1,
-         update/3
+         update/3,
+         wipe/1,
+         sync_repair/2
         ]).
 
 -ignore_xref([logs/1,
@@ -51,6 +54,13 @@
         delete |
         {delete, parent} |
         xml.
+
+wipe(UUID) ->
+    sniffle_coverage:start(sniffle_vm_vnode_master, sniffle_vm,
+                           {wipe, UUID}).
+
+sync_repair(UUID, Obj) ->
+    do_write(UUID, sync_repair, Obj).
 
 
 store(Vm) ->
@@ -595,6 +605,13 @@ list() ->
     sniffle_coverage:start(
       sniffle_vm_vnode_master, sniffle_vm,
       list).
+
+list_() ->
+    {ok, Res} = sniffle_full_coverage:start(
+                  sniffle_vm_vnode_master, sniffle_vm,
+                  {list, [], true, true}),
+    Res1 = [R || {_, R} <- Res],
+    {ok,  Res1}.
 
 %%--------------------------------------------------------------------
 %% @doc Lists all vm's and fiters by a given matcher set.

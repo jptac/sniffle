@@ -162,6 +162,24 @@ handle_command({repair, UUID, _VClock, Obj}, _Sender,
     end,
     {noreply, State};
 
+handle_command({sync_repair, {ReqID, _}, UUID, Obj = #sniffle_obj{}}, _Sender,
+               State=#vstate{state=Mod}) ->
+    case get(UUID, State) of
+        {ok, Old} ->
+            ID = sniffle_vnode:mkid(),
+            Old1 = load_obj(ID, Mod, Old),
+            lager:info("[sync-repair:~s] Merging with old object", [UUID]),
+            Merged = sniffle_obj:merge(sniffle_entity_read_fsm, [Old1, Obj]),
+            sniffle_vnode:put(UUID, Merged, State);
+        not_found ->
+            lager:info("[sync-repair:~s] Writing new object", [UUID]),
+            sniffle_vnode:put(UUID, Obj, State);
+        _ ->
+            lager:error("[~s] Read repair failed, data was updated too recent.",
+                        [State#vstate.bucket])
+    end,
+    {reply, {ok, ReqID}, State};
+
 handle_command({get, ReqID, UUID}, _Sender, State) ->
     Res = case fifo_db:get(State#vstate.db, State#vstate.bucket, UUID) of
               {ok, R} ->
@@ -266,3 +284,6 @@ handle_info({'DOWN', _, _, _, _}, State) ->
     {ok, State};
 handle_info(_, State) ->
     {ok, State}.
+
+load_obj(_ID, _Mod, Old) ->
+    Old.
