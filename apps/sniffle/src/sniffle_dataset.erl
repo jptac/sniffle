@@ -21,7 +21,7 @@
         ]).
 
 wipe(UUID) ->
-    sniffle_coverage:start(?MASTER, ?VNODE, {wipe, UUID}).
+    sniffle_coverage:start(?MASTER, ?SERVICE, {wipe, UUID}).
 
 sync_repair(UUID, Obj) ->
     do_write(UUID, sync_repair, Obj).
