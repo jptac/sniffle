@@ -41,7 +41,7 @@ name(Name, Package) ->
     jsxd:set(<<"name">>, Name, Package).
 
 uuid(Vm) ->
-    {ok, UUID} = jsxd:get(<<"uuid">>, Vm),
+    {ok, UUID} = jsxd:get(<<"uuid">>, statebox:value(Vm)),
     UUID.
 
 uuid(UUID, Package) ->

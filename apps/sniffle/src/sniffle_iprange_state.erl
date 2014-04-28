@@ -39,7 +39,7 @@
 -ignore_xref([load/1, set/3, getter/2]).
 
 uuid(Vm) ->
-    {ok, UUID} = jsxd:get(<<"uuid">>, Vm),
+    {ok, UUID} = jsxd:get(<<"uuid">>, statebox:value(Vm)),
     UUID.
 
 getter(#sniffle_obj{val=S0}, Resource) ->

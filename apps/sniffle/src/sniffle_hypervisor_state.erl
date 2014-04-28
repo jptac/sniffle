@@ -32,7 +32,7 @@ new() ->
     jsxd:set(<<"version">>, <<"0.1.0">>, jsxd:new()).
 
 uuid(Vm) ->
-    {ok, UUID} = jsxd:get(<<"uuid">>, Vm),
+    {ok, UUID} = jsxd:get(<<"uuid">>, statebox:value(Vm)),
     UUID.
 
 uuid(Name, Hypervisor) ->

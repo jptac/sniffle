@@ -208,7 +208,7 @@ case "$1" in
                 shift
                 run sniffle_console db_delete $@
                 ;;
-            db)
+            update)
                 shift
                 run sniffle_console db_update $@
                 ;;

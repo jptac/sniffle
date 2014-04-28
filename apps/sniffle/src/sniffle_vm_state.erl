@@ -34,7 +34,7 @@ getter(#sniffle_obj{val=S0}, Resource) ->
     jsxd:get(Resource, 0, statebox:value(S0)).
 
 uuid(Vm) ->
-    {ok, UUID} = jsxd:get(<<"uuid">>, Vm),
+    {ok, UUID} = jsxd:get(<<"uuid">>, statebox:value(Vm)),
     UUID.
 
 load(H) ->
