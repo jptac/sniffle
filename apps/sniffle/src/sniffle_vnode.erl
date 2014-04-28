@@ -110,6 +110,10 @@ delete(State=#vstate{db=DB, bucket=Bucket}) ->
 load_obj(Mod, Obj = #sniffle_obj{val = V}) ->
     Obj#sniffle_obj{val = Mod:load(V)}.
 
+handle_coverage({wipe, UUID}, _KeySpaces, {_, ReqID, _}, State) ->
+    fifo_db:delete(State#vstate.db, State#vstate.bucket, UUID),
+    {reply, {ok, ReqID}, State};
+
 handle_coverage({lookup, Name}, _KeySpaces, Sender, State=#vstate{state=Mod}) ->
     FoldFn = fun (U, #sniffle_obj{val=V}, [not_found]) ->
                      V1 = statebox:value(Mod:load(V)),
