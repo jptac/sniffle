@@ -26,7 +26,8 @@
          encode_handoff_item/2,
          handle_coverage/4,
          handle_exit/3,
-         handle_info/2]).
+         handle_info/2,
+         sync_repair/4]).
 
 -export([
          master/0,
@@ -43,7 +44,8 @@
               set/4,
               start_vnode/1,
               unregister/3,
-              handle_info/2
+              handle_info/2,
+              sync_repair/4
              ]).
 
 -define(SERVICE, sniffle_vm).
@@ -93,6 +95,12 @@ get(Preflist, ReqID, Vm) ->
 %%%===================================================================
 %%% API - writes
 %%%===================================================================
+
+sync_repair(Preflist, ReqID, UUID, Obj) ->
+    riak_core_vnode_master:command(Preflist,
+                                   {sync_repair, ReqID, UUID, Obj},
+                                   {fsm, undefined, self()},
+                                   ?MASTER).
 
 -spec register(any(), any(), fifo:uuid(), binary()) -> ok.
 
