@@ -78,7 +78,7 @@ update_part(Img, Part) ->
     sniffle_img:sync_repair(Key, D).
 
 update_img(Img) ->
-    Parts = sniffle_img:list(Img),
+    {ok, Parts} = sniffle_img:list(Img),
     io:format(" Updating image '~s' (~p parts)", [Img, length(Parts)]),
     [update_part(Img, Part) || Part <- Parts],
     io:format(" done.~n").
@@ -90,7 +90,7 @@ db_update([]) ->
 
 db_update(["img"]) ->
     io:format("Updating images...~n"),
-    Imgs = sniffle_img:list(),
+    {ok, Imgs} = sniffle_img:list(),
     [update_img(Img) || Img <- Imgs],
     io:format("Update complete.~n");
 
