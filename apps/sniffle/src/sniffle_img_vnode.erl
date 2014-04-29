@@ -136,11 +136,10 @@ init([Partition]) ->
 handle_command(ping, _Sender, State) ->
     {reply, {pong, State#vstate.partition}, State};
 
-handle_command({sync_repair, _,  Key, Obj}, _Sender, State) ->
+handle_command({sync_repair, {ReqID, _},  Key, Obj}, _Sender, State) ->
     lager:warning("Forced repair of img: ~p", [Key]),
     put(State, Key, Obj),
-    {noreply, State};
-
+    {reply, {ok, ReqID}, State};
 
 handle_command({repair, <<Img:36/binary, Idx:32/integer>>, VClock, Obj}, Sender, State) ->
     handle_command({repair, {Img, Idx}, VClock, Obj}, Sender, State);
