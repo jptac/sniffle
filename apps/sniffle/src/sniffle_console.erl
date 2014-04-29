@@ -73,9 +73,14 @@
 update_part(Img, Part) ->
     io:format("."),
     Key = <<Img/binary, Part:32>>,
-    {ok, [D]} = sniffle_img:list_(Key),
-    %%    sniffle_img:wipe(Key),
-    sniffle_img:sync_repair(Key, D).
+    case sniffle_img:list_(Key) of
+        {ok, [D]} ->
+            %%    sniffle_img:wipe(Key),
+            sniffle_img:sync_repair(Key, D);
+        _ ->
+            io:format("Could not read: ~s/~p~n", [Img, Part]),
+            throw({read_failure, Img, Part})
+    end.
 
 update_img(Img) ->
     {ok, Parts} = sniffle_img:list(Img),
