@@ -296,22 +296,26 @@ handle_coverage({list, Img}, _KeySpaces, {_, ReqID, _}, State) ->
      {ok, ReqID, {State#vstate.partition,State#vstate.node}, List},
      State};
 
-handle_coverage({list, Img, true}, _KeySpaces, {_, ReqID, _}, State) ->
+handle_coverage({list, Img, true}, _KeySpaces, Sender, State) ->
     S = byte_size(Img),
-    L = bitcask:fold_keys(State#vstate.db,
-                          fun (#bitcask_entry{key = K = <<Img1:S/binary, _/binary>>}, Acc) when Img1 =:= Img ->
-                                  [K|Acc];
-                                 (_, Acc) ->
-                                     Acc
-                             end, []),
-    L1 = lists:sort(L),
-    R = lists:map(fun(K) ->
-                          {ok, V} = get(K, State#vstate.db),
-                          {K, V}
-                  end, L1),
-    {reply,
-     {ok, ReqID, {State#vstate.partition,State#vstate.node}, R},
-     State};
+    AsyncWork =
+        fun() ->
+                L = bitcask:fold_keys(
+                      State#vstate.db,
+                      fun (#bitcask_entry{key = K = <<Img1:S/binary, _/binary>>}, Acc) when Img1 =:= Img ->
+                              [K|Acc];
+                          (_, Acc) ->
+                              Acc
+                      end, []),
+                [begin
+                     {ok, V} = get(K, State#vstate.db),
+                     {0, {K, V}}
+                 end || K <- lists:sort(L)]
+        end,
+    FinishFun = fun(Data) ->
+                        reply(Data, Sender, State)
+                end,
+    {async, {fold, AsyncWork, FinishFun}, Sender, State};
 
 handle_coverage(_Req, _KeySpaces, _Sender, State) ->
     {stop, not_implemented, State}.
@@ -378,3 +382,6 @@ handle_info({'DOWN', _, _, _, _}, State) ->
 
 handle_info(_, State) ->
     {ok, State}.
+
+reply(Reply, {_, ReqID, _} = Sender, #vstate{node=N, partition=P}) ->
+    riak_core_vnode:reply(Sender, {ok, ReqID, {P, N}, Reply}).
