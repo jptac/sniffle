@@ -80,7 +80,7 @@ update_part(Img, Part) ->
 update_img(Img) ->
     {ok, Parts} = sniffle_img:list(Img),
     io:format(" Updating image '~s' (~p parts)", [Img, length(Parts)]),
-    [update_part(Img, Part) || Part <- Parts],
+    [update_part(Img, Part) || Part <- lists:sort(Parts)],
     io:format(" done.~n").
 
 db_update([]) ->
