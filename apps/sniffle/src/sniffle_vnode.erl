@@ -220,7 +220,7 @@ handle_command({set,
             sniffle_vnode:put(Dataset, Obj, State),
             {reply, {ok, ReqID}, State};
         R ->
-            lager:error("[~s] tried to write to a non existing dataset: ~p",
+            lager:error("[~s] tried to write to a non existing element: ~p",
                         [Bucket, R]),
             {reply, {ok, ReqID, not_found}, State}
     end;

@@ -298,15 +298,17 @@ handle_coverage({list, Img}, _KeySpaces, {_, ReqID, _}, State) ->
 
 handle_coverage({list, Img, true}, _KeySpaces, {_, ReqID, _}, State) ->
     S = byte_size(Img),
-    R = bitcask:fold(
-          State#vstate.db,
-          fun(K = <<Img1:S/binary, _/binary>>, V, L)
-                when Img1 =:= Img ->
-                  O = term_to_binary(V),
-                  [{0, {K, O#sniffle_obj{val={K, O#sniffle_obj.val}}}} | L];
-             (_, _, L) ->
-                  L
-          end, []),
+    L = bitcask:fold_keys(State#vstate.db,
+                          fun (#bitcask_entry{key = K = <<Img1:S/binary, _/binary>>}, Acc) when Img1 =:= Img ->
+                                  [K|Acc];
+                                 (_, Acc) ->
+                                     Acc
+                             end, []),
+    L1 = lists:sort(L),
+    R = lists:map(fun(K) ->
+                          {ok, V} = get(K, State#vstate.db),
+                          {K, V}
+                  end, L1),
     {reply,
      {ok, ReqID, {State#vstate.partition,State#vstate.node}, R},
      State};
