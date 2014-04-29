@@ -324,8 +324,12 @@ handle_coverage({list, Img, true}, _KeySpaces, {_, ReqID, _}, State) ->
                   Acc
           end, []),
     L1 = [begin
-              {ok, V} = get(State#vstate.db, K),
-              {0, {K, V}}
+              case get(State#vstate.db, K) of
+                  {ok, V} when is_binary(V) ->
+                      {0, {K, binary_to_term(V)}};
+                  {ok, V} ->
+                      {0, {K, V}}
+              end
           end || K <- lists:sort(L)],
     {reply,
      {ok, ReqID, {State#vstate.partition,State#vstate.node}, L1},
@@ -345,8 +349,8 @@ put(State, Key, Value) ->
     DB = State#vstate.db,
     Bin = term_to_binary(Value),
     R = bitcask:put(DB, Key, Bin),
-    riak_core_aae_vnode:update_hashtree(<<"img">>, Key, Bin,
-                                        State#vstate.hashtrees),
+    riak_core_aae_vnode:update_hashtree(
+      <<"img">>, Key, Bin, State#vstate.hashtrees),
     %% This is a very ugly hack, but since we don't have
     %% much opperations on the image server we need to
     %% trigger the GC manually.
