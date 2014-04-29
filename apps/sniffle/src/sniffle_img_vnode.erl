@@ -306,7 +306,7 @@ handle_coverage({list, Img, true}, _KeySpaces, {_, ReqID, _}, State) ->
                   Acc
           end, []),
     L1 = [begin
-              {ok, V} = get(K, State#vstate.db),
+              {ok, V} = get(State#vstate.db, K),
               {0, {K, V}}
           end || K <- lists:sort(L)],
     {reply,
