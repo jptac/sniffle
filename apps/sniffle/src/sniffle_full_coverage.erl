@@ -47,8 +47,6 @@ init({From, ReqID, Requirements},
     {Request, VNodeSelector, NVal, PrimaryVNodeCoverage,
      NodeCheckService, VNodeMaster, Timeout, State}.
 
-
-
 process_results({ok, _ReqID, _IdxNode, Obj},
                 State = #state{replies = Replies}) ->
     Replies1 = lists:foldl(fun ({Pts, {Key, V}}, D) ->

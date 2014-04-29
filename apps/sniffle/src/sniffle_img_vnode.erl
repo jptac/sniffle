@@ -300,7 +300,7 @@ handle_coverage({list, Img, true}, _KeySpaces, {_, ReqID, _}, State) ->
     S = byte_size(Img),
     R = bitcask:fold(
           State#vstate.db,
-          fun(K = <<Img1:S/binary, _>>, V, L)
+          fun(K = <<Img1:S/binary, _/binary>>, V, L)
                 when Img1 =:= Img ->
                   O = term_to_binary(V),
                   [{0, {K, O#sniffle_obj{val={K, O#sniffle_obj.val}}}} | L];
