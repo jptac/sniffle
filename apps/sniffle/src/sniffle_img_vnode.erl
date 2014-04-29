@@ -278,6 +278,10 @@ delete(State) ->
                       end, ok),
     {ok, State}.
 
+handle_coverage({wipe, UUID}, _KeySpaces, {_, ReqID, _}, State) ->
+    bitcask:delete(State#vstate.db, UUID),
+    {reply, {ok, ReqID}, State};
+
 handle_coverage(list, _KeySpaces, {_, ReqID, _}, State) ->
     List = bitcask:fold_keys(State#vstate.db,
                              fun (#bitcask_entry{key=K}, []) ->
