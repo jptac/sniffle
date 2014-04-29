@@ -27,7 +27,8 @@
          encode_handoff_item/2,
          handle_coverage/4,
          handle_exit/3,
-         handle_info/2
+         handle_info/2,
+         sync_repair/4
         ]).
 
 -export([
@@ -44,7 +45,8 @@
               list/3,
               repair/4,
               start_vnode/1,
-              handle_info/2
+              handle_info/2,
+              sync_repair/4
              ]).
 
 -define(SERVICE, sniffle_img).
@@ -95,6 +97,12 @@ get(Preflist, ReqID, ImgAndIdx) ->
 %%% API - writes
 %%%===================================================================
 
+sync_repair(Preflist, ReqID, UUID, Obj) ->
+    riak_core_vnode_master:command(Preflist,
+                                   {sync_repair, ReqID, UUID, Obj},
+                                   {fsm, undefined, self()},
+                                   ?MASTER).
+
 create(Preflist, ReqID, {Img, Idx}, Data) ->
     riak_core_vnode_master:command(Preflist,
                                    {create, ReqID, {Img, Idx}, Data},
@@ -128,8 +136,15 @@ init([Partition]) ->
 handle_command(ping, _Sender, State) ->
     {reply, {pong, State#vstate.partition}, State};
 
+handle_command({sync_repair, _,  Key, Obj}, _Sender, State) ->
+    lager:warning("Forced repair of img: ~p", [Key]),
+    put(State, Key, Obj),
+    {noreply, State};
+
+
 handle_command({repair, <<Img:36/binary, Idx:32/integer>>, VClock, Obj}, Sender, State) ->
     handle_command({repair, {Img, Idx}, VClock, Obj}, Sender, State);
+
 handle_command({repair, {Img, Idx}, VClock, Obj}, _Sender, State) ->
     lager:warning("Repair of img: ~s~p", [Img, Idx]),
     case get(State#vstate.db, <<Img/binary, Idx:32>>) of

@@ -70,10 +70,29 @@
               db_update/1
              ]).
 
+update_part(Img, Part) ->
+    io:format("."),
+    Key = <<Img/binary, Part:32>>,
+    {ok, [D]} = sniffle_img:list_(Key),
+    %%    sniffle_img:wipe(Key),
+    sniffle_img:sync_repair(Key, D).
+
+update_img(Img) ->
+    Parts = sniffle_img:list(Img),
+    io:format(" Updating image '~s' (~p parts)", [Img, length(Parts)]),
+    [update_part(Img, Part) || Part <- Parts],
+    io:format(" done.~n").
+
 db_update([]) ->
     [db_update([E]) || E <- ["vms", "datasets", "dtraces", "hypervisors",
                              "ipranges", "networks", "packages"]],
     ok;
+
+db_update(["img"]) ->
+    io:format("Updating images...~n"),
+    Imgs = sniffle_img:list(),
+    [update_img(Img) || Img <- Imgs],
+    io:format("Update complete.~n");
 
 db_update(["datasets"]) ->
     io:format("Updating datasets...~n"),
@@ -624,9 +643,9 @@ format_timestamp(Now, TS) ->
 
 do_update(MainMod, StateMod) ->
     {ok, US} = MainMod:list_(),
-    io:format("Entries found: ~p~n", [length(US)]),
+    io:format("  Entries found: ~p~n", [length(US)]),
 
-    io:format("Grabbing UUIDs"),
+    io:format("  Grabbing UUIDs"),
     US1 = [begin
                io:format("."),
                %%flush(),
@@ -634,7 +653,7 @@ do_update(MainMod, StateMod) ->
            end|| U = #sniffle_obj{val = V} <- US],
     io:format(" done.~n"),
 
-    io:format("Wiping old entries"),
+    io:format("  Wiping old entries"),
     [begin
          io:format("."),
          %%flush(),
@@ -642,7 +661,7 @@ do_update(MainMod, StateMod) ->
      end || {UUID, _} <- US1],
     io:format(" done.~n"),
 
-    io:format("Restoring entries"),
+    io:format("  Restoring entries"),
     [begin
          io:format("."),
          %%flush(),
