@@ -123,7 +123,10 @@ init([Partition]) ->
     DB = bitcask:open(DBLoc ++ "/" ++ PartStr ++ ".img", [read_write]),
     HT = riak_core_aae_vnode:maybe_create_hashtrees(?SERVICE, Partition,
                                                     ?MODULE, undefined),
-    {ok, #vstate{db = DB, hashtrees = HT, partition = Partition, node = node()}}.
+    WorkerPoolSize = application:get_env(sniffle, async_workers, 5),
+    FoldWorkerPool = {pool, sniffle_worker, WorkerPoolSize, []},
+    {ok, #vstate{db = DB, hashtrees = HT, partition = Partition, node = node()},
+    [FoldWorkerPool]}.
 
 handle_command(ping, _Sender, State) ->
     {reply, {pong, State#vstate.partition}, State};
