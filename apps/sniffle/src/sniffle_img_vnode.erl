@@ -296,24 +296,20 @@ handle_coverage({list, Img}, _KeySpaces, {_, ReqID, _}, State) ->
      {ok, ReqID, {State#vstate.partition,State#vstate.node}, List},
      State};
 
-handle_coverage({list, Img, true}, _KeySpaces, Sender, State) ->
+handle_coverage({list, Img, true}, _KeySpaces, {_, ReqID, _}, State) ->
     S = byte_size(Img),
-    AsyncWork =
-        fun() ->
-                bitcask:fold(
-                  State#vstate.db,
-                  fun(#bitcask_entry{key = K = <<Img1:S/binary, _>>}, V, L)
-                        when Img1 =:= Img ->
-                          O = term_to_binary(V),
-                          [{0, {K, O#sniffle_obj{val={K, O#sniffle_obj.val}}}} | L];
-                     (_, _, L) ->
-                          L
-                  end, [])
-        end,
-    FinishFun = fun(Data) ->
-                        reply(Data, Sender, State)
-                end,
-    {async, {fold, AsyncWork, FinishFun}, Sender, State};
+    R = bitcask:fold(
+          State#vstate.db,
+          fun(#bitcask_entry{key = K = <<Img1:S/binary, _>>}, V, L)
+                when Img1 =:= Img ->
+                  O = term_to_binary(V),
+                  [{0, {K, O#sniffle_obj{val={K, O#sniffle_obj.val}}}} | L];
+             (_, _, L) ->
+                  L
+          end, []),
+    {reply,
+     {ok, ReqID, {State#vstate.partition,State#vstate.node}, R},
+     State};
 
 handle_coverage(_Req, _KeySpaces, _Sender, State) ->
     {stop, not_implemented, State}.
@@ -374,11 +370,9 @@ handle_info({'DOWN', _, _, Pid, _}, State=#vstate{
     lager:debug("~p/~p hashtree ~p went down.", [?SERVICE, Idx, Pid]),
     erlang:send_after(1000, self(), retry_create_hashtree),
     {ok, State#vstate{hashtrees = undefined}};
+
 handle_info({'DOWN', _, _, _, _}, State) ->
     {ok, State};
+
 handle_info(_, State) ->
     {ok, State}.
-
-reply(Reply, {_, ReqID, _} = Sender, #vstate{node=N, partition=P}) ->
-    riak_core_vnode:reply(Sender, {ok, ReqID, {P, N}, Reply}).
-
