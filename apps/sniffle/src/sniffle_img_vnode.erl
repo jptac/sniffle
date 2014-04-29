@@ -123,10 +123,7 @@ init([Partition]) ->
     DB = bitcask:open(DBLoc ++ "/" ++ PartStr ++ ".img", [read_write]),
     HT = riak_core_aae_vnode:maybe_create_hashtrees(?SERVICE, Partition,
                                                     ?MODULE, undefined),
-    WorkerPoolSize = application:get_env(sniffle, async_workers, 5),
-    FoldWorkerPool = {pool, sniffle_worker, WorkerPoolSize, []},
-    {ok, #vstate{db = DB, hashtrees = HT, partition = Partition, node = node()},
-    [FoldWorkerPool]}.
+    {ok, #vstate{db = DB, hashtrees = HT, partition = Partition, node = node()}}.
 
 handle_command(ping, _Sender, State) ->
     {reply, {pong, State#vstate.partition}, State};
@@ -139,7 +136,7 @@ handle_command({repair, {Img, Idx}, VClock, Obj}, _Sender, State) ->
         {ok, #sniffle_obj{vclock = VC1}} when VC1 =:= VClock ->
             put(State, Img, Obj);
         not_found ->
-            put(State, Img,  Obj);
+            put(State, Img, Obj);
         _ ->
             lager:error("[imgs] Read repair failed, data was updated too recent.")
     end,
@@ -299,26 +296,22 @@ handle_coverage({list, Img}, _KeySpaces, {_, ReqID, _}, State) ->
      {ok, ReqID, {State#vstate.partition,State#vstate.node}, List},
      State};
 
-handle_coverage({list, Img, true}, _KeySpaces, Sender, State) ->
+handle_coverage({list, Img, true}, _KeySpaces, {_, ReqID, _}, State) ->
     S = byte_size(Img),
-    AsyncWork =
-        fun() ->
-                L = bitcask:fold_keys(
-                      State#vstate.db,
-                      fun (#bitcask_entry{key = K = <<Img1:S/binary, _/binary>>}, Acc) when Img1 =:= Img ->
-                              [K|Acc];
-                          (_, Acc) ->
-                              Acc
-                      end, []),
-                [begin
-                     {ok, V} = get(K, State#vstate.db),
-                     {0, {K, V}}
-                 end || K <- lists:sort(L)]
-        end,
-    FinishFun = fun(Data) ->
-                        reply(Data, Sender, State)
-                end,
-    {async, {fold, AsyncWork, FinishFun}, Sender, State};
+    L = bitcask:fold_keys(
+          State#vstate.db,
+          fun (#bitcask_entry{key = K = <<Img1:S/binary, _/binary>>}, Acc) when Img1 =:= Img ->
+                  [K|Acc];
+              (_, Acc) ->
+                  Acc
+          end, []),
+    L1 = [begin
+              {ok, V} = get(K, State#vstate.db),
+              {0, {K, V}}
+          end || K <- lists:sort(L)],
+    {reply,
+     {ok, ReqID, {State#vstate.partition,State#vstate.node}, L1},
+     State};
 
 handle_coverage(_Req, _KeySpaces, _Sender, State) ->
     {stop, not_implemented, State}.
@@ -385,6 +378,3 @@ handle_info({'DOWN', _, _, _, _}, State) ->
 
 handle_info(_, State) ->
     {ok, State}.
-
-reply(Reply, {_, ReqID, _} = Sender, #vstate{node=N, partition=P}) ->
-    riak_core_vnode:reply(Sender, {ok, ReqID, {P, N}, Reply}).
