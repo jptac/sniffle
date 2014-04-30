@@ -35,6 +35,7 @@ init(Partition, Bucket, Service, VNode, StateMod) ->
     FoldWorkerPool = {pool, sniffle_worker, WorkerPoolSize, []},
     {ok,
      #vstate{db=DB, hashtrees=HT, partition=Partition, node=node(),
+             service_bin=list_to_binary(atom_to_list(Service)),
              service=Service, bucket=Bucket, state=StateMod, vnode=VNode},
      [FoldWorkerPool]}.
 
@@ -91,7 +92,7 @@ fold(Fun, Acc0, Sender, State=#vstate{db=DB, bucket=Bucket}) ->
 put(Key, Obj, State) ->
     fifo_db:put(State#vstate.db, State#vstate.bucket, Key, Obj),
     riak_core_aae_vnode:update_hashtree(
-      State#vstate.bucket, Key, Obj#sniffle_obj.vclock, State#vstate.hashtrees).
+      State#vstate.service_bin, Key, Obj#sniffle_obj.vclock, State#vstate.hashtrees).
 
 %%%===================================================================
 %%% Callbacks
@@ -198,7 +199,7 @@ handle_command({get, ReqID, UUID}, _Sender, State) ->
 handle_command({delete, {ReqID, _Coordinator}, UUID}, _Sender, State) ->
     fifo_db:delete(State#vstate.db, State#vstate.bucket, UUID),
     riak_core_index_hashtree:delete(
-      {State#vstate.bucket, UUID}, State#vstate.hashtrees),
+      {State#vstate.service_bin, UUID}, State#vstate.hashtrees),
     {reply, {ok, ReqID}, State};
 
 
@@ -248,14 +249,14 @@ handle_command({hashtree_pid, Node}, _, State) ->
     end;
 
 handle_command({rehash, {_, UUID}}, _,
-               State=#vstate{bucket=Bucket, hashtrees=HT}) ->
+               State=#vstate{service_bin=ServiceBin, hashtrees=HT}) ->
     case get(UUID, State) of
         {ok, Obj} ->
             riak_core_aae_vnode:update_hashtree(
-              Bucket, UUID, Obj#sniffle_obj.vclock, HT);
+              ServiceBin, UUID, Obj#sniffle_obj.vclock, HT);
         _ ->
             %% Make sure hashtree isn't tracking deleted data
-            riak_core_index_hashtree:delete({State#vstate.bucket, UUID}, HT)
+            riak_core_index_hashtree:delete({ServiceBin, UUID}, HT)
     end,
     {noreply, State};
 
