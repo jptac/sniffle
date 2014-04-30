@@ -75,6 +75,12 @@ merge(FSM, [not_found|_]=Objs) ->
         false -> merge(FSM, lists:dropwhile(P, Objs))
     end;
 
+merge(FSM, [<<_/binary>>=O|_]=Objs) ->
+    case lists:all(fun is_binary/1, Objs) of
+        true -> O;
+        false -> merge(FSM, lists:dropwhile(fun is_binary/1, Objs))
+    end;
+
 merge(FSM, [#sniffle_obj{}|_]=Objs) ->
     case sniffle_obj:children(Objs) of
         [] -> not_found;

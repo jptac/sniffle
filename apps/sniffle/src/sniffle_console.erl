@@ -3,6 +3,7 @@
 %% https://github.com/basho/riak_kv/blob/develop/src/riak_kv_console.erl
 -module(sniffle_console).
 
+-include_lib("sniffle.hrl").
 -ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").
 -endif.
@@ -12,7 +13,8 @@
          db_get/1,
          db_delete/1,
          get_ring/1,
-         connections/1
+         connections/1,
+         db_update/1
         ]).
 
 -export([
@@ -64,8 +66,66 @@
               remove/1,
               ringready/1,
               staged_join/1,
-              vms/1
+              vms/1,
+              db_update/1
              ]).
+
+update_part(Img, Part) ->
+    io:format("."),
+    Key = <<Img/binary, Part:32>>,
+    case sniffle_img:list_(Key) of
+        {ok, [D]} ->
+            %%    sniffle_img:wipe(Key),
+            sniffle_img:sync_repair(Key, D);
+        _ ->
+            io:format("Could not read: ~s/~p~n", [Img, Part]),
+            throw({read_failure, Img, Part})
+    end.
+
+update_img(Img) ->
+    {ok, Parts} = sniffle_img:list(Img),
+    io:format(" Updating image '~s' (~p parts)", [Img, length(Parts)]),
+    [update_part(Img, Part) || Part <- lists:sort(Parts)],
+    io:format(" done.~n").
+
+db_update([]) ->
+    [db_update([E]) || E <- ["vms", "datasets", "dtraces", "hypervisors",
+                             "ipranges", "networks", "packages"]],
+    ok;
+
+db_update(["img"]) ->
+    io:format("Updating images...~n"),
+    {ok, Imgs} = sniffle_img:list(),
+    [update_img(Img) || Img <- Imgs],
+    io:format("Update complete.~n");
+
+db_update(["datasets"]) ->
+    io:format("Updating datasets...~n"),
+    do_update(sniffle_dataset, sniffle_dataset_state);
+
+db_update(["dtraces"]) ->
+    io:format("Updating dtrace scripts...~n"),
+    do_update(sniffle_dtrace, sniffle_dtrace_state);
+
+db_update(["hypervisors"]) ->
+    io:format("Updating hypervisors...~n"),
+    do_update(sniffle_hypervisor, sniffle_hypervisor_state);
+
+db_update(["ipranges"]) ->
+    io:format("Updating ipranges...~n"),
+    do_update(sniffle_iprange, sniffle_iprange_state);
+
+db_update(["networks"]) ->
+    io:format("Updating networks...~n"),
+    do_update(sniffle_network, sniffle_network_state);
+
+db_update(["packages"]) ->
+    io:format("Updating packages...~n"),
+    do_update(sniffle_package, sniffle_package_state);
+
+db_update(["vms"]) ->
+    io:format("Updating vms...~n"),
+    do_update(sniffle_vm, sniffle_vm_state).
 
 print_endpoints(Es) ->
     io:format("Hostname            "
@@ -584,6 +644,37 @@ format_timestamp(_Now, undefined) ->
     "--";
 format_timestamp(Now, TS) ->
     riak_core_format:human_time_fmt("~.1f", timer:now_diff(Now, TS)).
+
+
+do_update(MainMod, StateMod) ->
+    {ok, US} = MainMod:list_(),
+    io:format("  Entries found: ~p~n", [length(US)]),
+
+    io:format("  Grabbing UUIDs"),
+    US1 = [begin
+               io:format("."),
+               %%flush(),
+               {StateMod:uuid(V), U}
+           end|| U = #sniffle_obj{val = V} <- US],
+    io:format(" done.~n"),
+
+    io:format("  Wiping old entries"),
+    [begin
+         io:format("."),
+         %%flush(),
+         MainMod:wipe(UUID)
+     end || {UUID, _} <- US1],
+    io:format(" done.~n"),
+
+    io:format("  Restoring entries"),
+    [begin
+         io:format("."),
+         %%flush(),
+         MainMod:sync_repair(UUID, O)
+     end || {UUID, O} <- US1],
+    io:format(" done.~n"),
+    io:format("Update complete.~n"),
+    ok.
 
 %%%===================================================================
 %%% Tests

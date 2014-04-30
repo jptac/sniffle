@@ -5,6 +5,11 @@
 -endif.
 
 -include("sniffle.hrl").
+
+-define(MASTER, sniffle_vm_vnode_master).
+-define(VNODE, sniffle_vm_vnode).
+-define(SERVICE, sniffle_vm).
+
 -export([
          add_nic/2,
          children/2,
@@ -41,10 +46,16 @@
          stop/2,
          store/1,
          unregister/1,
-         update/3
+         update/3,
+         wipe/1,
+         sync_repair/2,
+         list_/0
         ]).
 
 -ignore_xref([logs/1,
+              sync_repair/2,
+              list_/0,
+              wipe/1,
               children/2]).
 
 -type backup_opts() ::
@@ -52,6 +63,17 @@
         {delete, parent} |
         xml.
 
+wipe(UUID) ->
+    sniffle_coverage:start(?MASTER, ?SERVICE, {wipe, UUID}).
+
+sync_repair(UUID, Obj) ->
+    do_write(UUID, sync_repair, Obj).
+
+list_() ->
+    {ok, Res} = sniffle_full_coverage:start(
+                  ?MASTER, ?SERVICE, {list, [], true, true}),
+    Res1 = [R || {_, R} <- Res],
+    {ok,  Res1}.
 
 store(Vm) ->
     case sniffle_vm:get(Vm) of
@@ -229,7 +251,6 @@ service_clear(Vm, Service) ->
         _ ->
             not_found
     end.
-
 
 do_snap(Vm, V, Comment, Opts) ->
     UUID = uuid:uuid4s(),
@@ -580,10 +601,7 @@ create(Package, Dataset, Config) ->
 -spec get(Vm::fifo:uuid()) ->
                  not_found | {error, timeout} | fifo:vm_config().
 get(Vm) ->
-    sniffle_entity_read_fsm:start(
-      {sniffle_vm_vnode, sniffle_vm},
-      get, Vm
-     ).
+    sniffle_entity_read_fsm:start({?VNODE, ?SERVICE}, get, Vm).
 
 %%--------------------------------------------------------------------
 %% @doc Lists all vm's.
@@ -592,9 +610,7 @@ get(Vm) ->
 -spec list() ->
                   {error, timeout} | [fifo:uuid()].
 list() ->
-    sniffle_coverage:start(
-      sniffle_vm_vnode_master, sniffle_vm,
-      list).
+    sniffle_coverage:start(?MASTER, ?SERVICE, list).
 
 %%--------------------------------------------------------------------
 %% @doc Lists all vm's and fiters by a given matcher set.
@@ -604,15 +620,13 @@ list() ->
 
 list(Requirements, true) ->
     {ok, Res} = sniffle_full_coverage:start(
-                  sniffle_vm_vnode_master, sniffle_vm,
-                  {list, Requirements, true}),
+                  ?MASTER, ?SERVICE, {list, Requirements, true}),
     Res1 = rankmatcher:apply_scales(Res),
     {ok,  lists:sort(Res1)};
 
 list(Requirements, false) ->
     {ok, Res} = sniffle_coverage:start(
-                  sniffle_vm_vnode_master, sniffle_vm,
-                  {list, Requirements}),
+                  ?MASTER, ?SERVICE, {list, Requirements}),
     Res1 = rankmatcher:apply_scales(Res),
     {ok,  lists:sort(Res1)}.
 
@@ -918,12 +932,12 @@ set(Vm, Attributes) ->
 -spec do_write(VM::fifo:uuid(), Op::atom()) -> fifo:write_fsm_reply().
 
 do_write(VM, Op) ->
-    sniffle_entity_write_fsm:write({sniffle_vm_vnode, sniffle_vm}, VM, Op).
+    sniffle_entity_write_fsm:write({?VNODE, ?SERVICE}, VM, Op).
 
 -spec do_write(VM::fifo:uuid(), Op::atom(), Val::term()) -> fifo:write_fsm_reply().
 
 do_write(VM, Op, Val) ->
-    sniffle_entity_write_fsm:write({sniffle_vm_vnode, sniffle_vm}, VM, Op, Val).
+    sniffle_entity_write_fsm:write({?VNODE, ?SERVICE}, VM, Op, Val).
 
 get_hypervisor(Hypervisor) ->
     case sniffle_hypervisor:get(Hypervisor) of
@@ -997,7 +1011,6 @@ do_delete_backup(UUID, VM, BID) ->
 
 backend() ->
     sniffle_opt:get(storage, general, backend, large_data_backend, internal).
-
 
 -ifdef(TEST).
 

@@ -208,6 +208,10 @@ case "$1" in
                 shift
                 run sniffle_console db_delete $@
                 ;;
+            update)
+                shift
+                run sniffle_console db_update $@
+                ;;
         esac
         ;;
 
@@ -252,6 +256,7 @@ case "$1" in
         echo "                 ring-status | aae-status | vms | hypervisors |"
         echo "                 packages | datasets | networks | config }"
         echo "               ring                               - shows the ring."
+        echo "               db update [<entity>]               - update db entries."
         echo "               db list [-p <prefix>]              - lists db entries."
         echo "               db list <hash> [<prefix>]          - lists db entries for a hash."
         echo "               db get <hash> <prefix> <key>       - gets raw data from the db."

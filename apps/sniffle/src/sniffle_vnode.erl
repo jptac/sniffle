@@ -110,6 +110,10 @@ delete(State=#vstate{db=DB, bucket=Bucket}) ->
 load_obj(Mod, Obj = #sniffle_obj{val = V}) ->
     Obj#sniffle_obj{val = Mod:load(V)}.
 
+handle_coverage({wipe, UUID}, _KeySpaces, {_, ReqID, _}, State) ->
+    fifo_db:delete(State#vstate.db, State#vstate.bucket, UUID),
+    {reply, {ok, ReqID}, State};
+
 handle_coverage({lookup, Name}, _KeySpaces, Sender, State=#vstate{state=Mod}) ->
     FoldFn = fun (U, #sniffle_obj{val=V}, [not_found]) ->
                      V1 = statebox:value(Mod:load(V)),
@@ -139,6 +143,7 @@ handle_coverage({list, Requirements, Full}, _KeySpaces, Sender,
         false ->
             list_keys(fun Mod:getter/2, Requirements, Sender, State)
     end;
+
 handle_coverage(Req, _KeySpaces, _Sender, State) ->
     lager:warning("Unknown coverage request: ~p", [Req]),
     {stop, not_implemented, State}.
@@ -161,6 +166,24 @@ handle_command({repair, UUID, _VClock, Obj}, _Sender,
                         [State#vstate.bucket])
     end,
     {noreply, State};
+
+handle_command({sync_repair, {ReqID, _}, UUID, Obj = #sniffle_obj{}}, _Sender,
+               State=#vstate{state=Mod}) ->
+    case get(UUID, State) of
+        {ok, Old} ->
+            ID = sniffle_vnode:mkid(),
+            Old1 = load_obj(ID, Mod, Old),
+            lager:info("[sync-repair:~s] Merging with old object", [UUID]),
+            Merged = sniffle_obj:merge(sniffle_entity_read_fsm, [Old1, Obj]),
+            sniffle_vnode:put(UUID, Merged, State);
+        not_found ->
+            lager:info("[sync-repair:~s] Writing new object", [UUID]),
+            sniffle_vnode:put(UUID, Obj, State);
+        _ ->
+            lager:error("[~s] Read repair failed, data was updated too recent.",
+                        [State#vstate.bucket])
+    end,
+    {reply, {ok, ReqID}, State};
 
 handle_command({get, ReqID, UUID}, _Sender, State) ->
     Res = case fifo_db:get(State#vstate.db, State#vstate.bucket, UUID) of
@@ -197,7 +220,7 @@ handle_command({set,
             sniffle_vnode:put(Dataset, Obj, State),
             {reply, {ok, ReqID}, State};
         R ->
-            lager:error("[~s] tried to write to a non existing dataset: ~p",
+            lager:error("[~s] tried to write to a non existing element: ~p",
                         [Bucket, R]),
             {reply, {ok, ReqID, not_found}, State}
     end;
@@ -266,3 +289,6 @@ handle_info({'DOWN', _, _, _, _}, State) ->
     {ok, State};
 handle_info(_, State) ->
     {ok, State}.
+
+load_obj(_ID, _Mod, Old) ->
+    Old.

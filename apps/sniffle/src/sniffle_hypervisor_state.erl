@@ -12,6 +12,7 @@
 -export([
          load/1,
          new/0,
+         uuid/1,
          uuid/2,
          host/2,
          port/2,
@@ -19,7 +20,7 @@
          getter/2
         ]).
 
--ignore_xref([load/1, set/3, getter/2]).
+-ignore_xref([load/1, set/3, getter/2, uuid/1]).
 
 getter(#sniffle_obj{val=S0}, Resource) ->
     jsxd:get(Resource, 0, statebox:value(S0)).
@@ -29,6 +30,10 @@ load(H) ->
 
 new() ->
     jsxd:set(<<"version">>, <<"0.1.0">>, jsxd:new()).
+
+uuid(Vm) ->
+    {ok, UUID} = jsxd:get(<<"uuid">>, statebox:value(Vm)),
+    UUID.
 
 uuid(Name, Hypervisor) ->
     jsxd:set(<<"uuid">>, Name, Hypervisor).
