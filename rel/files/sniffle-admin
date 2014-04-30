@@ -80,6 +80,15 @@ NODETOOL="$ERTS_PATH/escript $ERTS_PATH/nodetool $NAME_ARG $COOKIE_ARG"
 
 run()
 {
+
+    TIMEOUT=""
+    if [ "$1" == "-t" ]
+    then
+        TIMEOUT="-t $2"
+        shift
+        shift
+    fi
+
     mod=$1
     shift
     cmd=$1
@@ -92,7 +101,7 @@ run()
         exit 1
     fi
 
-    $NODETOOL rpc $mod $cmd $@
+    $NODETOOL $TIMEOUT rpc $mod $cmd $@
 }
 
 # Check the first argument for instructions
@@ -210,7 +219,7 @@ case "$1" in
                 ;;
             update)
                 shift
-                run sniffle_console db_update $@
+                run -t infinity sniffle_console db_update $@
                 ;;
         esac
         ;;
