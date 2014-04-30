@@ -90,7 +90,7 @@ update_img(Img) ->
 
 db_update([]) ->
     [db_update([E]) || E <- ["vms", "datasets", "dtraces", "hypervisors",
-                             "ipranges", "networks", "packages"]],
+                             "ipranges", "networks", "packages", "img"]],
     ok;
 
 db_update(["img"]) ->

@@ -219,7 +219,7 @@ case "$1" in
                 ;;
             update)
                 shift
-                run sniffle_console db_update $@
+                run -t infinity sniffle_console db_update $@
                 ;;
         esac
         ;;
