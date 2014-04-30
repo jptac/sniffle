@@ -15,12 +15,10 @@ main(Args) ->
         case RestArgs0 of
             ["-t", "infinity" | R] ->
                 {infinity, R};
-            ["-t", "inf" | R] ->
-                {infinity, R};
             ["-t", T | R] ->
                 {list_to_integer(T), R};
-            _ ->
-                RestArgs0
+            R ->
+                R
         end,
 
 
