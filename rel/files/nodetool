@@ -18,7 +18,7 @@ main(Args) ->
             ["-t", T | R] ->
                 {list_to_integer(T), R};
             R ->
-                R
+                {60000, R}
         end,
 
 
