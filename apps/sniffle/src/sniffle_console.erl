@@ -70,24 +70,6 @@
               db_update/1
              ]).
 
-update_part(Img, Part) ->
-    io:format("."),
-    Key = <<Img/binary, Part:32>>,
-    case sniffle_img:list_(Key) of
-        {ok, [D]} ->
-            %%    sniffle_img:wipe(Key),
-            sniffle_img:sync_repair(Key, D);
-        _ ->
-            io:format("Could not read: ~s/~p~n", [Img, Part]),
-            throw({read_failure, Img, Part})
-    end.
-
-update_img(Img) ->
-    {ok, Parts} = sniffle_img:list(Img),
-    io:format(" Updating image '~s' (~p parts)", [Img, length(Parts)]),
-    [update_part(Img, Part) || Part <- lists:sort(Parts)],
-    io:format(" done.~n").
-
 db_update([]) ->
     [db_update([E]) || E <- ["vms", "datasets", "dtraces", "hypervisors",
                              "ipranges", "networks", "packages", "img"]],
@@ -653,15 +635,13 @@ do_update(MainMod, StateMod) ->
     io:format("  Grabbing UUIDs"),
     US1 = [begin
                io:format("."),
-               %%flush(),
                {StateMod:uuid(V), U}
            end|| U = #sniffle_obj{val = V} <- US],
     io:format(" done.~n"),
 
-    io:format("  Wiping old entries"),
+    io:format("  Wipeing old entries"),
     [begin
          io:format("."),
-         %%flush(),
          MainMod:wipe(UUID)
      end || {UUID, _} <- US1],
     io:format(" done.~n"),
@@ -669,12 +649,29 @@ do_update(MainMod, StateMod) ->
     io:format("  Restoring entries"),
     [begin
          io:format("."),
-         %%flush(),
          MainMod:sync_repair(UUID, O)
      end || {UUID, O} <- US1],
     io:format(" done.~n"),
     io:format("Update complete.~n"),
     ok.
+
+update_part(Img, Part) ->
+    io:format("."),
+    Key = <<Img/binary, Part:32>>,
+    case sniffle_img:list_(Key) of
+        {ok, [D]} ->
+            %%    sniffle_img:wipe(Key),
+            sniffle_img:sync_repair(Key, D);
+        _ ->
+            io:format("Could not read: ~s/~p~n", [Img, Part]),
+            throw({read_failure, Img, Part})
+    end.
+
+update_img(Img) ->
+    {ok, Parts} = sniffle_img:list(Img),
+    io:format(" Updating image '~s' (~p parts)", [Img, length(Parts)]),
+    [update_part(Img, Part) || Part <- lists:sort(Parts)],
+    io:format(" done.~n").
 
 %%%===================================================================
 %%% Tests
@@ -691,4 +688,3 @@ named_test() ->
               100,<<"1.6.1">>,<<"smartos64">>, <<"smartos">>,
               <<"f4c23828-7981-11e1-912f-8b6d67c68076">>])).
 -endif.
-
