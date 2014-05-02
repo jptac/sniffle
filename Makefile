@@ -9,7 +9,7 @@ cp-hooks:
 	cp hooks/* .git/hooks
 
 version:
-	echo "$(shell git symbolic-ref HEAD 2> /dev/null | cut -b 12-)-$(shell git log --pretty=format:'%h, %ad' -1)" > sniffle.version
+	git describe > sniffle.version
 
 version_header: version
 	echo "-define(VERSION, <<\"$(shell cat sniffle.version)\">>)." > apps/sniffle/src/sniffle_version.hrl
