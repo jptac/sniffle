@@ -24,7 +24,8 @@
          encode_handoff_item/2,
          handle_coverage/4,
          handle_exit/3,
-         handle_info/2]).
+         handle_info/2,
+         sync_repair/4]).
 
 -export([master/0,
          aae_repair/2,
@@ -36,7 +37,8 @@
               set/4,
               start_vnode/1,
               unregister/3,
-              handle_info/2]).
+              handle_info/2,
+              sync_repair/4]).
 
 -define(SERVICE, sniffle_hypervisor).
 
@@ -49,9 +51,6 @@
 master() ->
     ?MASTER.
 
-hash_object(BKey, #sniffle_obj{vclock = RObj}) ->
-    lager:debug("Hashing Key: ~p", [BKey]),
-    list_to_binary(integer_to_list(erlang:phash2({BKey, RObj})));
 hash_object(BKey, RObj) ->
     lager:debug("Hashing Key: ~p", [BKey]),
     list_to_binary(integer_to_list(erlang:phash2({BKey, RObj}))).
@@ -86,6 +85,12 @@ get(Preflist, ReqID, Hypervisor) ->
 %%%===================================================================
 %%% API - writes
 %%%===================================================================
+
+sync_repair(Preflist, ReqID, UUID, Obj) ->
+    riak_core_vnode_master:command(Preflist,
+                                   {sync_repair, ReqID, UUID, Obj},
+                                   {fsm, undefined, self()},
+                                   ?MASTER).
 
 register(Preflist, ReqID, Hypervisor, Data) ->
     riak_core_vnode_master:command(Preflist,

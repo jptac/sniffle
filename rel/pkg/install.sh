@@ -5,7 +5,7 @@ GROUP=$USER
 
 case $2 in
     PRE-INSTALL)
-        if grep '^Image: base64 13.[23].*$' /etc/product
+        if grep '^Image: base64 13.[234].*$' /etc/product
 	then
 	    echo "Image version supported"
 	else
@@ -44,10 +44,26 @@ case $2 in
         svccfg import /opt/local/fifo-sniffle/share/sniffle.xml
         echo Trying to guess configuration ...
         IP=`ifconfig net0 | grep inet | awk -e '{print $2}'`
-        if [ ! -f /opt/local/fifo-sniffle/etc/sniffle.conf ]
+        CONFFILE=/opt/local/fifo-sniffle/etc/sniffle.conf
+        if [ ! -f "${CONFFILE}" ]
         then
-            cp /opt/local/fifo-sniffle/etc/sniffle.conf.example /opt/local/fifo-sniffle/etc/sniffle.conf
-            sed --in-place -e "s/127.0.0.1/${IP}/g" /opt/local/fifo-sniffle/etc/sniffle.conf
+            cp ${CONFFILE}.example ${CONFFILE}
+            sed --in-place -e "s/127.0.0.1/${IP}/g" ${CONFFILE}
+            md5sum ${CONFFILE} > ${CONFFILE}.md5
+        elif [ -f ${CONFFILE}.md5 ]
+        then
+            if md5sum --quiet --strict -c ${CONFFILE}.md5 2&> /dev/null
+            then
+                echo "The config was not adjusted we'll regenerate it."
+                cp ${CONFFILE}.example ${CONFFILE}
+                sed --in-place -e "s/127.0.0.1/${IP}/g" ${CONFFILE}
+                md5sum ${CONFFILE} > ${CONFFILE}.md5
+            fi
+        else
+            mv ${CONFFILE} ${CONFFILE}.old
+            cat ${CONFFILE}.old | grep -v mdns.server | grep -v anti_entropy.max_open_files | grep -v db.dir | grep -v anti_entropy.write_buffer_size | grep -v platform_data_dir > ${CONFFILE}
+            echo anti_entropy.write_buffer_size_min = 4MB >> ${CONFFILE}
+            echo anti_entropy.write_buffer_size_max = 4MB >> ${CONFFILE}
         fi
         cp /opt/local/fifo-sniffle/bin/fifoadm /opt/local/sbin
         ;;

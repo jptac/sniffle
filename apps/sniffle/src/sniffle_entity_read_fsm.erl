@@ -120,7 +120,7 @@ prepare(timeout, SD0=#state{entity=Entity,
                             n=N,
                             system=System}) ->
     Bucket = list_to_binary(atom_to_list(System)),
-    DocIdx = riak_core_util:chash_key({Bucket, term_to_binary(Entity)}),
+    DocIdx = riak_core_util:chash_key({Bucket, Entity}),
     Prelist = riak_core_apl:get_apl(DocIdx, N, System),
     SD = SD0#state{preflist=Prelist},
     {next_state, execute, SD, 0}.
@@ -169,9 +169,6 @@ waiting({ok, ReqID, IdxNode, Obj},
                             From ! {ReqID, ok, Reply}
                     end
             end,
-            statman_histogram:record_value(
-              {list_to_binary(stat_name(SD0#state.vnode) ++ "/read"), total},
-              SD0#state.start),
             if
                 NumR =:= N ->
                     {next_state, finalize, SD, 0};
@@ -204,13 +201,9 @@ finalize(timeout, SD=#state{
     MObj = merge(Replies),
     case needs_repair(MObj, Replies) of
         true ->
-            Start = now(),
             lager:warning("[~p] performing read repair on '~p'.",
                           [SD#state.vnode, Entity]),
             repair(VNode, Entity, MObj, Replies),
-            statman_histogram:record_value(
-              {list_to_binary(stat_name(SD#state.vnode) ++ "/repair"), total},
-              Start),
             {stop, normal, SD};
         false ->
             {stop, normal, SD}
@@ -297,19 +290,19 @@ unique(L) ->
 mk_reqid() ->
     erlang:phash2(erlang:now()).
 
-stat_name(sniffle_dtrace_vnode) ->
-    "dtrace";
-stat_name(sniffle_vm_vnode) ->
-    "vm";
-stat_name(sniffle_hypervisor_vnode) ->
-    "hypervisor";
-stat_name(sniffle_package_vnode) ->
-    "package";
-stat_name(sniffle_dataset_vnode) ->
-    "dataset";
-stat_name(sniffle_img_vnode) ->
-    "img";
-stat_name(sniffle_network_vnode) ->
-    "network";
-stat_name(sniffle_iprange_vnode) ->
-    "iprange".
+%%stat_name(sniffle_dtrace_vnode) ->
+%%    "dtrace";
+%%stat_name(sniffle_vm_vnode) ->
+%%    "vm";
+%%stat_name(sniffle_hypervisor_vnode) ->
+%%    "hypervisor";
+%%stat_name(sniffle_package_vnode) ->
+%%    "package";
+%%stat_name(sniffle_dataset_vnode) ->
+%%    "dataset";
+%%stat_name(sniffle_img_vnode) ->
+%%    "img";
+%%stat_name(sniffle_network_vnode) ->
+%%    "network";
+%%stat_name(sniffle_iprange_vnode) ->
+%%    "iprange".

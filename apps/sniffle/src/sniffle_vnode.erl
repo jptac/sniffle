@@ -35,6 +35,7 @@ init(Partition, Bucket, Service, VNode, StateMod) ->
     FoldWorkerPool = {pool, sniffle_worker, WorkerPoolSize, []},
     {ok,
      #vstate{db=DB, hashtrees=HT, partition=Partition, node=node(),
+             service_bin=list_to_binary(atom_to_list(Service)),
              service=Service, bucket=Bucket, state=StateMod, vnode=VNode},
      [FoldWorkerPool]}.
 
@@ -91,7 +92,7 @@ fold(Fun, Acc0, Sender, State=#vstate{db=DB, bucket=Bucket}) ->
 put(Key, Obj, State) ->
     fifo_db:put(State#vstate.db, State#vstate.bucket, Key, Obj),
     riak_core_aae_vnode:update_hashtree(
-      State#vstate.bucket, Key, term_to_binary(Obj), State#vstate.hashtrees).
+      State#vstate.service_bin, Key, Obj#sniffle_obj.vclock, State#vstate.hashtrees).
 
 %%%===================================================================
 %%% Callbacks
@@ -109,6 +110,10 @@ delete(State=#vstate{db=DB, bucket=Bucket}) ->
 
 load_obj(Mod, Obj = #sniffle_obj{val = V}) ->
     Obj#sniffle_obj{val = Mod:load(V)}.
+
+handle_coverage({wipe, UUID}, _KeySpaces, {_, ReqID, _}, State) ->
+    fifo_db:delete(State#vstate.db, State#vstate.bucket, UUID),
+    {reply, {ok, ReqID}, State};
 
 handle_coverage({lookup, Name}, _KeySpaces, Sender, State=#vstate{state=Mod}) ->
     FoldFn = fun (U, #sniffle_obj{val=V}, [not_found]) ->
@@ -139,6 +144,7 @@ handle_coverage({list, Requirements, Full}, _KeySpaces, Sender,
         false ->
             list_keys(fun Mod:getter/2, Requirements, Sender, State)
     end;
+
 handle_coverage(Req, _KeySpaces, _Sender, State) ->
     lager:warning("Unknown coverage request: ~p", [Req]),
     {stop, not_implemented, State}.
@@ -162,6 +168,24 @@ handle_command({repair, UUID, _VClock, Obj}, _Sender,
     end,
     {noreply, State};
 
+handle_command({sync_repair, {ReqID, _}, UUID, Obj = #sniffle_obj{}}, _Sender,
+               State=#vstate{state=Mod}) ->
+    case get(UUID, State) of
+        {ok, Old} ->
+            ID = sniffle_vnode:mkid(),
+            Old1 = load_obj(ID, Mod, Old),
+            lager:info("[sync-repair:~s] Merging with old object", [UUID]),
+            Merged = sniffle_obj:merge(sniffle_entity_read_fsm, [Old1, Obj]),
+            sniffle_vnode:put(UUID, Merged, State);
+        not_found ->
+            lager:info("[sync-repair:~s] Writing new object", [UUID]),
+            sniffle_vnode:put(UUID, Obj, State);
+        _ ->
+            lager:error("[~s] Read repair failed, data was updated too recent.",
+                        [State#vstate.bucket])
+    end,
+    {reply, {ok, ReqID}, State};
+
 handle_command({get, ReqID, UUID}, _Sender, State) ->
     Res = case fifo_db:get(State#vstate.db, State#vstate.bucket, UUID) of
               {ok, R} ->
@@ -175,7 +199,7 @@ handle_command({get, ReqID, UUID}, _Sender, State) ->
 handle_command({delete, {ReqID, _Coordinator}, UUID}, _Sender, State) ->
     fifo_db:delete(State#vstate.db, State#vstate.bucket, UUID),
     riak_core_index_hashtree:delete(
-      {State#vstate.bucket, UUID}, State#vstate.hashtrees),
+      {State#vstate.service_bin, UUID}, State#vstate.hashtrees),
     {reply, {ok, ReqID}, State};
 
 
@@ -197,7 +221,7 @@ handle_command({set,
             sniffle_vnode:put(Dataset, Obj, State),
             {reply, {ok, ReqID}, State};
         R ->
-            lager:error("[~s] tried to write to a non existing dataset: ~p",
+            lager:error("[~s] tried to write to a non existing element: ~p",
                         [Bucket, R]),
             {reply, {ok, ReqID, not_found}, State}
     end;
@@ -225,14 +249,14 @@ handle_command({hashtree_pid, Node}, _, State) ->
     end;
 
 handle_command({rehash, {_, UUID}}, _,
-               State=#vstate{bucket=Bucket, hashtrees=HT}) ->
+               State=#vstate{service_bin=ServiceBin, hashtrees=HT}) ->
     case get(UUID, State) of
-        {ok, Term} ->
-            Bin = term_to_binary(Term),
-            riak_core_aae_vnode:update_hashtree(Bucket, UUID, Bin, HT);
+        {ok, Obj} ->
+            riak_core_aae_vnode:update_hashtree(
+              ServiceBin, UUID, Obj#sniffle_obj.vclock, HT);
         _ ->
             %% Make sure hashtree isn't tracking deleted data
-            riak_core_index_hashtree:delete({State#vstate.bucket, UUID}, HT)
+            riak_core_index_hashtree:delete({ServiceBin, UUID}, HT)
     end,
     {noreply, State};
 
@@ -266,3 +290,6 @@ handle_info({'DOWN', _, _, _, _}, State) ->
     {ok, State};
 handle_info(_, State) ->
     {ok, State}.
+
+load_obj(_ID, _Mod, Old) ->
+    Old.

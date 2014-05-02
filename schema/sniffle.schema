@@ -1,7 +1,4 @@
 %% -*- erlang -*-
-
-
-
 %% @doc When a failure occurs during create the process will retry starting
 %% from to find a new server.
 {mapping, "create_retry_delay", "sniffle.create_retry_delay",
@@ -29,7 +26,7 @@
 { translation,
   "riak_core.anti_entropy",
   fun(Conf) ->
-    Setting = cuttlefish_util:conf_get_value("anti_entropy", Conf),
+    Setting = cuttlefish:conf_get("anti_entropy", Conf),
     case Setting of
       on -> {on, []};
       debug -> {on, [debug]};
@@ -39,31 +36,26 @@
   end
 }.
 
+
 %% @doc The TCP endpoint that will be broadcasted.
-{mapping, "ip", "sniffle.endpoint",
+{mapping, "ip", "mdns_server_lib.listener",
  [{default, {"{{sniffle_ip}}", {{sniffle_port}} }},
   {datatype, ip}]}.
 
 {translation,
- "mdns_server_lib.ip",
- fun(Conf) ->
-         {IP, _Port} = cuttlefish_util:conf_get_value("ip", Conf),
-         IP
- end
-}.
-
-{translation,
- "mdns_server_lib.port",
- fun(Conf) ->
-         {_IP, Port} = cuttlefish_util:conf_get_value("ip", Conf),
-         Port
- end
-}.
-
-{translation,
  "mdns_client_lib.interface",
  fun(Conf) ->
-         {IP, _Port} = cuttlefish_util:conf_get_value("ip", Conf),
+         {IP, _Port} = cuttlefish:conf_get("ip", Conf),
+         [A, B, C, D] = [list_to_integer(O) ||
+                            O <- re:split(IP, "\\.", [{return, list}])],
+         {A, B, C, D}
+ end
+}.
+
+{translation,
+ "mdns_server_lib.interface",
+ fun(Conf) ->
+         {IP, _Port} = cuttlefish:conf_get("ip", Conf),
          [A, B, C, D] = [list_to_integer(O) ||
                             O <- re:split(IP, "\\.", [{return, list}])],
          {A, B, C, D}
@@ -90,28 +82,28 @@
 {translation,
  "fifo_db.db_path",
  fun(Conf) ->
-         cuttlefish_util:conf_get_value("data_dir", Conf)
+         cuttlefish:conf_get("data_dir", Conf)
  end
 }.
 
 {translation,
  "leveldb.data_root",
  fun(Conf) ->
-         cuttlefish_util:conf_get_value("data_dir", Conf)
+         cuttlefish:conf_get("data_dir", Conf)
  end
 }.
 
 {translation,
  "hanoidb.data_root",
  fun(Conf) ->
-         cuttlefish_util:conf_get_value("data_dir", Conf)
+         cuttlefish:conf_get("data_dir", Conf)
  end
 }.
 
 {translation,
  "bitcask.data_root",
  fun(Conf) ->
-         cuttlefish_util:conf_get_value("data_dir", Conf)
+         cuttlefish:conf_get("data_dir", Conf)
  end
 }.
 
@@ -150,7 +142,7 @@
 {translation,
  "sniffle.s3_host",
  fun(Conf) ->
-         {IP, _Port} = cuttlefish_util:conf_get_value("s3.host", Conf),
+         {IP, _Port} = cuttlefish:conf_get("s3.host", Conf),
          IP
  end
 }.
@@ -158,7 +150,7 @@
 {translation,
  "sniffle.s3_port",
  fun(Conf) ->
-         {_IP, Port} = cuttlefish_util:conf_get_value("s3.host", Conf),
+         {_IP, Port} = cuttlefish:conf_get("s3.host", Conf),
          Port
  end
 }.
@@ -174,7 +166,7 @@
 {translation,
  "mdns_server_lib.handler",
  fun(Conf) ->
-         Setting = cuttlefish_util:conf_get_value("tcp_callback", Conf),
+         Setting = cuttlefish:conf_get("tcp_callback", Conf),
          list_to_atom(Setting)
  end
 }.
@@ -233,12 +225,12 @@
 
 {mapping, "dataset.aae", "sniffle.sniffle_dataset_aae",
  [{datatype, {enum, [on, off]}},
-  {default, off}]}.
+  {default, on}]}.
 
 {translation,
   "sniffle.sniffle_dataset_aae",
   fun(Conf) ->
-          case cuttlefish_util:conf_get_value("dataset.aae", Conf) of
+          case cuttlefish:conf_get("dataset.aae", Conf) of
               on -> true;
               _ -> false
           end
@@ -275,20 +267,20 @@
 { translation,
   "sniffle.sniffle_dataset",
   fun(Conf) ->
-          N = cuttlefish_util:conf_get_value("dataset.n", Conf),
-          R = cuttlefish_util:conf_get_value("dataset.r", Conf),
-          W = cuttlefish_util:conf_get_value("dataset.w", Conf),
+          N = cuttlefish:conf_get("dataset.n", Conf),
+          R = cuttlefish:conf_get("dataset.r", Conf),
+          W = cuttlefish:conf_get("dataset.w", Conf),
           {N, R, W}
   end
 }.
 
 {mapping, "hypervisor.aae", "sniffle.sniffle_hypervisor_aae",
  [{datatype, {enum, [on, off]}},
-  {default, off}]}.
+  {default, on}]}.
 {translation,
   "sniffle.sniffle_hypervisor_aae",
   fun(Conf) ->
-          case cuttlefish_util:conf_get_value("hypervisor.aae", Conf) of
+          case cuttlefish:conf_get("hypervisor.aae", Conf) of
               on -> true;
               _ -> false
           end
@@ -325,20 +317,21 @@
 { translation,
   "sniffle.sniffle_hypervisor",
   fun(Conf) ->
-          N = cuttlefish_util:conf_get_value("hypervisor.n", Conf),
-          R = cuttlefish_util:conf_get_value("hypervisor.r", Conf),
-          W = cuttlefish_util:conf_get_value("hypervisor.w", Conf),
+          N = cuttlefish:conf_get("hypervisor.n", Conf),
+          R = cuttlefish:conf_get("hypervisor.r", Conf),
+          W = cuttlefish:conf_get("hypervisor.w", Conf),
           {N, R, W}
   end
 }.
 
 {mapping, "vm.aae", "sniffle.sniffle_vm_aae",
  [{datatype, {enum, [on, off]}},
-  {default, off}]}.
+  {default, on}]}.
+
 {translation,
   "sniffle.sniffle_vm_aae",
   fun(Conf) ->
-          case cuttlefish_util:conf_get_value("vm.aae", Conf) of
+          case cuttlefish:conf_get("vm.aae", Conf) of
               on -> true;
               _ -> false
           end
@@ -375,20 +368,21 @@
 { translation,
   "sniffle.sniffle_vm",
   fun(Conf) ->
-          N = cuttlefish_util:conf_get_value("vm.n", Conf),
-          R = cuttlefish_util:conf_get_value("vm.r", Conf),
-          W = cuttlefish_util:conf_get_value("vm.w", Conf),
+          N = cuttlefish:conf_get("vm.n", Conf),
+          R = cuttlefish:conf_get("vm.r", Conf),
+          W = cuttlefish:conf_get("vm.w", Conf),
           {N, R, W}
   end
 }.
 
 {mapping, "iprange.aae", "sniffle.sniffle_iprange_aae",
  [{datatype, {enum, [on, off]}},
-  {default, off}]}.
+  {default, on}]}.
+
 {translation,
   "sniffle.sniffle_iprange_aae",
   fun(Conf) ->
-          case cuttlefish_util:conf_get_value("iprange.aae", Conf) of
+          case cuttlefish:conf_get("iprange.aae", Conf) of
               on -> true;
               _ -> false
           end
@@ -425,20 +419,21 @@
 { translation,
   "sniffle.sniffle_iprange",
   fun(Conf) ->
-          N = cuttlefish_util:conf_get_value("iprange.n", Conf),
-          R = cuttlefish_util:conf_get_value("iprange.r", Conf),
-          W = cuttlefish_util:conf_get_value("iprange.w", Conf),
+          N = cuttlefish:conf_get("iprange.n", Conf),
+          R = cuttlefish:conf_get("iprange.r", Conf),
+          W = cuttlefish:conf_get("iprange.w", Conf),
           {N, R, W}
   end
 }.
 
 {mapping, "network.aae", "sniffle.sniffle_network_aae",
  [{datatype, {enum, [on, off]}},
-  {default, off}]}.
+  {default, on}]}.
+
 {translation,
   "sniffle.sniffle_network_aae",
   fun(Conf) ->
-          case cuttlefish_util:conf_get_value("network.aae", Conf) of
+          case cuttlefish:conf_get("network.aae", Conf) of
               on -> true;
               _ -> false
           end
@@ -475,9 +470,9 @@
 { translation,
   "sniffle.sniffle_network",
   fun(Conf) ->
-          N = cuttlefish_util:conf_get_value("network.n", Conf),
-          R = cuttlefish_util:conf_get_value("network.r", Conf),
-          W = cuttlefish_util:conf_get_value("network.w", Conf),
+          N = cuttlefish:conf_get("network.n", Conf),
+          R = cuttlefish:conf_get("network.r", Conf),
+          W = cuttlefish:conf_get("network.w", Conf),
           {N, R, W}
   end
 }.
@@ -485,10 +480,11 @@
 {mapping, "img.aae", "sniffle.sniffle_img_aae",
  [{datatype, {enum, [on, off]}},
   {default, off}]}.
+
 {translation,
   "sniffle.sniffle_img_aae",
   fun(Conf) ->
-          case cuttlefish_util:conf_get_value("img.aae", Conf) of
+          case cuttlefish:conf_get("img.aae", Conf) of
               on -> true;
               _ -> false
           end
@@ -525,20 +521,21 @@
 { translation,
   "sniffle.sniffle_img",
   fun(Conf) ->
-          N = cuttlefish_util:conf_get_value("img.n", Conf),
-          R = cuttlefish_util:conf_get_value("img.r", Conf),
-          W = cuttlefish_util:conf_get_value("img.w", Conf),
+          N = cuttlefish:conf_get("img.n", Conf),
+          R = cuttlefish:conf_get("img.r", Conf),
+          W = cuttlefish:conf_get("img.w", Conf),
           {N, R, W}
   end
 }.
 
 {mapping, "dtrace.aae", "sniffle.sniffle_dtrace_aae",
  [{datatype, {enum, [on, off]}},
-  {default, off}]}.
+  {default, on}]}.
+
 {translation,
   "sniffle.sniffle_dtrace_aae",
   fun(Conf) ->
-          case cuttlefish_util:conf_get_value("dtrace.aae", Conf) of
+          case cuttlefish:conf_get("dtrace.aae", Conf) of
               on -> true;
               _ -> false
           end
@@ -575,20 +572,21 @@
 { translation,
   "sniffle.sniffle_dtrace",
   fun(Conf) ->
-          N = cuttlefish_util:conf_get_value("dtrace.n", Conf),
-          R = cuttlefish_util:conf_get_value("dtrace.r", Conf),
-          W = cuttlefish_util:conf_get_value("dtrace.w", Conf),
+          N = cuttlefish:conf_get("dtrace.n", Conf),
+          R = cuttlefish:conf_get("dtrace.r", Conf),
+          W = cuttlefish:conf_get("dtrace.w", Conf),
           {N, R, W}
   end
 }.
 
 {mapping, "package.aae", "sniffle.sniffle_package_aae",
  [{datatype, {enum, [on, off]}},
-  {default, off}]}.
+  {default, on}]}.
+
 {translation,
   "sniffle.sniffle_package_aae",
   fun(Conf) ->
-          case cuttlefish_util:conf_get_value("package.aae", Conf) of
+          case cuttlefish:conf_get("package.aae", Conf) of
               on -> true;
               _ -> false
           end
@@ -625,9 +623,9 @@
 {translation,
  "sniffle.sniffle_package",
  fun(Conf) ->
-         N = cuttlefish_util:conf_get_value("package.n", Conf),
-         R = cuttlefish_util:conf_get_value("package.r", Conf),
-         W = cuttlefish_util:conf_get_value("package.w", Conf),
+         N = cuttlefish:conf_get("package.n", Conf),
+         R = cuttlefish:conf_get("package.r", Conf),
+         W = cuttlefish:conf_get("package.w", Conf),
          {N, R, W}
  end
 }.

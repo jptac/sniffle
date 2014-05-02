@@ -1,9 +1,8 @@
-
 %% -*- erlang -*-
 {application, sniffle,
  [
   {description, "Project FiFo's central management server."},
-  {vsn, "0.4.3p1"},
+  {vsn, "0.4.4"},
   {registered, []},
   {applications, [
                   kernel,
@@ -21,7 +20,6 @@
                   ssl,
                   hackney,
                   erlcloud,
-                  newrelic,
                   snmp,
                   mnesia,
                   eplugin,

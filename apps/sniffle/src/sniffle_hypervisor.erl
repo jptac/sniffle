@@ -1,6 +1,9 @@
 -module(sniffle_hypervisor).
 -include("sniffle.hrl").
-%%-include_lib("riak_core/include/riak_core_vnode.hrl").
+
+-define(MASTER, sniffle_hypervisor_vnode_master).
+-define(VNODE, sniffle_hypervisor_vnode).
+-define(SERVICE, sniffle_hypervisor).
 
 -export(
    [
@@ -14,13 +17,35 @@
     status/0,
     service/3,
     update/1,
-    update/0
+    update/0,
+    wipe/1,
+    sync_repair/2,
+    list_/0
    ]).
+
+-ignore_xref([
+              sync_repair/2,
+              list_/0,
+              wipe/1
+              ]).
+
+wipe(UUID) ->
+    sniffle_coverage:start(?MASTER, ?SERVICE, {wipe, UUID}).
+
+sync_repair(UUID, Obj) ->
+    do_write(UUID, sync_repair, Obj).
+
+list_() ->
+    {ok, Res} = sniffle_full_coverage:start(
+                  ?MASTER, ?SERVICE, {list, [], true, true}),
+    Res1 = [R || {_, R} <- Res],
+    {ok,  Res1}.
 
 -spec register(Hypervisor::fifo:hypervisor_id(),
                IP::inet:ip_address() | inet:hostname(),
                Port::inet:port_number()) ->
                       duplicate | {error, timeout} | ok.
+
 register(Hypervisor, IP, Port) ->
     case sniffle_hypervisor:get(Hypervisor) of
         not_found ->
@@ -40,9 +65,7 @@ unregister(Hypervisor) ->
 -spec get(Hypervisor::fifo:hypervisor_id()) ->
                  not_found | {ok, HV::fifo:object()} | {error, timeout}.
 get(Hypervisor) ->
-    sniffle_entity_read_fsm:start(
-      {sniffle_hypervisor_vnode, sniffle_hypervisor},
-      get, Hypervisor).
+    sniffle_entity_read_fsm:start({?VNODE, ?SERVICE}, get, Hypervisor).
 
 -spec status() -> {error, timeout} |
                   {ok, {Resources::fifo:object(),
@@ -83,9 +106,7 @@ status() ->
 -spec list() ->
                   {ok, [IPR::fifo:hypervisor_id()]} | {error, timeout}.
 list() ->
-    sniffle_coverage:start(
-      sniffle_hypervisor_vnode_master, sniffle_hypervisor,
-      list).
+    sniffle_coverage:start(?MASTER, ?SERVICE, list).
 
 service(UUID, Action, Service) ->
     case sniffle_hypervisor:get(UUID) of
@@ -97,6 +118,7 @@ service(UUID, Action, Service) ->
         E ->
             E
     end.
+
 service(Host, Port, enable, Service) ->
     libchunter:service_enable(Host, Port, Service);
 service(Host, Port, disable, Service) ->
@@ -114,7 +136,6 @@ update(HypervisorObj) ->
     Host = binary_to_list(HostB),
     libchunter:update(Host, Port).
 
-
 update() ->
     {ok, L} = list([], true),
     [update(O) || {_, O} <- L],
@@ -128,18 +149,15 @@ update() ->
 
 list(Requirements, true) ->
     {ok, Res} = sniffle_full_coverage:start(
-                  sniffle_hypervisor_vnode_master, sniffle_hypervisor,
-                  {list, Requirements, true}),
+                  ?MASTER, ?SERVICE, {list, Requirements, true}),
     Res1 = rankmatcher:apply_scales(Res),
     {ok,  lists:sort(Res1)};
 
 list(Requirements, false) ->
     {ok, Res} = sniffle_coverage:start(
-                  sniffle_hypervisor_vnode_master, sniffle_hypervisor,
-                  {list, Requirements}),
+                  ?MASTER, ?SERVICE, {list, Requirements}),
     Res1 = rankmatcher:apply_scales(Res),
     {ok,  lists:sort(Res1)}.
-
 
 -spec set(Hypervisor::fifo:hypervisor_id(),
           Attribute::fifo:keys(),
@@ -159,10 +177,10 @@ set(Hypervisor, Attributes) ->
 %%%===================================================================
 
 do_write(User, Op) ->
-    sniffle_entity_write_fsm:write({sniffle_hypervisor_vnode, sniffle_hypervisor}, User, Op).
+    sniffle_entity_write_fsm:write({?VNODE, ?SERVICE}, User, Op).
 
 do_write(User, Op, Val) ->
-    sniffle_entity_write_fsm:write({sniffle_hypervisor_vnode, sniffle_hypervisor}, User, Op, Val).
+    sniffle_entity_write_fsm:write({?VNODE, ?SERVICE}, User, Op, Val).
 
 bin_fmt(F, L) ->
     list_to_binary(io_lib:format(F, L)).

@@ -12,15 +12,19 @@
 -export([
          new/0,
          load/1,
+         uuid/1,
          set/3,
          getter/2
         ]).
 
--ignore_xref([load/1, set/3, getter/2]).
+-ignore_xref([load/1, set/3, getter/2, uuid/1]).
 
 getter(#sniffle_obj{val=S0}, Resource) ->
     jsxd:get(Resource, 0, statebox:value(S0)).
 
+uuid(Vm) ->
+    {ok, UUID} = jsxd:get(<<"uuid">>, statebox:value(Vm)),
+    UUID.
 
 load(Dtrace) ->
     Dtrace.

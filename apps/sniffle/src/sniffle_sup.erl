@@ -144,11 +144,7 @@ init(_Args) ->
 
     {ok,
      {{one_for_one, 5, 10},
-      [{statman_server, {statman_server, start_link, [1000]},
-        permanent, 5000, worker, []},
-       {statman_aggregator, {statman_aggregator, start_link, []},
-        permanent, 5000, worker, []},
-       {sniffle_create_pool, {sniffle_create_pool, start_link, []},
+      [{sniffle_create_pool, {sniffle_create_pool, start_link, []},
         permanent, 5000, worker, [sniffle_create_pool]},
        %% General FSM's
        CoverageFSMs, WriteFSMs, ReadFSMs,

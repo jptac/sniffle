@@ -48,6 +48,9 @@ process_results({ok, _ReqID, _IdxNode, Obj},
                           end, Replies, Obj),
     {done, State#state{replies = Replies1}};
 
+process_results({ok, _}, State) ->
+    {done, State};
+
 process_results(Result, State) ->
     lager:error("Unknown process results call: ~p ~p", [Result, State]),
     {done, State}.
@@ -59,9 +62,6 @@ finish(clean, State = #state{replies = Replies,
                                  (Key, _Count, Keys) ->
                                       [Key | Keys]
                               end, [], Replies),
-    %%    statman_histogram:record_value(
-    %%      {list_to_binary(stat_name(SD0#state.vnode) ++ "/list"), total},
-    %%      SD0#state.start),
     From ! {ok, MergedReplies},
     {stop, normal, State};
 

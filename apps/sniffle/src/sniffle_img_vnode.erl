@@ -27,7 +27,8 @@
          encode_handoff_item/2,
          handle_coverage/4,
          handle_exit/3,
-         handle_info/2
+         handle_info/2,
+         sync_repair/4
         ]).
 
 -export([
@@ -44,7 +45,8 @@
               list/3,
               repair/4,
               start_vnode/1,
-              handle_info/2
+              handle_info/2,
+              sync_repair/4
              ]).
 
 -define(SERVICE, sniffle_img).
@@ -58,9 +60,6 @@
 master() ->
     ?MASTER.
 
-hash_object(BKey, #sniffle_obj{vclock = RObj}) ->
-    lager:debug("Hashing Key: ~p", [BKey]),
-    list_to_binary(integer_to_list(erlang:phash2({BKey, RObj})));
 hash_object(BKey, RObj) ->
     lager:debug("Hashing Key: ~p", [BKey]),
     list_to_binary(integer_to_list(erlang:phash2({BKey, RObj}))).
@@ -98,6 +97,12 @@ get(Preflist, ReqID, ImgAndIdx) ->
 %%% API - writes
 %%%===================================================================
 
+sync_repair(Preflist, ReqID, UUID, Obj) ->
+    riak_core_vnode_master:command(Preflist,
+                                   {sync_repair, ReqID, UUID, Obj},
+                                   {fsm, undefined, self()},
+                                   ?MASTER).
+
 create(Preflist, ReqID, {Img, Idx}, Data) ->
     riak_core_vnode_master:command(Preflist,
                                    {create, ReqID, {Img, Idx}, Data},
@@ -131,15 +136,21 @@ init([Partition]) ->
 handle_command(ping, _Sender, State) ->
     {reply, {pong, State#vstate.partition}, State};
 
+handle_command({sync_repair, {ReqID, _},  Key, Obj}, _Sender, State) ->
+    lager:warning("Forced repair of img: ~p", [Key]),
+    put(State, Key, Obj),
+    {reply, {ok, ReqID}, State};
+
 handle_command({repair, <<Img:36/binary, Idx:32/integer>>, VClock, Obj}, Sender, State) ->
     handle_command({repair, {Img, Idx}, VClock, Obj}, Sender, State);
+
 handle_command({repair, {Img, Idx}, VClock, Obj}, _Sender, State) ->
     lager:warning("Repair of img: ~s~p", [Img, Idx]),
     case get(State#vstate.db, <<Img/binary, Idx:32>>) of
         {ok, #sniffle_obj{vclock = VC1}} when VC1 =:= VClock ->
             put(State, Img, Obj);
         not_found ->
-            put(State, Img,  Obj);
+            put(State, Img, Obj);
         _ ->
             lager:error("[imgs] Read repair failed, data was updated too recent.")
     end,
@@ -267,6 +278,10 @@ delete(State) ->
                       end, ok),
     {ok, State}.
 
+handle_coverage({wipe, UUID}, _KeySpaces, {_, ReqID, _}, State) ->
+    bitcask:delete(State#vstate.db, UUID),
+    {reply, {ok, ReqID}, State};
+
 handle_coverage(list, _KeySpaces, {_, ReqID, _}, State) ->
     List = bitcask:fold_keys(State#vstate.db,
                              fun (#bitcask_entry{key=K}, []) ->
@@ -299,6 +314,27 @@ handle_coverage({list, Img}, _KeySpaces, {_, ReqID, _}, State) ->
      {ok, ReqID, {State#vstate.partition,State#vstate.node}, List},
      State};
 
+handle_coverage({list, Img, true}, _KeySpaces, {_, ReqID, _}, State) ->
+    S = byte_size(Img),
+    L = bitcask:fold_keys(
+          State#vstate.db,
+          fun (#bitcask_entry{key = K = <<Img1:S/binary, _/binary>>}, Acc) when Img1 =:= Img ->
+                  [K|Acc];
+              (_, Acc) ->
+                  Acc
+          end, []),
+    L1 = [begin
+              case get(State#vstate.db, K) of
+                  {ok, V} when is_binary(V) ->
+                      {0, {K, binary_to_term(V)}};
+                  {ok, V} ->
+                      {0, {K, V}}
+              end
+          end || K <- lists:sort(L)],
+    {reply,
+     {ok, ReqID, {State#vstate.partition,State#vstate.node}, L1},
+     State};
+
 handle_coverage(_Req, _KeySpaces, _Sender, State) ->
     {stop, not_implemented, State}.
 
@@ -313,8 +349,8 @@ put(State, Key, Value) ->
     DB = State#vstate.db,
     Bin = term_to_binary(Value),
     R = bitcask:put(DB, Key, Bin),
-    riak_core_aae_vnode:update_hashtree(<<"img">>, Key, Bin,
-                                        State#vstate.hashtrees),
+    riak_core_aae_vnode:update_hashtree(
+      <<"img">>, Key, Bin, State#vstate.hashtrees),
     %% This is a very ugly hack, but since we don't have
     %% much opperations on the image server we need to
     %% trigger the GC manually.
@@ -358,7 +394,9 @@ handle_info({'DOWN', _, _, Pid, _}, State=#vstate{
     lager:debug("~p/~p hashtree ~p went down.", [?SERVICE, Idx, Pid]),
     erlang:send_after(1000, self(), retry_create_hashtree),
     {ok, State#vstate{hashtrees = undefined}};
+
 handle_info({'DOWN', _, _, _, _}, State) ->
     {ok, State};
+
 handle_info(_, State) ->
     {ok, State}.

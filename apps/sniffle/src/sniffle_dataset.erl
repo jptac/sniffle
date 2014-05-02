@@ -1,6 +1,9 @@
 -module(sniffle_dataset).
 -include("sniffle.hrl").
-%%-include_lib("riak_core/include/riak_core_vnode.hrl").
+
+-define(MASTER, sniffle_dataset_vnode_master).
+-define(VNODE, sniffle_dataset_vnode).
+-define(SERVICE, sniffle_dataset).
 
 -export([
          create/1,
@@ -11,8 +14,29 @@
          set/2,
          set/3,
          import/1,
-         read_image/6
+         read_image/6,
+         wipe/1,
+         sync_repair/2,
+         list_/0
         ]).
+
+-ignore_xref([
+              sync_repair/2,
+              list_/0,
+              wipe/1
+              ]).
+
+wipe(UUID) ->
+    sniffle_coverage:start(?MASTER, ?SERVICE, {wipe, UUID}).
+
+sync_repair(UUID, Obj) ->
+    do_write(UUID, sync_repair, Obj).
+
+list_() ->
+    {ok, Res} = sniffle_full_coverage:start(
+                  ?MASTER, ?SERVICE, {list, [], true, true}),
+    Res1 = [R || {_, R} <- Res],
+    {ok,  Res1}.
 
 -spec create(UUID::fifo:dataset_id()) ->
                     duplicate | ok | {error, timeout}.
@@ -37,17 +61,12 @@ delete(UUID) ->
 -spec get(UUID::fifo:dtrace_id()) ->
                  not_found | {ok, Dataset::fifo:dataset()} | {error, timeout}.
 get(UUID) ->
-    sniffle_entity_read_fsm:start(
-      {sniffle_dataset_vnode, sniffle_dataset},
-      get, UUID
-     ).
+    sniffle_entity_read_fsm:start({?VNODE, ?SERVICE}, get, UUID).
 
 -spec list() ->
                   {ok, [UUID::fifo:dataset_id()]} | {error, timeout}.
 list() ->
-    sniffle_coverage:start(
-      sniffle_dataset_vnode_master, sniffle_dataset,
-      list).
+    sniffle_coverage:start(?MASTER, ?SERVICE, list).
 
 %%--------------------------------------------------------------------
 %% @doc Lists all vm's and fiters by a given matcher set.
@@ -57,15 +76,13 @@ list() ->
 
 list(Requirements, true) ->
     {ok, Res} = sniffle_full_coverage:start(
-                  sniffle_dataset_vnode_master, sniffle_dataset,
-                  {list, Requirements, true}),
+                  ?MASTER, ?SERVICE, {list, Requirements, true}),
     Res1 = rankmatcher:apply_scales(Res),
     {ok,  lists:sort(Res1)};
 
 list(Requirements, false) ->
     {ok, Res} = sniffle_coverage:start(
-                  sniffle_dataset_vnode_master, sniffle_dataset,
-                  {list, Requirements}),
+                  ?MASTER, ?SERVICE, {list, Requirements}),
     Res1 = rankmatcher:apply_scales(Res),
     {ok,  lists:sort(Res1)}.
 
@@ -95,7 +112,17 @@ import(URL) ->
             sniffle_dataset:create(UUID),
             sniffle_dataset:set(UUID, Dataset),
             sniffle_dataset:set(UUID, <<"imported">>, 0),
-            spawn(?MODULE, read_image, [UUID, TotalSize, ImgURL, <<>>, 0, undefined]),
+            case sniffle_img:backend() of
+                s3 ->
+                    {Host, Port, AKey, SKey, Bucket} =
+                        {sniffle_s3:get_host(), sniffle_s3:get_port(),
+                         sniffle_s3:get_access_key(), sniffle_s3:get_secret_key(),
+                         sniffle_s3:get_bucket(image)},
+                    {ok, U} = fifo_s3_upload:new(AKey, SKey, Host, Port, Bucket, UUID),
+                    spawn(?MODULE, read_image, [UUID, TotalSize, ImgURL, <<>>, 0, U]);
+                internal ->
+                    spawn(?MODULE, read_image, [UUID, TotalSize, ImgURL, <<>>, 0, undefined])
+            end,
             {ok, UUID};
         {ok, E, _, _} ->
             {error, E}
@@ -120,11 +147,17 @@ transform_dataset(D1) ->
                     {set, <<"networks">>,
                      jsxd:get(<<"requirements.networks">>, [], D1)}],
                    D1),
+            D3 = case jsxd:get(<<"homepage">>, D1) of
+                     {ok, HomePage} ->
+                         jsxd:set([<<"metadata">>, <<"homepage">>], HomePage, D2);
+                     _ ->
+                         D2
+                 end,
             case jsxd:get(<<"os">>, D1) of
                 {ok, <<"smartos">>} ->
-                    jsxd:set(<<"type">>, <<"zone">>, D2);
+                    jsxd:set(<<"type">>, <<"zone">>, D3);
                 {ok, _} ->
-                    jsxd:set(<<"type">>, <<"kvm">>, D2)
+                    jsxd:set(<<"type">>, <<"kvm">>, D3)
             end;
         _ ->
             jsxd:set(<<"image_size">>,
@@ -140,10 +173,10 @@ ensure_integer(B) when is_binary(B) ->
     list_to_integer(binary_to_list(B)).
 
 do_write(Dataset, Op) ->
-    sniffle_entity_write_fsm:write({sniffle_dataset_vnode, sniffle_dataset}, Dataset, Op).
+    sniffle_entity_write_fsm:write({?VNODE, ?SERVICE}, Dataset, Op).
 
 do_write(Dataset, Op, Val) ->
-    sniffle_entity_write_fsm:write({sniffle_dataset_vnode, sniffle_dataset}, Dataset, Op, Val).
+    sniffle_entity_write_fsm:write({?VNODE, ?SERVICE}, Dataset, Op, Val).
 
 %% If more then one MB is in the accumulator read store it in 1MB chunks
 read_image(UUID, TotalSize, Url, Acc, Idx, Ref) when is_binary(Url) ->
@@ -156,7 +189,18 @@ read_image(UUID, TotalSize, Url, Acc, Idx, Ref) when is_binary(Url) ->
     end;
 
 read_image(UUID, TotalSize, Client, <<MB:1048576/binary, Acc/binary>>, Idx, Ref) ->
-    {ok, Ref1} = sniffle_img:create(UUID, Idx, binary:copy(MB), Ref),
+    {ok, Ref1} = case sniffle_img:backend() of
+                     internal ->
+                         sniffle_img:create(UUID, Idx, binary:copy(MB), Ref);
+                     s3 ->
+                         case  fifo_s3_upload:part(Ref, binary:copy(MB)) of
+                             ok ->
+                                 {ok, Ref};
+                             E ->
+                                 fail_import(UUID, E, Idx),
+                                 E
+                         end
+                 end,
     Idx1 = Idx + 1,
     Done = (Idx1 * 1024*1024) / TotalSize,
     sniffle_dataset:set(UUID, <<"imported">>, Done),

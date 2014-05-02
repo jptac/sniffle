@@ -62,15 +62,7 @@ start(_StartType, _StartArgs) ->
             ?SRV_WITH_AAE(sniffle_network_vnode, sniffle_network),
             ?SRV_WITH_AAE(sniffle_dtrace_vnode, sniffle_dtrace),
 
-            statman_server:add_subscriber(statman_aggregator),
             sniffle_snmp_handler:start(),
-            case application:get_env(newrelic,license_key) of
-                undefined ->
-                    ok;
-                _ ->
-                    newrelic_poller:start_link(fun newrelic_statman:poll/0)
-            end,
-
             {ok, Pid};
         {error, Reason} ->
             {error, Reason}

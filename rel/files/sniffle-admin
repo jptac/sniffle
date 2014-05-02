@@ -80,6 +80,15 @@ NODETOOL="$ERTS_PATH/escript $ERTS_PATH/nodetool $NAME_ARG $COOKIE_ARG"
 
 run()
 {
+
+    TIMEOUT=""
+    if [ "$1" == "-t" ]
+    then
+        TIMEOUT="-t $2"
+        shift
+        shift
+    fi
+
     mod=$1
     shift
     cmd=$1
@@ -92,7 +101,7 @@ run()
         exit 1
     fi
 
-    $NODETOOL rpc $mod $cmd $@
+    $NODETOOL $TIMEOUT rpc $mod $cmd $@
 }
 
 # Check the first argument for instructions
@@ -116,6 +125,10 @@ case "$1" in
     datasets)
         shift
         run sniffle_console ds $@
+        ;;
+    ipranges)
+        shift
+        run sniffle_console ips $@
         ;;
     ipranges)
         shift
@@ -180,6 +193,37 @@ case "$1" in
         $NODETOOL rpcterms riak_core_node_watcher services ''
         ;;
 
+    connections)
+        shift
+        run sniffle_console connections $@
+        ;;
+
+    ring)
+        run sniffle_console get_ring
+        ;;
+
+    db)
+        shift
+        case "$1" in
+            list)
+                shift
+                run sniffle_console db_keys $@
+                ;;
+            get)
+                shift
+                run sniffle_console db_get $@
+                ;;
+            delete)
+                shift
+                run sniffle_console db_delete $@
+                ;;
+            update)
+                shift
+                run -t infinity sniffle_console db_update $@
+                ;;
+        esac
+        ;;
+
     wait-for-service)
         SVC=$2
         TARGETNODE=$3
@@ -220,6 +264,13 @@ case "$1" in
         echo "                 services | wait-for-service | member-status |"
         echo "                 ring-status | aae-status | vms | hypervisors |"
         echo "                 packages | datasets | networks | config }"
+        echo "               ring                               - shows the ring."
+        echo "               db update [<entity>]               - update db entries."
+        echo "               db list [-p <prefix>]              - lists db entries."
+        echo "               db list <hash> [<prefix>]          - lists db entries for a hash."
+        echo "               db get <hash> <prefix> <key>       - gets raw data from the db."
+        echo "               db delete <hash> <prefix> <key>    - deletes directly from db."
+
         exit 1
         ;;
 esac

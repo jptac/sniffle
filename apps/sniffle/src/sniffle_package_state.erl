@@ -12,13 +12,14 @@
 -export([
          load/1,
          new/0,
+         uuid/1,
          uuid/2,
          name/2,
          set/3,
          getter/2
         ]).
 
--ignore_xref([load/1, set/3, getter/2]).
+-ignore_xref([load/1, set/3, getter/2, uuid/1]).
 
 getter(#sniffle_obj{val=S0}, Resource) ->
     jsxd:get(Resource, 0, statebox:value(S0)).
@@ -38,6 +39,10 @@ new() ->
 
 name(Name, Package) ->
     jsxd:set(<<"name">>, Name, Package).
+
+uuid(Vm) ->
+    {ok, UUID} = jsxd:get(<<"uuid">>, statebox:value(Vm)),
+    UUID.
 
 uuid(UUID, Package) ->
     jsxd:set(<<"uuid">>, UUID, Package).
