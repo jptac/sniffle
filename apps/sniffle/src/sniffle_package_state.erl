@@ -10,19 +10,23 @@
 -include("sniffle.hrl").
 
 -export([
-         load/1,
+         load/2,
          new/0,
          uuid/1,
          uuid/2,
          name/2,
+         set/4,
          set/3,
          getter/2
         ]).
 
--ignore_xref([load/1, set/3, getter/2, uuid/1]).
+-ignore_xref([load/2, set/4, set/3, getter/2, uuid/1]).
 
 getter(#sniffle_obj{val=S0}, Resource) ->
     jsxd:get(Resource, 0, statebox:value(S0)).
+
+load(_, D) ->
+    load(D).
 
 load(#package{name = Name,
               attributes = Attributes}) ->
@@ -46,6 +50,9 @@ uuid(Vm) ->
 
 uuid(UUID, Package) ->
     jsxd:set(<<"uuid">>, UUID, Package).
+
+set(_ID, Attribute, Value, D) ->
+    statebox:modify({fun set/3, [Attribute, Value]}, D).
 
 set(Attribute, delete, Package) ->
     jsxd:delete(Attribute, Package);

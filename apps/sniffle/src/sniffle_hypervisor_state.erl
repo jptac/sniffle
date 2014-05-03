@@ -9,43 +9,459 @@
 
 -include("sniffle.hrl").
 
+-ifdef(TEST).
+-include_lib("eunit/include/eunit.hrl").
+-endif.
+
 -export([
-         load/1,
-         new/0,
-         uuid/1,
-         uuid/2,
-         host/2,
-         port/2,
-         set/3,
-         getter/2
+         load/2,
+         new/1,
+         set/4,
+         getter/2,
+         to_json/1
         ]).
 
--ignore_xref([load/1, set/3, getter/2, uuid/1]).
+-export([
+         alias/3,
+         etherstubs/3,
+         host/3,
+         set_characteristic/4,
+         set_metadata/4,
+         networks/3,
+         path/3,
+         pools/3,
+         port/3,
+         set_resource/4,
+         set_service/4,
+         sysinfo/3,
+         uuid/3,
+         version/3,
+         virtualisation/3
+        ]).
+
+-ignore_xref([
+              alias/3,
+              etherstubs/3,
+              host/3,
+              set_characteristic/4,
+              set_metadata/4,
+              networks/3,
+              path/3,
+              pools/3,
+              port/3,
+              set_resource/4,
+              set_service/4,
+              sysinfo/3,
+              uuid/3,
+              version/3,
+              virtualisation/3
+             ]).
+
+-export([
+         resources/1,
+         characteristic/1,
+         alias/1,
+         etherstubs/1,
+         host/1,
+         metadata/1,
+         networks/1,
+         path/1,
+         pools/1,
+         port/1,
+         services/1,
+         sysinfo/1,
+         uuid/1,
+         version/1,
+         virtualisation/1
+        ]).
+
+-ignore_xref([
+              characteristic/1,
+              alias/1,
+              etherstubs/1,
+              host/1,
+              metadata/1,
+              networks/1,
+              path/1,
+              pools/1,
+              port/1,
+              resources/1,
+              services/1,
+              sysinfo/1,
+              uuid/1,
+              version/1,
+              virtualisation/1
+             ]).
+
+-ignore_xref([to_json/1, load/2, set/4, getter/2, uuid/1]).
+
+new({T, _ID}) ->
+    Characteristics = fifo_map:new(),
+    {ok, Etherstubs} = ?NEW_LWW([], T),
+    {ok, Host} = ?NEW_LWW(<<>>, T),
+    Metadata = fifo_map:new(),
+    {ok, Alias} = ?NEW_LWW(<<>>, T),
+    {ok, Networks} = ?NEW_LWW([], T),
+    {ok, Path} = ?NEW_LWW([], T),
+    {ok, Pools} = ?NEW_LWW([], T),
+    {ok, Port} = ?NEW_LWW(0, T),
+    Resources = fifo_map:new(),
+    Services = fifo_map:new(),
+    {ok, Sysinfo} = ?NEW_LWW([], T),
+    {ok, UUID} = ?NEW_LWW(<<>>, T),
+    {ok, Version} = ?NEW_LWW(<<>>, T),
+    {ok, Virtualisation} = ?NEW_LWW([], T),
+    #?HYPERVISOR{
+        characteristics = Characteristics,
+        etherstubs = Etherstubs,
+        host = Host,
+        metadata = Metadata,
+        alias = Alias,
+        networks = Networks,
+        path = Path,
+        pools = Pools,
+        port = Port,
+        resources = Resources,
+        services = Services,
+        sysinfo = Sysinfo,
+        uuid = UUID,
+        version = Version,
+        virtualisation = Virtualisation
+       }.
+
+alias(H) ->
+    riak_dt_lwwreg:value(H#?HYPERVISOR.alias).
+
+alias({T, _ID}, V, H) ->
+    {ok, V1} = riak_dt_lwwreg:update({assign, V, T}, none, H#?HYPERVISOR.alias),
+    H#?HYPERVISOR{alias = V1}.
+
+etherstubs(H) ->
+    riak_dt_lwwreg:value(H#?HYPERVISOR.etherstubs).
+
+etherstubs({T, _ID}, V, H) ->
+    {ok, V1} = riak_dt_lwwreg:update({assign, V, T}, none, H#?HYPERVISOR.etherstubs),
+    H#?HYPERVISOR{etherstubs = V1}.
+
+host(H) ->
+    riak_dt_lwwreg:value(H#?HYPERVISOR.alias).
+
+host({T, _ID}, V, H) ->
+    {ok, V1} = riak_dt_lwwreg:update({assign, V, T}, none, H#?HYPERVISOR.host),
+    H#?HYPERVISOR{host = V1}.
+
+networks(H) ->
+    riak_dt_lwwreg:value(H#?HYPERVISOR.networks).
+
+networks({T, _ID}, V, H) ->
+    {ok, V1} = riak_dt_lwwreg:update({assign, V, T}, none, H#?HYPERVISOR.networks),
+    H#?HYPERVISOR{networks = V1}.
+
+path(H) ->
+    riak_dt_lwwreg:value(H#?HYPERVISOR.path).
+
+path({T, _ID}, V, H) ->
+    {ok, V1} = riak_dt_lwwreg:update({assign, V, T}, none, H#?HYPERVISOR.path),
+    H#?HYPERVISOR{path = V1}.
+
+pools(H) ->
+    riak_dt_lwwreg:value(H#?HYPERVISOR.pools).
+
+pools({T, _ID}, V, H) ->
+    {ok, V1} = riak_dt_lwwreg:update({assign, V, T}, none, H#?HYPERVISOR.pools),
+    H#?HYPERVISOR{pools = V1}.
+
+port(H) ->
+    riak_dt_lwwreg:value(H#?HYPERVISOR.port).
+
+port({T, _ID}, V, H) ->
+    {ok, V1} = riak_dt_lwwreg:update({assign, V, T}, none, H#?HYPERVISOR.port),
+    H#?HYPERVISOR{port = V1}.
+
+sysinfo(H) ->
+    riak_dt_lwwreg:value(H#?HYPERVISOR.sysinfo).
+
+sysinfo({T, _ID}, V, H) ->
+    {ok, V1} = riak_dt_lwwreg:update({assign, V, T}, none, H#?HYPERVISOR.sysinfo),
+    H#?HYPERVISOR{sysinfo = V1}.
+
+uuid(H) ->
+    riak_dt_lwwreg:value(H#?HYPERVISOR.uuid).
+
+uuid({T, _ID}, V, H) ->
+    {ok, V1} = riak_dt_lwwreg:update({assign, V, T}, none, H#?HYPERVISOR.uuid),
+    H#?HYPERVISOR{uuid = V1}.
+
+version(H) ->
+    riak_dt_lwwreg:value(H#?HYPERVISOR.version).
+
+version({T, _ID}, V, H) ->
+    {ok, V1} = riak_dt_lwwreg:update({assign, V, T}, none, H#?HYPERVISOR.version),
+    H#?HYPERVISOR{version = V1}.
+
+virtualisation(H) ->
+    riak_dt_lwwreg:value(H#?HYPERVISOR.virtualisation).
+
+virtualisation({T, _ID}, V, H) ->
+    {ok, V1} = riak_dt_lwwreg:update({assign, V, T}, none, H#?HYPERVISOR.virtualisation),
+    H#?HYPERVISOR{virtualisation = V1}.
+
+characteristic(H) ->
+    H#?HYPERVISOR.characteristics.
+
+set_characteristic({T, ID}, P, Value, H) when is_binary(P) ->
+    set_characteristic({T, ID}, fifo_map:split_path(P), Value, H);
+
+set_characteristic({_T, ID}, Attribute, delete, H) ->
+    {ok, M1} = fifo_map:remove(Attribute, ID, H#?HYPERVISOR.characteristics),
+    H#?HYPERVISOR{characteristics = M1};
+
+set_characteristic({T, ID}, Attribute, Value, H) ->
+    {ok, M1} = fifo_map:set(Attribute, Value, ID, T, H#?HYPERVISOR.characteristics),
+    H#?HYPERVISOR{characteristics = M1}.
+
+metadata(H) ->
+    H#?HYPERVISOR.metadata.
+
+set_metadata({T, ID}, P, Value, H) when is_binary(P) ->
+    set_metadata({T, ID}, fifo_map:split_path(P), Value, H);
+
+set_metadata({_T, ID}, Attribute, delete, H) ->
+    {ok, M1} = fifo_map:remove(Attribute, ID, H#?HYPERVISOR.metadata),
+    H#?HYPERVISOR{metadata = M1};
+
+set_metadata({T, ID}, Attribute, Value, H) ->
+    {ok, M1} = fifo_map:set(Attribute, Value, ID, T, H#?HYPERVISOR.metadata),
+    H#?HYPERVISOR{metadata = M1}.
+
+resources(H) ->
+    H#?HYPERVISOR.resources.
+
+set_resource({_T, ID}, Attribute, delete, H) ->
+    {ok, M1} = fifo_map:remove(Attribute, ID, H#?HYPERVISOR.resources),
+    H#?HYPERVISOR{resources = M1};
+
+set_resource({T, ID}, Attribute, Value, H) ->
+    {ok, M1} = fifo_map:set(Attribute, Value, ID, T, H#?HYPERVISOR.resources),
+    H#?HYPERVISOR{resources = M1}.
+
+services(H) ->
+    H#?HYPERVISOR.services.
+
+set_service({_T, ID}, Attribute, delete, H) ->
+    {ok, M1} = fifo_map:remove(Attribute, ID, H#?HYPERVISOR.services),
+    H#?HYPERVISOR{services = M1};
+
+set_service({T, ID}, Attribute, Value, H) ->
+    {ok, M1} = fifo_map:set(Attribute, Value, ID, T, H#?HYPERVISOR.services),
+    H#?HYPERVISOR{services = M1}.
 
 getter(#sniffle_obj{val=S0}, Resource) ->
     jsxd:get(Resource, 0, statebox:value(S0)).
 
-load(H) ->
-    H.
+load(_, #?HYPERVISOR{} = H) ->
+    H;
 
-new() ->
-    jsxd:set(<<"version">>, <<"0.1.0">>, jsxd:new()).
+load({T, ID}, H) ->
+    Characteristics = case jsxd:get([<<"characteristics">>],  H) of
+                          {ok, [{}]} ->
+                              [];
+                          {ok, V} ->
+                              V;
+                          _ ->
+                              []
+                      end,
+    {ok, Etherstubs} = jsxd:get([<<"etherstubs">>], H),
+    {ok, Host} = jsxd:get([<<"host">>], H),
+    {ok, Metadata} = jsxd:get([<<"metadata">>], H),
+    {ok, Alias} = jsxd:get([<<"alias">>], H),
+    {ok, Networks} = jsxd:get([<<"networks">>], H),
+    {ok, Pools} = jsxd:get([<<"pools">>], H),
+    {ok, Port} = jsxd:get([<<"port">>], H),
+    {ok, Resources} = jsxd:get([<<"resources">>], H),
+    {ok, Services} = jsxd:get([<<"services">>], H),
+    {ok, Sysinfo} = jsxd:get([<<"sysinfo">>], H),
+    {ok, UUID} = jsxd:get([<<"uuid">>], H),
+    {ok, Version} = jsxd:get([<<"version">>], H),
+    {ok, Virtualisation} = jsxd:get([<<"virtualisation">>], H),
 
-uuid(Vm) ->
-    {ok, UUID} = jsxd:get(<<"uuid">>, statebox:value(Vm)),
-    UUID.
 
-uuid(Name, Hypervisor) ->
-    jsxd:set(<<"uuid">>, Name, Hypervisor).
+    Characteristics1 = fifo_map:from_orddict(Characteristics, ID, T),
+    {ok, Alias1} = ?NEW_LWW(Alias, T),
+    {ok, Etherstubs1} = ?NEW_LWW(Etherstubs, T),
+    {ok, Host1} = ?NEW_LWW(Host, T),
+    Metadata1 = fifo_map:from_orddict(Metadata, ID, T),
+    {ok, Networks1} = ?NEW_LWW(Networks, T),
+    {ok, Pools1} = ?NEW_LWW(Pools, T),
+    {ok, Path} = ?NEW_LWW([], T),
+    {ok, Port1} = ?NEW_LWW(Port, T),
+    Resources1 = fifo_map:from_orddict(Resources, ID, T),
+    Services1 = fifo_map:from_orddict(Services, ID, T),
+    {ok, Sysinfo1} = ?NEW_LWW(Sysinfo, T),
+    {ok, UUID1} = ?NEW_LWW(UUID, T),
+    {ok, Version1} = ?NEW_LWW(Version, T),
+    {ok, Virtualisation1} = ?NEW_LWW(Virtualisation, T),
+    H1 = #hypervisor_0_1_0{
+            characteristics = Characteristics1,
+            alias = Alias1,
+            etherstubs = Etherstubs1,
+            host = Host1,
+            metadata = Metadata1,
+            networks = Networks1,
+            path = Path,
+            pools = Pools1,
+            port = Port1,
+            resources = Resources1,
+            services = Services1,
+            sysinfo = Sysinfo1,
+            uuid = UUID1,
+            version = Version1,
+            virtualisation = Virtualisation1
+           },
+    load({T, ID}, H1).
 
-host(Host, Hypervisor) ->
-    jsxd:set(<<"host">>, Host, Hypervisor).
+to_json(#?HYPERVISOR{
+            characteristics = Characteristics,
+            alias = Alias,
+            etherstubs = Etherstubs,
+            host = Host,
+            metadata = Metadata,
+            networks = Networks,
+            path = Path,
+            pools = Pools,
+            port = Port,
+            resources = Resources,
+            services = Services,
+            sysinfo = Sysinfo,
+            uuid = UUID,
+            version = Version,
+            virtualisation = Virtualisation
+           }) ->
+    [
+     {<<"alias">>, riak_dt_lwwreg:value(Alias)},
+     {<<"characteristics">>, fifo_map:value(Characteristics)},
+     {<<"etherstubs">>, riak_dt_lwwreg:value(Etherstubs)},
+     {<<"host">>, riak_dt_lwwreg:value(Host)},
+     {<<"metadata">>, fifo_map:value(Metadata)},
+     {<<"networks">>, riak_dt_lwwreg:value(Networks)},
+     {<<"path">>, riak_dt_lwwreg:value(Path)},
+     {<<"pools">>, riak_dt_lwwreg:value(Pools)},
+     {<<"port">>, riak_dt_lwwreg:value(Port)},
+     {<<"resources">>, fifo_map:value(Resources)},
+     {<<"services">>, fifo_map:value(Services)},
+     {<<"sysinfo">>, riak_dt_lwwreg:value(Sysinfo)},
+     {<<"uuid">>, riak_dt_lwwreg:value(UUID)},
+     {<<"version">>, riak_dt_lwwreg:value(Version)},
+     {<<"virtualisation">>, riak_dt_lwwreg:value(Virtualisation)}
+    ].
 
-port(Port, Hypervisor) ->
-    jsxd:set(<<"port">>, Port, Hypervisor).
+set(ID, [K], V, H) ->
+    set(ID, K, V, H);
 
-set(Resource, delete, Hypervisor) ->
-    jsxd:delete(Resource, Hypervisor);
+set(ID, [<<"characteristics">> | R], V, H) ->
+    set_characteristic(ID, R, V, H);
 
-set(Resource, Value, Hypervisor) ->
-    jsxd:set(Resource, Value, Hypervisor).
+set(ID, [<<"metadata">> | R], V, H) ->
+    set_metadata(ID, R, V, H);
+
+set(ID, [<<"services">> | R], V, H) ->
+    set_service(ID, R, V, H);
+
+set(ID, [<<"resources">> | R], V, H) ->
+    set_resource(ID, R, V, H);
+
+set(ID, <<"alias">>, Value, Hypervisor) ->
+    alias(ID, Value, Hypervisor);
+
+set(ID, <<"etherstubs">>, Value, Hypervisor) ->
+    etherstubs(ID, Value, Hypervisor);
+
+set(ID, <<"host">>, Value, Hypervisor) ->
+    host(ID, Value, Hypervisor);
+
+set(ID, <<"networks">>, Value, Hypervisor) ->
+    networks(ID, Value, Hypervisor);
+
+set(ID, <<"path">>, Value, Hypervisor) ->
+    path(ID, Value, Hypervisor);
+
+set(ID, <<"pools">>, Value, Hypervisor) ->
+    pools(ID, Value, Hypervisor);
+
+set(ID, <<"port">>, Value, Hypervisor) ->
+    port(ID, Value, Hypervisor);
+
+set(ID, <<"sysinfo">>, Value, Hypervisor) ->
+    sysinfo(ID, Value, Hypervisor);
+
+set(ID, <<"uuid">>, Value, Hypervisor) ->
+    uuid(ID, Value, Hypervisor);
+
+set(ID, <<"version">>, Value, Hypervisor) ->
+    version(ID, Value, Hypervisor);
+
+set(ID, <<"virtualisation">>, Value, Hypervisor) ->
+    virtualisation(ID, Value, Hypervisor).
+
+-ifdef(TEST).
+mkid() ->
+    {MegaSecs, Secs, MicroSecs} = os:timestamp(),
+    {(MegaSecs*1000000 + Secs)*1000000 + MicroSecs, test}.
+
+from_json_test() ->
+    JSON = <<"{
+    \"alias\": \"00-15-17-b8-16-fc\",
+    \"etherstubs\": [],
+    \"host\": \"...\",
+    \"metadata\": {
+        \"jingles\": {
+            \"show_disabled_services\": false
+        }
+    },
+    \"networks\": [
+        \"admin\",
+        \"external\"
+    ],
+    \"pools\": {
+        \"zones\": {
+            \"dedup\": 100,
+            \"free\": 5131344,
+            \"health\": \"ONLINE\",
+            \"size\": 5701632,
+            \"used\": 570288
+        }
+    },
+    \"port\": 4200,
+    \"resources\": {
+        \"free-memory\": 18362,
+        \"total-memory\": 32699
+    },
+    \"services\": {
+        \"lrc:/etc/rc2_d/S20sysetup\": \"legacy_run\"
+    },
+    \"sysinfo\": {
+        \"Live Image\": \"...\",
+        \"Disks\": {
+            \"c1d0\": {
+                \"Size in GB\": 60
+            }
+        }
+    },
+    \"path\":[],
+    \"characteristics\":{\"id\":1},
+    \"uuid\": \"d618b447-7c9b-4bde-8474-3a9fef24ad31\",
+    \"version\": \"dev-eb36823, Fri Apr 11 01:08:06 2014 +0200\",
+    \"virtualisation\": [
+        \"kvm\",
+        \"zone\"
+    ]
+}">>,
+    JSX = jsxd:from_list(jsx:decode(JSON)),
+    R = load(mkid(), JSX),
+    JSX2 = to_json(R),
+    file:write_file("1", io_lib:format("~p", [JSX])),
+    file:write_file("2", io_lib:format("~p", [JSX2])),
+    ?assertEqual(JSX, JSX2),
+    ok.
+
+-endif.

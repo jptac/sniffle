@@ -62,10 +62,20 @@ unregister(Hypervisor) ->
     [sniffle_vm:set(VM, Values) || {_, VM} <- VMs],
     do_write(Hypervisor, unregister).
 
+-spec get_(Hypervisor::fifo:hypervisor_id()) ->
+                 not_found | {ok, HV::#?HYPERVISOR{}} | {error, timeout}.
+get_(Hypervisor) ->
+    sniffle_entity_read_fsm:start({?VNODE, ?SERVICE}, get, Hypervisor).
+
 -spec get(Hypervisor::fifo:hypervisor_id()) ->
                  not_found | {ok, HV::fifo:object()} | {error, timeout}.
 get(Hypervisor) ->
-    sniffle_entity_read_fsm:start({?VNODE, ?SERVICE}, get, Hypervisor).
+    case get_(Hypervisor) of
+        {ok, H} ->
+            {ok, sniffle_hypervisor_state:to_json(H)};
+        R ->
+            R
+    end.
 
 -spec status() -> {error, timeout} |
                   {ok, {Resources::fifo:object(),

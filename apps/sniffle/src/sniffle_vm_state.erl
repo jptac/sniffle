@@ -18,17 +18,18 @@
 
 %%    alias/2,
 -export([
-         load/1,
+         load/2,
          new/0,
          uuid/1,
          uuid/2,
          log/3,
          hypervisor/2,
+         set/4,
          set/3,
          getter/2
         ]).
 
--ignore_xref([load/1, set/3, getter/2, uuid/1]).
+-ignore_xref([load/2, set/4, set/3, getter/2, uuid/1]).
 
 getter(#sniffle_obj{val=S0}, Resource) ->
     jsxd:get(Resource, 0, statebox:value(S0)).
@@ -36,6 +37,9 @@ getter(#sniffle_obj{val=S0}, Resource) ->
 uuid(Vm) ->
     {ok, UUID} = jsxd:get(<<"uuid">>, statebox:value(Vm)),
     UUID.
+
+load(_, D) ->
+    load(D).
 
 load(H) ->
     H.
@@ -67,6 +71,9 @@ log(Time, Log, Vm) ->
 
 hypervisor(Hypervisor, Vm) ->
     jsxd:set(<<"hypervisor">>, Hypervisor, Vm).
+
+set(_ID, Attribute, Value, D) ->
+    statebox:modify({fun set/3, [Attribute, Value]}, D).
 
 set(Attribute, delete, Vm) ->
     jsxd:delete(Attribute, Vm);

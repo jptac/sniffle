@@ -122,12 +122,11 @@ init([Part]) ->
 %%% Node Specific
 %%%===================================================================
 
-handle_command({register, {ReqID, Coordinator}, Hypervisor, [Ip, Port]}, _Sender, State) ->
-    H0 = statebox:new(fun sniffle_hypervisor_state:new/0),
-    H1 = statebox:modify({fun sniffle_hypervisor_state:uuid/2, [Hypervisor]}, H0),
-    H2 = statebox:modify({fun sniffle_hypervisor_state:host/2, [Ip]}, H1),
-    H3 = statebox:modify({fun sniffle_hypervisor_state:port/2, [Port]}, H2),
-
+handle_command({register, {ReqID, Coordinator} = ID, Hypervisor, [IP, Port]}, _Sender, State) ->
+    H0 = sniffle_hypervisor_state:new(ID),
+    H1 = sniffle_hypervisor_state:port(ID, Port, H0),
+    H2 = sniffle_hypervisor_state:host(ID, IP, H1),
+    H3 = sniffle_hypervisor_state:alias(ID, Hypervisor, H2),
     VC0 = vclock:fresh(),
     VC = vclock:increment(Coordinator, VC0),
     HObject = #sniffle_obj{val=H3, vclock=VC},
@@ -179,9 +178,8 @@ delete(State) ->
 
 handle_coverage(status, _KeySpaces, Sender, State) ->
     FoldFn = fun(K, #sniffle_obj{val=S0}, {Res, Warnings}) ->
-                     H=statebox:value(S0),
-                     {ok, Host} = jsxd:get(<<"host">>, H),
-                     {ok, Port} = jsxd:get(<<"port">>, H),
+                     Host = sniffle_hypervisor_state:host(S0),
+                     Port = sniffle_hypervisor_state:port(S0),
                      W1 =
                          case libchunter:ping(binary_to_list(Host), Port) of
                              {error,connection_failed} ->
@@ -191,19 +189,19 @@ handle_coverage(status, _KeySpaces, Sender, State) ->
                                      {<<"type">>, <<"critical">>},
                                      {<<"message">>,
                                       bin_fmt("Chunter server ~s down.",
-                                              [jsxd:get(<<"alias">>, Host, H)])}]) |
+                                              [sniffle_hypervisor_state:alias(S0)])}]) |
                                   Warnings];
                              pong ->
                                  Warnings
                          end,
                      {Res1, W2} =
-                         case jsxd:get(<<"pools">>, H) of
-                             undefined ->
-                                 {jsxd:get(<<"resources">>, [], H), W1};
-                             {ok, Pools} ->
+                         case sniffle_hypervisor_state:pools(S0) of
+                             [] ->
+                                 {sniffle_hypervisor_state:resources(S0), W1};
+                             Pools ->
                                  jsxd:fold(
                                    fun status_fold/3,
-                                   {jsxd:get(<<"resources">>, [], H), W1},
+                                   {sniffle_hypervisor_state:resources(S0), W1},
                                    Pools)
                          end,
                      {[{K, Res1} | Res], W2}

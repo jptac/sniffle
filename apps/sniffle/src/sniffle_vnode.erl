@@ -40,8 +40,9 @@ init(Partition, Bucket, Service, VNode, StateMod) ->
      [FoldWorkerPool]}.
 
 list(Getter, Requirements, Sender, State=#vstate{state=StateMod}) ->
+    ID = mkid(list),
     FoldFn = fun (Key, E, C) ->
-                     E1 = E#sniffle_obj{val=StateMod:load(E#sniffle_obj.val)},
+                     E1 = E#sniffle_obj{val=StateMod:load(ID, E#sniffle_obj.val)},
                      case rankmatcher:match(E1, Getter, Requirements) of
                          false ->
                              C;
@@ -108,17 +109,17 @@ delete(State=#vstate{db=DB, bucket=Bucket}) ->
     fifo_db:transact(State#vstate.db, Trans),
     {ok, State}.
 
-load_obj(Mod, Obj = #sniffle_obj{val = V}) ->
-    Obj#sniffle_obj{val = Mod:load(V)}.
+load_obj(ID, Mod, Obj = #sniffle_obj{val = V}) ->
+    Obj#sniffle_obj{val = Mod:load(ID, V)}.
 
 handle_coverage({wipe, UUID}, _KeySpaces, {_, ReqID, _}, State) ->
     fifo_db:delete(State#vstate.db, State#vstate.bucket, UUID),
     {reply, {ok, ReqID}, State};
 
 handle_coverage({lookup, Name}, _KeySpaces, Sender, State=#vstate{state=Mod}) ->
+    ID = mkid(lookup),
     FoldFn = fun (U, #sniffle_obj{val=V}, [not_found]) ->
-                     V1 = statebox:value(Mod:load(V)),
-                     case jsxd:get(<<"name">>, V1) of
+                     case Mod:name(Mod:load(ID, V)) of
                          {ok, AName} when AName =:= Name ->
                              [U];
                          _ ->
@@ -157,7 +158,8 @@ handle_command({repair, UUID, _VClock, Obj}, _Sender,
                State=#vstate{state=Mod}) ->
     case get(UUID, State) of
         {ok, Old} ->
-            Old1 = load_obj(Mod, Old),
+            ID = mkid(),
+            Old1 = load_obj(ID, Mod, Old),
             Merged = sniffle_obj:merge(sniffle_entity_read_fsm, [Old1, Obj]),
             sniffle_vnode:put(UUID, Merged, State);
         not_found ->
@@ -204,19 +206,22 @@ handle_command({delete, {ReqID, _Coordinator}, UUID}, _Sender, State) ->
 
 
 handle_command({set,
-                {ReqID, Coordinator}, Dataset,
+                {ReqID, Coordinator} = ID, Dataset,
                 Resources}, _Sender,
                State = #vstate{db=DB, state=Mod, bucket=Bucket}) ->
     case fifo_db:get(DB, Bucket, Dataset) of
         {ok, #sniffle_obj{val=H0} = O} ->
-            H1 = statebox:modify({fun Mod:load/1,[]}, H0),
+            H1 = Mod:load(ID, H0),
             H2 = lists:foldr(
                    fun ({Resource, Value}, H) ->
-                           statebox:modify(
-                             {fun Mod:set/3,
-                              [Resource, Value]}, H)
+                           Mod:set(ID, Resource, Value, H)
                    end, H1, Resources),
-            H3 = statebox:expire(?STATEBOX_EXPIRE, H2),
+            H3 = case statebox:is_statebox(H2) of
+                     true ->
+                         statebox:expire(?STATEBOX_EXPIRE, H2);
+                     _ ->
+                         H2
+                 end,
             Obj = sniffle_obj:update(H3, Coordinator, O),
             sniffle_vnode:put(Dataset, Obj, State),
             {reply, {ok, ReqID}, State};
@@ -290,6 +295,3 @@ handle_info({'DOWN', _, _, _, _}, State) ->
     {ok, State};
 handle_info(_, State) ->
     {ok, State}.
-
-load_obj(_ID, _Mod, Old) ->
-    Old.

@@ -165,7 +165,7 @@ handle_command({add_iprange,
                 IPRange}, _Sender, State) ->
     case fifo_db:get(State#vstate.db, <<"network">>, Network) of
         {ok, #sniffle_obj{val=H0} = O} ->
-            H1 = statebox:modify({fun sniffle_network_state:load/1,[]}, H0),
+            H1 = statebox:modify({fun sniffle_network_state:load/2,[dummy]}, H0),
             H2 = statebox:modify(
                    {fun sniffle_network_state:add_iprange/2,
                     [IPRange]}, H1),
@@ -183,7 +183,7 @@ handle_command({remove_iprange,
                 IPRange}, _Sender, State) ->
     case fifo_db:get(State#vstate.db, <<"network">>, Network) of
         {ok, #sniffle_obj{val=H0} = O} ->
-            H1 = statebox:modify({fun sniffle_network_state:load/1,[]}, H0),
+            H1 = statebox:modify({fun sniffle_network_state:load/2,[dummy]}, H0),
             H2 = statebox:modify(
                    {fun sniffle_network_state:remove_iprange/2,
                     [IPRange]}, H1),
