@@ -65,6 +65,5 @@ case $2 in
             echo anti_entropy.write_buffer_size_min = 4MB >> ${CONFFILE}
             echo anti_entropy.write_buffer_size_max = 4MB >> ${CONFFILE}
         fi
-        cp /opt/local/fifo-sniffle/bin/fifoadm /opt/local/sbin
         ;;
 esac
