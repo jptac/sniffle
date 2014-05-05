@@ -191,7 +191,8 @@ handle_command({sync_repair, {ReqID, _}, UUID, Obj = #sniffle_obj{}}, _Sender,
 handle_command({get, ReqID, UUID}, _Sender, State) ->
     Res = case fifo_db:get(State#vstate.db, State#vstate.bucket, UUID) of
               {ok, R} ->
-                  R;
+                  ID = {ReqID, load},
+                  load_obj(ID, State#vstate.state, R);
               not_found ->
                   not_found
           end,
