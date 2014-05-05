@@ -271,9 +271,9 @@ load({T, ID}, H) ->
                           _ ->
                               []
                       end,
-    {ok, Etherstubs} = jsxd:get([<<"etherstubs">>], H),
+    Etherstubs = jsxd:get([<<"etherstubs">>], [], H),
     {ok, Host} = jsxd:get([<<"host">>], H),
-    {ok, Metadata} = jsxd:get([<<"metadata">>], H),
+    Metadata = jsxd:get([<<"metadata">>], [], H),
     {ok, Alias} = jsxd:get([<<"alias">>], H),
     {ok, Networks} = jsxd:get([<<"networks">>], H),
     {ok, Pools} = jsxd:get([<<"pools">>], H),
