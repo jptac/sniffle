@@ -28,9 +28,9 @@
          host/3,
          set_characteristic/4,
          set_metadata/4,
+         set_pool/4,
          networks/3,
          path/3,
-         pools/3,
          port/3,
          set_resource/4,
          set_service/4,
@@ -45,11 +45,11 @@
               alias/3,
               etherstubs/3,
               host/3,
+              set_pool/4,
               set_characteristic/4,
               set_metadata/4,
               networks/3,
               path/3,
-              pools/3,
               port/3,
               set_resource/4,
               set_service/4,
@@ -61,7 +61,7 @@
 
 -export([
          resources/1,
-         characteristic/1,
+         characteristics/1,
          alias/1,
          etherstubs/1,
          host/1,
@@ -78,7 +78,7 @@
         ]).
 
 -ignore_xref([
-              characteristic/1,
+              characteristics/1,
               alias/1,
               etherstubs/1,
               host/1,
@@ -105,7 +105,7 @@ new({T, _ID}) ->
     {ok, Alias} = ?NEW_LWW(<<>>, T),
     {ok, Networks} = ?NEW_LWW([], T),
     {ok, Path} = ?NEW_LWW([], T),
-    {ok, Pools} = ?NEW_LWW([], T),
+    Pools = fifo_map:new(),
     {ok, Port} = ?NEW_LWW(0, T),
     Resources = fifo_map:new(),
     Services = fifo_map:new(),
@@ -166,13 +166,6 @@ path({T, _ID}, V, H) ->
     {ok, V1} = riak_dt_lwwreg:update({assign, V, T}, none, H#?HYPERVISOR.path),
     H#?HYPERVISOR{path = V1}.
 
-pools(H) ->
-    riak_dt_lwwreg:value(H#?HYPERVISOR.pools).
-
-pools({T, _ID}, V, H) ->
-    {ok, V1} = riak_dt_lwwreg:update({assign, V, T}, none, H#?HYPERVISOR.pools),
-    H#?HYPERVISOR{pools = V1}.
-
 port(H) ->
     riak_dt_lwwreg:value(H#?HYPERVISOR.port).
 
@@ -208,8 +201,22 @@ virtualisation({T, _ID}, V, H) ->
     {ok, V1} = riak_dt_lwwreg:update({assign, V, T}, none, H#?HYPERVISOR.virtualisation),
     H#?HYPERVISOR{virtualisation = V1}.
 
-characteristic(H) ->
-    H#?HYPERVISOR.characteristics.
+pools(H) ->
+    fifo_map:value(H#?HYPERVISOR.pools).
+
+set_pool({T, ID}, P, Value, H) when is_binary(P) ->
+    set_pool({T, ID}, fifo_map:split_path(P), Value, H);
+
+set_pool({_T, ID}, Attribute, delete, H) ->
+    {ok, M1} = fifo_map:remove(Attribute, ID, H#?HYPERVISOR.pools),
+    H#?HYPERVISOR{pools = M1};
+
+set_pool({T, ID}, Attribute, Value, H) ->
+    {ok, M1} = fifo_map:set(Attribute, Value, ID, T, H#?HYPERVISOR.pools),
+    H#?HYPERVISOR{pools = M1}.
+
+characteristics(H) ->
+    fifo_map:value(H#?HYPERVISOR.characteristics).
 
 set_characteristic({T, ID}, P, Value, H) when is_binary(P) ->
     set_characteristic({T, ID}, fifo_map:split_path(P), Value, H);
@@ -295,7 +302,7 @@ load({T, ID}, Sb) ->
     {ok, Host1} = ?NEW_LWW(Host, T),
     Metadata1 = fifo_map:from_orddict(Metadata, ID, T),
     {ok, Networks1} = ?NEW_LWW(Networks, T),
-    {ok, Pools1} = ?NEW_LWW(Pools, T),
+    Pools1 = fifo_map:from_orddict(Pools, ID, T),
     {ok, Path} = ?NEW_LWW([], T),
     {ok, Port1} = ?NEW_LWW(Port, T),
     Resources1 = fifo_map:from_orddict(Resources, ID, T),
@@ -348,7 +355,7 @@ to_json(#?HYPERVISOR{
      {<<"metadata">>, fifo_map:value(Metadata)},
      {<<"networks">>, riak_dt_lwwreg:value(Networks)},
      {<<"path">>, riak_dt_lwwreg:value(Path)},
-     {<<"pools">>, riak_dt_lwwreg:value(Pools)},
+     {<<"pools">>, fifo_map:value(Pools)},
      {<<"port">>, riak_dt_lwwreg:value(Port)},
      {<<"resources">>, fifo_map:value(Resources)},
      {<<"services">>, fifo_map:value(Services)},
@@ -401,7 +408,7 @@ merge(#?HYPERVISOR{
         metadata = fifo_map:merge(Metadata1, Metadata2),
         networks = riak_dt_lwwreg:merge(Networks1, Networks2),
         path = riak_dt_lwwreg:merge(Path1, Path2),
-        pools = riak_dt_lwwreg:merge(Pools1, Pools2),
+        pools = fifo_map:merge(Pools1, Pools2),
         port = riak_dt_lwwreg:merge(Port1, Port2),
         resources = fifo_map:merge(Resources1, Resources2),
         services = fifo_map:merge(Services1, Services2),
@@ -414,17 +421,50 @@ merge(#?HYPERVISOR{
 set(ID, [K], V, H) ->
     set(ID, K, V, H);
 
+set({T, ID}, <<"characteristics">>, V, H) ->
+    H#?HYPERVISOR{characteristics = fifo_map:from_orddict(V, ID, T)};
+
+set(ID, K = <<"characteristics.", _/binary>>, V, H) ->
+    set(ID, re:split(K, "\\."), V, H);
+
 set(ID, [<<"characteristics">> | R], V, H) ->
     set_characteristic(ID, R, V, H);
+
+set({T, ID}, <<"metadata">>, V, H) ->
+    H#?HYPERVISOR{metadata = fifo_map:from_orddict(V, ID, T)};
+
+set(ID, K = <<"metadata.", _/binary>>, V, H) ->
+    set(ID, re:split(K, "\\."), V, H);
 
 set(ID, [<<"metadata">> | R], V, H) ->
     set_metadata(ID, R, V, H);
 
+set({T, ID}, <<"services">>, V, H) ->
+    H#?HYPERVISOR{services = fifo_map:from_orddict(V, ID, T)};
+
+set(ID, K = <<"services.", _/binary>>, V, H) ->
+    set(ID, re:split(K, "\\."), V, H);
+
 set(ID, [<<"services">> | R], V, H) ->
     set_service(ID, R, V, H);
 
+set({T, ID}, <<"resources">>, V, H) ->
+    H#?HYPERVISOR{resources = fifo_map:from_orddict(V, ID, T)};
+
+set(ID, K = <<"resources.", _/binary>>, V, H) ->
+    set(ID, re:split(K, "\\."), V, H);
+
 set(ID, [<<"resources">> | R], V, H) ->
     set_resource(ID, R, V, H);
+
+set({T, ID}, <<"pools">>, V, H) ->
+    H#?HYPERVISOR{pools = fifo_map:from_orddict(V, ID, T)};
+
+set(ID, K = <<"pools.", _/binary>>, V, H) ->
+    set(ID, re:split(K, "\\."), V, H);
+
+set(ID, [<<"pools">> | R], V, H) ->
+    set_pool(ID, R, V, H);
 
 set(ID, <<"alias">>, Value, Hypervisor) ->
     alias(ID, Value, Hypervisor);
@@ -441,9 +481,6 @@ set(ID, <<"networks">>, Value, Hypervisor) ->
 set(ID, <<"path">>, Value, Hypervisor) ->
     path(ID, Value, Hypervisor);
 
-set(ID, <<"pools">>, Value, Hypervisor) ->
-    pools(ID, Value, Hypervisor);
-
 set(ID, <<"port">>, Value, Hypervisor) ->
     port(ID, Value, Hypervisor);
 
@@ -458,7 +495,6 @@ set(ID, <<"version">>, Value, Hypervisor) ->
 
 set(ID, <<"virtualisation">>, Value, Hypervisor) ->
     virtualisation(ID, Value, Hypervisor).
-
 
 -ifdef(TEST).
 mkid() ->
@@ -521,5 +557,17 @@ from_json_test() ->
     file:write_file("2", io_lib:format("~p", [JSX2])),
     ?assertEqual(JSX, JSX2),
     ok.
+
+nested_test() ->
+    H = new(mkid()),
+    H1 = set(mkid(), <<"pools">>, [{<<"a">>, 1}], H),
+    JSON1 = to_json(H1),
+    H2 = set(mkid(), [<<"pools">>, <<"a">>], 1, H),
+    JSON2 = to_json(H2),
+    H3 = set(mkid(), <<"pools.a">>, 1, H),
+    JSON3 = to_json(H3),
+    ?assertEqual({ok, [{<<"a">>, 1}]}, jsxd:get(<<"pools">>, JSON1)),
+    ?assertEqual({ok, [{<<"a">>, 1}]}, jsxd:get(<<"pools">>, JSON2)),
+    ?assertEqual({ok, [{<<"a">>, 1}]}, jsxd:get(<<"pools">>, JSON3)).
 
 -endif.
