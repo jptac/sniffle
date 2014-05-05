@@ -18,7 +18,8 @@
          new/1,
          set/4,
          getter/2,
-         to_json/1
+         to_json/1,
+         merge/2
         ]).
 
 -export([
@@ -40,6 +41,7 @@
         ]).
 
 -ignore_xref([
+              merge/2,
               alias/3,
               etherstubs/3,
               host/3,
@@ -356,6 +358,59 @@ to_json(#?HYPERVISOR{
      {<<"virtualisation">>, riak_dt_lwwreg:value(Virtualisation)}
     ].
 
+merge(#?HYPERVISOR{
+          characteristics = Characteristics1,
+          alias = Alias1,
+          etherstubs = Etherstubs1,
+          host = Host1,
+          metadata = Metadata1,
+          networks = Networks1,
+          path = Path1,
+          pools = Pools1,
+          port = Port1,
+          resources = Resources1,
+          services = Services1,
+          sysinfo = Sysinfo1,
+          uuid = UUID1,
+          version = Version1,
+          virtualisation = Virtualisation1
+         },
+      #?HYPERVISOR{
+          characteristics = Characteristics2,
+          alias = Alias2,
+          etherstubs = Etherstubs2,
+          host = Host2,
+          metadata = Metadata2,
+          networks = Networks2,
+          path = Path2,
+          pools = Pools2,
+          port = Port2,
+          resources = Resources2,
+          services = Services2,
+          sysinfo = Sysinfo2,
+          uuid = UUID2,
+          version = Version2,
+          virtualisation = Virtualisation2
+         }
+     ) ->
+    #?HYPERVISOR{
+        characteristics = fifo_map:merge(Characteristics1, Characteristics2),
+        alias = riak_dt_lwwreg:merge(Alias1, Alias2),
+        etherstubs = riak_dt_lwwreg:merge(Etherstubs1, Etherstubs2),
+        host = riak_dt_lwwreg:merge(Host1, Host2),
+        metadata = fifo_map:merge(Metadata1, Metadata2),
+        networks = riak_dt_lwwreg:merge(Networks1, Networks2),
+        path = riak_dt_lwwreg:merge(Path1, Path2),
+        pools = riak_dt_lwwreg:merge(Pools1, Pools2),
+        port = riak_dt_lwwreg:merge(Port1, Port2),
+        resources = fifo_map:merge(Resources1, Resources2),
+        services = fifo_map:merge(Services1, Services2),
+        sysinfo = riak_dt_lwwreg:merge(Sysinfo1, Sysinfo2),
+        uuid = riak_dt_lwwreg:merge(UUID1, UUID2),
+        version = riak_dt_lwwreg:merge(Version1, Version2),
+        virtualisation = riak_dt_lwwreg:merge(Virtualisation1, Virtualisation2)
+       }.
+
 set(ID, [K], V, H) ->
     set(ID, K, V, H);
 
@@ -403,6 +458,7 @@ set(ID, <<"version">>, Value, Hypervisor) ->
 
 set(ID, <<"virtualisation">>, Value, Hypervisor) ->
     virtualisation(ID, Value, Hypervisor).
+
 
 -ifdef(TEST).
 mkid() ->

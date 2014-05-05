@@ -240,6 +240,9 @@ merge(Replies) ->
 %% @doc Reconcile conflicts among conflicting values.
 -spec reconcile([A :: statebox:statebox()]) -> A :: statebox:statebox().
 
+reconcile([V = #?HYPERVISOR{} | Vs]) ->
+    reconcile_hypervisor(Vs, V);
+
 reconcile([V0 | _ ] = Vals) ->
     case statebox:is_statebox(V0) of
         true ->
@@ -247,6 +250,11 @@ reconcile([V0 | _ ] = Vals) ->
         false ->
             V0
     end.
+
+reconcile_hypervisor([H | R], Acc) ->
+    reconcile_hypervisor(R, sniffle_hypervisor_state:merge(Acc, H));
+reconcile_hypervisor(_, Acc) ->
+    Acc.
 
 %% @pure
 %%
