@@ -221,7 +221,7 @@ set_characteristic({T, ID}, Attribute, Value, H) ->
     H#?HYPERVISOR{characteristics = M1}.
 
 metadata(H) ->
-    H#?HYPERVISOR.metadata.
+    fifo_map:value(H#?HYPERVISOR.metadata).
 
 set_metadata({T, ID}, P, Value, H) when is_binary(P) ->
     set_metadata({T, ID}, fifo_map:split_path(P), Value, H);
@@ -235,7 +235,7 @@ set_metadata({T, ID}, Attribute, Value, H) ->
     H#?HYPERVISOR{metadata = M1}.
 
 resources(H) ->
-    H#?HYPERVISOR.resources.
+    fifo_map:value(H#?HYPERVISOR.resources).
 
 set_resource({_T, ID}, Attribute, delete, H) ->
     {ok, M1} = fifo_map:remove(Attribute, ID, H#?HYPERVISOR.resources),
@@ -246,7 +246,7 @@ set_resource({T, ID}, Attribute, Value, H) ->
     H#?HYPERVISOR{resources = M1}.
 
 services(H) ->
-    H#?HYPERVISOR.services.
+    fifo_map:value(H#?HYPERVISOR.services).
 
 set_service({_T, ID}, Attribute, delete, H) ->
     {ok, M1} = fifo_map:remove(Attribute, ID, H#?HYPERVISOR.services),

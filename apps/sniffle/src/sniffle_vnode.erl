@@ -120,7 +120,7 @@ handle_coverage({lookup, Name}, _KeySpaces, Sender, State=#vstate{state=Mod}) ->
     ID = mkid(lookup),
     FoldFn = fun (U, #sniffle_obj{val=V}, [not_found]) ->
                      case Mod:name(Mod:load(ID, V)) of
-                         {ok, AName} when AName =:= Name ->
+                         AName when AName =:= Name ->
                              [U];
                          _ ->
                              [not_found]

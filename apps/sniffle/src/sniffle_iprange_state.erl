@@ -16,6 +16,7 @@
 -export([
          new/0,
          load/2,
+         name/1,
          name/2,
          uuid/1,
          uuid/2,
@@ -37,7 +38,11 @@
          getter/2
         ]).
 
--ignore_xref([load/2, set/4, set/3, getter/2, uuid/1]).
+-ignore_xref([load/2, name/1, set/4, set/3, getter/2, uuid/1]).
+
+name(P) ->
+    {ok, N} = jsxd:get(<<"name">>, statebox:value(P)),
+    N.
 
 uuid(Vm) ->
     {ok, UUID} = jsxd:get(<<"uuid">>, statebox:value(Vm)),
