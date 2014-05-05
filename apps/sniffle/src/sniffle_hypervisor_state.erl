@@ -262,7 +262,8 @@ getter(#sniffle_obj{val=S0}, Resource) ->
 load(_, #?HYPERVISOR{} = H) ->
     H;
 
-load({T, ID}, H) ->
+load({T, ID}, Sb) ->
+    H = statebox:value(Sb),
     Characteristics = case jsxd:get([<<"characteristics">>],  H) of
                           {ok, [{}]} ->
                               [];
@@ -271,7 +272,7 @@ load({T, ID}, H) ->
                           _ ->
                               []
                       end,
-    Etherstubs = jsxd:get([<<"etherstubs">>], [], H),
+    {ok, Etherstubs} = jsxd:get([<<"etherstubs">>], H),
     {ok, Host} = jsxd:get([<<"host">>], H),
     Metadata = jsxd:get([<<"metadata">>], [], H),
     {ok, Alias} = jsxd:get([<<"alias">>], H),
@@ -457,7 +458,8 @@ from_json_test() ->
     ]
 }">>,
     JSX = jsxd:from_list(jsx:decode(JSON)),
-    R = load(mkid(), JSX),
+    SB = statebox:new(fun () -> JSX end),
+    R = load(mkid(), SB),
     JSX2 = to_json(R),
     file:write_file("1", io_lib:format("~p", [JSX])),
     file:write_file("2", io_lib:format("~p", [JSX2])),
