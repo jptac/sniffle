@@ -64,9 +64,11 @@ list_keys(Sender, State=#vstate{db=DB, bucket=Bucket}) ->
                 end,
     {async, {fold, AsyncWork, FinishFun}, Sender, State}.
 
-list_keys(Getter, Requirements, Sender, State) ->
+list_keys(Getter, Requirements, Sender, State=#vstate{state=StateMod}) ->
+    ID = mkid(list),
     FoldFn = fun (Key, E, C) ->
-                     case rankmatcher:match(E, Getter, Requirements) of
+                     E1 = E#sniffle_obj{val=StateMod:load(ID, E#sniffle_obj.val)},
+                     case rankmatcher:match(E1, Getter, Requirements) of
                          false ->
                              C;
                          Pts ->

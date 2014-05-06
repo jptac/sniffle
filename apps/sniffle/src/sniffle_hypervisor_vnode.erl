@@ -177,7 +177,7 @@ delete(State) ->
     sniffle_vnode:delete(State).
 
 handle_coverage(status, _KeySpaces, Sender, State) ->
-    ID = sniffle_vnode:mkid(fold),
+    ID = sniffle_vnode:mkid(list),
     FoldFn = fun(K, #sniffle_obj{val=S0}, {Res, Warnings}) ->
                      S1 = sniffle_hypervisor_state:load(ID, S0),
                      Host = sniffle_hypervisor_state:host(S1),
