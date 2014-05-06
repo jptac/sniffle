@@ -146,7 +146,7 @@ etherstubs({T, _ID}, V, H) ->
     H#?HYPERVISOR{etherstubs = V1}.
 
 host(H) ->
-    riak_dt_lwwreg:value(H#?HYPERVISOR.alias).
+    riak_dt_lwwreg:value(H#?HYPERVISOR.host).
 
 host({T, _ID}, V, H) ->
     {ok, V1} = riak_dt_lwwreg:update({assign, V, T}, none, H#?HYPERVISOR.host),
