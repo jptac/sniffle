@@ -15,7 +15,8 @@
 
 -export([
          new/0,
-         load/1,
+         load/2,
+         name/1,
          name/2,
          uuid/1,
          uuid/2,
@@ -30,13 +31,18 @@
          claim_ip/2,
          tag/2,
          vlan/2,
+         set/4,
          set/3,
          to_bin/1,
          parse_bin/1,
          getter/2
         ]).
 
--ignore_xref([load/1, set/3, getter/2, uuid/1]).
+-ignore_xref([load/2, name/1, set/4, set/3, getter/2, uuid/1]).
+
+name(P) ->
+    {ok, N} = jsxd:get(<<"name">>, statebox:value(P)),
+    N.
 
 uuid(Vm) ->
     {ok, UUID} = jsxd:get(<<"uuid">>, statebox:value(Vm)),
@@ -44,6 +50,9 @@ uuid(Vm) ->
 
 getter(#sniffle_obj{val=S0}, Resource) ->
     jsxd:get(Resource, 0, statebox:value(S0)).
+
+load(_, D) ->
+    load(D).
 
 load(Iprange) ->
     Iprange.
@@ -174,6 +183,9 @@ release_ip(_IP, _First, _Current, _Last, Iprange) when
       is_integer(_Last),
       is_list(Iprange) ->
     Iprange.
+
+set(_ID, Attribute, Value, D) ->
+    statebox:modify({fun set/3, [Attribute, Value]}, D).
 
 set(Resource, delete, Iprange) ->
     jsxd:delete(Resource, Iprange);

@@ -1,4 +1,5 @@
--module(sniffle_network_vnode).
+-module(sniffle_grouping_vnode).
+
 -behaviour(riak_core_vnode).
 -behaviour(riak_core_aae_vnode).
 -include("sniffle.hrl").
@@ -9,12 +10,11 @@
          get/3,
          create/4,
          delete/3,
-         add_iprange/4,
-         remove_iprange/4,
          set/4
         ]).
 
--export([start_vnode/1,
+-export([
+         start_vnode/1,
          init/1,
          terminate/2,
          handle_command/3,
@@ -29,7 +29,12 @@
          handle_coverage/4,
          handle_exit/3,
          handle_info/2,
-         sync_repair/4]).
+         add_element/4,
+         remove_element/4,
+         add_grouping/4,
+         remove_grouping/4,
+         sync_repair/4
+        ]).
 
 -export([
          master/0,
@@ -38,23 +43,23 @@
         ]).
 
 -ignore_xref([
-              release_ip/4,
               create/4,
+              add_element/4,
+              remove_element/4,
+              add_grouping/4,
+              remove_grouping/4,
               delete/3,
               get/3,
-              set/4,
-              claim_ip/4,
               repair/4,
-              add_iprange/4,
-              remove_iprange/4,
+              set/4,
               start_vnode/1,
               handle_info/2,
               sync_repair/4
              ]).
 
--define(SERVICE, sniffle_network).
+-define(SERVICE, sniffle_grouping).
 
--define(MASTER, sniffle_network_vnode_master).
+-define(MASTER, sniffle_grouping_vnode_master).
 
 %%%===================================================================
 %%% AAE
@@ -64,12 +69,10 @@ master() ->
     ?MASTER.
 
 hash_object(BKey, RObj) ->
-    lager:debug("Hashing Key: ~p", [BKey]),
-    list_to_binary(integer_to_list(erlang:phash2({BKey, RObj}))).
+    sniffle_vnode:hash_object(BKey, RObj).
 
 aae_repair(_, Key) ->
-    lager:debug("AAE Repair: ~p", [Key]),
-    sniffle_network:get(Key).
+    sniffle_grouping:get(Key).
 
 %%%===================================================================
 %%% API
@@ -78,19 +81,18 @@ aae_repair(_, Key) ->
 start_vnode(I) ->
     riak_core_vnode_master:get_vnode_pid(I, ?MODULE).
 
-repair(IdxNode, Network, VClock, Obj) ->
-    riak_core_vnode_master:command(IdxNode,
-                                   {repair, Network, VClock, Obj},
-                                   ignore,
+repair(IdxNode, Grouping, VClock, Obj) ->
+    riak_core_vnode_master:command([IdxNode],
+                                   {repair, Grouping, VClock, Obj},
                                    ?MASTER).
 
 %%%===================================================================
 %%% API - reads
 %%%===================================================================
 
-get(Preflist, ReqID, Network) ->
+get(Preflist, ReqID, Grouping) ->
     riak_core_vnode_master:command(Preflist,
-                                   {get, ReqID, Network},
+                                   {get, ReqID, Grouping},
                                    {fsm, undefined, self()},
                                    ?MASTER).
 
@@ -98,38 +100,50 @@ get(Preflist, ReqID, Network) ->
 %%% API - writes
 %%%===================================================================
 
+add_element(Preflist, ReqID, UUID, Obj) ->
+    riak_core_vnode_master:command(Preflist,
+                                   {add_element, ReqID, UUID, Obj},
+                                   {fsm, undefined, self()},
+                                   ?MASTER).
+
+remove_element(Preflist, ReqID, UUID, Obj) ->
+    riak_core_vnode_master:command(Preflist,
+                                   {remove_element, ReqID, UUID, Obj},
+                                   {fsm, undefined, self()},
+                                   ?MASTER).
+
+add_grouping(Preflist, ReqID, UUID, Obj) ->
+    riak_core_vnode_master:command(Preflist,
+                                   {add_grouping, ReqID, UUID, Obj},
+                                   {fsm, undefined, self()},
+                                   ?MASTER).
+
+remove_grouping(Preflist, ReqID, UUID, Obj) ->
+    riak_core_vnode_master:command(Preflist,
+                                   {remove_grouping, ReqID, UUID, Obj},
+                                   {fsm, undefined, self()},
+                                   ?MASTER).
+
 sync_repair(Preflist, ReqID, UUID, Obj) ->
     riak_core_vnode_master:command(Preflist,
                                    {sync_repair, ReqID, UUID, Obj},
                                    {fsm, undefined, self()},
                                    ?MASTER).
 
-create(Preflist, ReqID, UUID, Data) ->
+create(Preflist, ReqID, Grouping, Data) ->
     riak_core_vnode_master:command(Preflist,
-                                   {create, ReqID, UUID, Data},
+                                   {create, ReqID, Grouping, Data},
                                    {fsm, undefined, self()},
                                    ?MASTER).
 
-delete(Preflist, ReqID, Network) ->
+delete(Preflist, ReqID, Grouping) ->
     riak_core_vnode_master:command(Preflist,
-                                   {delete, ReqID, Network},
+                                   {delete, ReqID, Grouping},
                                    {fsm, undefined, self()},
                                    ?MASTER).
-
-add_iprange(Preflist, ReqID, Network, IPRange) ->
+set(Preflist, ReqID, Grouping, Data) ->
     riak_core_vnode_master:command(Preflist,
-                                   {add_iprange, ReqID, Network, IPRange},
-                                   {fsm, undefined, self()},
-                                   ?MASTER).
-remove_iprange(Preflist, ReqID, Network, IPRange) ->
-    riak_core_vnode_master:command(Preflist,
-                                   {remove_iprange, ReqID, Network, IPRange},
-                                   {fsm, undefined, self()},
-                                   ?MASTER).
-
-set(Preflist, ReqID, Hypervisor, Data) ->
-    riak_core_vnode_master:command(Preflist,
-                                   {set, ReqID, Hypervisor, Data},
+                                   {set, ReqID, Grouping, Data},
                                    {fsm, undefined, self()},
                                    ?MASTER).
 
@@ -138,69 +152,26 @@ set(Preflist, ReqID, Hypervisor, Data) ->
 %%%===================================================================
 
 init([Part]) ->
-    sniffle_vnode:init(Part, <<"network">>, ?SERVICE, ?MODULE,
-                       sniffle_network_state).
+    sniffle_vnode:init(Part, <<"grouping">>, ?SERVICE, ?MODULE,
+                       sniffle_grouping_state).
 
-%%%===================================================================
-%%% General
-%%%===================================================================
-
-handle_command({create, {ReqID, Coordinator}, UUID,
-                [Name]},
+handle_command({create, {ReqID, Coordinator} = ID, UUID, [Name, Type]},
                _Sender, State) ->
-    I0 = statebox:new(fun sniffle_network_state:new/0),
-    I1 = lists:foldl(
-           fun (OP, SB) ->
-                   statebox:modify(OP, SB)
-           end, I0, [{fun sniffle_network_state:uuid/2, [UUID]},
-                     {fun sniffle_network_state:name/2, [Name]}]),
+    G0 = sniffle_grouping_state:new(ID),
+    G1 = sniffle_grouping_state:uuid(ID, UUID, G0),
+    G2 = sniffle_grouping_state:name(ID, Name, G1),
+    G3 = sniffle_grouping_state:type(ID, Type, G2),
     VC0 = vclock:fresh(),
     VC = vclock:increment(Coordinator, VC0),
-    HObject = #sniffle_obj{val=I1, vclock=VC},
-    sniffle_vnode:put(UUID, HObject, State),
+    Obj = #sniffle_obj{val=G3, vclock=VC},
+    sniffle_vnode:put(UUID, Obj, State),
     {reply, {ok, ReqID}, State};
-
-handle_command({add_iprange,
-                {ReqID, Coordinator}, Network,
-                IPRange}, _Sender, State) ->
-    case fifo_db:get(State#vstate.db, <<"network">>, Network) of
-        {ok, #sniffle_obj{val=H0} = O} ->
-            H1 = statebox:modify({fun sniffle_network_state:load/2,[dummy]}, H0),
-            H2 = statebox:modify(
-                   {fun sniffle_network_state:add_iprange/2,
-                    [IPRange]}, H1),
-            H3 = statebox:expire(?STATEBOX_EXPIRE, H2),
-            Obj = sniffle_obj:update(H3, Coordinator, O),
-            sniffle_vnode:put(Network, Obj, State),
-            {reply, {ok, ReqID}, State};
-        R ->
-            lager:error("[hypervisors] tried to write to a non existing hypervisor: ~p", [R]),
-            {reply, {ok, ReqID, not_found}, State}
-    end;
-
-handle_command({remove_iprange,
-                {ReqID, Coordinator}, Network,
-                IPRange}, _Sender, State) ->
-    case fifo_db:get(State#vstate.db, <<"network">>, Network) of
-        {ok, #sniffle_obj{val=H0} = O} ->
-            H1 = statebox:modify({fun sniffle_network_state:load/2,[dummy]}, H0),
-            H2 = statebox:modify(
-                   {fun sniffle_network_state:remove_iprange/2,
-                    [IPRange]}, H1),
-            H3 = statebox:expire(?STATEBOX_EXPIRE, H2),
-            Obj = sniffle_obj:update(H3, Coordinator, O),
-            sniffle_vnode:put(Network, Obj, State),
-            {reply, {ok, ReqID}, State};
-        R ->
-            lager:error("[hypervisors] tried to write to a non existing hypervisor: ~p", [R]),
-            {reply, {ok, ReqID, not_found}, State}
-    end;
 
 handle_command(Message, Sender, State) ->
     sniffle_vnode:handle_command(Message, Sender, State).
 
 handle_handoff_command(?FOLD_REQ{foldfun=Fun, acc0=Acc0}, _Sender, State) ->
-    Acc = fifo_db:fold(State#vstate.db, <<"network">>, Fun, Acc0),
+    Acc = fifo_db:fold(State#vstate.db, <<"grouping">>, Fun, Acc0),
     {reply, Acc, State};
 
 handle_handoff_command({get, _ReqID, _Vm} = Req, Sender, State) ->
@@ -225,12 +196,12 @@ handoff_finished(_TargetNode, State) ->
     {ok, State}.
 
 handle_handoff_data(Data, State) ->
-    {Network, HObject} = binary_to_term(Data),
-    sniffle_vnode:put(Network, HObject, State),
+    {Grouping, Obj} = binary_to_term(Data),
+    sniffle_vnode:put(Grouping, Obj, State),
     {reply, ok, State}.
 
-encode_handoff_item(Network, Data) ->
-    term_to_binary({Network, Data}).
+encode_handoff_item(Grouping, Data) ->
+    term_to_binary({Grouping, Data}).
 
 is_empty(State) ->
     sniffle_vnode:is_empty(State).
@@ -244,7 +215,7 @@ handle_coverage(Req, KeySpaces, Sender, State) ->
 handle_exit(_Pid, _Reason, State) ->
     {noreply, State}.
 
-terminate(_Reason, _State) ->
+terminate(_Reason,  _State) ->
     ok.
 
 %%%===================================================================

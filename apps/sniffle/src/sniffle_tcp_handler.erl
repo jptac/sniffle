@@ -35,6 +35,75 @@ message(version, State) ->
     {reply, {ok, ?VERSION}, State};
 
 %%%===================================================================
+%%%  Grouping Functions
+%%%===================================================================
+
+message({grouping, add, Name, Type}, State) ->
+    {reply,
+     sniffle_grouping:create(Name, Type),
+     State};
+
+message({grouping, delete, ID}, State) ->
+    {reply,
+     sniffle_grouping:delete(ID),
+     State};
+
+message({grouping, get, ID}, State) ->
+    {reply,
+     sniffle_grouping:get(ID),
+     State};
+
+message({grouping, list}, State) ->
+    {reply,
+     sniffle_grouping:list(),
+     State};
+
+message({grouping, list, Requreiments}, State) ->
+    message({grouping, list, Requreiments, false}, State);
+
+message({grouping, list, Requreiments, Full}, State) ->
+    {reply,
+     sniffle_grouping:list(Requreiments, Full),
+     State};
+
+message({grouping, element, add, ID, Element}, State) when
+      is_binary(ID) ->
+    {reply,
+     sniffle_grouping:add_element(ID, Element),
+     State};
+
+message({grouping, element, remove, ID, Element}, State) when
+      is_binary(ID) ->
+    {reply,
+     sniffle_grouping:remove_element(ID, Element),
+     State};
+
+message({grouping, grouping, add, ID, Grouping}, State) when
+      is_binary(ID) ->
+    {reply,
+     sniffle_grouping:add_grouping(ID, Grouping),
+     State};
+
+message({grouping, grouping, remove, ID, Grouping}, State) when
+      is_binary(ID) ->
+    {reply,
+     sniffle_grouping:remove_grouping(ID, Grouping),
+     State};
+
+message({grouping, metadata, set, ID, Attribute, Value}, State) when
+      is_binary(ID) ->
+    {reply,
+     sniffle_grouping:metadata_set(ID, Attribute, Value),
+     State};
+
+message({grouping, metadata, set, ID, Attributes}, State) when
+      is_binary(ID),
+      is_list(Attributes) ->
+    {reply,
+     sniffle_grouping:metadata_set(ID, Attributes),
+     State};
+
+%%%===================================================================
 %%%  DTrace Functions
 %%%===================================================================
 

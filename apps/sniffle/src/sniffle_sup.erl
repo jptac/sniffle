@@ -44,6 +44,10 @@ init(_Args) ->
       sniffle_dataset_vnode_master,
       { riak_core_vnode_master, start_link, [sniffle_dataset_vnode]},
       permanent, 5000, worker, [sniffle_dataset_vnode_master]},
+    VGrouping = {
+      sniffle_grouping_vnode_master,
+      { riak_core_vnode_master, start_link, [sniffle_grouping_vnode]},
+      permanent, 5000, worker, [sniffle_grouping_vnode_master]},
     Img = case sniffle_opt:get(storage, general, backend, large_data_backend, internal) of
               internal ->
                   [{sniffle_img_vnode_master,
@@ -142,6 +146,12 @@ init(_Args) ->
           [sniffle_package, sniffle_package_vnode]},
          permanent, 30000, worker, [riak_core_entropy_manager]},
 
+    EntropyManagerGrouping =
+        {sniffle_grouping_entropy_manager,
+         {riak_core_entropy_manager, start_link,
+          [sniffle_grouping, sniffle_grouping_vnode]},
+         permanent, 30000, worker, [riak_core_entropy_manager]},
+
     {ok,
      {{one_for_one, 5, 10},
       [{sniffle_create_pool, {sniffle_create_pool, start_link, []},
@@ -152,7 +162,8 @@ init(_Args) ->
        CreateFSMs, DTrace,
        %% VNodes
        VHypervisor, VVM, VIprange, VDataset, VPackage, VDTrace, VNetwork,
+       VGrouping,
        %% AAE
        EntropyManagerVm, EntropyManagerHypervisor, EntropyManagerIPRange,
        EntropyManagerNetwork, EntropyManagerDataset, EntropyManagerDtrace,
-       EntropyManagerPackage] ++ Img}}.
+       EntropyManagerPackage, EntropyManagerGrouping] ++ Img}}.
