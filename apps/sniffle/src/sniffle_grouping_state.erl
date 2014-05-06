@@ -135,6 +135,27 @@ to_json(#?GROUPING{
      {<<"type">>, list_to_binary(atom_to_list(riak_dt_lwwreg:value(Type)))},
      {<<"uuid">>, riak_dt_lwwreg:value(UUID)}
     ].
-
-merge(A, _) ->
-    A.
+merge(#?GROUPING{
+          elements = Elements1,
+          groupings = Groupings1,
+          metadata = Metadata1,
+          name = Name1,
+          type = Type1,
+          uuid = UUID1
+         },
+      #?GROUPING{
+          elements = Elements2,
+          groupings = Groupings2,
+          metadata = Metadata2,
+          name = Name2,
+          type = Type2,
+          uuid = UUID2
+         }) ->
+    #?GROUPING{
+        elements = riak_dt_orswot:merge(Elements1, Elements2),
+        groupings = riak_dt_orswot:merge(Groupings1, Groupings2),
+        metadata = fifo_map:merge(Metadata1, Metadata2),
+        name = riak_dt_lwwreg:merge(Name1, Name2),
+        type = riak_dt_lwwreg:merge(Type1, Type2),
+        uuid = riak_dt_lwwreg:merge(UUID1, UUID2)
+       }.

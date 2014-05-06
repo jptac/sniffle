@@ -243,6 +243,9 @@ merge(Replies) ->
 reconcile([V = #?HYPERVISOR{} | Vs]) ->
     reconcile_hypervisor(Vs, V);
 
+reconcile([V = #?GROUPING{} | Vs]) ->
+    reconcile_grouping(Vs, V);
+
 reconcile([V0 | _ ] = Vals) ->
     case statebox:is_statebox(V0) of
         true ->
@@ -254,6 +257,11 @@ reconcile([V0 | _ ] = Vals) ->
 reconcile_hypervisor([H | R], Acc) ->
     reconcile_hypervisor(R, sniffle_hypervisor_state:merge(Acc, H));
 reconcile_hypervisor(_, Acc) ->
+    Acc.
+
+reconcile_grouping([H | R], Acc) ->
+    reconcile_grouping(R, sniffle_grouping_state:merge(Acc, H));
+reconcile_grouping(_, Acc) ->
     Acc.
 
 %% @pure

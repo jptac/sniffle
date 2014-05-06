@@ -157,7 +157,6 @@ init([Part]) ->
 
 handle_command({create, {ReqID, Coordinator} = ID, UUID, [Name, Type]},
                _Sender, State) ->
-    io:format("Initial create~n"),
     G0 = sniffle_grouping_state:new(ID),
     G1 = sniffle_grouping_state:uuid(ID, UUID, G0),
     G2 = sniffle_grouping_state:name(ID, Name, G1),
@@ -165,7 +164,6 @@ handle_command({create, {ReqID, Coordinator} = ID, UUID, [Name, Type]},
     VC0 = vclock:fresh(),
     VC = vclock:increment(Coordinator, VC0),
     Obj = #sniffle_obj{val=G3, vclock=VC},
-    io:format("Object ~p~n", [Obj]),
     sniffle_vnode:put(UUID, Obj, State),
     {reply, {ok, ReqID}, State};
 
