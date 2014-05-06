@@ -11,6 +11,7 @@
 
 -export([
          new/0,
+         load/1,
          load/2,
          uuid/1,
          name/2,
@@ -19,7 +20,7 @@
          getter/2
         ]).
 
--ignore_xref([load/2, set/4, set/3, getter/2, uuid/1]).
+-ignore_xref([load/2, load/1, set/4, set/3, getter/2, uuid/1]).
 
 getter(#sniffle_obj{val=S0}, Resource) ->
     jsxd:get(Resource, 0, statebox:value(S0)).
