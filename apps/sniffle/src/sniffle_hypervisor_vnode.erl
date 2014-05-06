@@ -177,9 +177,11 @@ delete(State) ->
     sniffle_vnode:delete(State).
 
 handle_coverage(status, _KeySpaces, Sender, State) ->
+    ID = sniffle_vnode:mkid(fold),
     FoldFn = fun(K, #sniffle_obj{val=S0}, {Res, Warnings}) ->
-                     Host = sniffle_hypervisor_state:host(S0),
-                     Port = sniffle_hypervisor_state:port(S0),
+                     S1 = sniffle_hypervisor_state:load(ID, S0),
+                     Host = sniffle_hypervisor_state:host(S1),
+                     Port = sniffle_hypervisor_state:port(S1),
                      W1 =
                          case libchunter:ping(binary_to_list(Host), Port) of
                              {error, connection_failed} ->
@@ -195,13 +197,13 @@ handle_coverage(status, _KeySpaces, Sender, State) ->
                                  Warnings
                          end,
                      {Res1, W2} =
-                         case sniffle_hypervisor_state:pools(S0) of
+                         case sniffle_hypervisor_state:pools(S1) of
                              [] ->
-                                 {sniffle_hypervisor_state:resources(S0), W1};
+                                 {sniffle_hypervisor_state:resources(S1), W1};
                              Pools ->
                                  jsxd:fold(
                                    fun status_fold/3,
-                                   {sniffle_hypervisor_state:resources(S0), W1},
+                                   {sniffle_hypervisor_state:resources(S1), W1},
                                    Pools)
                          end,
                      {[{K, Res1} | Res], W2}
