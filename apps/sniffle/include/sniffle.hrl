@@ -109,11 +109,21 @@
           virtualisation  = riak_dt_lwwreg:new() :: riak_dt_lwwreg:lwwreg()
         }).
 
+-record(grouping_0_1_0,
+        {
+          name           = riak_dt_lwwreg:new() :: riak_dt_lwwreg:lwwreg(),
+          type           = riak_dt_lwwreg:new() :: riak_dt_lwwreg:lwwreg(),
+          vms            = riak_dt_orswot:new() :: riak_dt_orswot:orswot(),
+          metadata       = riak_dt_map:new()    :: riak_dt_map:map()
+        }).
+
+
 -define(DATASET, dataset).
 -define(PACKAGE, package).
 -define(IPRANGE, iprange).
 -define(VM, vm).
 -define(HYPERVISOR, hypervisor_0_1_0).
+-define(GROUPING, grouping_0_1_0).
 
 -define(NEW_LWW(V, T), riak_dt_lwwreg:update(
                          {assign, V, T}, none,

@@ -266,7 +266,8 @@ set_service({T, ID}, Attribute, Value, H) ->
     H#?HYPERVISOR{services = M1}.
 
 getter(#sniffle_obj{val=S0}, Resource) ->
-    jsxd:get(Resource, 0, statebox:value(S0)).
+    JSON = to_json(S0),
+    jsxd:get(Resource, 0, JSON).
 
 load(_, #?HYPERVISOR{} = H) ->
     H;
@@ -354,7 +355,7 @@ to_json(#?HYPERVISOR{
      {<<"host">>, riak_dt_lwwreg:value(Host)},
      {<<"metadata">>, fifo_map:value(Metadata)},
      {<<"networks">>, riak_dt_lwwreg:value(Networks)},
-     {<<"path">>, riak_dt_lwwreg:value(Path)},
+     {<<"path">>, path_to_json(riak_dt_lwwreg:value(Path))},
      {<<"pools">>, fifo_map:value(Pools)},
      {<<"port">>, riak_dt_lwwreg:value(Port)},
      {<<"resources">>, fifo_map:value(Resources)},
@@ -364,6 +365,9 @@ to_json(#?HYPERVISOR{
      {<<"version">>, riak_dt_lwwreg:value(Version)},
      {<<"virtualisation">>, riak_dt_lwwreg:value(Virtualisation)}
     ].
+
+path_to_json(P) ->
+    [[{<<"cost">>, C}, {<<"name">>, N}] || {N, C} <- P].
 
 merge(#?HYPERVISOR{
           characteristics = Characteristics1,
