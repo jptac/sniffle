@@ -8,13 +8,21 @@
          delete/1,
          put/3,
          fold/4,
+         change/5,
          handle_command/3,
          handle_coverage/4,
          handle_info/2,
+         hash_object/2,
          mkid/0,
          mkid/1]).
 
--ignore_xref([mkid/0, mkid/1]).
+-ignore_xref([mkid/0, mkid/1, change/5]).
+
+hash_object(Key, Obj) ->
+    Obj1 = lists:sort(Obj),
+    Hash = term_to_binary(erlang:phash2({Key, Obj1})),
+    lager:debug("Hashing Key: ~p + ~p -> ~p", [Key, Obj1, Hash]),
+    Hash.
 
 mkid() ->
     mkid(node()).
@@ -96,6 +104,34 @@ put(Key, Obj, State) ->
     fifo_db:put(State#vstate.db, State#vstate.bucket, Key, Obj),
     riak_core_aae_vnode:update_hashtree(
       State#vstate.service_bin, Key, Obj#sniffle_obj.vclock, State#vstate.hashtrees).
+
+change(UUID, Action, Vals, {ReqID, Coordinator} = ID,
+       State=#vstate{state=Mod}) ->
+    case fifo_db:get(State#vstate.db, State#vstate.bucket, UUID) of
+        {ok, #sniffle_obj{val=H0} = O} ->
+            H1 = case Mod:load(ID, H0) of
+                     _H when _H =:= H0 ->
+                         H0;
+                     Hx ->
+                         O1 = O#sniffle_obj{val=Hx},
+                         fifo_db:put(State#vstate.db, State#vstate.bucket, UUID, O1),
+                         Hx
+                 end,
+            H2 = case Vals of
+                     [Val] ->
+                         Mod:Action(ID, Val, H1);
+                     [Val1, Val2] ->
+                         Mod:Action(ID, Val1, Val2, H1)
+                 end,
+            Obj = sniffle_obj:update(H2, Coordinator, O),
+            sniffle_vnode:put(UUID, Obj, State),
+            {reply, {ok, ReqID}, State};
+        R ->
+            lager:error("[~s] tried to write to a non existing element: ~p",
+                        [State#vstate.bucket, R]),
+            {reply, {ok, ReqID, not_found}, State}
+    end.
+
 
 %%%===================================================================
 %%% Callbacks
@@ -271,8 +307,14 @@ handle_command({rehash, {_, UUID}}, _,
 handle_command(?FOLD_REQ{foldfun=Fun, acc0=Acc0}, Sender, State) ->
     fold_with_bucket(Fun, Acc0, Sender, State);
 
+handle_command({Action, ID, UUID, Param1, Param2}, _Sender, State) ->
+    change(UUID, Action, [Param1, Param2], ID, State);
+
+handle_command({Action, ID, UUID, Param}, _Sender, State) ->
+    change(UUID, Action, [Param], ID, State);
+
 handle_command(Message, _Sender, State) ->
-    lager:error("[vms] Unknown command: ~p", [Message]),
+    lager:error("[~s] Unknown command: ~p", [State#vstate.bucket, Message]),
     {noreply, State}.
 
 reply(Reply, {_, ReqID, _} = Sender, #vstate{node=N, partition=P}) ->

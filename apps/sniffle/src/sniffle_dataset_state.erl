@@ -42,8 +42,7 @@ load(Dataset) ->
     Dataset.
 
 new() ->
-    jsxd:set(<<"version">>, <<"0.1.0">>,
-             jsxd:new()).
+    jsxd:set(<<"version">>, <<"0.1.0">>, jsxd:new()).
 
 name(Name, Dataset) ->
     jsxd:set(<<"name">>, Name, Dataset).

@@ -1,4 +1,5 @@
--module(sniffle_dataset_vnode).
+-module(sniffle_grouping_vnode).
+
 -behaviour(riak_core_vnode).
 -behaviour(riak_core_aae_vnode).
 -include("sniffle.hrl").
@@ -28,6 +29,10 @@
          handle_coverage/4,
          handle_exit/3,
          handle_info/2,
+         add_element/4,
+         remove_element/4,
+         add_grouping/4,
+         remove_grouping/4,
          sync_repair/4
         ]).
 
@@ -39,6 +44,10 @@
 
 -ignore_xref([
               create/4,
+              add_element/4,
+              remove_element/4,
+              add_grouping/4,
+              remove_grouping/4,
               delete/3,
               get/3,
               repair/4,
@@ -48,9 +57,9 @@
               sync_repair/4
              ]).
 
--define(SERVICE, sniffle_dataset).
+-define(SERVICE, sniffle_grouping).
 
--define(MASTER, sniffle_dataset_vnode_master).
+-define(MASTER, sniffle_grouping_vnode_master).
 
 %%%===================================================================
 %%% AAE
@@ -63,8 +72,7 @@ hash_object(BKey, RObj) ->
     sniffle_vnode:hash_object(BKey, RObj).
 
 aae_repair(_, Key) ->
-    lager:debug("AAE Repair: ~p", [Key]),
-    sniffle_dataset:get(Key).
+    sniffle_grouping:get(Key).
 
 %%%===================================================================
 %%% API
@@ -73,18 +81,18 @@ aae_repair(_, Key) ->
 start_vnode(I) ->
     riak_core_vnode_master:get_vnode_pid(I, ?MODULE).
 
-repair(IdxNode, Dataset, VClock, Obj) ->
+repair(IdxNode, Grouping, VClock, Obj) ->
     riak_core_vnode_master:command([IdxNode],
-                                   {repair, Dataset, VClock, Obj},
+                                   {repair, Grouping, VClock, Obj},
                                    ?MASTER).
 
 %%%===================================================================
 %%% API - reads
 %%%===================================================================
 
-get(Preflist, ReqID, Dataset) ->
+get(Preflist, ReqID, Grouping) ->
     riak_core_vnode_master:command(Preflist,
-                                   {get, ReqID, Dataset},
+                                   {get, ReqID, Grouping},
                                    {fsm, undefined, self()},
                                    ?MASTER).
 
@@ -92,26 +100,50 @@ get(Preflist, ReqID, Dataset) ->
 %%% API - writes
 %%%===================================================================
 
+add_element(Preflist, ReqID, UUID, Obj) ->
+    riak_core_vnode_master:command(Preflist,
+                                   {add_element, ReqID, UUID, Obj},
+                                   {fsm, undefined, self()},
+                                   ?MASTER).
+
+remove_element(Preflist, ReqID, UUID, Obj) ->
+    riak_core_vnode_master:command(Preflist,
+                                   {remove_element, ReqID, UUID, Obj},
+                                   {fsm, undefined, self()},
+                                   ?MASTER).
+
+add_grouping(Preflist, ReqID, UUID, Obj) ->
+    riak_core_vnode_master:command(Preflist,
+                                   {add_grouping, ReqID, UUID, Obj},
+                                   {fsm, undefined, self()},
+                                   ?MASTER).
+
+remove_grouping(Preflist, ReqID, UUID, Obj) ->
+    riak_core_vnode_master:command(Preflist,
+                                   {remove_grouping, ReqID, UUID, Obj},
+                                   {fsm, undefined, self()},
+                                   ?MASTER).
+
 sync_repair(Preflist, ReqID, UUID, Obj) ->
     riak_core_vnode_master:command(Preflist,
                                    {sync_repair, ReqID, UUID, Obj},
                                    {fsm, undefined, self()},
                                    ?MASTER).
 
-create(Preflist, ReqID, Dataset, Data) ->
+create(Preflist, ReqID, Grouping, Data) ->
     riak_core_vnode_master:command(Preflist,
-                                   {create, ReqID, Dataset, Data},
+                                   {create, ReqID, Grouping, Data},
                                    {fsm, undefined, self()},
                                    ?MASTER).
 
-delete(Preflist, ReqID, Dataset) ->
+delete(Preflist, ReqID, Grouping) ->
     riak_core_vnode_master:command(Preflist,
-                                   {delete, ReqID, Dataset},
+                                   {delete, ReqID, Grouping},
                                    {fsm, undefined, self()},
                                    ?MASTER).
-set(Preflist, ReqID, Dataset, Data) ->
+set(Preflist, ReqID, Grouping, Data) ->
     riak_core_vnode_master:command(Preflist,
-                                   {set, ReqID, Dataset, Data},
+                                   {set, ReqID, Grouping, Data},
                                    {fsm, undefined, self()},
                                    ?MASTER).
 
@@ -120,24 +152,28 @@ set(Preflist, ReqID, Dataset, Data) ->
 %%%===================================================================
 
 init([Part]) ->
-    sniffle_vnode:init(Part, <<"dataset">>, ?SERVICE, ?MODULE,
-                       sniffle_dataset_state).
+    sniffle_vnode:init(Part, <<"grouping">>, ?SERVICE, ?MODULE,
+                       sniffle_grouping_state).
 
-handle_command({create, {ReqID, Coordinator}, Dataset, []},
+handle_command({create, {ReqID, Coordinator} = ID, UUID, [Name, Type]},
                _Sender, State) ->
-    I0 = statebox:new(fun sniffle_dataset_state:new/0),
-    I1 = statebox:modify({fun sniffle_dataset_state:name/2, [Dataset]}, I0),
+    io:format("Initial create~n"),
+    G0 = sniffle_grouping_state:new(ID),
+    G1 = sniffle_grouping_state:uuid(ID, UUID, G0),
+    G2 = sniffle_grouping_state:name(ID, Name, G1),
+    G3 = sniffle_grouping_state:type(ID, Type, G2),
     VC0 = vclock:fresh(),
     VC = vclock:increment(Coordinator, VC0),
-    Obj = #sniffle_obj{val=I1, vclock=VC},
-    sniffle_vnode:put(Dataset, Obj, State),
+    Obj = #sniffle_obj{val=G3, vclock=VC},
+    io:format("Object ~p~n", [Obj]),
+    sniffle_vnode:put(UUID, Obj, State),
     {reply, {ok, ReqID}, State};
 
 handle_command(Message, Sender, State) ->
     sniffle_vnode:handle_command(Message, Sender, State).
 
 handle_handoff_command(?FOLD_REQ{foldfun=Fun, acc0=Acc0}, _Sender, State) ->
-    Acc = fifo_db:fold(State#vstate.db, <<"dataset">>, Fun, Acc0),
+    Acc = fifo_db:fold(State#vstate.db, <<"grouping">>, Fun, Acc0),
     {reply, Acc, State};
 
 handle_handoff_command({get, _ReqID, _Vm} = Req, Sender, State) ->
@@ -162,12 +198,12 @@ handoff_finished(_TargetNode, State) ->
     {ok, State}.
 
 handle_handoff_data(Data, State) ->
-    {Dataset, Obj} = binary_to_term(Data),
-    sniffle_vnode:put(Dataset, Obj, State),
+    {Grouping, Obj} = binary_to_term(Data),
+    sniffle_vnode:put(Grouping, Obj, State),
     {reply, ok, State}.
 
-encode_handoff_item(Dataset, Data) ->
-    term_to_binary({Dataset, Data}).
+encode_handoff_item(Grouping, Data) ->
+    term_to_binary({Grouping, Data}).
 
 is_empty(State) ->
     sniffle_vnode:is_empty(State).
