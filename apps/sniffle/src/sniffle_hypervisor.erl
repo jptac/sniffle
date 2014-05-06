@@ -161,7 +161,9 @@ list(Requirements, true) ->
     {ok, Res} = sniffle_full_coverage:start(
                   ?MASTER, ?SERVICE, {list, Requirements, true}),
     Res1 = rankmatcher:apply_scales(Res),
-    {ok,  lists:sort(Res1)};
+    Res2 = [{Pts, sniffle_hypervisor_state:to_json(H)} ||
+               {Pts, H} <- Res1],
+    {ok,  lists:sort(Res2)};
 
 list(Requirements, false) ->
     {ok, Res} = sniffle_coverage:start(
