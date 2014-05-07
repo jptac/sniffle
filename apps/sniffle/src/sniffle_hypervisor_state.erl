@@ -97,29 +97,8 @@
 
 -ignore_xref([to_json/1, load/2, set/4, getter/2, uuid/1]).
 
-new({T, _ID}) ->
-    Characteristics = fifo_map:new(),
-    {ok, Etherstubs} = ?NEW_LWW([], T),
-    Metadata = fifo_map:new(),
-    {ok, Networks} = ?NEW_LWW([], T),
-    {ok, Path} = ?NEW_LWW([], T),
-    Pools = fifo_map:new(),
-    Resources = fifo_map:new(),
-    Services = fifo_map:new(),
-    {ok, Sysinfo} = ?NEW_LWW([], T),
-    {ok, Virtualisation} = ?NEW_LWW([], T),
-    #?HYPERVISOR{
-        characteristics = Characteristics,
-        etherstubs = Etherstubs,
-        metadata = Metadata,
-        networks = Networks,
-        path = Path,
-        pools = Pools,
-        resources = Resources,
-        services = Services,
-        sysinfo = Sysinfo,
-        virtualisation = Virtualisation
-       }.
+new(_) ->
+    #?HYPERVISOR{}.
 
 alias(H) ->
     riak_dt_lwwreg:value(H#?HYPERVISOR.alias).
@@ -359,6 +338,8 @@ to_json(#?HYPERVISOR{
      {<<"virtualisation">>, riak_dt_lwwreg:value(Virtualisation)}
     ].
 
+path_to_json(<<>>) ->
+    [];
 path_to_json(P) ->
     [[{<<"cost">>, C}, {<<"name">>, N}] || {N, C} <- P].
 

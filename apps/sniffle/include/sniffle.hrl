@@ -99,7 +99,7 @@
           alias           = riak_dt_lwwreg:new() :: riak_dt_lwwreg:lwwreg(),
           networks        = riak_dt_lwwreg:new() :: riak_dt_lwwreg:lwwreg(),
           path            = riak_dt_lwwreg:new() :: riak_dt_lwwreg:orswot(),
-          pools           = riak_dt_lwwreg:new() :: riak_dt_lwwreg:lwwreg(),
+          pools           = riak_dt_map:new()    :: riak_dt_map:map(),
           port            = riak_dt_lwwreg:new() :: riak_dt_lwwreg:lwwreg(),
           resources       = riak_dt_map:new()    :: riak_dt_map:map(),
           services        = riak_dt_map:new()    :: riak_dt_map:map(),
