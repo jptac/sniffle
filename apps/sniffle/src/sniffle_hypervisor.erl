@@ -52,6 +52,7 @@ register(Hypervisor, IP, Port) ->
         not_found ->
             do_write(Hypervisor, register, [IP, Port]);
         {ok, _UserObj} ->
+            set(Hypervisor, [{<<"host">>, IP}, {<<"port">>, Port}]),
             duplicate
     end.
 
