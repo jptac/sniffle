@@ -94,6 +94,12 @@ remove_grouping({_T, ID}, V, H) ->
 
 getter(#sniffle_obj{val=S0}, <<"name">>) ->
     name(S0);
+getter(#sniffle_obj{val=S0}, <<"uuid">>) ->
+    uuid(S0);
+getter(#sniffle_obj{val=S0}, <<"elements">>) ->
+    elements(S0);
+getter(#sniffle_obj{val=S0}, <<"groupings">>) ->
+    groupings(S0);
 getter(#sniffle_obj{val=S0}, <<"type">>) ->
     type(S0).
 
