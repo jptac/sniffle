@@ -221,8 +221,9 @@ handle_command({get, ReqID, UUID}, _Sender, State) ->
               {ok, R} ->
                   ID = {ReqID, load},
                   case  load_obj(ID, State#vstate.state, R) of
-                      R1 when R =:= R1 ->
-                          sniffle_vnode:put(UUID, R1, State);
+                      R1 when R =/= R1 ->
+                          sniffle_vnode:put(UUID, R1, State),
+                          R1;
                       R1 ->
                           R1
                   end;
