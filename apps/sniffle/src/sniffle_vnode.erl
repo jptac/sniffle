@@ -243,10 +243,10 @@ handle_command({delete, {ReqID, _Coordinator}, UUID}, _Sender, State) ->
 
 
 handle_command({set,
-                {ReqID, Coordinator} = ID, Dataset,
+                {ReqID, Coordinator} = ID, UUID,
                 Resources}, _Sender,
                State = #vstate{db=DB, state=Mod, bucket=Bucket}) ->
-    case fifo_db:get(DB, Bucket, Dataset) of
+    case fifo_db:get(DB, Bucket, UUID) of
         {ok, #sniffle_obj{val=H0} = O} ->
             H1 = Mod:load(ID, H0),
             H2 = lists:foldr(
@@ -260,11 +260,11 @@ handle_command({set,
                          H2
                  end,
             Obj = sniffle_obj:update(H3, Coordinator, O),
-            sniffle_vnode:put(Dataset, Obj, State),
+            sniffle_vnode:put(UUID, Obj, State),
             {reply, {ok, ReqID}, State};
         R ->
-            lager:error("[~s] tried to write to a non existing element: ~p",
-                        [Bucket, R]),
+            lager:error("[~s] tried to write to non existing element: ~s -> ~p",
+                        [Bucket, UUID, R]),
             {reply, {ok, ReqID, not_found}, State}
     end;
 
