@@ -220,6 +220,8 @@ handle_command({get, ReqID, UUID}, _Sender, State) ->
     Res = case fifo_db:get(State#vstate.db, State#vstate.bucket, UUID) of
               {ok, R} ->
                   ID = {ReqID, load},
+                  %% We want to write a loaded object back to storage
+                  %% if a change happend.
                   case  load_obj(ID, State#vstate.state, R) of
                       R1 when R =/= R1 ->
                           sniffle_vnode:put(UUID, R1, State),

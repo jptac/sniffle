@@ -28,6 +28,7 @@
         ]).
 
 -export([
+         generate_grouping_rules/2,
          get_package/2,
          get_dataset/2,
          callbacks/2,
@@ -42,6 +43,7 @@
 
 -ignore_xref([
               create/2,
+              generate_grouping_rules/2,
               callbacks/2,
               get_dataset/2,
               get_package/2,
@@ -69,7 +71,8 @@
           old_nics,
           delay = 5000,
           retry = 0,
-          max_retries = 0
+          max_retries = 0,
+          grouping_rules = []
          }).
 
 %%%===================================================================
@@ -128,15 +131,46 @@ init([UUID, Package, Dataset, Config]) ->
                      _ ->
                          5
                  end,
-    {ok, create_permissions, #state{
-                                uuid = UUID,
-                                package_name = Package,
-                                dataset_name = Dataset,
-                                config = Config1,
-                                delay = Delay,
-                                max_retries = MaxRetries
-                               }, 0}.
+    {ok, generate_grouping_rules, #state{
+                                     uuid = UUID,
+                                     package_name = Package,
+                                     dataset_name = Dataset,
+                                     config = Config1,
+                                     delay = Delay,
+                                     max_retries = MaxRetries
+                                    }, 0}.
 
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% When a grouping is used during creation certain additional rules
+%% need to be applied to guarantee the propper constraints. Here we get
+%% them.
+%% @spec state_name(Event, State) ->
+%%                   {next_state, NextStateName, NextState} |
+%%                   {next_state, NextStateName, NextState, Timeout} |
+%%                   {stop, Reason, NewState}
+%% @end
+%%--------------------------------------------------------------------
+generate_grouping_rules(_Event, State = #state{
+                                           uuid = UUID,
+                                           config = Config
+                                          }) ->
+    case jsxd:get(<<"grouping">>, Config) of
+        {ok, Grouping} ->
+            Rules = sniffle_grouping:create_rules(Grouping),
+            case sniffle_grouping:add_element(Grouping, UUID) of
+                ok ->
+                    {ok, create_permissions,
+                     State#state{grouping_rules = Rules}, 0};
+                E ->
+                    lager:error("Creation Faild since grouing could not be "
+                                "joined: ~p", [E]),
+                    {stop, E, State}
+            end;
+        _ ->
+            {ok, create_permissions, State, 0}
+    end.
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
@@ -218,7 +252,7 @@ get_networks(_event, State = #state{uuid = UUID, retry = R, max_retries = Max})
     BR = list_to_binary(integer_to_list(R)),
     BMax= list_to_binary(integer_to_list(Max)),
     sniffle_vm:log(UUID, <<"Failed after too many retries: ", BR/binary, " > ",
-                         BMax/binary>>),
+                           BMax/binary>>),
     {stop, failed, State};
 
 get_networks(_Event, State = #state{config = Config, retry = Try}) ->
@@ -243,6 +277,7 @@ get_server(_Event, State = #state{
                               config = Config,
                               nets = Nets,
                               package = Package,
+                              grouping_rules = GroupingRules,
                               delay = Delay}) ->
     lager:debug("get_server: ~p", [Nets]),
     {ok, Ram} = jsxd:get(<<"ram">>, Package),
@@ -258,7 +293,8 @@ get_server(_Event, State = #state{
                            {must, 'element', <<"virtualisation">>, Type},
                            {must, '>=', <<"resources.free-memory">>, Ram}] ++
                 lists:map(fun(C) -> make_condition(C, Permissions) end, Conditions0),
-            {UUID, Config, Conditions} = eplugin:fold('create:conditions', {UUID, Config, Conditions1}),
+            Conditions2 = Conditions1 ++ GroupingRules,
+            {UUID, Config, Conditions} = eplugin:fold('create:conditions', {UUID, Config, Conditions2}),
             lager:debug("[CREATE] Finding hypervisor: ~p", [Conditions]),
             {ok, Hypervisors} = sniffle_hypervisor:list(Conditions, false),
             Hypervisors1 = eplugin:fold('create:hypervisor_select', Hypervisors),
