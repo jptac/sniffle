@@ -38,7 +38,12 @@ sync_repair(UUID, Obj) ->
                     duplicate | ok | {error, timeout}.
 create(Name, Type) ->
     UUID = uuid:uuid4s(),
-    do_write(UUID, create, [Name, Type]).
+    case do_write(UUID, create, [Name, Type]) of
+        ok ->
+            {ok, UUID};
+        E ->
+            E
+    end.
 
 -spec get(UUID::fifo:uuid()) ->
                  not_found | {ok, Grouping::fifo:grouping()} | {error, timeout}.
