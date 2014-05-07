@@ -263,8 +263,8 @@ handle_command({set,
             sniffle_vnode:put(UUID, Obj, State),
             {reply, {ok, ReqID}, State};
         R ->
-            lager:error("[~s] tried to write to non existing element: ~s -> ~p",
-                        [Bucket, UUID, R]),
+            lager:error("[~s/~p] tried to write to non existing element: ~s -> ~p",
+                        [Bucket, State#vstate.partition, UUID, R]),
             {reply, {ok, ReqID, not_found}, State}
     end;
 
