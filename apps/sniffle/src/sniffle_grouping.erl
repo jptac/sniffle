@@ -10,6 +10,7 @@
          create/2,
          delete/1,
          get/1,
+         get_/1,
          list/0,
          list/2,
          wipe/1,
@@ -24,6 +25,7 @@
         ]).
 
 -ignore_xref([
+              get_/1,
               create_rules/1,
               sync_repair/2,
               list_/0,
@@ -66,14 +68,14 @@ add_element(UUID, Element) ->
         {ok, T} ->
             case sniffle_grouping_state:type(T) of
                 cluster ->
-                    case sniffle_vm:get(UUID) of
+                    case sniffle_vm:get(Element) of
                         {ok, _} ->
                             do_write(UUID, add_element, Element);
                         E ->
                             E
                     end;
                 none ->
-                    case sniffle_vm:get(UUID) of
+                    case sniffle_vm:get(Element) of
                         {ok, _} ->
                             do_write(UUID, add_element, Element);
                         E ->
