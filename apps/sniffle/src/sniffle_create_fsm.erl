@@ -161,6 +161,8 @@ generate_grouping_rules(_Event, State = #state{
             Rules = sniffle_grouping:create_rules(Grouping),
             case sniffle_grouping:add_element(Grouping, UUID) of
                 ok ->
+                    sniffle_vm:set(UUID, <<"grouping">>, Grouping),
+
                     {next_state, create_permissions,
                      State#state{grouping_rules = Rules}, 0};
                 E ->
