@@ -307,7 +307,7 @@ load({T, ID}, Sb) ->
     Metadata1 = fifo_map:from_orddict(Metadata, ID, T),
     {ok, Networks1} = ?NEW_LWW(Networks, T),
     Pools1 = fifo_map:from_orddict(Pools, ID, T),
-    {ok, Path} = ?NEW_LWW([], T),
+    {ok, Path} = ?NEW_LWW([{Alias, 1}], T),
     {ok, Port1} = ?NEW_LWW(Port, T),
     Resources1 = fifo_map:from_orddict(Resources, ID, T),
     Services1 = fifo_map:from_orddict(Services, ID, T),
@@ -557,12 +557,13 @@ from_json_test() ->
     ]
 }">>,
     JSX = jsxd:from_list(jsx:decode(JSON)),
-    SB = statebox:new(fun () -> JSX end),
+    JSX1 = jsxd:set(<<"path">>, [[{<<"cost">>,1},{<<"name">>,<<"00-15-17-b8-16-fc">>}]], JSX),
+    SB = statebox:new(fun () -> JSX1 end),
     R = load(mkid(), SB),
     JSX2 = to_json(R),
-    file:write_file("1", io_lib:format("~p", [JSX])),
+    file:write_file("1", io_lib:format("~p", [JSX1])),
     file:write_file("2", io_lib:format("~p", [JSX2])),
-    ?assertEqual(JSX, JSX2),
+    ?assertEqual(JSX1, JSX2),
     ok.
 
 nested_test() ->

@@ -127,9 +127,10 @@ handle_command({register, {ReqID, Coordinator} = ID, Hypervisor, [IP, Port]}, _S
     H1 = sniffle_hypervisor_state:port(ID, Port, H0),
     H2 = sniffle_hypervisor_state:host(ID, IP, H1),
     H3 = sniffle_hypervisor_state:alias(ID, Hypervisor, H2),
+    H4 = sniffle_hypervisor_state:alias(ID, [{Hypervisor, 1}], H3),
     VC0 = vclock:fresh(),
     VC = vclock:increment(Coordinator, VC0),
-    HObject = #sniffle_obj{val=H3, vclock=VC},
+    HObject = #sniffle_obj{val=H4, vclock=VC},
 
     sniffle_vnode:put(Hypervisor, HObject, State),
     {reply, {ok, ReqID}, State};
