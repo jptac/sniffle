@@ -109,14 +109,7 @@ change(UUID, Action, Vals, {ReqID, Coordinator} = ID,
        State=#vstate{state=Mod}) ->
     case fifo_db:get(State#vstate.db, State#vstate.bucket, UUID) of
         {ok, #sniffle_obj{val=H0} = O} ->
-            H1 = case Mod:load(ID, H0) of
-                     _H when _H =:= H0 ->
-                         H0;
-                     Hx ->
-                         O1 = O#sniffle_obj{val=Hx},
-                         fifo_db:put(State#vstate.db, State#vstate.bucket, UUID, O1),
-                         Hx
-                 end,
+            H1 = Mod:load(ID, H0),
             H2 = case Vals of
                      [Val] ->
                          Mod:Action(ID, Val, H1);
@@ -146,9 +139,6 @@ delete(State=#vstate{db=DB, bucket=Bucket}) ->
     Trans = fifo_db:fold_keys(DB, Bucket, FoldFn, []),
     fifo_db:transact(State#vstate.db, Trans),
     {ok, State}.
-
-load_obj(ID, Mod, Obj = #sniffle_obj{val = V}) ->
-    Obj#sniffle_obj{val = Mod:load(ID, V)}.
 
 handle_coverage({wipe, UUID}, _KeySpaces, {_, ReqID, _}, State) ->
     fifo_db:delete(State#vstate.db, State#vstate.bucket, UUID),
@@ -230,7 +220,12 @@ handle_command({get, ReqID, UUID}, _Sender, State) ->
     Res = case fifo_db:get(State#vstate.db, State#vstate.bucket, UUID) of
               {ok, R} ->
                   ID = {ReqID, load},
-                  load_obj(ID, State#vstate.state, R);
+                  case  load_obj(ID, State#vstate.state, R) of
+                      R1 when R =:= R1 ->
+                          sniffle_vnode:put(UUID, R1, State);
+                      R1 ->
+                          R1
+                  end;
               not_found ->
                   not_found
           end,
@@ -340,3 +335,8 @@ handle_info({'DOWN', _, _, _, _}, State) ->
     {ok, State};
 handle_info(_, State) ->
     {ok, State}.
+
+%% We decrement the Time by 1 to make sure that the following actions
+%% are ensured to overwrite load changes.
+load_obj({T, ID}, Mod, Obj = #sniffle_obj{val = V}) ->
+    Obj#sniffle_obj{val = Mod:load({T-1, ID}, V)}.
