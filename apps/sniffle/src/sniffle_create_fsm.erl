@@ -161,7 +161,7 @@ generate_grouping_rules(_Event, State = #state{
             Rules = sniffle_grouping:create_rules(Grouping),
             case sniffle_grouping:add_element(Grouping, UUID) of
                 ok ->
-                    {ok, create_permissions,
+                    {next_state, create_permissions,
                      State#state{grouping_rules = Rules}, 0};
                 E ->
                     lager:error("Creation Faild since grouing could not be "
@@ -169,7 +169,7 @@ generate_grouping_rules(_Event, State = #state{
                     {stop, E, State}
             end;
         _ ->
-            {ok, create_permissions, State, 0}
+            {next_state, create_permissions, State, 0}
     end.
 %%--------------------------------------------------------------------
 %% @private
