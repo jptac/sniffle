@@ -9,6 +9,7 @@
    [
     register/3,
     unregister/1,
+    get_/1,
     get/1,
     list/0,
     list/2,

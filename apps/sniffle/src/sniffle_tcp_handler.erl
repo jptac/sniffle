@@ -38,9 +38,24 @@ message(version, State) ->
 %%%  Grouping Functions
 %%%===================================================================
 
-message({grouping, add, Name, Type}, State) ->
+message({grouping, add, Name, cluster}, State) ->
     {reply,
-     sniffle_grouping:create(Name, Type),
+     sniffle_grouping:create(Name, cluster),
+     State};
+
+message({grouping, add, Name, stack}, State) ->
+    {reply,
+     sniffle_grouping:create(Name, stack),
+     State};
+
+message({grouping, add, Name, none}, State) ->
+    {reply,
+     sniffle_grouping:create(Name, none),
+     State};
+
+message({grouping, add, _, _}, State) ->
+    {reply,
+     {error, unsupported_type},
      State};
 
 message({grouping, delete, ID}, State) ->

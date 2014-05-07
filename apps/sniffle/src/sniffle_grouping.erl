@@ -6,6 +6,7 @@
 -define(SERVICE, sniffle_grouping).
 
 -export([
+         create_rules/1,
          create/2,
          delete/1,
          get/1,
@@ -23,6 +24,7 @@
         ]).
 
 -ignore_xref([
+              create_rules/1,
               sync_repair/2,
               list_/0,
               wipe/1
@@ -70,6 +72,13 @@ add_element(UUID, Element) ->
                         E ->
                             E
                     end;
+                none ->
+                    case sniffle_vm:get(UUID) of
+                        {ok, _} ->
+                            do_write(UUID, add_element, Element);
+                        E ->
+                            E
+                    end;
                 stack ->
                     case get_(Element) of
                         {ok, E} ->
@@ -84,6 +93,27 @@ add_element(UUID, Element) ->
                     end;
                 _ ->
                     {error, not_supported}
+            end;
+        E ->
+            E
+    end.
+
+create_rules(UUID) ->
+    case get_(UUID) of
+        {ok, T} ->
+            case sniffle_grouping_state:type(T) of
+                cluster ->
+                    VMs = [sniffle_vm:get(VM) ||
+                              VM <- sniffle_grouping_state:elements(T)],
+                    Hs = [jsxd:get(<<"hypervisor">>, <<>>, VM) ||
+                             {ok, VM} <- VMs],
+                    Hs1 = [sniffle_hypervisor:get_(H) || H <- Hs],
+                    Paths = [sniffle_hypervisor_state:path(H) || {ok, H} <- Hs1],
+                    Paths1 = [{must, {'min-distance', P}, <<"path">>, 1} ||
+                                 P <- Paths, P =/= []],
+                    Paths1;
+                _ ->
+                    []
             end;
         E ->
             E
