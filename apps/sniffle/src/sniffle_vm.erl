@@ -522,7 +522,8 @@ register(Vm, Hypervisor) ->
 
 %%--------------------------------------------------------------------
 %% @doc Unregisteres an existing VM, this includs freeling the IP
-%%   addresses it had.
+%%   addresses it had, removing it from groupings and cleaning
+%%   permissions.
 %% @end
 %%--------------------------------------------------------------------
 -spec unregister(VM::fifo:uuid()) ->
@@ -553,6 +554,12 @@ unregister(Vm) ->
                                   [libsnarl:role_revoke_prefix(G, VmPrefix) || G <- Roles],
                                   [libsnarl:role_revoke_prefix(G, ChannelPrefix) || G <- Roles]
                           end);
+                _ ->
+                    ok
+            end,
+            case jsxd:get(<<"grouping">>, V) of
+                {ok, G} ->
+                    sniffle_grouping:remove_element(G, Vm);
                 _ ->
                     ok
             end;

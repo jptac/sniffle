@@ -131,9 +131,9 @@ init([Part]) ->
 handle_command({create, {ReqID, Coordinator}, Dtrace, [Name, Script]},
                _Sender, State) ->
     I0 = statebox:new(fun sniffle_dtrace_state:new/0),
-    I1 = statebox:modify({fun sniffle_dtrace_state:set/3, [<<"uuid">>, Dtrace]}, I0),
-    I2 = statebox:modify({fun sniffle_dtrace_state:set/3, [<<"name">>, Name]}, I1),
-    I3 = statebox:modify({fun sniffle_dtrace_state:set/3, [<<"script">>, Script]}, I2),
+    I1 = statebox:modify({fun sniffle_dtrace_state:set/4, [dummy, <<"uuid">>, Dtrace]}, I0),
+    I2 = statebox:modify({fun sniffle_dtrace_state:set/4, [dummy, <<"name">>, Name]}, I1),
+    I3 = statebox:modify({fun sniffle_dtrace_state:set/4, [dummy, <<"script">>, Script]}, I2),
     VC0 = vclock:fresh(),
     VC = vclock:increment(Coordinator, VC0),
     Obj = #sniffle_obj{val=I3, vclock=VC},

@@ -17,7 +17,7 @@
           internal,
           state,
           vnode
-        }).
+         }).
 
 -define(N, ?ENV(n, 3)).
 -define(R, ?ENV(r, 2)).
@@ -90,8 +90,48 @@
           attributes :: dict()
         }).
 
+-record(hypervisor_0_1_0,
+        {
+          characteristics = riak_dt_map:new()    :: riak_dt_map:map(),
+          etherstubs      = riak_dt_lwwreg:new() :: riak_dt_lwwreg:orswot(),
+          host            = riak_dt_lwwreg:new() :: riak_dt_lwwreg:lwwreg(),
+          metadata        = riak_dt_map:new()    :: riak_dt_map:map(),
+          alias           = riak_dt_lwwreg:new() :: riak_dt_lwwreg:lwwreg(),
+          networks        = riak_dt_lwwreg:new() :: riak_dt_lwwreg:lwwreg(),
+          path            = riak_dt_lwwreg:new() :: riak_dt_lwwreg:orswot(),
+          pools           = riak_dt_map:new()    :: riak_dt_map:map(),
+          port            = riak_dt_lwwreg:new() :: riak_dt_lwwreg:lwwreg(),
+          resources       = riak_dt_map:new()    :: riak_dt_map:map(),
+          services        = riak_dt_map:new()    :: riak_dt_map:map(),
+          sysinfo         = riak_dt_lwwreg:new() :: riak_dt_lwwreg:lwwreg(),
+          uuid            = riak_dt_lwwreg:new() :: riak_dt_lwwreg:lwwreg(),
+          version         = riak_dt_lwwreg:new() :: riak_dt_lwwreg:lwwreg(),
+          virtualisation  = riak_dt_lwwreg:new() :: riak_dt_lwwreg:lwwreg()
+        }).
+
+-record(grouping_0_1_0,
+        {
+          uuid           = riak_dt_lwwreg:new() :: riak_dt_lwwreg:lwwreg(),
+          name           = riak_dt_lwwreg:new() :: riak_dt_lwwreg:lwwreg(),
+          type           = riak_dt_lwwreg:new() :: riak_dt_lwwreg:lwwreg(),
+          groupings      = riak_dt_orswot:new() :: riak_dt_orswot:orswot(),
+          elements       = riak_dt_orswot:new() :: riak_dt_orswot:orswot(),
+          metadata       = riak_dt_map:new()    :: riak_dt_map:map()
+        }).
+
+
 -define(DATASET, dataset).
 -define(PACKAGE, package).
 -define(IPRANGE, iprange).
 -define(VM, vm).
--define(HYPERVISOR, hypervisor).
+-define(HYPERVISOR, hypervisor_0_1_0).
+-define(GROUPING, grouping_0_1_0).
+
+-define(NEW_LWW(V, T), riak_dt_lwwreg:update(
+                         {assign, V, T}, none,
+                         riak_dt_lwwreg:new())).
+
+-define(CONVERT_LIST(S),
+        riak_dt_orswot:update(
+          {add_all, S}, none,
+          riak_dt_orswot:new())).

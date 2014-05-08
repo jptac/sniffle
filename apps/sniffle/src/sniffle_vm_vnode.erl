@@ -171,7 +171,7 @@ handle_command({register, {ReqID, Coordinator}, Vm, Hypervisor}, _Sender, State)
                       VC = vclock:increment(Coordinator, VC0),
                       #sniffle_obj{val=H2, vclock=VC};
                   {ok, #sniffle_obj{val=H0} = O} ->
-                      H1 = statebox:modify({fun sniffle_vm_state:load/1,[]}, H0),
+                      H1 = statebox:modify({fun sniffle_vm_state:load/2,[dummy]}, H0),
                       H2 = statebox:modify({fun sniffle_vm_state:hypervisor/2, [Hypervisor]}, H1),
                       H3 = statebox:expire(?STATEBOX_EXPIRE, H2),
                       sniffle_obj:update(H3, Coordinator, O)
@@ -184,7 +184,7 @@ handle_command({log,
                 {Time, Log}}, _Sender, State) ->
     case fifo_db:get(State#vstate.db, <<"vm">>, Vm) of
         {ok, #sniffle_obj{val=H0} = O} ->
-            H1 = statebox:modify({fun sniffle_vm_state:load/1,[]}, H0),
+            H1 = statebox:modify({fun sniffle_vm_state:load/2,[dummy]}, H0),
             H2 = statebox:modify({fun sniffle_vm_state:log/3, [Time, Log]}, H1),
             H3 = statebox:expire(?STATEBOX_EXPIRE, H2),
             Obj = sniffle_obj:update(H3, Coordinator, O),
