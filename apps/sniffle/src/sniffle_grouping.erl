@@ -104,6 +104,9 @@ create_rules(UUID) ->
     case get_(UUID) of
         {ok, T} ->
             case sniffle_grouping_state:type(T) of
+                %% Clusters impose the rule that the minimal distance from
+                %% each hypervisor must be 1 (aka two machines can't be on the
+                %% same hypervisor)
                 cluster ->
                     VMs = [sniffle_vm:get(VM) ||
                               VM <- sniffle_grouping_state:elements(T)],
@@ -113,9 +116,35 @@ create_rules(UUID) ->
                     Paths = [sniffle_hypervisor_state:path(H) || {ok, H} <- Hs1],
                     Paths1 = [{must, {'min-distance', P}, <<"path">>, 1} ||
                                  P <- Paths, P =/= []],
-                    Paths1;
-                _ ->
-                    []
+                    %% If the cluster is part of a stack we need to get the
+                    %% rules for the stacks it's part of and join them.
+                    case sniffle_grouping_state:groupings(T) of
+                        [] ->
+                            Paths1;
+                        Gs ->
+                            Paths2 = [create_rules(G) || G <- Gs],
+                            Paths1 ++ lists:flatten(Paths2)
+                    end;
+                %% Stacks try to stay as close together as possible,
+                %% meaning we give points the lower the distance is.
+                stack ->
+                    ScaleMin = 10,
+                    ScaleMax = 0,
+                    Cls = [sniffle_grouping:get(Cl) ||
+                              Cl <- sniffle_grouping_state:elements(T)],
+                    VMs = [sniffle_grouping_state:elements(Cl) || Cl <- Cls],
+                    %% We can remove doublicate VM's before we read them.
+                    VMs1 = sets:from_list(lists:flatten(VMs)),
+                    VMs2 = [sniffle_vm:get(VM) || VM <- VMs1],
+                    Hs = [jsxd:get(<<"hypervisor">>, <<>>, VM) ||
+                             {ok, VM} <- VMs2],
+                    %% we can remove doublicate hypervisors.
+                    Hs1 = sets:from_list(Hs),
+                    Hs2 = [sniffle_hypervisor:get_(H) || H <- Hs1],
+                    Paths = [sniffle_hypervisor_state:path(H) || {ok, H} <- Hs2],
+                    Paths1 = [{'scale-distance', P, <<"path">>, ScaleMin, ScaleMax} ||
+                                 P <- Paths, P =/= []],
+                    Paths1
             end;
         E ->
             E
