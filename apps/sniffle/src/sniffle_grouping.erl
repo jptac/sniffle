@@ -148,16 +148,16 @@ create_rules(UUID) ->
                 stack ->
                     ScaleMin = 10,
                     ScaleMax = 0,
-                    Cls = [sniffle_grouping:get(Cl) ||
+                    Cls = [sniffle_grouping:get_(Cl) ||
                               Cl <- sniffle_grouping_state:elements(T)],
-                    VMs = [sniffle_grouping_state:elements(Cl) || Cl <- Cls],
+                    VMs = [sniffle_grouping_state:elements(Cl) || {ok, Cl} <- Cls],
                     %% We can remove doublicate VM's before we read them.
-                    VMs1 = sets:from_list(lists:flatten(VMs)),
+                    VMs1 = ordsets:from_list(lists:flatten(VMs)),
                     VMs2 = [sniffle_vm:get(VM) || VM <- VMs1],
                     Hs = [jsxd:get(<<"hypervisor">>, <<>>, VM) ||
                              {ok, VM} <- VMs2],
                     %% we can remove doublicate hypervisors.
-                    Hs1 = sets:from_list(Hs),
+                    Hs1 = ordsets:from_list(Hs),
                     Hs2 = [sniffle_hypervisor:get_(H) || H <- Hs1],
                     Paths = [sniffle_hypervisor_state:path(H) || {ok, H} <- Hs2],
                     Paths1 = [{'scale-distance', P, <<"path">>, ScaleMin, ScaleMax} ||
