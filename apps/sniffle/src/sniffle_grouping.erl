@@ -70,6 +70,7 @@ add_element(UUID, Element) ->
                 cluster ->
                     case sniffle_vm:get(Element) of
                         {ok, _} ->
+                            sniffle_vm:set(Element, <<"grouping">>, UUID),
                             do_write(UUID, add_element, Element);
                         E ->
                             E
@@ -77,6 +78,7 @@ add_element(UUID, Element) ->
                 none ->
                     case sniffle_vm:get(Element) of
                         {ok, _} ->
+                            sniffle_vm:set(Element, <<"grouping">>, UUID),
                             do_write(UUID, add_element, Element);
                         E ->
                             E
@@ -86,6 +88,7 @@ add_element(UUID, Element) ->
                         {ok, E} ->
                             case sniffle_grouping_state:type(E) of
                                 cluster ->
+                                    do_write(Element, add_grouping, UUID),
                                     do_write(UUID, add_element, Element);
                                 _ ->
                                     {error, not_supported}
@@ -95,6 +98,21 @@ add_element(UUID, Element) ->
                     end;
                 _ ->
                     {error, not_supported}
+            end;
+        E ->
+            E
+    end.
+
+remove_element(UUID, Element) ->
+    case get_(UUID) of
+        {ok, T} ->
+            case sniffle_grouping_state:type(T) of
+                stack ->
+                    do_write(Element, remove_grouping, UUID),
+                    do_write(UUID, remove_element, Element);
+                _ ->
+                    sniffle_vm:set(Element, <<"grouping">>, delete),
+                    do_write(UUID, remove_element, Element)
             end;
         E ->
             E
@@ -150,16 +168,13 @@ create_rules(UUID) ->
             E
     end.
 
-
-remove_element(UUID, Element) ->
-    do_write(UUID, remove_element, Element).
-
 add_grouping(UUID, Element) ->
     case {get_(UUID), get_(Element)} of
         {{ok, T}, {ok, E}} ->
             case {sniffle_grouping_state:type(T),
                   sniffle_grouping_state:type(E)} of
                 {stack, cluster} ->
+                    do_write(Element, add_element, UUID),
                     do_write(UUID, add_grouping, Element);
                 _ ->
                     {error, not_supported}
@@ -169,6 +184,7 @@ add_grouping(UUID, Element) ->
     end.
 
 remove_grouping(UUID, Element) ->
+    do_write(Element, remove_element, UUID),
     do_write(UUID, remove_grouping, Element).
 
 -spec delete(UUID::fifo:uuid()) ->
