@@ -190,6 +190,22 @@ remove_grouping(UUID, Element) ->
 -spec delete(UUID::fifo:uuid()) ->
                     not_found | {error, timeout} | ok.
 delete(UUID) ->
+    case get_(UUID) of
+        {ok, T} ->
+            Elements = sniffle_grouping_state:elements(T),
+            case sniffle_grouping_state:type(T) of
+                stack ->
+                    [do_write(Element, remove_grouping, UUID) ||
+                        Element <- Elements];
+                _ ->
+                    [sniffle_vm:set(Element, <<"grouping">>, delete) ||
+                        Element <- Elements],
+                    [do_write(Stack, remove_element, UUID) ||
+                        Stack <- sniffle_grouping_state:groupings(T)]
+            end;
+        _ ->
+            ok
+    end,
     do_write(UUID, delete).
 
 -spec list() ->
