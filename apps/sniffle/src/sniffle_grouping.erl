@@ -173,7 +173,7 @@ add_grouping(UUID, Element) ->
         {{ok, T}, {ok, E}} ->
             case {sniffle_grouping_state:type(T),
                   sniffle_grouping_state:type(E)} of
-                {stack, cluster} ->
+                {cluster, stack} ->
                     do_write(Element, add_element, UUID),
                     do_write(UUID, add_grouping, Element);
                 _ ->
