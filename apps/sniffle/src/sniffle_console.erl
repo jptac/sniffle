@@ -661,7 +661,8 @@ update_part(Img, Part) ->
     case sniffle_img:list_(Key) of
         {ok, [D]} ->
             sniffle_img:wipe(Key),
-            sniffle_img:sync_repair(Key, D);
+            sniffle_img:sync_repair(Key,  binary:copy(D)),
+            erlang:garbage_collect();
         _ ->
             io:format("Could not read: ~s/~p~n", [Img, Part]),
             throw({read_failure, Img, Part})
