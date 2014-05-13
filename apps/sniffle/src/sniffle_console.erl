@@ -662,7 +662,7 @@ update_part(Img, Part) ->
         {ok, [D]} ->
             sniffle_img:wipe(Key),
             timer:sleep(100),
-            sniffle_img:sync_repair(Key,  binary:copy(D)),
+            sniffle_img:sync_repair(Key,  D),
             {ok, _} = sniffle_img:get(Img, Part),
             erlang:garbage_collect();
         _ ->
