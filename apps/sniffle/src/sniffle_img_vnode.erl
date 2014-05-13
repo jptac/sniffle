@@ -136,21 +136,19 @@ init([Partition]) ->
 handle_command(ping, _Sender, State) ->
     {reply, {pong, State#vstate.partition}, State};
 
-handle_command({sync_repair, {ReqID, _},  Key, Obj}, _Sender, State) ->
-    lager:warning("Forced repair of img: ~p", [Key]),
-    put(State, Key, Obj),
+handle_command({sync_repair, {ReqID, _},  {Img, Idx}, Obj}, _Sender, State) ->
+    lager:warning("Forced repair of img: ~s/~p", [Img, Idx]),
+    put(State, <<Img/binary, Idx:32>>, Obj),
     {reply, {ok, ReqID}, State};
-
-handle_command({repair, <<Img:36/binary, Idx:32/integer>>, VClock, Obj}, Sender, State) ->
-    handle_command({repair, {Img, Idx}, VClock, Obj}, Sender, State);
 
 handle_command({repair, {Img, Idx}, VClock, Obj}, _Sender, State) ->
     lager:warning("Repair of img: ~s~p", [Img, Idx]),
-    case get(State#vstate.db, <<Img/binary, Idx:32>>) of
+    ImgAndIdx = <<Img/binary, Idx:32>>,
+    case get(State#vstate.db, ImgAndIdx) of
         {ok, #sniffle_obj{vclock = VC1}} when VC1 =:= VClock ->
-            put(State, Img, Obj);
+            put(State, ImgAndIdx, Obj);
         not_found ->
-            put(State, Img, Obj);
+            put(State, ImgAndIdx, Obj);
         _ ->
             lager:error("[imgs] Read repair failed, data was updated too recent.")
     end,

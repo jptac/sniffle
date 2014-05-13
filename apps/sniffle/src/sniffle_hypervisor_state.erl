@@ -98,6 +98,18 @@
 -ignore_xref([to_json/1, load/2, set/4, getter/2, uuid/1]).
 
 new(_) ->
+    {ok, Es} = ?NEW_LWW([], 0),
+    {ok, Ns} = ?NEW_LWW([], 0),
+    {ok, Ps} = ?NEW_LWW([], 0),
+    {ok, Si} = ?NEW_LWW([], 0),
+    {ok, Vi} = ?NEW_LWW([], 0),
+    #?HYPERVISOR{
+          etherstubs      = Es,
+          networks        = Ns,
+          path            = Ps,
+          sysinfo         = Si,
+          virtualisation  = Vi
+        }
     #?HYPERVISOR{}.
 
 alias(H) ->

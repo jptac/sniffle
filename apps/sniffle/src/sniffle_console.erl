@@ -657,11 +657,13 @@ do_update(MainMod, StateMod) ->
 
 update_part(Img, Part) ->
     io:format("."),
-    Key = <<Img/binary, Part:32>>,
+    Key = <<Img:36/binary, Part:32/integer>>,
     case sniffle_img:list_(Key) of
         {ok, [D]} ->
             sniffle_img:wipe(Key),
-            sniffle_img:sync_repair(Key,  binary:copy(D)),
+            timer:sleep(100),
+            sniffle_img:sync_repair(Key,  D),
+            {ok, _} = sniffle_img:get(Img, Part),
             erlang:garbage_collect();
         _ ->
             io:format("Could not read: ~s/~p~n", [Img, Part]),
