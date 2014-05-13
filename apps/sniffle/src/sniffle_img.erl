@@ -28,7 +28,7 @@
 wipe(UUID) ->
     sniffle_coverage:start(?MASTER, ?SERVICE, {wipe, UUID}).
 
-sync_repair(UUID, Obj) ->
+sync_repair(<<_Img:36/binary, _Part:32/integer>>=UUID, Obj) ->
     do_write(UUID, sync_repair, Obj).
 
 list_(Base) ->

@@ -657,7 +657,7 @@ do_update(MainMod, StateMod) ->
 
 update_part(Img, Part) ->
     io:format("."),
-    Key = <<Img/binary, Part:32>>,
+    Key = <<Img:36/binary, Part:32/integer>>,
     case sniffle_img:list_(Key) of
         {ok, [D]} ->
             sniffle_img:wipe(Key),
