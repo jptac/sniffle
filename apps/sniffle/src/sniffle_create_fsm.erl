@@ -56,6 +56,7 @@
              ]).
 
 -record(state, {
+          test_pid,
           uuid,
           package,
           package_name,
@@ -279,8 +280,7 @@ get_server(_Event, State = #state{
                               config = Config,
                               nets = Nets,
                               package = Package,
-                              grouping_rules = GroupingRules,
-                              delay = Delay}) ->
+                              grouping_rules = GroupingRules}) ->
     lager:debug("get_server: ~p", [Nets]),
     {ok, Ram} = jsxd:get(<<"ram">>, Package),
     sniffle_vm:set(UUID, <<"state">>, <<"fetching_server">>),
@@ -312,24 +312,29 @@ get_server(_Event, State = #state{
                      State#state{hypervisor = H,
                                  nets = Nets1}, 0};
                 _ ->
-                    {next_state, get_networks, State, Delay}
+                    do_retry(State)
             end;
         _ ->
-            {next_state, get_networks, State, Delay}
+            do_retry(State)
     end.
+do_retry(State = #state{test_pid = undefined, delay = Delay}) ->
+    {next_state, get_networks, State, Delay};
+do_retry(State = #state{test_pid = Pid}) ->
+    Pid ! failed,
+    {stop, normal, State}.
+
 
 get_ips(_Event, State = #state{nets = Nets,
                                uuid = UUID,
                                config = Config,
-                               dataset = Dataset,
-                               delay = Delay}) ->
+                               dataset = Dataset}) ->
     lager:debug("get_ips: ~p", [Nets]),
     {ok, Nics0} = jsxd:get(<<"networks">>, Dataset),
     case update_nics(UUID, Nics0, Config, Nets) of
         {error, E, Mapping} ->
             lager:error("[create] Failed to get ips: ~p", [E]),
             [sniffle_iprange:release_ip(Range, IP) ||{Range, IP} <- Mapping],
-            {next_state, get_networks, State, Delay};
+            do_retry(State);
         {Nics1, Mapping} ->
             Dataset1 = jsxd:set(<<"networks">>, Nics1, Dataset),
             MappingsJSON = jsxd:from_list([[{<<"ip">>, IP},
@@ -366,17 +371,14 @@ create(_Event, State = #state{
                           config = Config,
                           hypervisor = {Host, Port},
                           mapping = Mapping,
-                          old_nics = Nics,
-                          delay = Delay}) ->
+                          old_nics = Nics}) ->
     sniffle_vm:log(UUID, <<"Handing off to hypervisor.">>),
     sniffle_vm:set(UUID, <<"state">>, <<"creating">>),
     case libchunter:create_machine(Host, Port, UUID, Package, Dataset, Config) of
         {error, lock} ->
             [sniffle_iprange:release_ip(Range, IP) ||{Range, IP} <- Mapping],
-            {next_state, get_networks,
-             State#state{
-               dataset = jsxd:set(<<"networks">>, Nics, Dataset)
-              }, Delay};
+            do_retry(
+              State#state{dataset = jsxd:set(<<"networks">>, Nics, Dataset)});
         ok ->
             {stop, normal, State}
     end.
