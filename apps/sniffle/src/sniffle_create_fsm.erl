@@ -113,7 +113,8 @@ create(UUID, Package, Dataset, Config) ->
 %%                     {stop, StopReason}
 %% @end
 %%--------------------------------------------------------------------
-init([UUID, Package, Dataset, Config]) ->
+
+init([UUID, Package, Dataset, Config, Pid]) ->
     lager:info("[create] Starting FSM for ~s", [UUID]),
     process_flag(trap_exit, true),
     Config1 = jsxd:from_list(Config),
@@ -138,7 +139,8 @@ init([UUID, Package, Dataset, Config]) ->
                                      dataset_name = Dataset,
                                      config = Config1,
                                      delay = Delay,
-                                     max_retries = MaxRetries
+                                     max_retries = MaxRetries,
+                                     test_pid = Pid
                                     }, 0}.
 
 %%--------------------------------------------------------------------
