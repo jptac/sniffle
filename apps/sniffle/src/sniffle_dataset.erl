@@ -14,7 +14,7 @@
          set/2,
          set/3,
          import/1,
-         read_image/6,
+         read_image/7,
          wipe/1,
          sync_repair/2,
          list_/0
@@ -118,10 +118,11 @@ import(URL) ->
                         {sniffle_s3:get_host(), sniffle_s3:get_port(),
                          sniffle_s3:get_access_key(), sniffle_s3:get_secret_key(),
                          sniffle_s3:get_bucket(image)},
+                    ChunkSize = application:get_env(sniffle, image_chunk_size, 5*1024*1024),
                     {ok, U} = fifo_s3_upload:new(AKey, SKey, Host, Port, Bucket, UUID),
-                    spawn(?MODULE, read_image, [UUID, TotalSize, ImgURL, <<>>, 0, U]);
+                    spawn(?MODULE, read_image, [UUID, TotalSize, ImgURL, <<>>, 0, U, ChunkSize]);
                 internal ->
-                    spawn(?MODULE, read_image, [UUID, TotalSize, ImgURL, <<>>, 0, undefined])
+                    spawn(?MODULE, read_image, [UUID, TotalSize, ImgURL, <<>>, 0, undefined, 1024*1024])
             end,
             {ok, UUID};
         {ok, E, _, _} ->
@@ -179,16 +180,22 @@ do_write(Dataset, Op, Val) ->
     sniffle_entity_write_fsm:write({?VNODE, ?SERVICE}, Dataset, Op, Val).
 
 %% If more then one MB is in the accumulator read store it in 1MB chunks
-read_image(UUID, TotalSize, Url, Acc, Idx, Ref) when is_binary(Url) ->
+read_image(UUID, TotalSize, Url, Acc, Idx, Ref, ChunkSize) when is_binary(Url) ->
     case hackney:request(get, Url, [], <<>>, http_opts()) of
         {ok, 200, _, Client} ->
             sniffle_dataset:set(UUID, <<"status">>, <<"importing">>),
-            read_image(UUID, TotalSize, Client, Acc, Idx, Ref);
+            read_image(UUID, TotalSize, Client, Acc, Idx, Ref, ChunkSize);
         {ok, Reason, _, _} ->
             fail_import(UUID, Reason, 0)
     end;
 
-read_image(UUID, TotalSize, Client, <<MB:1048576/binary, Acc/binary>>, Idx, Ref) ->
+%% If we're done (and less then one MB is left, store the rest)
+
+
+
+read_image(UUID, TotalSize, Client, All, Idx, Ref, ChunkSize)
+  when byte_size(All) >= ChunkSize ->
+    <<MB:ChunkSize/binary, Acc/binary>> = All,
     {ok, Ref1} = case sniffle_img:backend() of
                      internal ->
                          sniffle_img:create(UUID, Idx, binary:copy(MB), Ref);
@@ -202,14 +209,13 @@ read_image(UUID, TotalSize, Client, <<MB:1048576/binary, Acc/binary>>, Idx, Ref)
                          end
                  end,
     Idx1 = Idx + 1,
-    Done = (Idx1 * 1024*1024) / TotalSize,
+    Done = (Idx1 * ChunkSize) / TotalSize,
     sniffle_dataset:set(UUID, <<"imported">>, Done),
     libhowl:send(UUID,
                  [{<<"event">>, <<"progress">>}, {<<"data">>, [{<<"imported">>, Done}]}]),
-    read_image(UUID, TotalSize, Client, binary:copy(Acc), Idx1, Ref1);
+    read_image(UUID, TotalSize, Client, binary:copy(Acc), Idx1, Ref1, ChunkSize);
 
-%% If we're done (and less then one MB is left, store the rest)
-read_image(UUID, _TotalSize, done, Acc, Idx, Ref) ->
+read_image(UUID, _TotalSize, done, Acc, Idx, Ref, _) ->
     libhowl:send(UUID,
                  [{<<"event">>, <<"progress">>}, {<<"data">>, [{<<"imported">>, 1}]}]),
     sniffle_dataset:set(UUID, <<"status">>, <<"imported">>),
@@ -218,14 +224,14 @@ read_image(UUID, _TotalSize, done, Acc, Idx, Ref) ->
     io:format("~p~n", [Ref1]),
     sniffle_img:create(UUID, done, <<>>, Ref1);
 
-read_image(UUID, TotalSize, Client, Acc, Idx, Ref) ->
+read_image(UUID, TotalSize, Client, Acc, Idx, Ref, ChunkSize) ->
     case hackney:stream_body(Client) of
         {ok, Data, Client1} ->
             read_image(UUID, TotalSize, Client1,
-                       binary:copy(<<Acc/binary, Data/binary>>), Idx, Ref);
+                       binary:copy(<<Acc/binary, Data/binary>>), Idx, Ref, ChunkSize);
         {done, Client2} ->
             hackney:close(Client2),
-            read_image(UUID, TotalSize, done, Acc, Idx, Ref);
+            read_image(UUID, TotalSize, done, Acc, Idx, Ref, ChunkSize);
         {error, Reason} ->
             fail_import(UUID, Reason, Idx)
     end.
