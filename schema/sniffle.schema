@@ -17,6 +17,12 @@
  [{default, 1},
   {datatype, integer}]}.
 
+%% @doc Chunk size to upload to s3, please beware that this needs to match
+%% LeoFS's large file chunk size!
+{mapping, "s3image_chunk_size", "sniffle.image_chunk_size",
+ [{default, "5MB"},
+  {datatype, bytesize}]}.
+
 %% @doc enable active anti-entropy subsystem
 {mapping, "anti_entropy", "riak_core.anti_entropy", [
   {datatype, {enum, [on, off, debug]}},
