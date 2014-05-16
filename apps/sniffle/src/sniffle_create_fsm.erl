@@ -209,6 +209,24 @@ vm_log(#state{uuid = UUID}, M)  ->
 %%                   {stop, Reason, NewState}
 %% @end
 %%--------------------------------------------------------------------
+create_permissions(_Event, State = #state{test_pid = {_,_}, config = Config}) ->
+    {ok, Creator} = jsxd:get([<<"owner">>], Config),
+    Owner = case libsnarl:user_active_org(Creator) of
+                {ok, <<"">>} ->
+                    lager:warning("User ~p has no active org.", [Creator]),
+                    <<"">>;
+                {ok, Org} ->
+                    lager:warning("User ~p has active org: ~p.", [Creator, Org]),
+                    Org
+            end,
+    Config1 = jsxd:set([<<"owner">>], Owner, Config),
+    {next_state, get_package,
+     State#state{
+       config = Config1,
+       creator = Creator,
+       owner = Owner
+      }, 0};
+
 create_permissions(_Event, State = #state{
                                       uuid = UUID,
                                       config = Config}) ->
