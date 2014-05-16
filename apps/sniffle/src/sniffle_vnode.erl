@@ -14,7 +14,8 @@
          handle_info/2,
          hash_object/2,
          mkid/0,
-         mkid/1]).
+         mkid/1,
+         mk_reqid/0]).
 
 -ignore_xref([mkid/0, mkid/1, change/5]).
 
