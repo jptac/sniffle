@@ -161,6 +161,16 @@ init([UUID, Package, Dataset, Config, Pid]) ->
 %%                   {stop, Reason, NewState}
 %% @end
 %%--------------------------------------------------------------------
+
+generate_grouping_rules(_Event, State = #state{test_pid = {_,_}, config = Config}) ->
+    case jsxd:get(<<"grouping">>, Config) of
+        {ok, Grouping} ->
+            Rules = sniffle_grouping:create_rules(Grouping),
+            {next_state, create_permissions, State#state{grouping_rules = Rules}, 0};
+        _ ->
+            {next_state, create_permissions, State, 0}
+    end;
+
 generate_grouping_rules(_Event, State = #state{
                                            uuid = UUID,
                                            config = Config
