@@ -291,7 +291,8 @@ get_networks(_event, State = #state{retry = R, max_retries = Max})
     BR = list_to_binary(integer_to_list(R)),
     BMax= list_to_binary(integer_to_list(Max)),
     vm_log(State, <<"Failed after too many retries: ", BR/binary, " > ",
-                           BMax/binary>>),
+                    BMax/binary>>),
+    lager:error("Failed after too many retries."),
     {stop, failed, State};
 
 get_networks(_Event, State = #state{config = Config, retry = Try}) ->
@@ -348,9 +349,11 @@ get_server(_Event, State = #state{
                      State#state{hypervisor = H,
                                  nets = Nets1}, 0};
                 _ ->
+                    lager:warning("Cound not find hypervisor."),
                     do_retry(State)
             end;
         _ ->
+            lager:warning("Cound not cace user."),
             do_retry(State)
     end.
 
@@ -364,6 +367,7 @@ get_ips(_Event, State = #state{nets = Nets,
         {error, E, Mapping} ->
             lager:error("[create] Failed to get ips: ~p", [E]),
             [sniffle_iprange:release_ip(Range, IP) ||{Range, IP} <- Mapping],
+            lager:warning("Could not map networks."),
             do_retry(State);
         {Nics1, Mapping} ->
             Dataset1 = jsxd:set(<<"networks">>, Nics1, Dataset),
@@ -413,6 +417,7 @@ create(_Event, State = #state{
     case libchunter:create_machine(Host, Port, UUID, Package, Dataset, Config) of
         {error, lock} ->
             [sniffle_iprange:release_ip(Range, IP) ||{Range, IP} <- Mapping],
+            lager:warning("Could not get log."),
             do_retry(
               State#state{dataset = jsxd:set(<<"networks">>, Nics, Dataset)});
         ok ->
@@ -490,8 +495,8 @@ terminate(_, create, _StateData) ->
 terminate(shutdown, _StateName, _StateData) ->
     ok;
 
-terminate(_Reason, _StateName, #state{test_pid={Pid, Ref}}) ->
-    Pid ! {Ref, failed},
+terminate(_Reason, StateName, #state{test_pid={Pid, Ref}}) ->
+    Pid ! {Ref, {failed, StateName}},
     ok;
 
 terminate(_Reason, StateName, State = #state{uuid=UUID}) ->
@@ -668,6 +673,5 @@ update_nics(UUID, Nics, Config, Nets, State) ->
 do_retry(State = #state{test_pid = undefined, delay = Delay}) ->
     {next_state, get_networks, State, Delay};
 
-do_retry(State = #state{test_pid = {Pid, Ref}}) ->
-    Pid ! {Ref, failed},
-    {stop, normal, State}.
+do_retry(State) ->
+    {stop, error, State}.
