@@ -490,6 +490,10 @@ terminate(_, create, _StateData) ->
 terminate(shutdown, _StateName, _StateData) ->
     ok;
 
+terminate(_Reason, _StateName, #state{test_pid={Pid, Ref}}) ->
+    Pid ! {Ref, failed},
+    ok;
+
 terminate(_Reason, StateName, State = #state{uuid=UUID}) ->
     eplugin:call('create:fail', UUID, StateName),
     StateBin = list_to_binary(atom_to_list(StateName)),
