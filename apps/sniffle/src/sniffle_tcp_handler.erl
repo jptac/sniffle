@@ -321,6 +321,14 @@ message({vm, create, Package, Dataset, Config}, State) when
      sniffle_vm:create(Package, Dataset, Config),
      State};
 
+message({vm, dry_run, Package, Dataset, Config}, State) when
+      is_binary(Package),
+      is_list(Config),
+      is_binary(Dataset) ->
+    {reply,
+     sniffle_vm:dry_run(Package, Dataset, Config),
+     State};
+
 message({vm, update, Vm, Package, Config}, State) when
       is_binary(Vm),
       is_list(Config) ->

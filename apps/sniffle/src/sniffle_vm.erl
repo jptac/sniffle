@@ -49,7 +49,8 @@
          update/3,
          wipe/1,
          sync_repair/2,
-         list_/0
+         list_/0,
+         dry_run/3
         ]).
 
 -ignore_xref([logs/1,
@@ -599,6 +600,18 @@ create(Package, Dataset, Config) ->
     sniffle_create_pool:add(UUID, Package, Dataset, Config),
     %%sniffle_create_fsm:create(UUID, Package, Dataset, Config),
     {ok, UUID}.
+
+dry_run(Package, Dataset, Config) ->
+    UUID = uuid:uuid4s(),
+    Ref = make_ref(),
+    sniffle_create_fsm:create(UUID, Package, Dataset, Config, {self(), Ref}),
+    receive
+        {Ref, Res} ->
+            {ok, Res}
+    after
+        5000 ->
+            {error, timeout}
+    end.
 
 
 %%--------------------------------------------------------------------
