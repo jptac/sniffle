@@ -13,8 +13,9 @@
 -include("sniffle.hrl").
 
 %% API
--export([create/4,
-         start_link/4]).
+-export([create/5,
+         create/4,
+         start_link/5]).
 
 %% gen_fsm callbacks
 -export([
@@ -42,12 +43,13 @@
 -define(SERVER, ?MODULE).
 
 -ignore_xref([
+              create/5,
               create/2,
               generate_grouping_rules/2,
               callbacks/2,
               get_dataset/2,
               get_package/2,
-              start_link/4,
+              start_link/5,
               get_server/2,
               create_permissions/2,
               get_networks/2,
@@ -89,11 +91,15 @@
 %% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
 %% @end
 %%--------------------------------------------------------------------
-start_link(UUID, Package, Dataset, Config) ->
-    gen_fsm:start_link(?MODULE, [UUID, Package, Dataset, Config], []).
+
+start_link(UUID, Package, Dataset, Config, Pid) ->
+    gen_fsm:start_link(?MODULE, [UUID, Package, Dataset, Config, Pid], []).
 
 create(UUID, Package, Dataset, Config) ->
-    supervisor:start_child(sniffle_create_fsm_sup, [UUID, Package, Dataset, Config]).
+    create(UUID, Package, Dataset, Config, undefined).
+
+create(UUID, Package, Dataset, Config, Pid) ->
+    supervisor:start_child(sniffle_create_fsm_sup, [UUID, Package, Dataset, Config, Pid]).
 
 
 %%%===================================================================
