@@ -398,9 +398,12 @@ build_key(_Event, State = #state{
 
 create(_Event, State = #state{
                           mapping = Mapping,
+                          uuid = UUID,
+                          hypervisor = {Host, Port},
                           test_pid = {Pid, Ref}
                          }) ->
     [sniffle_iprange:release_ip(Range, IP) ||{Range, IP} <- Mapping],
+    libchunter:release(Host, Port, UUID),
     Pid ! {Ref, success},
     {stop, normal, State};
 
@@ -493,6 +496,13 @@ terminate(_, create, _StateData) ->
     ok;
 
 terminate(shutdown, _StateName, _StateData) ->
+    ok;
+
+terminate(_Reason, StateName, #state{hypervisor = {Host, Port},
+                                     uuid = UUID,
+                                     test_pid={Pid, Ref}}) ->
+    libchunter:release(Host, Port, UUID),
+    Pid ! {Ref, {failed, StateName}},
     ok;
 
 terminate(_Reason, StateName, #state{test_pid={Pid, Ref}}) ->
@@ -670,7 +680,8 @@ update_nics(UUID, Nics, Config, Nets, State) ->
               end
       end, {[], []}, Nics).
 
-do_retry(State = #state{test_pid = undefined, delay = Delay}) ->
+do_retry(State = #state{test_pid = undefined,
+                        delay = Delay}) ->
     {next_state, get_networks, State, Delay};
 
 do_retry(State) ->
