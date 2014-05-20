@@ -49,7 +49,8 @@
          update/3,
          wipe/1,
          sync_repair/2,
-         list_/0
+         list_/0,
+         dry_run/3
         ]).
 
 -ignore_xref([logs/1,
@@ -522,7 +523,8 @@ register(Vm, Hypervisor) ->
 
 %%--------------------------------------------------------------------
 %% @doc Unregisteres an existing VM, this includs freeling the IP
-%%   addresses it had.
+%%   addresses it had, removing it from groupings and cleaning
+%%   permissions.
 %% @end
 %%--------------------------------------------------------------------
 -spec unregister(VM::fifo:uuid()) ->
@@ -553,6 +555,12 @@ unregister(Vm) ->
                                   [libsnarl:role_revoke_prefix(G, VmPrefix) || G <- Roles],
                                   [libsnarl:role_revoke_prefix(G, ChannelPrefix) || G <- Roles]
                           end);
+                _ ->
+                    ok
+            end,
+            case jsxd:get(<<"grouping">>, V) of
+                {ok, G} ->
+                    sniffle_grouping:remove_element(G, Vm);
                 _ ->
                     ok
             end;
@@ -592,6 +600,18 @@ create(Package, Dataset, Config) ->
     sniffle_create_pool:add(UUID, Package, Dataset, Config),
     %%sniffle_create_fsm:create(UUID, Package, Dataset, Config),
     {ok, UUID}.
+
+dry_run(Package, Dataset, Config) ->
+    UUID = uuid:uuid4s(),
+    Ref = make_ref(),
+    sniffle_create_fsm:create(UUID, Package, Dataset, Config, {self(), Ref}),
+    receive
+        {Ref, Res} ->
+            {ok, Res}
+    after
+        5000 ->
+            {error, timeout}
+    end.
 
 
 %%--------------------------------------------------------------------

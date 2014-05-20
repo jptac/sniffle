@@ -170,8 +170,8 @@ handle_command({ip, claim,
         {ok, #sniffle_obj{val=H0} = O} ->
             case sniffle_iprange_state:is_free(IP, statebox:value(H0)) of
                 true ->
-                    H1 = statebox:modify({fun sniffle_iprange_state:load/1,[]}, H0),
-                    H2 = statebox:modify({fun sniffle_iprange_state:claim_ip/2,[IP]}, H1),
+                    H1 = statebox:modify({fun sniffle_iprange_state:load/2, [dummy]}, H0),
+                    H2 = statebox:modify({fun sniffle_iprange_state:claim_ip/2, [ IP]}, H1),
                     H3 = statebox:expire(?STATEBOX_EXPIRE, H2),
                     Obj =  sniffle_obj:update(H3, Coordinator, O),
                     sniffle_vnode:put(Iprange, Obj, State),
@@ -193,7 +193,7 @@ handle_command({ip, release,
     case fifo_db:get(State#vstate.db, <<"iprange">>, Iprange) of
         {ok, #sniffle_obj{val=H0} = O} ->
 
-            H1 = statebox:modify({fun sniffle_iprange_state:load/1,[]}, H0),
+            H1 = statebox:modify({fun sniffle_iprange_state:load/2, [dummy]}, H0),
             H2 = statebox:modify({fun sniffle_iprange_state:release_ip/2,[IP]}, H1),
             H3 = statebox:expire(?STATEBOX_EXPIRE, H2),
             Obj =  sniffle_obj:update(H3, Coordinator, O),

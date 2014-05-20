@@ -53,6 +53,7 @@ start(_StartType, _StartArgs) ->
             ?SRV_WITH_AAE(sniffle_iprange_vnode, sniffle_iprange),
             ?SRV_WITH_AAE(sniffle_package_vnode, sniffle_package),
             ?SRV_WITH_AAE(sniffle_dataset_vnode, sniffle_dataset),
+            ?SRV_WITH_AAE(sniffle_grouping_vnode, sniffle_grouping),
             case sniffle_opt:get(storage, general, backend, large_data_backend, internal) of
                 internal ->
                     ?SRV_WITH_AAE(sniffle_img_vnode, sniffle_img);

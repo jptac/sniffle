@@ -9,6 +9,7 @@
    [
     register/3,
     unregister/1,
+    get_/1,
     get/1,
     list/0,
     list/2,
@@ -51,6 +52,7 @@ register(Hypervisor, IP, Port) ->
         not_found ->
             do_write(Hypervisor, register, [IP, Port]);
         {ok, _UserObj} ->
+            set(Hypervisor, [{<<"host">>, IP}, {<<"port">>, Port}]),
             duplicate
     end.
 
@@ -62,10 +64,20 @@ unregister(Hypervisor) ->
     [sniffle_vm:set(VM, Values) || {_, VM} <- VMs],
     do_write(Hypervisor, unregister).
 
+-spec get_(Hypervisor::fifo:hypervisor_id()) ->
+                 not_found | {ok, HV::#?HYPERVISOR{}} | {error, timeout}.
+get_(Hypervisor) ->
+    sniffle_entity_read_fsm:start({?VNODE, ?SERVICE}, get, Hypervisor).
+
 -spec get(Hypervisor::fifo:hypervisor_id()) ->
                  not_found | {ok, HV::fifo:object()} | {error, timeout}.
 get(Hypervisor) ->
-    sniffle_entity_read_fsm:start({?VNODE, ?SERVICE}, get, Hypervisor).
+    case get_(Hypervisor) of
+        {ok, H} ->
+            {ok, sniffle_hypervisor_state:to_json(H)};
+        R ->
+            R
+    end.
 
 -spec status() -> {error, timeout} |
                   {ok, {Resources::fifo:object(),
@@ -151,7 +163,9 @@ list(Requirements, true) ->
     {ok, Res} = sniffle_full_coverage:start(
                   ?MASTER, ?SERVICE, {list, Requirements, true}),
     Res1 = rankmatcher:apply_scales(Res),
-    {ok,  lists:sort(Res1)};
+    Res2 = [{Pts, sniffle_hypervisor_state:to_json(H)} ||
+               {Pts, H} <- Res1],
+    {ok,  lists:sort(Res2)};
 
 list(Requirements, false) ->
     {ok, Res} = sniffle_coverage:start(
