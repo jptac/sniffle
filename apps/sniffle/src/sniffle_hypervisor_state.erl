@@ -274,12 +274,11 @@ load({T, ID}, Sb) ->
     {ok, Pools} = jsxd:get([<<"pools">>], H),
     {ok, Port} = jsxd:get([<<"port">>], H),
     {ok, Resources} = jsxd:get([<<"resources">>], H),
-    {ok, Services} = jsxd:get([<<"services">>], H),
+    Services = jsxd:get([<<"services">>], [], H),
     {ok, Sysinfo} = jsxd:get([<<"sysinfo">>], H),
     {ok, UUID} = jsxd:get([<<"uuid">>], H),
     {ok, Version} = jsxd:get([<<"version">>], H),
     {ok, Virtualisation} = jsxd:get([<<"virtualisation">>], H),
-
 
     Characteristics1 = fifo_map:from_orddict(Characteristics, ID, T),
     {ok, Alias1} = ?NEW_LWW(Alias, T),
