@@ -219,7 +219,6 @@ read_image(UUID, _TotalSize, done, Acc, Idx, Ref, _) ->
                  [{<<"event">>, <<"progress">>}, {<<"data">>, [{<<"imported">>, 1}]}]),
     sniffle_dataset:set(UUID, <<"status">>, <<"imported">>),
     sniffle_dataset:set(UUID, <<"imported">>, 1),
-    {ok, Ref1} = sniffle_img:create(UUID, Idx, Acc, Ref),
     {ok, Ref1} = case sniffle_img:backend() of
                      internal ->
                          sniffle_img:create(UUID, Idx, binary:copy(Acc), Ref);
