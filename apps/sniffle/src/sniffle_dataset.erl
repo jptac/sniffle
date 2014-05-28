@@ -192,7 +192,6 @@ read_image(UUID, TotalSize, Url, Acc, Idx, Ref, ChunkSize) when is_binary(Url) -
 %% If we're done (and less then one MB is left, store the rest)
 
 
-
 read_image(UUID, TotalSize, Client, All, Idx, Ref, ChunkSize)
   when byte_size(All) >= ChunkSize ->
     <<MB:ChunkSize/binary, Acc/binary>> = All,
@@ -221,6 +220,19 @@ read_image(UUID, _TotalSize, done, Acc, Idx, Ref, _) ->
     sniffle_dataset:set(UUID, <<"status">>, <<"imported">>),
     sniffle_dataset:set(UUID, <<"imported">>, 1),
     {ok, Ref1} = sniffle_img:create(UUID, Idx, Acc, Ref),
+    {ok, Ref1} = case sniffle_img:backend() of
+                     internal ->
+                         sniffle_img:create(UUID, Idx, binary:copy(Acc), Ref);
+                     s3 ->
+                         case  fifo_s3_upload:part(Ref, binary:copy(Acc)) of
+                             ok ->
+                                 fifo_s3_upload:done(Ref),
+                                 {ok, Ref};
+                             E ->
+                                 fail_import(UUID, E, Idx),
+                                 E
+                         end
+                 end,
     io:format("~p~n", [Ref1]),
     sniffle_img:create(UUID, done, <<>>, Ref1);
 
