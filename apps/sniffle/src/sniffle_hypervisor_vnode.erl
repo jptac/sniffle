@@ -185,7 +185,9 @@ handle_coverage(status, _KeySpaces, Sender, State) ->
                      Port = sniffle_hypervisor_state:port(S1),
                      W1 =
                          case libchunter:ping(binary_to_list(Host), Port) of
-                             {error, connection_failed} ->
+                             pong ->
+                                 Warnings;
+                             _ ->
                                  [jsxd:from_list(
                                     [{<<"category">>, <<"chunter">>},
                                      {<<"element">>, K},
@@ -193,9 +195,7 @@ handle_coverage(status, _KeySpaces, Sender, State) ->
                                      {<<"message">>,
                                       bin_fmt("Chunter server ~s down.",
                                               [sniffle_hypervisor_state:alias(S0)])}]) |
-                                  Warnings];
-                             pong ->
-                                 Warnings
+                                  Warnings]
                          end,
                      {Res1, W2} =
                          case sniffle_hypervisor_state:pools(S1) of
