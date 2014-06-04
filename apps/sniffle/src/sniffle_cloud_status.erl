@@ -22,10 +22,7 @@ start() ->
         ok ->
             ok;
         {ok, Result} ->
-            {ok, Result};
-        Else ->
-            lager:error("Unknown coverage reply: ~p", [Else]),
-            {error, unknown_reply}
+            {ok, Result}
     after 10000 ->
             {error, timeout}
     end.

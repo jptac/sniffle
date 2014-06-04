@@ -83,7 +83,13 @@ get(Hypervisor) ->
                   {ok, {Resources::fifo:object(),
                         Warnings::fifo:object()}}.
 status() ->
-    {ok, {Resources0, Warnings}} = sniffle_cloud_status:start(),
+    {Resources0, Warnings} =
+        case sniffle_cloud_status:start() of
+            {ok, {Rx, Wx}} ->
+                {Rx, Wx};
+            _ ->
+                {[], []}
+        end,
     Storage = case backend() of
                   internal ->
                       <<"internal">>;
