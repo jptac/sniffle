@@ -77,8 +77,12 @@ add_element({_T, ID}, V, H) ->
     H#?GROUPING{elements = O1}.
 
 remove_element({_T, ID}, V, H) ->
-    {ok, O1} = riak_dt_orswot:update({remove, V}, ID, H#?GROUPING.elements),
-    H#?GROUPING{elements = O1}.
+    case riak_dt_orswot:update({remove, V}, ID, H#?GROUPING.elements) of
+        {error,{precondition,{not_present,_}}} ->
+            H;
+        {ok, O1} ->
+            H#?GROUPING{elements = O1}
+    end.
 
 groupings(H) ->
     riak_dt_orswot:value(H#?GROUPING.groupings).
@@ -88,8 +92,12 @@ add_grouping({_T, ID}, V, H) ->
     H#?GROUPING{groupings = O1}.
 
 remove_grouping({_T, ID}, V, H) ->
-    {ok, O1} = riak_dt_orswot:update({remove, V}, ID, H#?GROUPING.groupings),
-    H#?GROUPING{groupings = O1}.
+    case riak_dt_orswot:update({remove, V}, ID, H#?GROUPING.groupings) of
+        {error,{precondition,{not_present,_}}} ->
+            H;
+        {ok, O1} ->
+            H#?GROUPING{groupings = O1}
+    end.
 
 
 getter(#sniffle_obj{val=S0}, <<"name">>) ->

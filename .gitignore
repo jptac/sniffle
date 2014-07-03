@@ -19,3 +19,5 @@ rel/sniffle
 erl_crash.dump
 sniffle_template.xml
 .rebar
+.eqc-info
+current_counterexample.eqc
