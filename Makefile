@@ -27,14 +27,24 @@ clean:
 distclean: clean devclean relclean
 	$(REBAR) delete-deps
 
-test: xref
-	$(REBAR) skip_deps=true eunit
+long-test:
+	-rm -r apps/sniffle/.eunit
+	$(REBAR) skip_deps=true -DEQC_LONG_TESTS eunit -v -r
+
+eunit: 
+	$(REBAR) compile
+	-rm -r apps/sniffle/.eunit
+	$(REBAR) eunit skip_deps=true -r -v
+
+test: eunit
+	$(REBAR) xref skip_deps=true -r
 
 quick-xref:
-	$(REBAR) xref skip_deps=true
+	$(REBAR) xref skip_deps=true -r
 
 quick-test:
-	$(REBAR) skip_deps=true eunit
+	-rm -r apps/sniffle/.eunit
+	$(REBAR) -DEQC_SHORT_TEST skip_deps=true eunit -r
 
 rel: all zabbix
 	-rm -r rel/sniffle/share
