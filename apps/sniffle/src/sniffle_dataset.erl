@@ -9,6 +9,7 @@
          create/1,
          delete/1,
          get/1,
+         get_/1,
          list/0,
          list/2,
          set/2,
@@ -23,6 +24,7 @@
 -ignore_xref([
               sync_repair/2,
               list_/0,
+              get_/1,
               wipe/1
               ]).
 
@@ -58,9 +60,20 @@ delete(UUID) ->
             E
     end.
 
+
 -spec get(UUID::fifo:dtrace_id()) ->
                  not_found | {ok, Dataset::fifo:dataset()} | {error, timeout}.
 get(UUID) ->
+    case get_(UUID) of
+        {ok, D} ->
+            {ok, sniffle_dataset_state:to_json(D)};
+        R ->
+            R
+    end.
+
+-spec get_(UUID::fifo:dtrace_id()) ->
+                  not_found | {ok, Dataset::fifo:dataset()} | {error, timeout}.
+get_(UUID) ->
     sniffle_entity_read_fsm:start({?VNODE, ?SERVICE}, get, UUID).
 
 -spec list() ->

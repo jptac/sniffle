@@ -119,13 +119,34 @@
           metadata       = riak_dt_map:new()    :: riak_dt_map:map()
         }).
 
+-record(dataset_0_1_0,
+        {
+          uuid           = riak_dt_lwwreg:new() :: riak_dt_lwwreg:lwwreg(),
+          status         = riak_dt_lwwreg:new() :: riak_dt_lwwreg:lwwreg(),
+          imported       = riak_dt_lwwreg:new() :: riak_dt_lwwreg:lwwreg(),
+          metadata       = riak_dt_map:new()    :: riak_dt_map:map(),
 
--define(DATASET, dataset).
+          dataset        = riak_dt_lwwreg:new() :: riak_dt_lwwreg:lwwreg(),
+          description    = riak_dt_lwwreg:new() :: riak_dt_lwwreg:lwwreg(),
+          disk_driver    = riak_dt_lwwreg:new() :: riak_dt_lwwreg:lwwreg(),
+          homepage       = riak_dt_lwwreg:new() :: riak_dt_lwwreg:lwwreg(),
+          image_size     = riak_dt_lwwreg:new() :: riak_dt_lwwreg:lwwreg(),
+          name           = riak_dt_lwwreg:new() :: riak_dt_lwwreg:lwwreg(),
+          networks       = riak_dt_lwwreg:new() :: riak_dt_lwwreg:lwwreg(),
+          nic_driver     = riak_dt_lwwreg:new() :: riak_dt_lwwreg:lwwreg(),
+          os             = riak_dt_lwwreg:new() :: riak_dt_lwwreg:lwwreg(),
+          users          = riak_dt_lwwreg:new() :: riak_dt_lwwreg:lwwreg(),
+          version        = riak_dt_lwwreg:new() :: riak_dt_lwwreg:lwwreg()
+
+        }).
+
+
 -define(PACKAGE, package).
 -define(IPRANGE, iprange).
 -define(VM, vm).
 -define(HYPERVISOR, hypervisor_0_1_0).
 -define(GROUPING, grouping_0_1_0).
+-define(DATASET, dataset_0_1_0).
 
 -define(NEW_LWW(V, T), riak_dt_lwwreg:update(
                          {assign, V, T}, none,

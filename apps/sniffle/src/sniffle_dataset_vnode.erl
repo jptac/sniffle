@@ -125,8 +125,8 @@ init([Part]) ->
 
 handle_command({create, {ReqID, Coordinator}, Dataset, []},
                _Sender, State) ->
-    I0 = statebox:new(fun sniffle_dataset_state:new/0),
-    I1 = statebox:modify({fun sniffle_dataset_state:name/2, [Dataset]}, I0),
+    I0 = sniffle_dataset_state:new({ReqID, Coordinator}),
+    I1 = sniffle_dataset_state:uuid({ReqID, Coordinator}, Dataset, I0),
     VC0 = vclock:fresh(),
     VC = vclock:increment(Coordinator, VC0),
     Obj = #sniffle_obj{val=I1, vclock=VC},

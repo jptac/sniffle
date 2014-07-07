@@ -9,46 +9,299 @@
 
 -include("sniffle.hrl").
 
+
+-define(G(N, F),
+        getter(#sniffle_obj{val=S0}, N) ->
+               F(S0)).
+
+-define(G(E),
+        E(H) -> riak_dt_lwwreg:value(H#?DATASET.E)).
+
+-define(S(E),
+        E({T, _ID}, V, H) ->
+               {ok, V1} = riak_dt_lwwreg:update({assign, V, T}, none, H#?DATASET.E),
+               H#?DATASET{E = V1}).
+
+-define(S(N, F),
+        set(TID, N, Value, D) ->
+               F(TID, Value, D)).
+
 -export([
-         new/0,
-         load/1,
+         new/1,
          load/2,
-         uuid/1,
-         name/2,
+         uuid/1, uuid/3,
+         status/1, status/3,
+         imported/1, imported/3,
          set/4,
          set/3,
-         getter/2
+         getter/2,
+         to_json/1,
+         metadata/1, set_metadata/4
         ]).
 
--ignore_xref([load/2, load/1, set/4, set/3, getter/2, uuid/1]).
+-ignore_xref([load/2, load/1, set/4, set/3, getter/2,
+              uuid/1, uuid/3,
+              imported/1, imported/3,
+              status/1, status/3,
+              metadata/1, set_metadata/4
+             ]).
 
-getter(#sniffle_obj{val=S0}, Resource) ->
-    jsxd:get(Resource, 0, statebox:value(S0)).
+-export([
+         dataset/1,
+         dataset/3,
+         description/1,
+         description/3,
+         disk_driver/1,
+         disk_driver/3,
+         homepage/1,
+         homepage/3,
+         image_size/1,
+         image_size/3,
+         name/1,
+         name/3,
+         networks/1,
+         networks/3,
+         nic_driver/1,
+         nic_driver/3,
+         os/1,
+         os/3,
+         users/1,
+         users/3,
+         version/1,
+         version/3
+        ]).
 
-uuid(Vm) ->
-    {ok, UUID} = jsxd:get(<<"dataset">>, statebox:value(Vm)),
-    UUID.
+-ignore_xref([
+              dataset/1,
+              dataset/3,
+              description/1,
+              description/3,
+              disk_driver/1,
+              disk_driver/3,
+              homepage/1,
+              homepage/3,
+              image_size/1,
+              image_size/3,
+              name/1,
+              name/3,
+              networks/1,
+              networks/3,
+              nic_driver/1,
+              nic_driver/3,
+              os/1,
+              os/3,
+              users/1,
+              users/3,
+              version/1,
+              version/3
+             ]).
 
-load(_, D) ->
-    load(D).
 
-load(#dataset{name = Name,
-              attributes = Attributes}) ->
-    jsxd:thread([{set, <<"name">>, Name},
-                 {merge, jsxd:from_list(dict:to_list(Attributes))}],
-                new());
+new({T, _ID}) ->
+    {ok, Imported} = ?NEW_LWW(0, T),
+    {ok, Status} = ?NEW_LWW(<<"new">>, T),
+    #?DATASET{
+        imported = Imported,
+        status = Status
+       }.
+?G(<<"uuid">>, uuid);
+?G(<<"status">>, status);
+?G(<<"imported">>, imported);
 
-load(Dataset) ->
-    Dataset.
+?G(<<"dataset">>, dataset);
+?G(<<"description">>, description);
+?G(<<"disk_driver">>, disk_driver);
+?G(<<"homepage">>, homepage);
+?G(<<"image_size">>, image_size);
+?G(<<"name">>, name);
+?G(<<"networks">>, networks);
+?G(<<"nic_driver">>, nic_driver);
+?G(<<"os">>, os);
+?G(<<"users">>, users);
+?G(<<"version">>, version).
 
-new() ->
-    jsxd:set(<<"version">>, <<"0.1.0">>, jsxd:new()).
+?G(uuid).
+?S(uuid).
+?G(status).
+?S(status).
+?G(imported).
+?S(imported).
 
-name(Name, Dataset) ->
-    jsxd:set(<<"name">>, Name, Dataset).
+?G(dataset).
+?S(dataset).
+?G(description).
+?S(description).
+?G(disk_driver).
+?S(disk_driver).
+?G(homepage).
+?S(homepage).
+?G(image_size).
+?S(image_size).
+?G(name).
+?S(name).
+?G(networks).
+?S(networks).
+?G(nic_driver).
+?S(nic_driver).
+?G(os).
+?S(os).
+?G(users).
+?S(users).
+?G(version).
+?S(version).
 
-set(_ID, Attribute, Value, D) ->
-    statebox:modify({fun set/3, [Attribute, Value]}, D).
+metadata(H) ->
+    fifo_map:value(H#?DATASET.metadata).
+
+set_metadata({T, ID}, P, Value, User) when is_binary(P) ->
+    set_metadata({T, ID}, fifo_map:split_path(P), Value, User);
+
+set_metadata({_T, ID}, Attribute, delete, G) ->
+    {ok, M1} = fifo_map:remove(Attribute, ID, G#?DATASET.metadata),
+    G#?DATASET{metadata = M1};
+
+set_metadata({T, ID}, Attribute, Value, G) ->
+    {ok, M1} = fifo_map:set(Attribute, Value, ID, T, G#?DATASET.metadata),
+    G#?DATASET{metadata = M1}.
+
+-define(V(R), riak_dt_lwwreg:value(R)).
+
+to_json(D) ->
+    [
+     {<<"dataset">>, dataset(D)},
+     {<<"description">>, description(D)},
+     {<<"disk_driver">>, disk_driver(D)},
+     {<<"homepage">>, homepage(D)},
+     {<<"image_size">>, image_size(D)},
+     {<<"imported">>, imported(D)},
+     {<<"metadata">>, metadata(D)},
+     {<<"name">>, name(D)},
+     {<<"networks">>, networks(D)},
+     {<<"nic_driver">>, nic_driver(D)},
+     {<<"os">>, os(D)},
+     {<<"status">>, status(D)},
+     {<<"users">>, users(D)},
+     {<<"uuid">>, uuid(D)},
+     {<<"version">>, version(D)}
+    ].
+
+load(_, #?DATASET{} = H) ->
+    H;
+
+load({T, ID}, Sb) ->
+    H = statebox:value(Sb),
+    {ok, UUID} = jsxd:get([<<"uuid">>], H),
+    {ok, Imported} = jsxd:get([<<"imported">>], H),
+    {ok, Status} = jsxd:get([<<"status">>], H),
+    {ok, Metadata} = jsxd:get([<<"metadata">>], H),
+    {ok, UUID1} = ?NEW_LWW(UUID, T),
+    {ok, Imported1} = ?NEW_LWW(Imported, T),
+    {ok, Status1} = ?NEW_LWW(Status, T),
+    Metadata1 = fifo_map:from_orddict(Metadata, ID, T),
+    D = #dataset_0_1_0{
+           uuid = UUID1,
+           imported = Imported1,
+           status = Status1,
+           metadata = Metadata1
+          },
+    D1 = case jsxd:get([<<"dataset">>], H) of
+             {k, Dataset} ->
+                 {ok, Dataset1} = ?NEW_LWW(Dataset, T),
+                 D#dataset_0_1_0{dataset = Dataset1};
+             _->
+                 D
+         end,
+    D2 = case jsxd:get([<<"description">>], H) of
+             {k, Description} ->
+                 {ok, Description1} = ?NEW_LWW(Description, T),
+                 D1#dataset_0_1_0{description = Description1};
+             _->
+                 D1
+         end,
+    D3 = case jsxd:get([<<"disk_driver">>], H) of
+             {k, DiskDriver} ->
+                 {ok, DiskDriver1} = ?NEW_LWW(DiskDriver, T),
+                 D2#dataset_0_1_0{disk_driver = DiskDriver1};
+             _->
+                 D2
+         end,
+    D4 = case jsxd:get([<<"homepage">>], H) of
+             {k, Homepage} ->
+                 {ok, Homepage1} = ?NEW_LWW(Homepage, T),
+                 D3#dataset_0_1_0{homepage = Homepage1};
+             _->
+                 D3
+         end,
+    D5 = case jsxd:get([<<"image_size">>], H) of
+             {k, ImageSize} ->
+                 {ok, ImageSize1} = ?NEW_LWW(ImageSize, T),
+                 D4#dataset_0_1_0{image_size = ImageSize1};
+             _->
+                 D4
+         end,
+    D6 = case jsxd:get([<<"name">>], H) of
+             {k, Name} ->
+                 {ok, Name1} = ?NEW_LWW(Name, T),
+                 D5#dataset_0_1_0{name = Name1};
+             _->
+                 D5
+         end,
+    D7 = case jsxd:get([<<"networks">>], H) of
+             {k, Networks} ->
+                 {ok, Networks1} = ?NEW_LWW(Networks, T),
+                 D6#dataset_0_1_0{networks = Networks1};
+             _->
+                 D6
+         end,
+    D7 = case jsxd:get([<<"nic_driver">>], H) of
+             {k, NicDriver} ->
+                 {ok, NicDriver1} = ?NEW_LWW(NicDriver, T),
+                 D6#dataset_0_1_0{nic_driver = NicDriver1};
+             _->
+                 D6
+         end,
+    D8 = case jsxd:get([<<"os">>], H) of
+             {k, OS} ->
+                 {ok, OS1} = ?NEW_LWW(OS, T),
+                 D7#dataset_0_1_0{os = OS1};
+             _->
+                 D7
+         end,
+    D9 = case jsxd:get([<<"users">>], H) of
+             {k, Users} ->
+                 {ok, Users1} = ?NEW_LWW(Users, T),
+                 D8#dataset_0_1_0{users = Users1};
+             _->
+                 D8
+         end,
+    case jsxd:get([<<"version">>], H) of
+        {k, Version} ->
+            {ok, Version1} = ?NEW_LWW(Version, T),
+            D9#dataset_0_1_0{version = Version1};
+        _->
+            D9
+    end.
+
+?S(<<"uuid">>, uuid);
+?S(<<"status">>, status);
+?S(<<"imported">>, imported);
+
+?S(<<"dataset">>, dataset);
+?S(<<"description">>, description);
+?S(<<"disk_driver">>, disk_driver);
+?S(<<"homepage">>, homepage);
+?S(<<"image_size">>, image_size);
+?S(<<"name">>, name);
+?S(<<"networks">>, networks);
+?S(<<"nic_driver">>, nic_driver);
+?S(<<"os">>, os);
+?S(<<"users">>, users);
+?S(<<"version">>, version);
+
+set(ID, K = <<"metadata.", _/binary>>, V, H) ->
+    set(ID, re:split(K, "\\."), V, H);
+set(ID, [<<"metadata">> | R], V, H) ->
+    set_metadata(ID, R, V, H).
 
 set(Attribute, delete, Dataset) ->
     jsxd:delete(Attribute, Dataset);

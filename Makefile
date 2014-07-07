@@ -72,7 +72,7 @@ docs:
 ##
 
 xref: all
-	$(REBAR) xref skip_deps=true
+	$(REBAR) xref skip_deps=true -r
 
 stage : rel
 	$(foreach dep,$(wildcard deps/* wildcard apps/*), rm -rf rel/sniffle/lib/$(shell basename $(dep))-* && ln -sf $(abspath $(dep)) rel/sniffle/lib;)
