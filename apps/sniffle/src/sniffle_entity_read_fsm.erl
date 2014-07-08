@@ -241,10 +241,16 @@ merge(Replies) ->
 -spec reconcile([A :: statebox:statebox()]) -> A :: statebox:statebox().
 
 reconcile([V = #?HYPERVISOR{} | Vs]) ->
-    reconcile_hypervisor(Vs, V);
+    reconcile(sniffle_hypervisor_state, Vs, V);
 
 reconcile([V = #?GROUPING{} | Vs]) ->
-    reconcile_grouping(Vs, V);
+    reconcile(sniffle_grouping_state, Vs, V);
+
+reconcile([V = #?NETWORK{} | Vs]) ->
+    reconcile(sniffle_network_state, Vs, V);
+
+reconcile([V = #?DATASET{} | Vs]) ->
+    reconcile(sniffle_dataset_state, Vs, V);
 
 reconcile([V0 | _ ] = Vals) ->
     case statebox:is_statebox(V0) of
@@ -254,14 +260,9 @@ reconcile([V0 | _ ] = Vals) ->
             V0
     end.
 
-reconcile_hypervisor([H | R], Acc) ->
-    reconcile_hypervisor(R, sniffle_hypervisor_state:merge(Acc, H));
-reconcile_hypervisor(_, Acc) ->
-    Acc.
-
-reconcile_grouping([H | R], Acc) ->
-    reconcile_grouping(R, sniffle_grouping_state:merge(Acc, H));
-reconcile_grouping(_, Acc) ->
+reconcile(M, [H | R], Acc) ->
+    reconcile(M, R, M:merge(Acc, H));
+reconcile(_M, _, Acc) ->
     Acc.
 
 %% @pure

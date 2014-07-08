@@ -149,6 +149,7 @@ to_json(#?GROUPING{
      {<<"type">>, list_to_binary(atom_to_list(riak_dt_lwwreg:value(Type)))},
      {<<"uuid">>, riak_dt_lwwreg:value(UUID)}
     ].
+
 merge(#?GROUPING{
           elements = Elements1,
           groupings = Groupings1,

@@ -36,10 +36,11 @@
          set/3,
          getter/2,
          to_json/1,
-         metadata/1, set_metadata/4
+         metadata/1, set_metadata/4,
+         merge/2
         ]).
 
--ignore_xref([load/2, load/1, set/4, set/3, getter/2,
+-ignore_xref([load/2, load/1, set/4, set/3, getter/2, merge/2,
               uuid/1, uuid/3,
               imported/1, imported/3,
               status/1, status/3,
@@ -308,3 +309,56 @@ set(Attribute, delete, Dataset) ->
 
 set(Attribute, Value, Dataset) ->
     jsxd:set(Attribute, Value, Dataset).
+
+merge(#?DATASET{
+          uuid           = UUID1,
+          status         = Status1,
+          imported       = Imported1,
+          metadata       = Metadata1,
+
+          dataset        = Dataset1,
+          description    = Desc1,
+          disk_driver    = DiskD1,
+          homepage       = Homepage1,
+          image_size     = ImageSize1,
+          name           = Name1,
+          networks       = Networks1,
+          nic_driver     = NicD1,
+          os             = OS1,
+          users          = Users1,
+          version        = Version1
+         },
+      #?DATASET{
+          uuid           = UUID2,
+          status         = Status2,
+          imported       = Imported2,
+          metadata       = Metadata2,
+          dataset        = Dataset2,
+          description    = Desc2,
+          disk_driver    = DiskD2,
+          homepage       = Homepage2,
+          image_size     = ImageSize2,
+          name           = Name2,
+          networks       = Networks2,
+          nic_driver     = NicD2,
+          os             = OS2,
+          users          = Users2,
+          version        = Version2
+        }) ->
+    #?DATASET{
+          uuid           = riak_dt_lwwreg:merge(UUID1, UUID2),
+          status         = riak_dt_lwwreg:merge(Status1, Status2),
+          imported       = riak_dt_lwwreg:merge(Imported1, Imported2),
+          metadata       = fifo_map:merge(Metadata1, Metadata2),
+          dataset        = riak_dt_lwwreg:merge(Dataset1, Dataset2),
+          description    = riak_dt_lwwreg:merge(Desc1, Desc2),
+          disk_driver    = riak_dt_lwwreg:merge(DiskD1, DiskD2),
+          homepage       = riak_dt_lwwreg:merge(Homepage1, Homepage2),
+          image_size     = riak_dt_lwwreg:merge(ImageSize1, ImageSize2),
+          name           = riak_dt_lwwreg:merge(Name1, Name2),
+          networks       = riak_dt_lwwreg:merge(Networks1, Networks2),
+          nic_driver     = riak_dt_lwwreg:merge(NicD1, NicD2),
+          os             = riak_dt_lwwreg:merge(OS1, OS2),
+          users          = riak_dt_lwwreg:merge(Users1, Users2),
+          version        = riak_dt_lwwreg:merge(Version1, Version2)
+        }.

@@ -140,6 +140,14 @@
 
         }).
 
+-record(network_0_1_0,
+        {
+          uuid           = riak_dt_lwwreg:new() :: riak_dt_lwwreg:lwwreg(),
+          name           = riak_dt_lwwreg:new() :: riak_dt_lwwreg:lwwreg(),
+          ipranges       = riak_dt_orswot:new() :: riak_dt_orswot:orswot(),
+          metadata       = riak_dt_map:new()    :: riak_dt_map:map()
+        }).
+
 
 -define(PACKAGE, package).
 -define(IPRANGE, iprange).
@@ -147,12 +155,8 @@
 -define(HYPERVISOR, hypervisor_0_1_0).
 -define(GROUPING, grouping_0_1_0).
 -define(DATASET, dataset_0_1_0).
+-define(NETWORK, network_0_1_0).
 
 -define(NEW_LWW(V, T), riak_dt_lwwreg:update(
                          {assign, V, T}, none,
                          riak_dt_lwwreg:new())).
-
--define(CONVERT_LIST(S),
-        riak_dt_orswot:update(
-          {add_all, S}, none,
-          riak_dt_orswot:new())).
