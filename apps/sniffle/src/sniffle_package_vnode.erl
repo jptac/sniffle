@@ -123,11 +123,11 @@ init([Part]) ->
 %%% General
 %%%===================================================================
 
-handle_command({create, {ReqID, Coordinator}, UUID, [Package]},
+handle_command({create, {ReqID, Coordinator}=ID, UUID, [Package]},
                _Sender, State) ->
-    I0 = statebox:new(fun sniffle_package_state:new/0),
-    I1 = statebox:modify({fun sniffle_package_state:uuid/2, [UUID]}, I0),
-    I2 = statebox:modify({fun sniffle_package_state:name/2, [Package]}, I1),
+    I0 = sniffle_package_state:new(ID),
+    I1 = sniffle_package_state:uuid(ID, UUID, I0),
+    I2 = sniffle_package_state:name(ID, Package, I1),
     VC0 = vclock:fresh(),
     VC = vclock:increment(Coordinator, VC0),
     HObject = #sniffle_obj{val=I2, vclock=VC},

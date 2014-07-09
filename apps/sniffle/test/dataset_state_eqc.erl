@@ -24,6 +24,7 @@ dataset(Size) ->
                         [O], [dataset(Size - 1)],
                         oneof([
                                {call, ?D, load, [id(Size), O]},
+                               %%{call, ?D, merge, [O, O]},
 
                                {call, ?D, uuid, [id(Size), non_blank_string(), O]},
                                {call, ?D, status, [id(Size), non_blank_string(), O]},
@@ -117,6 +118,25 @@ metadata(U) ->
     {<<"metadata">>, M} = lists:keyfind(<<"metadata">>, 1, U),
     M.
 
+prop_merge() ->
+    ?FORALL(R,
+            dataset(),
+            begin
+                Hv = eval(R),
+                ?WHENFAIL(io:format(user, "History: ~p~nHv: ~p~n", [R, Hv]),
+                          model(?D:merge(Hv, Hv)) ==
+                              model(Hv))
+            end).
+
+prop_load() ->
+    ?FORALL(R,
+            dataset(),
+            begin
+                Hv = eval(R),
+                ?WHENFAIL(io:format(user, "History: ~p~nHv: ~p~n", [R, Hv]),
+                          model(?D:load(id(?BIG_TIME), Hv)) ==
+                              model(Hv))
+            end).
 prop_uuid() ->
     ?FORALL({N, R},
             {non_blank_string(), dataset()},

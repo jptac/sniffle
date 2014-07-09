@@ -44,7 +44,7 @@ quick-xref:
 
 quick-test:
 	-rm -r apps/sniffle/.eunit
-	$(REBAR) -DEQC_SHORT_TEST skip_deps=true eunit -r
+	$(REBAR) -DEQC_SHORT_TEST skip_deps=true eunit -r -v
 
 rel: all zabbix
 	-rm -r rel/sniffle/share

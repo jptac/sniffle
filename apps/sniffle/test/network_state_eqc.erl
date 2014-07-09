@@ -15,15 +15,16 @@
 %% in LWW registers.
 -define(BIG_TIME, 1000000000).
 
-grouping() ->
-    ?SIZED(Size, grouping(Size+1)).
+network() ->
+    ?SIZED(Size, network(Size+1)).
 
-grouping(Size) ->
+network(Size) ->
     ?LAZY(oneof([{call, ?N, new, [id(Size)]} || Size == 1] ++
                     [?LETSHRINK(
-                        [O], [grouping(Size - 1)],
+                        [O], [network(Size - 1)],
                         oneof([
                                {call, ?N, load, [id(Size), O]},
+                               %%{call, ?N, merge, [O, O]},
 
                                {call, ?N, uuid, [id(Size), non_blank_string(), O]},
                                {call, ?N, name, [id(Size), non_blank_string(), O]},
@@ -91,9 +92,28 @@ ipranges(U) ->
     {<<"ipranges">>, M} = lists:keyfind(<<"ipranges">>, 1, U),
     M.
 
+prop_merge() ->
+    ?FORALL(R,
+            network(),
+            begin
+                Hv = eval(R),
+                ?WHENFAIL(io:format(user, "History: ~p~nHv: ~p~n", [R, Hv]),
+                          model(?N:merge(Hv, Hv)) ==
+                              model(Hv))
+            end).
+
+prop_load() ->
+    ?FORALL(R,
+            network(),
+            begin
+                Hv = eval(R),
+                ?WHENFAIL(io:format(user, "History: ~p~nHv: ~p~n", [R, Hv]),
+                          model(?N:load(id(?BIG_TIME), Hv)) ==
+                              model(Hv))
+            end).
 prop_uuid() ->
     ?FORALL({N, R},
-            {non_blank_string(), grouping()},
+            {non_blank_string(), network()},
             begin
                 Hv = eval(R),
                 ?WHENFAIL(io:format(user, "History: ~p~nHv: ~p~n", [R, Hv]),
@@ -103,7 +123,7 @@ prop_uuid() ->
 
 prop_name() ->
     ?FORALL({N, R},
-            {non_blank_string(), grouping()},
+            {non_blank_string(), network()},
             begin
                 Hv = eval(R),
                 ?WHENFAIL(io:format(user, "History: ~p~nHv: ~p~n", [R,Hv]),
@@ -112,7 +132,7 @@ prop_name() ->
             end).
 
 prop_set_metadata() ->
-    ?FORALL({K, V, O}, {non_blank_string(), non_blank_string(), grouping()},
+    ?FORALL({K, V, O}, {non_blank_string(), non_blank_string(), network()},
             begin
                 Hv = eval(O),
                 O1 = ?N:set_metadata(id(?BIG_TIME), K, V, Hv),
@@ -123,7 +143,7 @@ prop_set_metadata() ->
             end).
 
 prop_remove_metadata() ->
-    ?FORALL({O, K}, ?LET(O, grouping(), {O, maybe_oneof(calc_map(set_metadata, O))}),
+    ?FORALL({O, K}, ?LET(O, network(), {O, maybe_oneof(calc_map(set_metadata, O))}),
             begin
                 Hv = eval(O),
                 O1 = ?N:set_metadata(id(?BIG_TIME), K, delete, Hv),
@@ -134,7 +154,7 @@ prop_remove_metadata() ->
             end).
 
 prop_add_iprange() ->
-    ?FORALL({E, O}, {non_blank_string(), grouping()},
+    ?FORALL({E, O}, {non_blank_string(), network()},
             begin
                 Hv = eval(O),
                 O1 = ?N:add_iprange(id(?BIG_TIME), E, Hv),
@@ -145,7 +165,7 @@ prop_add_iprange() ->
             end).
 
 prop_remove_iprange() ->
-    ?FORALL({O, K}, ?LET(O, grouping(), {O, maybe_oneof(calc_ipranges(O))}),
+    ?FORALL({O, K}, ?LET(O, network(), {O, maybe_oneof(calc_ipranges(O))}),
             begin
                 Hv = eval(O),
                 O1 = ?N:remove_iprange(id(?BIG_TIME), K, Hv),

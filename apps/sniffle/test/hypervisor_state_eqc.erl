@@ -24,6 +24,7 @@ hypervisor(Size) ->
                         [O], [hypervisor(Size - 1)],
                         oneof([
                                {call, ?H, load, [id(Size), O]},
+                               %% {call, ?H, merge, [O, O]},
 
                                {call, ?H, uuid, [id(Size), non_blank_string(), O]},
                                {call, ?H, alias, [id(Size), non_blank_string(), O]},
@@ -153,6 +154,26 @@ resources(U) ->
 services(U) ->
     {<<"services">>, M} = lists:keyfind(<<"services">>, 1, U),
     M.
+
+prop_merge() ->
+    ?FORALL(R,
+            hypervisor(),
+            begin
+                Hv = eval(R),
+                ?WHENFAIL(io:format(user, "History: ~p~nHv: ~p~n", [R, Hv]),
+                          model(?H:merge(Hv, Hv)) ==
+                              model(Hv))
+            end).
+
+prop_load() ->
+    ?FORALL(R,
+            hypervisor(),
+            begin
+                Hv = eval(R),
+                ?WHENFAIL(io:format(user, "History: ~p~nHv: ~p~n", [R, Hv]),
+                          model(?H:load(id(?BIG_TIME), Hv)) ==
+                              model(Hv))
+            end).
 
 prop_uuid() ->
     ?FORALL({N, R},

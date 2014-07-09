@@ -252,6 +252,9 @@ reconcile([V = #?NETWORK{} | Vs]) ->
 reconcile([V = #?DATASET{} | Vs]) ->
     reconcile(sniffle_dataset_state, Vs, V);
 
+reconcile([V = #?PACKAGE{} | Vs]) ->
+    reconcile(sniffle_package_state, Vs, V);
+
 reconcile([V0 | _ ] = Vals) ->
     case statebox:is_statebox(V0) of
         true ->

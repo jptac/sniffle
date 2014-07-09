@@ -24,6 +24,7 @@ grouping(Size) ->
                         [O], [grouping(Size - 1)],
                         oneof([
                                {call, ?G, load, [id(Size), O]},
+                               %%{call, ?G, merge, [O, O]},
 
                                {call, ?G, uuid, [id(Size), non_blank_string(), O]},
                                {call, ?G, name, [id(Size), non_blank_string(), O]},
@@ -117,6 +118,25 @@ get_groupings(U) ->
     {<<"groupings">>, M} = lists:keyfind(<<"groupings">>, 1, U),
     M.
 
+prop_merge() ->
+    ?FORALL(R,
+            grouping(),
+            begin
+                Hv = eval(R),
+                ?WHENFAIL(io:format(user, "History: ~p~nHv: ~p~n", [R, Hv]),
+                          model(?G:merge(Hv, Hv)) ==
+                              model(Hv))
+            end).
+
+prop_load() ->
+    ?FORALL(R,
+            grouping(),
+            begin
+                Hv = eval(R),
+                ?WHENFAIL(io:format(user, "History: ~p~nHv: ~p~n", [R, Hv]),
+                          model(?G:load(id(?BIG_TIME), Hv)) ==
+                              model(Hv))
+            end).
 prop_uuid() ->
     ?FORALL({N, R},
             {non_blank_string(), grouping()},

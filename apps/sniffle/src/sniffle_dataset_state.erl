@@ -33,7 +33,6 @@
          status/1, status/3,
          imported/1, imported/3,
          set/4,
-         set/3,
          getter/2,
          to_json/1,
          metadata/1, set_metadata/4,
@@ -194,7 +193,7 @@ load({T, ID}, Sb) ->
     {ok, UUID} = jsxd:get([<<"uuid">>], H),
     {ok, Imported} = jsxd:get([<<"imported">>], H),
     {ok, Status} = jsxd:get([<<"status">>], H),
-    {ok, Metadata} = jsxd:get([<<"metadata">>], H),
+    {ok, Metadata} = jsxd:get([<<"metadata">>], [], H),
     {ok, UUID1} = ?NEW_LWW(UUID, T),
     {ok, Imported1} = ?NEW_LWW(Imported, T),
     {ok, Status1} = ?NEW_LWW(Status, T),
@@ -275,13 +274,14 @@ load({T, ID}, Sb) ->
              _->
                  D8
          end,
-    case jsxd:get([<<"version">>], H) of
-        {k, Version} ->
-            {ok, Version1} = ?NEW_LWW(Version, T),
-            D9#dataset_0_1_0{version = Version1};
-        _->
-            D9
-    end.
+    D10 = case jsxd:get([<<"version">>], H) of
+              {k, Version} ->
+                  {ok, Version1} = ?NEW_LWW(Version, T),
+                  D9#dataset_0_1_0{version = Version1};
+              _->
+                  D9
+          end,
+    load({T, ID}, D10).
 
 ?S(<<"uuid">>, uuid);
 ?S(<<"status">>, status);
@@ -303,12 +303,6 @@ set(ID, K = <<"metadata.", _/binary>>, V, H) ->
     set(ID, re:split(K, "\\."), V, H);
 set(ID, [<<"metadata">> | R], V, H) ->
     set_metadata(ID, R, V, H).
-
-set(Attribute, delete, Dataset) ->
-    jsxd:delete(Attribute, Dataset);
-
-set(Attribute, Value, Dataset) ->
-    jsxd:set(Attribute, Value, Dataset).
 
 merge(#?DATASET{
           uuid           = UUID1,
@@ -344,21 +338,21 @@ merge(#?DATASET{
           os             = OS2,
           users          = Users2,
           version        = Version2
-        }) ->
+         }) ->
     #?DATASET{
-          uuid           = riak_dt_lwwreg:merge(UUID1, UUID2),
-          status         = riak_dt_lwwreg:merge(Status1, Status2),
-          imported       = riak_dt_lwwreg:merge(Imported1, Imported2),
-          metadata       = fifo_map:merge(Metadata1, Metadata2),
-          dataset        = riak_dt_lwwreg:merge(Dataset1, Dataset2),
-          description    = riak_dt_lwwreg:merge(Desc1, Desc2),
-          disk_driver    = riak_dt_lwwreg:merge(DiskD1, DiskD2),
-          homepage       = riak_dt_lwwreg:merge(Homepage1, Homepage2),
-          image_size     = riak_dt_lwwreg:merge(ImageSize1, ImageSize2),
-          name           = riak_dt_lwwreg:merge(Name1, Name2),
-          networks       = riak_dt_lwwreg:merge(Networks1, Networks2),
-          nic_driver     = riak_dt_lwwreg:merge(NicD1, NicD2),
-          os             = riak_dt_lwwreg:merge(OS1, OS2),
-          users          = riak_dt_lwwreg:merge(Users1, Users2),
-          version        = riak_dt_lwwreg:merge(Version1, Version2)
-        }.
+        uuid           = riak_dt_lwwreg:merge(UUID1, UUID2),
+        status         = riak_dt_lwwreg:merge(Status1, Status2),
+        imported       = riak_dt_lwwreg:merge(Imported1, Imported2),
+        metadata       = fifo_map:merge(Metadata1, Metadata2),
+        dataset        = riak_dt_lwwreg:merge(Dataset1, Dataset2),
+        description    = riak_dt_lwwreg:merge(Desc1, Desc2),
+        disk_driver    = riak_dt_lwwreg:merge(DiskD1, DiskD2),
+        homepage       = riak_dt_lwwreg:merge(Homepage1, Homepage2),
+        image_size     = riak_dt_lwwreg:merge(ImageSize1, ImageSize2),
+        name           = riak_dt_lwwreg:merge(Name1, Name2),
+        networks       = riak_dt_lwwreg:merge(Networks1, Networks2),
+        nic_driver     = riak_dt_lwwreg:merge(NicD1, NicD2),
+        os             = riak_dt_lwwreg:merge(OS1, OS2),
+        users          = riak_dt_lwwreg:merge(Users1, Users2),
+        version        = riak_dt_lwwreg:merge(Version1, Version2)
+       }.
