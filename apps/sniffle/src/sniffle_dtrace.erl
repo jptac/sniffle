@@ -9,6 +9,7 @@
 -export(
    [
     get/1,
+    get_/1,
     add/2,
     set/2,
     set/3,
@@ -24,6 +25,7 @@
 -ignore_xref(
    [
     get/1,
+    get_/1,
     add/2,
     set/2,
     set/3,
@@ -59,6 +61,16 @@ add(Name, Script) ->
 -spec get(UUID::fifo:dtrace_id()) ->
                  not_found | {ok, DTrance::fifo:object()} | {error, timeout}.
 get(UUID) ->
+    case get_(UUID) of
+        {ok, O} ->
+            {ok, sniffle_dtrace_state:to_json(O)};
+        E ->
+            E
+    end.
+
+-spec get_(UUID::fifo:dtrace_id()) ->
+                 not_found | {ok, DTrance::fifo:object()} | {error, timeout}.
+get_(UUID) ->
     sniffle_entity_read_fsm:start({?VNODE, ?SERVICE},get, UUID).
 
 -spec delete(UUID::fifo:dtrace_id()) ->

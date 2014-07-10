@@ -75,10 +75,11 @@ remove_iprange({_T, ID}, V, H) ->
             H#?NETWORK{ipranges = O1}
     end.
 
-getter(#sniffle_obj{val=S0}, Resource) ->
-    jsxd:get(Resource, 0, statebox:value(S0)).
 
-
+getter(#sniffle_obj{val=S0}, <<"name">>) ->
+    name(S0);
+getter(#sniffle_obj{val=S0}, <<"uuid">>) ->
+    uuid(S0).
 
 load(_, #?NETWORK{} = N) ->
     N;

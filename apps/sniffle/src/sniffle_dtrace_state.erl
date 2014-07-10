@@ -10,27 +10,85 @@
 -include("sniffle.hrl").
 
 -export([
-         new/0,
+         new/1,
          load/2,
-         uuid/1,
-         set/4,
-         set/3,
-         name/1,
-         getter/2
+         to_json/1,
+         getter/2,
+         merge/2
         ]).
 
--ignore_xref([load/2, name/1, set/4, set/3, getter/2, uuid/1]).
+-export([
+         name/1, name/3,
+         uuid/1, uuid/3,
+         script/1, script/3,
+         metadata/1, set_metadata/4,
+         config/1, set_config/4
+        ]).
 
-name(P) ->
-    {ok, N} = jsxd:get(<<"name">>, statebox:value(P)),
-    N.
+-ignore_xref([merge/2, load/2, getter/2, uuid/1]).
 
-getter(#sniffle_obj{val=S0}, Resource) ->
-    jsxd:get(Resource, 0, statebox:value(S0)).
+-ignore_xref([
+         name/1, name/3,
+         uuid/1, uuid/3,
+         script/1, script/3,
+         metadata/1, set_metadata/4,
+         config/1, set_config/4
+        ]).
 
-uuid(Vm) ->
-    {ok, UUID} = jsxd:get(<<"uuid">>, statebox:value(Vm)),
-    UUID.
+
+uuid(H) ->
+    riak_dt_lwwreg:value(H#?DTRACE.uuid).
+
+uuid({T, _ID}, V, H) ->
+    {ok, V1} = riak_dt_lwwreg:update({assign, V, T}, none, H#?DTRACE.uuid),
+    H#?DTRACE{uuid = V1}.
+
+name(H) ->
+    riak_dt_lwwreg:value(H#?DTRACE.name).
+
+name({T, _ID}, V, H) ->
+    {ok, V1} = riak_dt_lwwreg:update({assign, V, T}, none, H#?DTRACE.name),
+    H#?DTRACE{name = V1}.
+
+script(H) ->
+    riak_dt_lwwreg:value(H#?DTRACE.script).
+
+script({T, _ID}, V, H) ->
+    {ok, V1} = riak_dt_lwwreg:update({assign, V, T}, none, H#?DTRACE.script),
+    H#?DTRACE{script = V1}.
+
+metadata(H) ->
+    fifo_map:value(H#?DTRACE.metadata).
+
+set_metadata({T, ID}, P, Value, User) when is_binary(P) ->
+    set_metadata({T, ID}, fifo_map:split_path(P), Value, User);
+
+set_metadata({_T, ID}, Attribute, delete, G) ->
+    {ok, M1} = fifo_map:remove(Attribute, ID, G#?DTRACE.metadata),
+    G#?DTRACE{metadata = M1};
+
+set_metadata({T, ID}, Attribute, Value, G) ->
+    {ok, M1} = fifo_map:set(Attribute, Value, ID, T, G#?DTRACE.metadata),
+    G#?DTRACE{metadata = M1}.
+
+config(H) ->
+    fifo_map:value(H#?DTRACE.config).
+
+set_config({T, ID}, P, Value, User) when is_binary(P) ->
+    set_config({T, ID}, fifo_map:split_path(P), Value, User);
+
+set_config({_T, ID}, Attribute, delete, G) ->
+    {ok, M1} = fifo_map:remove(Attribute, ID, G#?DTRACE.config),
+    G#?DTRACE{config = M1};
+
+set_config({T, ID}, Attribute, Value, G) ->
+    {ok, M1} = fifo_map:set(Attribute, Value, ID, T, G#?DTRACE.config),
+    G#?DTRACE{config = M1}.
+
+getter(#sniffle_obj{val=S0}, <<"name">>) ->
+    name(S0);
+getter(#sniffle_obj{val=S0}, <<"uuid">>) ->
+    uuid(S0).
 
 load(_, D) ->
     load(D).
@@ -38,15 +96,37 @@ load(_, D) ->
 load(Dtrace) ->
     Dtrace.
 
-new() ->
-    jsxd:set(<<"version">>, <<"0.1.0">>,
-             jsxd:new()).
+new(_) ->
+    #?DTRACE{}.
 
-set(_ID, Attribute, Value, D) ->
-    statebox:modify({fun set/3, [Attribute, Value]}, D).
+to_json(D) ->
+    [
+     {<<"config">>, config(D)},
+     {<<"metadata">>, metadata(D)},
+     {<<"name">>, name(D)},
+     {<<"script">>, script(D)},
+     {<<"uuid">>, uuid(D)}
+    ].
 
-set(Attribute, delete, Dtrace) ->
-    jsxd:delete(Attribute, Dtrace);
 
-set(Attribute, Value, Dtrace) ->
-    jsxd:set(Attribute, Value, Dtrace).
+merge(#?DTRACE{
+          config = Config1,
+          metadata = Metadata1,
+          script = Script1,
+          name = Name1,
+          uuid = UUID1
+         },
+      #?DTRACE{
+          config = Config2,
+          metadata = Metadata2,
+          script = Script2,
+          name = Name2,
+          uuid = UUID2
+         }) ->
+    #?DTRACE{
+        config = fifo_map:merge(Config1, Config2),
+        metadata = fifo_map:merge(Metadata1, Metadata2),
+        script = riak_dt_lwwreg:merge(Script1, Script2),
+        name = riak_dt_lwwreg:merge(Name1, Name2),
+        uuid = riak_dt_lwwreg:merge(UUID1, UUID2)
+       }.

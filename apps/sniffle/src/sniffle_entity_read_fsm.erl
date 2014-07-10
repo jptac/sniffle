@@ -255,6 +255,9 @@ reconcile([V = #?DATASET{} | Vs]) ->
 reconcile([V = #?PACKAGE{} | Vs]) ->
     reconcile(sniffle_package_state, Vs, V);
 
+reconcile([V = #?DTRACE{} | Vs]) ->
+    reconcile(sniffle_dtrace_state, Vs, V);
+
 reconcile([V0 | _ ] = Vals) ->
     case statebox:is_statebox(V0) of
         true ->
