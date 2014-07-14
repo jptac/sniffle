@@ -90,11 +90,28 @@ getter(#sniffle_obj{val=S0}, <<"name">>) ->
 getter(#sniffle_obj{val=S0}, <<"uuid">>) ->
     uuid(S0).
 
-load(_, D) ->
-    load(D).
+load(_, #?DTRACE{} = D) ->
+    D;
+load({T, ID}, D) ->
+    {ok, UUID} = jsxd:get([<<"uuid">>], D),
+    {ok, Name} = jsxd:get([<<"name">>], D),
+    {ok, Script} = jsxd:get([<<"script">>], D),
+    Metadata = jsxd:get([<<"metadata">>], [], D),
+    {ok, Config} = jsxd:get([<<"config">>], D),
 
-load(Dtrace) ->
-    Dtrace.
+    {ok, UUID1} = ?NEW_LWW(UUID, T),
+    {ok, Name1} = ?NEW_LWW(Name, T),
+    {ok, Script1} = ?NEW_LWW(Script, T),
+    Metadata1 = fifo_map:from_orddict(Metadata, ID, T),
+    Config1 = fifo_map:from_orddict(Config, ID, T),
+    D1 = #?DTRACE{
+             config = Config1,
+             metadata = Metadata1,
+             script = Script1,
+             name = Name1,
+             uuid = UUID1
+            },
+    load({T, ID}, D1).
 
 new(_) ->
     #?DTRACE{}.

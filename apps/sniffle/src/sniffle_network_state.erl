@@ -96,12 +96,13 @@ load({T, ID},  Sb) ->
                   {add_all, IPRanges}, ID,
                   riak_dt_orswot:new()),
     Metadata1 = fifo_map:from_orddict(Metadata, ID, T),
-    #network_0_1_0{
+    N1 = #network_0_1_0{
        uuid = UUID1,
        name = Name1,
        ipranges = IPRanges1,
        metadata = Metadata1
-      }.
+      },
+    load({T, ID}, N1).
 
 new(_) ->
     #?NETWORK{}.

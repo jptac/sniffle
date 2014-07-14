@@ -8,7 +8,7 @@
 -export([
          create/8,
          delete/1,
-         get/1,
+         get/1, get_/1,
          lookup/1,
          list/0,
          list/2,
@@ -24,7 +24,7 @@
 
 -ignore_xref([
               sync_repair/2,
-              list_/0,
+              list_/0, get_/1,
               wipe/1
               ]).
 
@@ -41,7 +41,6 @@ list_() ->
                   ?MASTER, ?SERVICE, {list, [], true, true}),
     Res1 = [R || {_, R} <- Res],
     {ok,  Res1}.
-
 
 -spec lookup(IPRange::binary()) ->
                     not_found | {ok, IPR::fifo:object()} | {error, timeout}.
@@ -80,11 +79,18 @@ create(Iprange, Network, Gateway, Netmask, First, Last, Tag, Vlan) when
 delete(Iprange) ->
     do_write(Iprange, delete).
 
--spec get(Iprange::fifo:iprange_id()) ->
+-spec get_(Iprange::fifo:iprange_id()) ->
                  not_found | {ok, IPR::fifo:object()} | {error, timeout}.
-get(Iprange) ->
+get_(Iprange) ->
     sniffle_entity_read_fsm:start({?VNODE, ?SERVICE}, get, Iprange).
 
+get(Iprange) ->
+    case get_(Iprange) of
+        {ok, R} ->
+            {ok, sniffle_iprange_state:to_json(R)};
+        E ->
+            E
+    end.
 -spec list() ->
                   {ok, [IPR::fifo:iprange_id()]} | {error, timeout}.
 list() ->
@@ -152,25 +158,17 @@ claim_ip(_Iprange, ?MAX_TRIES) ->
     {error, failed};
 
 claim_ip(Iprange, N) ->
-    case sniffle_iprange:get(Iprange) of
+    case sniffle_iprange:get_(Iprange) of
         {error, timeout} ->
             timer:sleep(N*50),
             claim_ip(Iprange, N + 1);
         not_found ->
             not_found;
         {ok, Obj} ->
-            case {jsxd:get(<<"free">>, [], Obj), jsxd:get(<<"current">>, 0, Obj), jsxd:get(<<"last">>, 0, Obj)} of
-                {[], FoundIP, Last} when FoundIP > Last ->
+            case sniffle_iprange_state:free(Obj) of
+                [] ->
                     {error, full};
-                {[], FoundIP, _} ->
-                    case do_write(Iprange, claim_ip, FoundIP) of
-                        {error, _} ->
-                            timer:sleep(N*50),
-                            claim_ip(Iprange, N + 1);
-                        R ->
-                            R
-                    end;
-                {[FoundIP|_], _, _} ->
+                [FoundIP | R] ->
                     case do_write(Iprange, claim_ip, FoundIP) of
                         {error, _} ->
                             timer:sleep(N*50),
@@ -182,14 +180,9 @@ claim_ip(Iprange, N) ->
     end.
 
 full(Iprange) ->
-    case sniffle_iprange:get(Iprange) of
+    case sniffle_iprange:get_(Iprange) of
         {ok, Obj} ->
-            case {jsxd:get(<<"free">>, [], Obj), jsxd:get(<<"current">>, 0, Obj), jsxd:get(<<"last">>, 0, Obj)} of
-                {[], FoundIP, Last} when FoundIP > Last ->
-                    true;
-                _ ->
-                    false
-            end;
+            not sniffle_iprange_state:free(Obj) == [];
         E ->
             E
     end.

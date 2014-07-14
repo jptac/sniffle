@@ -161,7 +161,7 @@
           quota           = riak_dt_lwwreg:new() :: riak_dt_lwwreg:lwwreg(),
           ram             = riak_dt_lwwreg:new() :: riak_dt_lwwreg:lwwreg(),
           zfs_io_priority = riak_dt_lwwreg:new() :: riak_dt_lwwreg:lwwreg(),
-          metadata       = riak_dt_map:new()    :: riak_dt_map:map()
+          metadata        = riak_dt_map:new()    :: riak_dt_map:map()
 
         }).
 
@@ -174,10 +174,26 @@
           metadata       = riak_dt_map:new()    :: riak_dt_map:map()
         }).
 
+-record(iprange_0_1_0,
+        {
+          uuid           = riak_dt_lwwreg:new() :: riak_dt_lwwreg:lwwreg(),
+          name           = riak_dt_lwwreg:new() :: riak_dt_lwwreg:lwwreg(),
+
+          network        = riak_dt_lwwreg:new() :: riak_dt_lwwreg:lwwreg(),
+          netmask        = riak_dt_lwwreg:new() :: riak_dt_lwwreg:lwwreg(),
+          gateway        = riak_dt_lwwreg:new() :: riak_dt_lwwreg:lwwreg(),
+          tag            = riak_dt_lwwreg:new() :: riak_dt_lwwreg:lwwreg(),
+          vlan           = riak_dt_lwwreg:new() :: riak_dt_lwwreg:lwwreg(),
+
+          free           = riak_dt_orswot:new() :: riak_dt_orswot:orswot(),
+          used           = riak_dt_orswot:new() :: riak_dt_orswot:orswot(),
+          metadata       = riak_dt_map:new()    :: riak_dt_map:map()
+        }).
+
 
 -define(PACKAGE, package_0_1_0).
 -define(DTRACE, dtrace_0_1_0).
--define(IPRANGE, iprange).
+-define(IPRANGE, iprange_0_1_0).
 -define(VM, vm).
 -define(HYPERVISOR, hypervisor_0_1_0).
 -define(GROUPING, grouping_0_1_0).

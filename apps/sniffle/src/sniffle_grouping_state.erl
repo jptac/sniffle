@@ -28,24 +28,13 @@
         ]).
 
 -ignore_xref([
-              uuid/1,
-              uuid/3,
-              getter/2,
-              load/2,
-              merge/2,
-              name/1,
-              name/3,
-              new/1,
-              to_json/1,
-              type/1,
-              type/3,
-              add_element/3,
-              remove_element/3,
-              add_grouping/3,
-              remove_grouping/3,
-              elements/1,
-              groupings/1,
-              set_metadata/4
+              getter/2, load/2, merge/2, new/1, to_json/1,
+              uuid/1, uuid/3,
+              name/1, name/3,
+              type/1, type/3,
+              elements/1, add_element/3, remove_element/3,
+              groupings/1, add_grouping/3, remove_grouping/3,
+              metadata/1, set_metadata/4
              ]).
 
 uuid(H) ->
@@ -122,6 +111,9 @@ new({T, _ID}) ->
         type = Type
        }.
 
+metadata(G) ->
+    fifo_map:value(G#?GROUPING.metadata).
+
 set_metadata({T, ID}, P, Value, User) when is_binary(P) ->
     set_metadata({T, ID}, fifo_map:split_path(P), Value, User);
 
@@ -133,21 +125,14 @@ set_metadata({T, ID}, Attribute, Value, G) ->
     {ok, M1} = fifo_map:set(Attribute, Value, ID, T, G#?GROUPING.metadata),
     G#?GROUPING{metadata = M1}.
 
-to_json(#?GROUPING{
-            elements = Elements,
-            groupings = Groupings,
-            metadata = Metadata,
-            name = Name,
-            type = Type,
-            uuid = UUID
-           }) ->
+to_json(G) ->
     [
-     {<<"elements">>, riak_dt_orswot:value(Elements)},
-     {<<"groupings">>, riak_dt_orswot:value(Groupings)},
-     {<<"metadata">>, fifo_map:value(Metadata)},
-     {<<"name">>, riak_dt_lwwreg:value(Name)},
-     {<<"type">>, list_to_binary(atom_to_list(riak_dt_lwwreg:value(Type)))},
-     {<<"uuid">>, riak_dt_lwwreg:value(UUID)}
+     {<<"elements">>, elements(G)},
+     {<<"groupings">>, groupings(G)},
+     {<<"metadata">>, metadata(G)},
+     {<<"name">>, name(G)},
+     {<<"type">>, list_to_binary(atom_to_list(type(G)))},
+     {<<"uuid">>, uuid(G)}
     ].
 
 merge(#?GROUPING{
