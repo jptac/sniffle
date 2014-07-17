@@ -5,10 +5,13 @@
 -endif.
 
 -include("sniffle.hrl").
+-include("ft.hrl").
 
 -define(MASTER, sniffle_vm_vnode_master).
 -define(VNODE, sniffle_vm_vnode).
 -define(SERVICE, sniffle_vm).
+-define(S, ft_vm).
+
 
 -export([
          add_nic/2,
@@ -19,7 +22,7 @@
          delete/1,
          delete_backup/2,
          delete_snapshot/2,
-         get/1,
+         get/1, get_/1,
          list/0,
          list/2,
          log/2,
@@ -53,7 +56,9 @@
          dry_run/3
         ]).
 
--ignore_xref([logs/1,
+-ignore_xref([
+              get_/1,
+              logs/1,
               sync_repair/2,
               list_/0,
               wipe/1,
@@ -77,12 +82,11 @@ list_() ->
     {ok,  Res1}.
 
 store(Vm) ->
-    case sniffle_vm:get(Vm) of
+    case sniffle_vm:get_(Vm) of
         {ok, V} ->
-            Bs = jsxd:get(<<"backups">>, [], V),
+            Bs = ?S:backups(V),
             case has_xml(Bs) of
                 true ->
-                    {ok, H} = jsxd:get(<<"hypervisor">>, V),
                     set(Vm, <<"state">>, <<"storing">>),
                     [sniffle_vm:set(Vm, [<<"backups">>, B, <<"local">>], false)
                      || {B, _} <- Bs],
@@ -90,7 +94,7 @@ store(Vm) ->
                      || {B, _} <- Bs],
                     sniffle_vm:set(Vm, <<"snapshots">>, delete),
                     sniffle_vm:set(Vm, <<"hypervisor">>, delete),
-                    {Host, Port} = get_hypervisor(H),
+                    {Host, Port} = get_hypervisor(V),
                     libchunter:delete_machine(Host, Port, Vm);
                 false ->
                     {error, no_backup}
@@ -110,14 +114,12 @@ has_xml([{_, B} | Bs]) ->
     end.
 
 restore(Vm, BID, Hypervisor) ->
-    case sniffle_vm:get(Vm) of
+    case sniffle_vm:get_(Vm) of
         {ok, V} ->
-            case jsxd:get(<<"hypervisor">>, V) of
-                {ok, _} ->
-                    already_deployed;
-                _ ->
+            case ?S:hypervisor(V) of
+                undefined ->
                     {Server, Port} = get_hypervisor(Hypervisor),
-                    case jsxd:get([<<"backups">>, BID, <<"xml">>], true, V) of
+                    case jsxd:get([BID, <<"xml">>], true, ?S:backups(V)) of
                         true ->
                             case sniffle_s3:config(snapshot) of
                                 error ->
@@ -130,7 +132,9 @@ restore(Vm, BID, Hypervisor) ->
                             end;
                         false ->
                             no_xml
-                    end
+                    end;
+                _ ->
+                    already_deployed
             end;
         _ ->
             not_found
@@ -138,10 +142,9 @@ restore(Vm, BID, Hypervisor) ->
 
 %% Removes a backup from the hypervisor
 remove_backup(Vm, BID) ->
-    case sniffle_vm:get(Vm) of
+    case sniffle_vm:get_(Vm) of
         {ok, V} ->
-            {ok, H} = jsxd:get(<<"hypervisor">>, V),
-            {Server, Port} = get_hypervisor(H),
+            {Server, Port} = get_hypervisor(V),
             case jsxd:get([<<"backups">>, BID], V) of
                 {ok, _} ->
                     libchunter:delete_backup(Server, Port, Vm, BID);
@@ -153,9 +156,9 @@ remove_backup(Vm, BID) ->
     end.
 
 delete_backup(VM, BID) ->
-    case sniffle_vm:get(VM) of
+    case sniffle_vm:get_(VM) of
         {ok, V} ->
-            case jsxd:get([<<"backups">>, BID], V) of
+            case jsxd:get([BID], ?S:backups(V)) of
                 {ok, _} ->
                     Children = children(V, BID, true),
                     [do_delete_backup(VM, V, C) || C <- Children],
@@ -172,12 +175,10 @@ delete_backup(VM, BID) ->
                             {error, not_supported} |
                             {error, nopath}.
 restore_backup(Vm, Snap) ->
-    case sniffle_vm:get(Vm) of
+    case sniffle_vm:get_(Vm) of
         {ok, V} ->
-            {ok, H} = jsxd:get(<<"hypervisor">>, V),
-            {Server, Port} = get_hypervisor(H),
-
-            case jsxd:get([<<"backups">>, Snap], V) of
+            {Server, Port} = get_hypervisor(V),
+            case jsxd:get([Snap], ?S:backups(V)) of
                 {ok, _} ->
                     case sniffle_s3:config(snapshot) of
                         error ->
@@ -210,10 +211,10 @@ create_backup(Vm, full, Comment, Opts) ->
     end;
 
 create_backup(Vm, incremental, Comment, Opts) ->
-    case sniffle_vm:get(Vm) of
+    case sniffle_vm:get_(Vm) of
         {ok, V} ->
             Parent = proplists:get_value(parent, Opts),
-            case jsxd:get([<<"backups">>, Parent, <<"local">>], V) of
+            case jsxd:get([Parent, <<"local">>], ?S:backups(V)) of
                 {ok, true} ->
                     do_snap(Vm, V, Comment, Opts);
                 _ ->
@@ -224,10 +225,9 @@ create_backup(Vm, incremental, Comment, Opts) ->
     end.
 
 service_enable(Vm, Service) ->
-    case sniffle_vm:get(Vm) of
+    case sniffle_vm:get_(Vm) of
         {ok, V} ->
-            {ok, H} = jsxd:get(<<"hypervisor">>, V),
-            {Server, Port} = get_hypervisor(H),
+            {Server, Port} = get_hypervisor(V),
             libchunter:service_enable(Server, Port, Vm, Service);
         _ ->
             not_found
@@ -236,8 +236,7 @@ service_enable(Vm, Service) ->
 service_disable(Vm, Service) ->
     case sniffle_vm:get(Vm) of
         {ok, V} ->
-            {ok, H} = jsxd:get(<<"hypervisor">>, V),
-            {Server, Port} = get_hypervisor(H),
+            {Server, Port} = get_hypervisor(V),
             libchunter:service_disable(Server, Port, Vm, Service);
         _ ->
             not_found
@@ -246,8 +245,7 @@ service_disable(Vm, Service) ->
 service_clear(Vm, Service) ->
     case sniffle_vm:get(Vm) of
         {ok, V} ->
-            {ok, H} = jsxd:get(<<"hypervisor">>, V),
-            {Server, Port} = get_hypervisor(H),
+            {Server, Port} = get_hypervisor(V),
             libchunter:service_clear(Server, Port, Vm, Service);
         _ ->
             not_found
@@ -256,8 +254,7 @@ service_clear(Vm, Service) ->
 do_snap(Vm, V, Comment, Opts) ->
     UUID = uuid:uuid4s(),
     Opts1 = [create | Opts],
-    {ok, H} = jsxd:get(<<"hypervisor">>, V),
-    {Server, Port} = get_hypervisor(H),
+    {Server, Port} = get_hypervisor(V),
     case sniffle_s3:config(snapshot) of
         error ->
             {error, not_supported};
@@ -273,14 +270,13 @@ do_snap(Vm, V, Comment, Opts) ->
     end.
 
 promote_to_image(Vm, SnapID, Config) ->
-    case sniffle_vm:get(Vm) of
+    case sniffle_vm:get_(Vm) of
         {ok, V} ->
-            case jsxd:get([<<"snapshots">>, SnapID, <<"timestamp">>], V) of
+            case jsxd:get([SnapID, <<"timestamp">>], ?S:snapshots(V)) of
                 {ok, _} ->
-                    {ok, H} = jsxd:get(<<"hypervisor">>, V),
-                    {Server, Port} = get_hypervisor(H),
+                    {Server, Port} = get_hypervisor(V),
                     Img = uuid:uuid4s(),
-                    {ok, C} = jsxd:get(<<"config">>, V),
+                    C = ?S:config(V),
                     Config1 = jsxd:select([<<"name">>, <<"version">>, <<"os">>, <<"description">>],
                                           jsxd:from_list(Config)),
                     {ok, Nets} = jsxd:get([<<"networks">>], C),
@@ -336,26 +332,23 @@ promote_to_image(Vm, SnapID, Config) ->
 
 add_nic(Vm, Network) ->
     lager:info("[NIC ADD] Adding a new nic in ~s to ~s", [Network, Vm]),
-    case sniffle_vm:get(Vm) of
+    case sniffle_vm:get_(Vm) of
         {ok, V} ->
             lager:info("[NIC ADD] VM found.", []),
-            {ok, H} = jsxd:get(<<"hypervisor">>, V),
-            {ok, HypervisorObj} = sniffle_hypervisor:get(H),
-            {ok, Port} = jsxd:get(<<"port">>, HypervisorObj),
-            {ok, HostB} = jsxd:get(<<"host">>, HypervisorObj),
-            HypervisorsNetwork = jsxd:get([<<"networks">>], [], HypervisorObj),
-            Server = binary_to_list(HostB),
+            H = ?S:hypervisor(V),
+            {ok, HypervisorObj} = sniffle_hypervisor:get_(H),
+            HypervisorsNetwork = ft_hypervisor:networks(HypervisorObj),
+            {Server, Port} = ft_hypervisor:endpoint(HypervisorObj),
             libchunter:ping(Server, Port),
-            case jsxd:get(<<"state">>, V) of
-                {ok, <<"stopped">>} ->
+            case ?S:state(V) of
+                <<"stopped">> ->
                     Requirements = [{must, oneof, <<"tag">>, HypervisorsNetwork}],
                     lager:info("[NIC ADD] Checking requirements: ~p.", [Requirements]),
                     case sniffle_network:claim_ip(Network, Requirements) of
-                        {ok, IPRange, {Tag, IP, Net, Gw}} ->
-                            {ok, Range} = sniffle_iprange:get(IPRange),
-                            IPb = sniffle_iprange_state:to_bin(IP),
-                            Netb = sniffle_iprange_state:to_bin(Net),
-                            GWb = sniffle_iprange_state:to_bin(Gw),
+                        {ok, IPRange, {Tag, IP, Net, Gw, VLan}} ->
+                            IPb = ft_iprange:to_bin(IP),
+                            Netb = ft_iprange:to_bin(Net),
+                            GWb = ft_iprange:to_bin(Gw),
 
                             NicSpec0 =
                                 jsxd:from_list([{<<"ip">>, IPb},
@@ -363,14 +356,14 @@ add_nic(Vm, Network) ->
                                                 {<<"netmask">>, Netb},
                                                 {<<"nic_tag">>, Tag }]),
                             NicSpec1 =
-                                case jsxd:get([<<"config">>, <<"networks">>], V) of
+                                case jsxd:get([<<"networks">>], ?S:config(V)) of
                                     {ok, [_|_]} ->
                                         NicSpec0;
                                     _ ->
                                         jsxd:set([<<"primary">>], true, NicSpec0)
                                 end,
                             NicSpec2 =
-                                case jsxd:get(<<"vlan">>, 0, Range) of
+                                case VLan of
                                     0 ->
                                         eplugin:apply(
                                           'vm:ip_assigned',
@@ -386,12 +379,7 @@ add_nic(Vm, Network) ->
                             ok = libchunter:update_machine(Server, Port, Vm, [], UR),
                             M = [{<<"network">>, IPRange},
                                  {<<"ip">>, IP}],
-                            Ms1= case jsxd:get([<<"network_mappings">>], V) of
-                                     {ok, Ms} ->
-                                         [M | Ms];
-                                     _ ->
-                                         [M]
-                                 end,
+                            Ms1 = [M | ?S:network_map(V)],
                             sniffle_vm:set(Vm, [<<"network_mappings">>], Ms1);
                         E ->
                             lager:error("Could not get claim new IP: ~p for ~p ~p",
@@ -408,20 +396,18 @@ add_nic(Vm, Network) ->
     end.
 
 remove_nic(Vm, Mac) ->
-    case sniffle_vm:get(Vm) of
+    case sniffle_vm:get_(Vm) of
         {ok, V} ->
             NicMap = make_nic_map(V),
             case jsxd:get(Mac, NicMap) of
                 {ok, Idx}  ->
-                    {ok, H} = jsxd:get(<<"hypervisor">>, V),
-                    {Server, Port} = get_hypervisor(H),
-                    libchunter:ping(Server, Port),
-                    case jsxd:get(<<"state">>, V) of
-                        {ok, <<"stopped">>} ->
+                    {Server, Port} = get_hypervisor(V),
+                    case ?S:state(V) of
+                        <<"stopped">> ->
                             UR = [{<<"remove_nics">>, [Mac]}],
-                            {ok, IpStr} = jsxd:get([<<"config">>, <<"networks">>, Idx, <<"ip">>], V),
-                            IP = sniffle_iprange_state:parse_bin(IpStr),
-                            {ok, Ms} = jsxd:get([<<"network_mappings">>], V),
+                            {ok, IpStr} = jsxd:get([<<"networks">>, Idx, <<"ip">>], ?S:config(V)),
+                            IP = ft_iprange:parse_bin(IpStr),
+                            {ok, Ms} = ?S:network_map(V),
                             ok = libchunter:update_machine(Server, Port, Vm, [], UR),
                             case [ Network || [{<<"network">>, Network},
                                                {<<"ip">>, IP1}] <- Ms, IP1 =:= IP] of
@@ -447,7 +433,7 @@ remove_nic(Vm, Mac) ->
     end.
 
 primary_nic(Vm, Mac) ->
-    case sniffle_vm:get(Vm) of
+    case sniffle_vm:get_(Vm) of
         {ok, V} ->
             NicMap = make_nic_map(V),
             case jsxd:get(Mac, NicMap) of
@@ -455,8 +441,8 @@ primary_nic(Vm, Mac) ->
                     {ok, H} = jsxd:get(<<"hypervisor">>, V),
                     {Server, Port} = get_hypervisor(H),
                     libchunter:ping(Server, Port),
-                    case jsxd:get(<<"state">>, V) of
-                        {ok, <<"stopped">>} ->
+                    case ?S:state(V) of
+                        <<"stopped">> ->
                             UR = [{<<"update_nics">>, [[{<<"mac">>, Mac}, {<<"primary">>, true}]]}],
                             libchunter:update_machine(Server, Port, Vm, [], UR);
                         _ ->
@@ -477,23 +463,22 @@ primary_nic(Vm, Mac) ->
 -spec update(Vm::fifo:uuid(), Package::fifo:uuid(), Config::fifo:config()) ->
                     not_found | {error, timeout} | ok.
 update(Vm, Package, Config) ->
-    case sniffle_vm:get(Vm) of
+    case sniffle_vm:get_(Vm) of
         {ok, V} ->
-            {ok, Hypervisor} = jsxd:get(<<"hypervisor">>, V),
-            {ok, HypervisorObj} = sniffle_hypervisor:get(Hypervisor),
-            {ok, Port} = jsxd:get(<<"port">>, HypervisorObj),
-            {ok, HostB} = jsxd:get(<<"host">>, HypervisorObj),
-            Host = binary_to_list(HostB),
-            {ok, OrigRam} = jsxd:get([<<"config">>, <<"ram">>], V),
-            OrigPkg = jsxd:get(<<"package">>, <<"custom">>, V),
+            Hypervisor = ?S:hypervisor(V),
+            {ok, H} = sniffle_hypervisor:get_(Hypervisor),
+            {Host, Port} = get_hypervisor(H),
+            {ok, OrigRam} = jsxd:get([<<"ram">>], ?S:config(V)),
+            OrigPkg = ?S:package(V),
             case Package of
                 undefined ->
                     libchunter:update_machine(Host, Port, Vm, [], Config);
                 _ ->
-                    case sniffle_package:get(Package) of
+                    case sniffle_package:get_(Package) of
                         {ok, P} ->
-                            {ok, NewRam} = jsxd:get(<<"ram">>, P),
-                            case jsxd:get([<<"resources">>, <<"free-memory">>], HypervisorObj) of
+                            NewRam = ft_package:ram(P),
+                            case jsxd:get([<<"free-memory">>],
+                                          ft_hypervisor:resources(H)) of
                                 {ok, Ram} when
                                       Ram > (NewRam - OrigRam) ->
                                     set(Vm, <<"package">>, Package),
@@ -531,13 +516,13 @@ register(Vm, Hypervisor) ->
                         {error, timeout} |
                         ok.
 unregister(Vm) ->
-    case sniffle_vm:get(Vm) of
+    case sniffle_vm:get_(Vm) of
         {ok, V} ->
             lists:map(fun(N) ->
                               {ok, Net} = jsxd:get(<<"network">>, N),
                               {ok, Ip} = jsxd:get(<<"ip">>, N),
                               sniffle_iprange:release_ip(Net, Ip)
-                      end,jsxd:get(<<"network_mappings">>, [], V)),
+                      end, ?S:network_map(V)),
             VmPrefix = [<<"vms">>, Vm],
             ChannelPrefix = [<<"channels">>, Vm],
             case libsnarl:user_list() of
@@ -558,11 +543,11 @@ unregister(Vm) ->
                 _ ->
                     ok
             end,
-            case jsxd:get(<<"grouping">>, V) of
-                {ok, G} ->
-                    sniffle_grouping:remove_element(G, Vm);
-                _ ->
-                    ok
+            case ?S:groupings(V) of
+                <<>> ->
+                    ok;
+                Gs ->
+                    [sniffle_grouping:remove_element(G, Vm) || G <- Gs]
             end;
         _ ->
             ok
@@ -598,7 +583,6 @@ create(Package, Dataset, Config) ->
                          [{<<"config">>, Config2},
                           {<<"package">>, Package}]}]),
     sniffle_create_pool:add(UUID, Package, Dataset, Config),
-    %%sniffle_create_fsm:create(UUID, Package, Dataset, Config),
     {ok, UUID}.
 
 dry_run(Package, Dataset, Config) ->
@@ -618,10 +602,21 @@ dry_run(Package, Dataset, Config) ->
 %% @doc Reads a VM object form the DB.
 %% @end
 %%--------------------------------------------------------------------
+-spec get_(Vm::fifo:uuid()) ->
+                 not_found | {error, timeout} | fifo:vm_config().
+get_(Vm) ->
+    sniffle_entity_read_fsm:start({?VNODE, ?SERVICE}, get, Vm).
+
 -spec get(Vm::fifo:uuid()) ->
                  not_found | {error, timeout} | fifo:vm_config().
 get(Vm) ->
-    sniffle_entity_read_fsm:start({?VNODE, ?SERVICE}, get, Vm).
+    case get_(Vm) of
+        {ok, V} ->
+            ft_vm:to_json(V);
+        E ->
+            E
+    end.
+
 
 %%--------------------------------------------------------------------
 %% @doc Lists all vm's.
@@ -659,50 +654,34 @@ list(Requirements, false) ->
 -spec delete(Vm::fifo:uuid()) ->
                     {error, timeout} | not_found | ok.
 delete(Vm) ->
-    case sniffle_vm:get(Vm) of
+    case sniffle_vm:get_(Vm) of
         {ok, V} ->
-            case jsxd:get(<<"hypervisor">>, V) of
-                undefined ->
-                    case jsxd:get(<<"state">>, V) of
-                        {ok, <<"storing">>} ->
-                            libhowl:send(<<"command">>,
-                                         [{<<"event">>, <<"vm-stored">>},
-                                          {<<"uuid">>, uuid:uuid4s()},
-                                          {<<"data">>,
-                                           [{<<"uuid">>, Vm}]}]),
-                            set(Vm, [{<<"state">>, <<"stored">>},
-                                     {<<"hypervisor">>, delete}]);
-                        _ ->
-                            finish_delete(Vm)
-                    end;
-                {ok, <<"pooled">>} ->
+            case {?S:hypervisor(V), ?S:state(V)} of
+                {undefined, _} ->
                     finish_delete(Vm);
-                {ok, <<"pending">>} ->
+                {<<"pooled">>, _} ->
                     finish_delete(Vm);
-                {ok, H} ->
-                    case jsxd:get(<<"state">>, V) of
-                        undefined ->
-                            finish_delete(Vm);
-                        {ok, <<"deleting">>} ->
-                            finish_delete(Vm);
-                        %% When the vm was in failed state it got never handed off to the hypervisor
-                        {ok, <<"failed-", _/binary>>} ->
-                            finish_delete(Vm);
-                        {ok, <<"storing">>} ->
-                            libhowl:send(<<"command">>,
-                                         [{<<"event">>, <<"vm-stored">>},
-                                          {<<"uuid">>, uuid:uuid4s()},
-                                          {<<"data">>,
-                                           [{<<"uuid">>, Vm}]}]),
-                            set(Vm, [{<<"state">>, <<"stored">>},
-                                     {<<"hypervisor">>, delete}]);
-                        _ ->
-                            set(Vm, <<"state">>, <<"deleting">>),
-                            {Host, Port} = get_hypervisor(H),
-                            libchunter:delete_machine(Host, Port, Vm)
-                    end
-            end,
-            ok;
+                {<<"pending">>, _} ->
+                    finish_delete(Vm);
+                {_, undefined} ->
+                    finish_delete(Vm);
+                {_, <<"deleting">>} ->
+                    finish_delete(Vm);
+                {_, <<"failed-", _/binary>>} ->
+                    finish_delete(Vm);
+                {_, <<"storing">>} ->
+                    libhowl:send(<<"command">>,
+                                 [{<<"event">>, <<"vm-stored">>},
+                                  {<<"uuid">>, uuid:uuid4s()},
+                                  {<<"data">>,
+                                   [{<<"uuid">>, Vm}]}]),
+                    set(Vm, [{<<"state">>, <<"stored">>},
+                             {<<"hypervisor">>, delete}]);
+                {H, _} ->
+                    set(Vm, <<"state">>, <<"deleting">>),
+                    {Host, Port} = get_hypervisor(H),
+                    libchunter:delete_machine(Host, Port, Vm)
+            end;
         E ->
             E
     end.
@@ -784,9 +763,9 @@ reboot(Vm, Options) ->
 -spec logs(Vm::fifo:uuid()) ->
                   not_found | {error, timeout} | [fifo:log()].
 logs(Vm) ->
-    case sniffle_vm:get(Vm) of
+    case sniffle_vm:get_(Vm) of
         {ok, V} ->
-            {ok, jsxd:get(<<"log">>, [], V)};
+            {ok, ?S:logs(V)};
         E ->
             E
     end.
@@ -831,10 +810,9 @@ log(Vm, Log) ->
 -spec snapshot(VM::fifo:uuid(), Comment::binary()) ->
                       {error, timeout} | not_found | {ok, UUID::fifo:uuid()}.
 snapshot(Vm, Comment) ->
-    case sniffle_vm:get(Vm) of
+    case sniffle_vm:get_(Vm) of
         {ok, V} ->
-            {ok, H} = jsxd:get(<<"hypervisor">>, V),
-            {Server, Port} = get_hypervisor(H),
+            {Server, Port} = get_hypervisor(V),
             UUID = uuid:uuid4s(),
             TimeStamp = timestamp(),
             libchunter:snapshot(Server, Port, Vm, UUID),
@@ -856,12 +834,11 @@ snapshot(Vm, Comment) ->
 -spec delete_snapshot(VM::fifo:uuid(), UUID::binary()) ->
                              {error, timeout} | not_found | ok.
 delete_snapshot(Vm, UUID) ->
-    case sniffle_vm:get(Vm) of
+    case sniffle_vm:get_(Vm) of
         {ok, V} ->
-            case jsxd:get([<<"snapshots">>, UUID, <<"timestamp">>], V) of
+            case jsxd:get([UUID, <<"timestamp">>], ?S:snapshots(V)) of
                 {ok, _} ->
-                    {ok, H} = jsxd:get(<<"hypervisor">>, V),
-                    {Server, Port} = get_hypervisor(H),
+                    {Server, Port} = get_hypervisor(V),
                     libchunter:delete_snapshot(Server, Port, Vm, UUID),
                     Prefix = [<<"snapshots">>, UUID],
                     do_write(Vm, set,
@@ -883,14 +860,13 @@ delete_snapshot(Vm, UUID) ->
 -spec rollback_snapshot(VM::fifo:uuid(), UUID::binary()) ->
                                {error, timeout} | not_found | ok.
 rollback_snapshot(Vm, UUID) ->
-    case sniffle_vm:get(Vm) of
+    case sniffle_vm:get_(Vm) of
         {ok, V} ->
-            case jsxd:get(<<"state">>, V) of
-                {ok, <<"stopped">>} ->
-                    {ok, H} = jsxd:get(<<"hypervisor">>, V),
-                    {Server, Port} = get_hypervisor(H),
+            case ?S:state(V) of
+                <<"stopped">> ->
+                    {Server, Port} = get_hypervisor(V),
                     libchunter:rollback_snapshot(Server, Port, Vm, UUID);
-                {ok, State} ->
+                State ->
                     log(Vm, <<"Not rolled back since state is ",
                               State/binary, ".">>),
                     {error, not_stopped}
@@ -899,13 +875,15 @@ rollback_snapshot(Vm, UUID) ->
             E
     end.
 
+
+%% TODO
 -spec commit_snapshot_rollback(VM::fifo:uuid(), UUID::binary()) ->
                                       {error, timeout} | not_found | ok.
 
 commit_snapshot_rollback(Vm, UUID) ->
-    case sniffle_vm:get(Vm) of
+    case sniffle_vm:get_(Vm) of
         {ok, V} ->
-            case jsxd:get([<<"snapshots">>, UUID, <<"timestamp">>], V) of
+            case jsxd:get([UUID, <<"timestamp">>], ?S:snapshots(V)) of
                 {ok, T} when is_number(T) ->
                     Snapshots1 =
                         jsxd:fold(
@@ -917,7 +895,7 @@ commit_snapshot_rollback(Vm, UUID) ->
                                       _ ->
                                           jsxd:set(SUUID, Sn, A)
                                   end
-                          end, [], jsxd:get(<<"snapshots">>, [], V)),
+                          end, [], ?S:snapshots(V)),
                     do_write(Vm, set, [{[<<"snapshots">>], Snapshots1}]);
                 undefined ->
                     {error, not_found}
@@ -959,26 +937,28 @@ do_write(VM, Op) ->
 do_write(VM, Op, Val) ->
     sniffle_entity_write_fsm:write({?VNODE, ?SERVICE}, VM, Op, Val).
 
+get_hypervisor(#?VM{}=V) ->
+    get_hypervisor(?S:hypervisor(V));
+
+get_hypervisor(#?HYPERVISOR{}=H) ->
+    ft_hypervisor:endpoint(H);
+
+get_hypervisor(not_found) ->
+    not_found;
+
 get_hypervisor(Hypervisor) ->
-    case sniffle_hypervisor:get(Hypervisor) of
+    case sniffle_hypervisor:get_(Hypervisor) of
         {ok, HypervisorObj} ->
-            {ok, Port} = jsxd:get(<<"port">>, HypervisorObj),
-            {ok, Host} = jsxd:get(<<"host">>, HypervisorObj),
-            {binary_to_list(Host), Port};
+            get_hypervisor(HypervisorObj);
         E ->
             E
     end.
 
 fetch_hypervisor(Vm) ->
-    case sniffle_vm:get(Vm) of
+    case sniffle_vm:get_(Vm) of
         {ok, V} ->
-            case jsxd:get(<<"hypervisor">>, V) of
-                {ok, H} ->
-                    {Server, Port} = get_hypervisor(H),
-                    {ok, Server, Port};
-                _ ->
-                    not_found
-            end;
+            {Server, Port} = get_hypervisor(V),
+            {ok, Server, Port};
         _ ->
             not_found
     end.
@@ -987,7 +967,7 @@ make_nic_map(V) ->
     jsxd:map(fun(Idx, Nic) ->
                      {ok, NicMac} = jsxd:get([<<"mac">>], Nic),
                      {NicMac, Idx}
-             end, jsxd:get([<<"config">>, <<"networks">>], [], V)).
+             end, jsxd:get([<<"networks">>], [], ?S:config(V))).
 
 timestamp() ->
     {Mega,Sec,Micro} = erlang:now(),
@@ -997,7 +977,7 @@ children(VM, Parent) ->
     children(VM, Parent, false).
 
 children(VM, Parent, Recursive) ->
-    case jsxd:get([<<"backups">>], VM) of
+    case ?S:backups(VM) of
         {ok, Backups} ->
             R = [U ||
                     {U, B} <- Backups,
@@ -1013,15 +993,16 @@ children(VM, Parent, Recursive) ->
     end.
 
 do_delete_backup(UUID, VM, BID) ->
-    {ok, Files} = jsxd:get([<<"backups">>, BID, <<"files">>], VM),
-    Fs = case jsxd:get([<<"backups">>, BID, <<"xml">>], false, VM) of
+    Backups = ?S:backups(VM),
+    {ok, Files} = jsxd:get([BID, <<"files">>], Backups),
+    Fs = case jsxd:get([BID, <<"xml">>], false, Backups) of
              true ->
                  [<<UUID/binary, "/", BID/binary, ".xml">> | Files];
              false ->
                  Files
          end,
     [sniffle_s3:delete(snapshot, F) || F <- Fs],
-    {ok, H} = jsxd:get(<<"hypervisor">>, VM),
+    H = ?S:hypervisor(VM),
     {Server, Port} = get_hypervisor(H),
     libchunter:delete_snapshot(Server, Port, UUID, BID),
     sniffle_vm:set(UUID, [<<"backups">>, BID], delete),
@@ -1031,25 +1012,3 @@ do_delete_backup(UUID, VM, BID) ->
 
 backend() ->
     sniffle_opt:get(storage, general, backend, large_data_backend, internal).
-
--ifdef(TEST).
-
-children_test() ->
-    VM = [{<<"backups">>,
-           [{<<"b">>,
-             [{<<"parent">>, <<"a">>}]},
-            {<<"c">>,
-             [{<<"parent">>, <<"b">>}]},
-            {<<"e">>,
-             [{<<"parent">>, <<"c">>}]},
-            {<<"d">>,
-             [{<<"parent">>, <<"a">>}]},
-            {<<"a">>, []}
-           ]}],
-    C = children(VM, <<"a">>),
-    C1 = children(VM, <<"a">>, true),
-    ?assertEqual(C, [<<"b">>, <<"d">>]),
-    ?assertEqual(C1, [<<"e">>, <<"c">>, <<"b">>, <<"d">>]),
-    ok.
-
--endif.

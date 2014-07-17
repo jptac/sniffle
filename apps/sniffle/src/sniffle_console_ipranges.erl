@@ -77,7 +77,7 @@ command(json, ["claim", ID]) ->
     end;
 
 command(text, ["release", ID, IPS]) ->
-    IP = sniffle_iprange_state:parse_bin(IPS),
+    IP = ft_iprange:parse_bin(IPS),
     case sniffle_iprange:release_ip(list_to_binary(ID), IP) of
         ok ->
             io:format("Released ip.~n"),
@@ -95,9 +95,9 @@ get_ip(ID) ->
     case sniffle_iprange:claim_ip(list_to_binary(ID)) of
         {ok, {Tag, IP, Netmask, Gateway}} ->
             {ok, {Tag,
-                  sniffle_iprange_state:to_bin(IP),
-                  sniffle_iprange_state:to_bin(Netmask),
-                  sniffle_iprange_state:to_bin(Gateway)}};
+                  ft_iprange:to_bin(IP),
+                  ft_iprange:to_bin(Netmask),
+                  ft_iprange:to_bin(Gateway)}};
         _ ->
             error
     end.
@@ -106,9 +106,9 @@ print(N) ->
     ?F(?Hdr, [jsxd:get(<<"uuid">>, <<"-">>, N),
               jsxd:get(<<"name">>, <<"-">>, N),
               jsxd:get(<<"tag">>, <<"-">>, N),
-              sniffle_iprange_state:to_bin(jsxd:get(<<"first">>, 0, N)),
-              sniffle_iprange_state:to_bin(jsxd:get(<<"current">>, 0, N)),
-              sniffle_iprange_state:to_bin(jsxd:get(<<"last">>, 0, N)),
-              sniffle_iprange_state:to_bin(jsxd:get(<<"netmask">>, 0, N)),
-              sniffle_iprange_state:to_bin(jsxd:get(<<"gateway">>, 0, N)),
+              ft_iprange:to_bin(jsxd:get(<<"first">>, 0, N)),
+              ft_iprange:to_bin(jsxd:get(<<"current">>, 0, N)),
+              ft_iprange:to_bin(jsxd:get(<<"last">>, 0, N)),
+              ft_iprange:to_bin(jsxd:get(<<"netmask">>, 0, N)),
+              ft_iprange:to_bin(jsxd:get(<<"gateway">>, 0, N)),
               jsxd:get(<<"vlan">>, 0, N)]).

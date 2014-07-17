@@ -87,7 +87,7 @@ get_(Iprange) ->
 get(Iprange) ->
     case get_(Iprange) of
         {ok, R} ->
-            {ok, sniffle_iprange_state:to_json(R)};
+            {ok, ft_iprange:to_json(R)};
         E ->
             E
     end.
@@ -165,7 +165,7 @@ claim_ip(Iprange, N) ->
         not_found ->
             not_found;
         {ok, Obj} ->
-            case sniffle_iprange_state:free(Obj) of
+            case ft_iprange:free(Obj) of
                 [] ->
                     {error, full};
                 [FoundIP | R] ->
@@ -182,7 +182,7 @@ claim_ip(Iprange, N) ->
 full(Iprange) ->
     case sniffle_iprange:get_(Iprange) of
         {ok, Obj} ->
-            not sniffle_iprange_state:free(Obj) == [];
+            not ft_iprange:free(Obj) == [];
         E ->
             E
     end.

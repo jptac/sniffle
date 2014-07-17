@@ -117,7 +117,7 @@ set(Preflist, ReqID, Vm, Data) ->
 
 init([Part]) ->
     sniffle_vnode:init(Part, <<"package">>, ?SERVICE, ?MODULE,
-                       sniffle_package_state).
+                       ft_package).
 
 %%%===================================================================
 %%% General
@@ -125,9 +125,9 @@ init([Part]) ->
 
 handle_command({create, {ReqID, Coordinator}=ID, UUID, [Package]},
                _Sender, State) ->
-    I0 = sniffle_package_state:new(ID),
-    I1 = sniffle_package_state:uuid(ID, UUID, I0),
-    I2 = sniffle_package_state:name(ID, Package, I1),
+    I0 = ft_package:new(ID),
+    I1 = ft_package:uuid(ID, UUID, I0),
+    I2 = ft_package:name(ID, Package, I1),
     VC0 = vclock:fresh(),
     VC = vclock:increment(Coordinator, VC0),
     HObject = #sniffle_obj{val=I2, vclock=VC},

@@ -120,13 +120,12 @@ set(Preflist, ReqID, Dataset, Data) ->
 %%%===================================================================
 
 init([Part]) ->
-    sniffle_vnode:init(Part, <<"dataset">>, ?SERVICE, ?MODULE,
-                       sniffle_dataset_state).
+    sniffle_vnode:init(Part, <<"dataset">>, ?SERVICE, ?MODULE, ft_dataset).
 
 handle_command({create, {ReqID, Coordinator}, Dataset, []},
                _Sender, State) ->
-    I0 = sniffle_dataset_state:new({ReqID, Coordinator}),
-    I1 = sniffle_dataset_state:uuid({ReqID, Coordinator}, Dataset, I0),
+    I0 = ft_dataset:new({ReqID, Coordinator}),
+    I1 = ft_dataset:uuid({ReqID, Coordinator}, Dataset, I0),
     VC0 = vclock:fresh(),
     VC = vclock:increment(Coordinator, VC0),
     Obj = #sniffle_obj{val=I1, vclock=VC},

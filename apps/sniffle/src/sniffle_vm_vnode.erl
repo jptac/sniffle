@@ -138,8 +138,7 @@ set(Preflist, ReqID, Vm, Data) ->
 %%%===================================================================
 
 init([Part]) ->
-    sniffle_vnode:init(Part, <<"vm">>, ?SERVICE, ?MODULE,
-                       sniffle_vm_state).
+    sniffle_vnode:init(Part, <<"vm">>, ?SERVICE, ?MODULE, ft_vm).
 
 -type vm_command() ::
         ping |
@@ -161,33 +160,31 @@ init([Part]) ->
 %%% Node Specific
 %%%===================================================================
 
-handle_command({register, {ReqID, Coordinator}, Vm, Hypervisor}, _Sender, State) ->
+handle_command({register, {ReqID, Coordinator}=ID, Vm, Hypervisor}, _Sender, State) ->
     HObject = case fifo_db:get(State#vstate.db, <<"vm">>, Vm) of
                   not_found ->
-                      H0 = statebox:new(fun sniffle_vm_state:new/0),
-                      H1 = statebox:modify({fun sniffle_vm_state:uuid/2, [Vm]}, H0),
-                      H2 = statebox:modify({fun sniffle_vm_state:hypervisor/2, [Hypervisor]}, H1),
+                      H0 = ft_vm:new(ID),
+                      H1 = ft_vm:uuid(ID, Vm, H0),
+                      H2 = ft_vm:hypervisor(ID, Hypervisor, H1),
                       VC0 = vclock:fresh(),
                       VC = vclock:increment(Coordinator, VC0),
                       #sniffle_obj{val=H2, vclock=VC};
                   {ok, #sniffle_obj{val=H0} = O} ->
-                      H1 = statebox:modify({fun sniffle_vm_state:load/2,[dummy]}, H0),
-                      H2 = statebox:modify({fun sniffle_vm_state:hypervisor/2, [Hypervisor]}, H1),
-                      H3 = statebox:expire(?STATEBOX_EXPIRE, H2),
-                      sniffle_obj:update(H3, Coordinator, O)
+                      H1 = ft_vm:load(ID, H0),
+                      H2 = ft_vm:hypervisor(ID, Hypervisor, H1),
+                      sniffle_obj:update(H2, Coordinator, O)
               end,
     sniffle_vnode:put(Vm, HObject, State),
     {reply, {ok, ReqID}, State};
 
 handle_command({log,
-                {ReqID, Coordinator}, Vm,
+                {ReqID, Coordinator}=ID, Vm,
                 {Time, Log}}, _Sender, State) ->
     case fifo_db:get(State#vstate.db, <<"vm">>, Vm) of
         {ok, #sniffle_obj{val=H0} = O} ->
-            H1 = statebox:modify({fun sniffle_vm_state:load/2,[dummy]}, H0),
-            H2 = statebox:modify({fun sniffle_vm_state:log/3, [Time, Log]}, H1),
-            H3 = statebox:expire(?STATEBOX_EXPIRE, H2),
-            Obj = sniffle_obj:update(H3, Coordinator, O),
+            H1 = ft_vm:load(ID, H0),
+            H2 = ft_vm:log(ID, Time, Log, H1),
+            Obj = sniffle_obj:update(H2, Coordinator, O),
             sniffle_vnode:put(Vm, Obj, State),
             {reply, {ok, ReqID}, State};
         R ->

@@ -1,5 +1,6 @@
 -module(sniffle_hypervisor).
 -include("sniffle.hrl").
+-include("ft.hrl").
 
 -define(MASTER, sniffle_hypervisor_vnode_master).
 -define(VNODE, sniffle_hypervisor_vnode).
@@ -74,7 +75,7 @@ get_(Hypervisor) ->
 get(Hypervisor) ->
     case get_(Hypervisor) of
         {ok, H} ->
-            {ok, sniffle_hypervisor_state:to_json(H)};
+            {ok, ft_hypervisor:to_json(H)};
         R ->
             R
     end.
@@ -127,11 +128,9 @@ list() ->
     sniffle_coverage:start(?MASTER, ?SERVICE, list).
 
 service(UUID, Action, Service) ->
-    case sniffle_hypervisor:get(UUID) of
+    case sniffle_hypervisor:get_(UUID) of
         {ok, HypervisorObj} ->
-            {ok, Port} = jsxd:get(<<"port">>, HypervisorObj),
-            {ok, HostB} = jsxd:get(<<"host">>, HypervisorObj),
-            Host = binary_to_list(HostB),
+            {Host, Port} = ft_hypervisor:endpoint(HypervisorObj),
             service(Host, Port, Action, Service);
         E ->
             E
@@ -145,13 +144,11 @@ service(Host, Port, clear, Service) ->
     libchunter:service_clear(Host, Port, Service).
 
 update(UUID) when is_binary(UUID) ->
-    {ok, HypervisorObj} = sniffle_hypervisor:get(UUID),
+    {ok, HypervisorObj} = sniffle_hypervisor:get_(UUID),
     update(HypervisorObj);
 
 update(HypervisorObj) ->
-    {ok, Port} = jsxd:get(<<"port">>, HypervisorObj),
-    {ok, HostB} = jsxd:get(<<"host">>, HypervisorObj),
-    Host = binary_to_list(HostB),
+    {Host, Port} = ft_hypervisor:endpoint(HypervisorObj),
     libchunter:update(Host, Port).
 
 update() ->
@@ -169,7 +166,7 @@ list(Requirements, true) ->
     {ok, Res} = sniffle_full_coverage:start(
                   ?MASTER, ?SERVICE, {list, Requirements, true}),
     Res1 = rankmatcher:apply_scales(Res),
-    Res2 = [{Pts, sniffle_hypervisor_state:to_json(H)} ||
+    Res2 = [{Pts, ft_hypervisor:to_json(H)} ||
                {Pts, H} <- Res1],
     {ok,  lists:sort(Res2)};
 

@@ -5,9 +5,10 @@
 %%% @end
 %%% Created : 23 Aug 2012 by Heinz Nikolaus Gies <heinz@licenser.net>
 
--module(sniffle_package_state).
+-module(ft_package).
 
 -include("sniffle.hrl").
+-include("ft.hrl").
 
 -define(G(N, F),
         getter(#sniffle_obj{val=S0}, N) ->
@@ -42,6 +43,7 @@
          quota/1, quota/3,
          ram/1, ram/3,
          uuid/1, uuid/3,
+         requirements/1, add_requirement/3, remove_requirement/3,
          zfs_io_priority/1, zfs_io_priority/3
         ]).
 
@@ -56,6 +58,7 @@
               quota/1, quota/3,
               ram/1, ram/3,
               uuid/1, uuid/3,
+              requiremnets/3, add_requirement/3, remove_requirement/3,
               zfs_io_priority/1, zfs_io_priority/3
              ]).
 
@@ -123,6 +126,22 @@ to_json(P) ->
 ?S(quota).
 ?S(ram).
 ?S(zfs_io_priority).
+
+requirements(H) ->
+    riak_dt_orswot:value(H#?PACKAGE.requirements).
+
+add_requirement({_T, ID}, V, H) ->
+    {ok, O1} = riak_dt_orswot:update({add, V}, ID, H#?PACKAGE.requirements),
+    H#?PACKAGE{requirements = O1}.
+
+remove_requirement({_T, ID}, V, H) ->
+    case riak_dt_orswot:update({remove, V}, ID, H#?PACKAGE.requirements) of
+        {error,{precondition,{not_present,_}}} ->
+            H;
+        {ok, O1} ->
+            H#?PACKAGE{requirements = O1}
+    end.
+
 
 metadata(H) ->
     fifo_map:value(H#?PACKAGE.metadata).

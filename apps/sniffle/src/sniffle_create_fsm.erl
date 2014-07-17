@@ -65,13 +65,13 @@
           dataset,
           dataset_name,
           config,
+          resulting_networks = [],
           owner,
           creator,
           type,
           nets,
           hypervisor,
           mapping = [],
-          old_nics,
           delay = 5000,
           retry = 0,
           max_retries = 0,
@@ -163,7 +163,7 @@ init([UUID, Package, Dataset, Config, Pid]) ->
 %%--------------------------------------------------------------------
 
 generate_grouping_rules(_Event, State = #state{test_pid = {_,_}, config = Config}) ->
-    case jsxd:get(<<"grouping">>, Config) of
+    case jsxd:get([<<"grouping">>], Config) of
         {ok, Grouping} ->
             Rules = sniffle_grouping:create_rules(Grouping),
             {next_state, create_permissions, State#state{grouping_rules = Rules}, 0};
@@ -175,7 +175,7 @@ generate_grouping_rules(_Event, State = #state{
                                            uuid = UUID,
                                            config = Config
                                           }) ->
-    case jsxd:get(<<"grouping">>, Config) of
+    case jsxd:get([<<"grouping">>], Config) of
         {ok, Grouping} ->
             Rules = sniffle_grouping:create_rules(Grouping),
             case sniffle_grouping:add_element(Grouping, UUID) of
@@ -184,7 +184,7 @@ generate_grouping_rules(_Event, State = #state{
                     {next_state, create_permissions,
                      State#state{grouping_rules = Rules}, 0};
                 E ->
-                    lager:error("Creation Faild since grouing could not be "
+                    lager:error("[create] Creation Faild since grouing could not be "
                                 "joined: ~p", [E]),
                     {stop, E, State}
             end;
@@ -223,10 +223,12 @@ create_permissions(_Event, State = #state{test_pid = {_,_}, config = Config}) ->
     {ok, Creator} = jsxd:get([<<"owner">>], Config),
     Owner = case libsnarl:user_active_org(Creator) of
                 {ok, <<"">>} ->
-                    lager:warning("User ~p has no active org.", [Creator]),
+                    lager:warning("[create] User ~p has no active org.",
+                                  [Creator]),
                     <<"">>;
                 {ok, Org} ->
-                    lager:warning("User ~p has active org: ~p.", [Creator, Org]),
+                    lager:info("[create] User ~p has active org: ~p.",
+                               [Creator, Org]),
                     Org
             end,
     Config1 = jsxd:set([<<"owner">>], Owner, Config),
@@ -245,11 +247,13 @@ create_permissions(_Event, State = #state{
     libsnarl:user_grant(Creator, [<<"channels">>, UUID, <<"join">>]),
     eplugin:call('create:permissions', UUID, Config, Creator),
     Owner = case libsnarl:user_active_org(Creator) of
-                {ok, <<"">>} ->
-                    lager:warning("User ~p has no active org.", [Creator]),
+                {ok, <<>>} ->
+                    lager:warning("[create] User ~p has no active org.",
+                                  [Creator]),
                     <<"">>;
                 {ok, Org} ->
-                    lager:warning("User ~p has active org: ~p.", [Creator, Org]),
+                    lager:info("[create] User ~p has active org: ~p.",
+                               [Creator, Org]),
                     vm_set(State, <<"owner">>, Org),
                     libsnarl:org_execute_trigger(Org, vm_create, UUID),
                     Org
@@ -267,18 +271,20 @@ create_permissions(_Event, State = #state{
 get_package(_Event, State = #state{
                                package_name = PackageName
                               }) ->
+    lager:info("[create] Fetching package: ~p", [PackageName]),
     vm_log(State, <<"Fetching package ", PackageName/binary>>),
     vm_set(State, <<"state">>, <<"fetching_package">>),
-    {ok, Package} = sniffle_package:get(PackageName),
+    {ok, Package} = sniffle_package:get_(PackageName),
     vm_set(State, <<"package">>, PackageName),
     {next_state, get_dataset, State#state{package = Package}, 0}.
 
 get_dataset(_Event, State = #state{
                                dataset_name = DatasetName
                               }) ->
-    vm_set(State, <<"state">>, <<"fetching_dataset">>),
+    lager:info("[create] Fetching Dataset: ~p", [DatasetName]),
     vm_log(State, <<"Fetching dataset ", DatasetName/binary>>),
-    {ok, Dataset} = sniffle_dataset:get(DatasetName),
+    vm_set(State, <<"state">>, <<"fetching_dataset">>),
+    {ok, Dataset} = sniffle_dataset:get_(DatasetName),
     vm_set(State, <<"dataset">>, DatasetName),
     {next_state, callbacks, State#state{dataset = Dataset}, 0}.
 
@@ -297,24 +303,24 @@ callbacks(_Event, State = #state{
 
 get_networks(_event, State = #state{retry = R, max_retries = Max})
   when R > Max ->
+    lager:error("[create] Failed after too many retries: ~p > ~p.",
+                [R, Max]),
     vm_set(State, <<"state">>, <<"failed">>),
-    BR = list_to_binary(integer_to_list(R)),
-    BMax= list_to_binary(integer_to_list(Max)),
+    BR = integer_to_binary(R),
+    BMax= integer_to_binary(Max),
     vm_log(State, <<"Failed after too many retries: ", BR/binary, " > ",
                     BMax/binary>>),
-    lager:error("Failed after too many retries."),
     {stop, failed, State};
 
 get_networks(_Event, State = #state{config = Config, retry = Try}) ->
     Nets = jsxd:get([<<"networks">>], [], Config),
     Nets1 = lists:map(fun({Name, Network}) ->
-                              {ok, N} = sniffle_network:get(Network),
-                              {ok, Rs} = jsxd:get(<<"ipranges">>, N),
-                              Rs1 = [{R, sniffle_iprange:get(R)} || R <- Rs],
+                              {ok, N} = sniffle_network:get_(Network),
+                              Rs = ft_network:ipranges(N),
+                              Rs1 = [{R, sniffle_iprange:get_(R)} || R <- Rs],
                               Rs2 = [{R, D} || {R, {ok, D}} <- Rs1],
                               Rs3 = lists:map(fun({ID, R}) ->
-                                                      {ok, Tag} = jsxd:get(<<"tag">>, R),
-                                                      {ID, Tag}
+                                                      {ID, ft_iprange:tag(R)}
                                               end, Rs2),
                               {Name, Rs3}
                       end, Nets),
@@ -328,15 +334,15 @@ get_server(_Event, State = #state{
                               nets = Nets,
                               package = Package,
                               grouping_rules = GroupingRules}) ->
-    lager:debug("get_server: ~p", [Nets]),
-    {ok, Ram} = jsxd:get(<<"ram">>, Package),
+    lager:debug("[create] get_server: ~p", [Nets]),
+    Ram = ft_package:ram(Package),
     vm_set(State, <<"state">>, <<"fetching_server">>),
     Permission = [<<"hypervisors">>, {<<"res">>, <<"name">>}, <<"create">>],
-    {ok, Type} = jsxd:get(<<"type">>, Dataset),
+    Type = ft_dataset:type(Dataset),
     case libsnarl:user_cache(Creator) of
         {ok, Permissions} ->
-            Conditions0 = jsxd:get(<<"requirements">>, [], Package)
-                ++ jsxd:get(<<"requirements">>, [], Dataset)
+            Conditions0 = ft_package:requirements(Package)
+                ++ ft_dataset:requirements(Dataset)
                 ++ jsxd:get(<<"requirements">>, [], Config),
             Conditions1 = [{must, 'allowed', Permission, Permissions},
                            {must, 'element', <<"virtualisation">>, Type},
@@ -344,11 +350,11 @@ get_server(_Event, State = #state{
                 lists:map(fun(C) -> make_condition(C, Permissions) end, Conditions0),
             Conditions2 = Conditions1 ++ GroupingRules,
             {UUID, Config, Conditions} = eplugin:fold('create:conditions', {UUID, Config, Conditions2}),
-            lager:debug("[CREATE] Finding hypervisor: ~p", [Conditions]),
+            lager:debug("[create] Finding hypervisor: ~p", [Conditions]),
             {ok, Hypervisors} = sniffle_hypervisor:list(Conditions, false),
             Hypervisors1 = eplugin:fold('create:hypervisor_select', Hypervisors),
             Hypervisors2 = lists:reverse(lists:sort(Hypervisors1)),
-            lager:debug("[CREATE] Hypervisors found: ~p", [Hypervisors2]),
+            lager:debug("[create] Hypervisors found: ~p", [Hypervisors2]),
             case test_hypervisors(UUID, Hypervisors2, Nets) of
                 {ok, HypervisorID, H, Nets1} ->
                     RamB = list_to_binary(integer_to_list(Ram)),
@@ -359,11 +365,11 @@ get_server(_Event, State = #state{
                      State#state{hypervisor = H,
                                  nets = Nets1}, 0};
                 _ ->
-                    lager:warning("Cound not find hypervisor."),
+                    lager:warning("[create] Cound not find hypervisor."),
                     do_retry(State)
             end;
         _ ->
-            lager:warning("Cound not cace user."),
+            lager:warning("[create] Cound not cace user."),
             do_retry(State)
     end.
 
@@ -371,22 +377,21 @@ get_ips(_Event, State = #state{nets = Nets,
                                uuid = UUID,
                                config = Config,
                                dataset = Dataset}) ->
-    lager:debug("get_ips: ~p", [Nets]),
-    {ok, Nics0} = jsxd:get(<<"networks">>, Dataset),
+    lager:debug("[create] get_ips: ~p", [Nets]),
+    Nics0 = ft_dataset:networks(Dataset),
     case update_nics(UUID, Nics0, Config, Nets, State) of
         {error, E, Mapping} ->
             lager:error("[create] Failed to get ips: ~p", [E]),
             [sniffle_iprange:release_ip(Range, IP) ||{Range, IP} <- Mapping],
-            lager:warning("Could not map networks."),
+            lager:warning("[create] Could not map networks."),
             do_retry(State);
         {Nics1, Mapping} ->
-            Dataset1 = jsxd:set(<<"networks">>, Nics1, Dataset),
-            MappingsJSON = jsxd:from_list([[{<<"ip">>, IP},
-                                            {<<"network">>, Range}]
-                                           || {Range, IP} <- Mapping]),
+            MappingsJSON = [[{<<"ip">>, IP},
+                             {<<"network">>, Range}]
+                            || {Range, IP} <- Mapping],
             vm_set(State, <<"network_mappings">>, MappingsJSON),
             {next_state, build_key,
-             State#state{dataset = Dataset1, mapping = Mapping, old_nics = Nics0},
+             State#state{mapping=Mapping, resulting_networks=Nics1},
              0}
     end.
 
@@ -422,17 +427,19 @@ create(_Event, State = #state{
                           package = Package,
                           uuid = UUID,
                           config = Config,
+                          resulting_networks = Nics,
                           hypervisor = {Host, Port},
-                          mapping = Mapping,
-                          old_nics = Nics}) ->
+                          mapping = Mapping}) ->
     vm_log(State, <<"Handing off to hypervisor.">>),
     vm_set(State, <<"state">>, <<"creating">>),
-    case libchunter:create_machine(Host, Port, UUID, Package, Dataset, Config) of
+    Package1 = ft_package:to_json(Package),
+    Dataset1 = ft_dataset:to_json(Dataset),
+    Dataset2 = jsxd:set(<<"networks">>, Nics, Dataset1),
+    case libchunter:create_machine(Host, Port, UUID, Package1, Dataset2, Config) of
         {error, lock} ->
             [sniffle_iprange:release_ip(Range, IP) ||{Range, IP} <- Mapping],
-            lager:warning("Could not get log."),
-            do_retry(
-              State#state{dataset = jsxd:set(<<"networks">>, Nics, Dataset)});
+            lager:warning("[create] Could not get log."),
+            do_retry(State);
         ok ->
             {stop, normal, State}
     end.
@@ -545,7 +552,7 @@ merge_keys(Keys) ->
     [[Key, "\n"] || {_ID, Key} <- Keys].
 
 test_net(Have, [{ID, Tag} | R]) ->
-    lager:debug("test_net: ~p ~p", [Have, [{ID, Tag} | R]]),
+    lager:debug("[create] test_net: ~p ~p", [Have, [{ID, Tag} | R]]),
     case lists:member(Tag, Have) of
         true ->
             case sniffle_iprange:full(ID) of
@@ -559,21 +566,19 @@ test_net(Have, [{ID, Tag} | R]) ->
     end;
 
 test_net(_Have, []) ->
-    lager:debug("test_net: false"),
+    lager:debug("[create] test_net: false"),
     false.
 
 test_hypervisors(UUID, [{_, HypervisorID} | R], Nets) ->
-    lager:debug("test_hypervisors: ~p ~p",
+    lager:debug("[create] test_hypervisors: ~p ~p",
                 [HypervisorID, Nets]),
-    {ok, H} = sniffle_hypervisor:get(HypervisorID),
-    case test_hypervisor(UUID, jsxd:get([<<"networks">>], [], H), Nets, []) of
+    {ok, H} = sniffle_hypervisor:get_(HypervisorID),
+    case test_hypervisor(UUID, ft_hypervisor:networks(H), Nets, []) of
         {ok, Nets1} ->
-            {ok, Port} = jsxd:get(<<"port">>, H),
-            {ok, Host} = jsxd:get(<<"host">>, H),
-            HostS = binary_to_list(Host),
-            case libchunter:lock(HostS, Port, UUID) of
+            {Host, Port} = ft_hypervisor:endpoint(H),
+            case libchunter:lock(Host, Port, UUID) of
                 ok ->
-                    {ok, HypervisorID, {HostS, Port}, Nets1};
+                    {ok, HypervisorID, {Host, Port}, Nets1};
                 _ ->
                     test_hypervisors(UUID, R, Nets)
             end;
@@ -586,7 +591,7 @@ test_hypervisors(_, [], _) ->
 
 
 test_hypervisor(UUID, H, [{NetName, Posibilities} | Nets], Acc) ->
-    lager:debug("test_hypervisor: ~p ~p ~p",
+    lager:debug("[create] test_hypervisor: ~p ~p ~p",
                 [H, [{NetName, Posibilities} | Nets], Acc]),
     case test_net(H, Posibilities) of
         false ->
@@ -658,9 +663,9 @@ update_nics(UUID, Nics, Config, Nets, State) ->
               case sniffle_iprange:claim_ip(NicTag) of
                   {ok, {Tag, IP, Net, Gw}} ->
                       {ok, Range} = sniffle_iprange:get(NicTag),
-                      IPb = sniffle_iprange_state:to_bin(IP),
-                      Netb = sniffle_iprange_state:to_bin(Net),
-                      GWb = sniffle_iprange_state:to_bin(Gw),
+                      IPb = ft_iprange:to_bin(IP),
+                      Netb = ft_iprange:to_bin(Net),
+                      GWb = ft_iprange:to_bin(Gw),
                       vm_log(State,
                              <<"Assigning IP ", IPb/binary,
                                " netmask ", Netb/binary,

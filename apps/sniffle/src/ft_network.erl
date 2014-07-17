@@ -5,13 +5,10 @@
 %%% @end
 %%% Created : 23 Aug 2012 by Heinz Nikolaus Gies <heinz@licenser.net>
 
--module(sniffle_network_state).
+-module(ft_network).
 
 -include("sniffle.hrl").
-
--ifdef(TEST).
--include_lib("eunit/include/eunit.hrl").
--endif.
+-include("ft.hrl").
 
 -export([
          new/1,
@@ -56,9 +53,6 @@ name({T, _ID}, V, H) ->
     {ok, V1} = riak_dt_lwwreg:update({assign, V, T}, none, H#?NETWORK.name),
     H#?NETWORK{name = V1}.
 
-metadata(H) ->
-    fifo_map:value(H#?NETWORK.metadata).
-
 ipranges(H) ->
     riak_dt_orswot:value(H#?NETWORK.ipranges).
 
@@ -86,10 +80,10 @@ load(_, #?NETWORK{} = N) ->
 
 load({T, ID},  Sb) ->
     N = statebox:value(Sb),
-    {ok, UUID}  =jsxd:get([<<"uuid">>], N),
-    {ok, Name}  =jsxd:get([<<"name">>], N),
-    {ok, IPRanges}  =jsxd:get([<<"ipranges">>], [], N),
-    {ok, Metadata}  =jsxd:get([<<"metadata">>], [], N),
+    {ok, UUID} = jsxd:get([<<"uuid">>], N),
+    {ok, Name} = jsxd:get([<<"name">>], N),
+    IPRanges = jsxd:get([<<"ipranges">>], [], N),
+    Metadata = jsxd:get([<<"metadata">>], [], N),
     UUID1 = ?NEW_LWW(UUID, T),
     Name1 = ?NEW_LWW(Name, T),
     IPRanges1 = riak_dt_orswot:update(
@@ -106,6 +100,9 @@ load({T, ID},  Sb) ->
 
 new(_) ->
     #?NETWORK{}.
+
+metadata(H) ->
+    fifo_map:value(H#?NETWORK.metadata).
 
 set_metadata({T, ID}, P, Value, User) when is_binary(P) ->
     set_metadata({T, ID}, fifo_map:split_path(P), Value, User);

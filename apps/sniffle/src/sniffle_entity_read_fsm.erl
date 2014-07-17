@@ -4,6 +4,7 @@
 -module(sniffle_entity_read_fsm).
 -behavior(gen_fsm).
 -include("sniffle.hrl").
+-include("ft.hrl").
 
 %% API
 -export([start_link/6, start/2, start/3, start/4]).
@@ -241,33 +242,28 @@ merge(Replies) ->
 -spec reconcile([A :: statebox:statebox()]) -> A :: statebox:statebox().
 
 reconcile([V = #?HYPERVISOR{} | Vs]) ->
-    reconcile(sniffle_hypervisor_state, Vs, V);
+    reconcile(ft_hypervisor, Vs, V);
 
 reconcile([V = #?GROUPING{} | Vs]) ->
-    reconcile(sniffle_grouping_state, Vs, V);
+    reconcile(ft_grouping, Vs, V);
 
 reconcile([V = #?NETWORK{} | Vs]) ->
-    reconcile(sniffle_network_state, Vs, V);
+    reconcile(ft_network, Vs, V);
 
 reconcile([V = #?DATASET{} | Vs]) ->
-    reconcile(sniffle_dataset_state, Vs, V);
+    reconcile(ft_dataset, Vs, V);
 
 reconcile([V = #?PACKAGE{} | Vs]) ->
-    reconcile(sniffle_package_state, Vs, V);
+    reconcile(ft_package, Vs, V);
 
 reconcile([V = #?DTRACE{} | Vs]) ->
-    reconcile(sniffle_dtrace_state, Vs, V);
+    reconcile(ft_dtrace, Vs, V);
 
 reconcile([V = #?IPRANGE{} | Vs]) ->
-    reconcile(sniffle_iprange_state, Vs, V);
+    reconcile(ft_iprange, Vs, V);
 
-reconcile([V0 | _ ] = Vals) ->
-    case statebox:is_statebox(V0) of
-        true ->
-            statebox:merge(Vals);
-        false ->
-            V0
-    end.
+reconcile([V = #?VM{} | Vs]) ->
+    reconcile(ft_vm, Vs, V).
 
 reconcile(M, [H | R], Acc) ->
     reconcile(M, R, M:merge(Acc, H));

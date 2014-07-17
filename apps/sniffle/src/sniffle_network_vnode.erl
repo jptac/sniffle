@@ -138,8 +138,7 @@ set(Preflist, ReqID, Hypervisor, Data) ->
 %%%===================================================================
 
 init([Part]) ->
-    sniffle_vnode:init(Part, <<"network">>, ?SERVICE, ?MODULE,
-                       sniffle_network_state).
+    sniffle_vnode:init(Part, <<"network">>, ?SERVICE, ?MODULE, ft_network).
 
 %%%===================================================================
 %%% General
@@ -148,9 +147,9 @@ init([Part]) ->
 handle_command({create, {ReqID, Coordinator}=TID, UUID,
                 [Name]},
                _Sender, State) ->
-    I0 = sniffle_network_state:new(TID),
-    I1 = sniffle_network_state:uuid(TID, UUID, I0),
-    I2 = sniffle_network_state:name(TID, Name, I1),
+    I0 = ft_network:new(TID),
+    I1 = ft_network:uuid(TID, UUID, I0),
+    I2 = ft_network:name(TID, Name, I1),
     VC0 = vclock:fresh(),
     VC = vclock:increment(Coordinator, VC0),
     HObject = #sniffle_obj{val=I2, vclock=VC},
@@ -162,8 +161,8 @@ handle_command({add_iprange,
                 IPRange}, _Sender, State) ->
     case fifo_db:get(State#vstate.db, <<"network">>, Network) of
         {ok, #sniffle_obj{val=H0} = O} ->
-            H1 = sniffle_network_state:load(TID, H0),
-            H2 = sniffle_network_state:add_iprange(TID, IPRange, H1),
+            H1 = ft_network:load(TID, H0),
+            H2 = ft_network:add_iprange(TID, IPRange, H1),
             Obj = sniffle_obj:update(H2, Coordinator, O),
             sniffle_vnode:put(Network, Obj, State),
             {reply, {ok, ReqID}, State};
@@ -177,8 +176,8 @@ handle_command({remove_iprange,
                 IPRange}, _Sender, State) ->
     case fifo_db:get(State#vstate.db, <<"network">>, Network) of
         {ok, #sniffle_obj{val=H0} = O} ->
-            H1 = sniffle_network_state:load(TID, H0),
-            H2 = sniffle_network_state:remove_iprange(TID, IPRange, H1),
+            H1 = ft_network:load(TID, H0),
+            H2 = ft_network:remove_iprange(TID, IPRange, H1),
             Obj = sniffle_obj:update(H2, Coordinator, O),
             sniffle_vnode:put(Network, Obj, State),
             {reply, {ok, ReqID}, State};

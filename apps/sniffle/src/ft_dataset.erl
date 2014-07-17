@@ -5,10 +5,10 @@
 %%% @end
 %%% Created : 23 Aug 2012 by Heinz Nikolaus Gies <heinz@licenser.net>
 
--module(sniffle_dataset_state).
+-module(ft_dataset).
 
 -include("sniffle.hrl").
-
+-include_lib("ft.hrl").
 
 -define(G(N, F),
         getter(#sniffle_obj{val=S0}, N) ->
@@ -30,19 +30,23 @@
          new/1,
          load/2,
          uuid/1, uuid/3,
+         type/1, type/3,
          status/1, status/3,
          imported/1, imported/3,
          set/4,
          getter/2,
          to_json/1,
          metadata/1, set_metadata/4,
+         requirements/1, add_requirement/3, remove_requirement/3,
          merge/2
         ]).
 
 -ignore_xref([load/2, load/1, set/4, set/3, getter/2, merge/2,
+              type/1, type/3,
               uuid/1, uuid/3,
               imported/1, imported/3,
               status/1, status/3,
+              requirements/1, add_requirement/3, remove_requirement/3,
               metadata/1, set_metadata/4
              ]).
 
@@ -105,6 +109,7 @@ new({T, _ID}) ->
         status = Status
        }.
 ?G(<<"uuid">>, uuid);
+?G(<<"type">>, type);
 ?G(<<"status">>, status);
 ?G(<<"imported">>, imported);
 
@@ -122,6 +127,8 @@ new({T, _ID}) ->
 
 ?G(uuid).
 ?S(uuid).
+?G(type).
+?S(type).
 ?G(status).
 ?S(status).
 ?G(imported).
@@ -149,6 +156,21 @@ new({T, _ID}) ->
 ?S(users).
 ?G(version).
 ?S(version).
+
+requirements(H) ->
+    riak_dt_orswot:value(H#?DATASET.requirements).
+
+add_requirement({_T, ID}, V, H) ->
+    {ok, O1} = riak_dt_orswot:update({add, V}, ID, H#?DATASET.requirements),
+    H#?DATASET{requirements = O1}.
+
+remove_requirement({_T, ID}, V, H) ->
+    case riak_dt_orswot:update({remove, V}, ID, H#?DATASET.requirements) of
+        {error,{precondition,{not_present,_}}} ->
+            H;
+        {ok, O1} ->
+            H#?DATASET{requirements = O1}
+    end.
 
 metadata(H) ->
     fifo_map:value(H#?DATASET.metadata).

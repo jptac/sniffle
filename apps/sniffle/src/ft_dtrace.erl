@@ -5,9 +5,10 @@
 %%% @end
 %%% Created : 23 Aug 2012 by Heinz Nikolaus Gies <heinz@licenser.net>
 
--module(sniffle_dtrace_state).
+-module(ft_dtrace).
 
 -include("sniffle.hrl").
+-include("ft.hrl").
 
 -export([
          new/1,

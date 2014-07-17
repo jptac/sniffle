@@ -49,7 +49,7 @@ lookup(Package) ->
 -spec create(Package::binary()) ->
                     duplicate | {error, timeout} | {ok, UUID::fifo:uuid()}.
 create(Package) ->
-    UUID = list_to_binary(uuid:to_string(uuid:uuid4())),
+    UUID = uuid:uuid4s(),
     case sniffle_package:lookup(Package) of
         not_found ->
             ok = do_write(UUID, create, [Package]),
@@ -75,7 +75,7 @@ get_(Package) ->
 get(Package) ->
     case get_(Package) of
         {ok, V} ->
-            {ok, sniffle_package_state:to_json(V)};
+            {ok, ft_package:to_json(V)};
         E ->
             E
     end.

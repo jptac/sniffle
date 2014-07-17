@@ -54,7 +54,7 @@ create(Name, Type) ->
 get(UUID) ->
     case get_(UUID) of
         {ok, G} ->
-            {ok, sniffle_grouping_state:to_json(G)};
+            {ok, ft_grouping:to_json(G)};
         R ->
             R
     end.
@@ -66,7 +66,7 @@ get_(UUID) ->
 add_element(UUID, Element) ->
     case get_(UUID) of
         {ok, T} ->
-            case sniffle_grouping_state:type(T) of
+            case ft_grouping:type(T) of
                 cluster ->
                     case sniffle_vm:get(Element) of
                         {ok, _} ->
@@ -86,7 +86,7 @@ add_element(UUID, Element) ->
                 stack ->
                     case get_(Element) of
                         {ok, E} ->
-                            case sniffle_grouping_state:type(E) of
+                            case ft_grouping:type(E) of
                                 cluster ->
                                     do_write(Element, add_grouping, UUID),
                                     do_write(UUID, add_element, Element);
@@ -106,7 +106,7 @@ add_element(UUID, Element) ->
 remove_element(UUID, Element) ->
     case get_(UUID) of
         {ok, T} ->
-            case sniffle_grouping_state:type(T) of
+            case ft_grouping:type(T) of
                 stack ->
                     do_write(Element, remove_grouping, UUID),
                     do_write(UUID, remove_element, Element);
@@ -121,22 +121,22 @@ remove_element(UUID, Element) ->
 create_rules(UUID) ->
     case get_(UUID) of
         {ok, T} ->
-            case sniffle_grouping_state:type(T) of
+            case ft_grouping:type(T) of
                 %% Clusters impose the rule that the minimal distance from
                 %% each hypervisor must be 1 (aka two machines can't be on the
                 %% same hypervisor)
                 cluster ->
-                    VMs = [sniffle_vm:get(VM) ||
-                              VM <- sniffle_grouping_state:elements(T)],
-                    Hs = [jsxd:get(<<"hypervisor">>, <<>>, VM) ||
+                    VMs = [sniffle_vm:get_(VM) ||
+                              VM <- ft_grouping:elements(T)],
+                    Hs = [ft_vm:hypervisor(VM) ||
                              {ok, VM} <- VMs],
                     Hs1 = [sniffle_hypervisor:get_(H) || H <- Hs],
-                    Paths = [sniffle_hypervisor_state:path(H) || {ok, H} <- Hs1],
+                    Paths = [ft_hypervisor:path(H) || {ok, H} <- Hs1],
                     Paths1 = [{must, {'min-distance', P}, <<"path">>, 1} ||
                                  P <- Paths, P =/= []],
                     %% If the cluster is part of a stack we need to get the
                     %% rules for the stacks it's part of and join them.
-                    case sniffle_grouping_state:groupings(T) of
+                    case ft_grouping:groupings(T) of
                         [] ->
                             Paths1;
                         Gs ->
@@ -149,17 +149,17 @@ create_rules(UUID) ->
                     ScaleMin = 10,
                     ScaleMax = 0,
                     Cls = [sniffle_grouping:get_(Cl) ||
-                              Cl <- sniffle_grouping_state:elements(T)],
-                    VMs = [sniffle_grouping_state:elements(Cl) || {ok, Cl} <- Cls],
+                              Cl <- ft_grouping:elements(T)],
+                    VMs = [ft_grouping:elements(Cl) || {ok, Cl} <- Cls],
                     %% We can remove doublicate VM's before we read them.
                     VMs1 = ordsets:from_list(lists:flatten(VMs)),
-                    VMs2 = [sniffle_vm:get(VM) || VM <- VMs1],
-                    Hs = [jsxd:get(<<"hypervisor">>, <<>>, VM) ||
+                    VMs2 = [sniffle_vm:get_(VM) || VM <- VMs1],
+                    Hs = [ft_vm:hypervisor(VM) ||
                              {ok, VM} <- VMs2],
                     %% we can remove doublicate hypervisors.
                     Hs1 = ordsets:from_list(Hs),
                     Hs2 = [sniffle_hypervisor:get_(H) || H <- Hs1],
-                    Paths = [sniffle_hypervisor_state:path(H) || {ok, H} <- Hs2],
+                    Paths = [ft_hypervisor:path(H) || {ok, H} <- Hs2],
                     Paths1 = [{'scale-distance', P, <<"path">>, ScaleMin, ScaleMax} ||
                                  P <- Paths, P =/= []],
                     Paths1
@@ -171,8 +171,8 @@ create_rules(UUID) ->
 add_grouping(UUID, Element) ->
     case {get_(UUID), get_(Element)} of
         {{ok, T}, {ok, E}} ->
-            case {sniffle_grouping_state:type(T),
-                  sniffle_grouping_state:type(E)} of
+            case {ft_grouping:type(T),
+                  ft_grouping:type(E)} of
                 {cluster, stack} ->
                     do_write(Element, add_element, UUID),
                     do_write(UUID, add_grouping, Element);
@@ -192,8 +192,8 @@ remove_grouping(UUID, Element) ->
 delete(UUID) ->
     case get_(UUID) of
         {ok, T} ->
-            Elements = sniffle_grouping_state:elements(T),
-            case sniffle_grouping_state:type(T) of
+            Elements = ft_grouping:elements(T),
+            case ft_grouping:type(T) of
                 stack ->
                     [do_write(Element, remove_grouping, UUID) ||
                         Element <- Elements];
@@ -201,7 +201,7 @@ delete(UUID) ->
                     [sniffle_vm:set(Element, <<"grouping">>, delete) ||
                         Element <- Elements],
                     [do_write(Stack, remove_element, UUID) ||
-                        Stack <- sniffle_grouping_state:groupings(T)]
+                        Stack <- ft_grouping:groupings(T)]
             end;
         _ ->
             ok
@@ -244,7 +244,7 @@ list(Requirements, true) ->
     {ok, Res} = sniffle_full_coverage:start(
                   ?MASTER, ?SERVICE, {list, Requirements, true}),
     Res1 = rankmatcher:apply_scales(Res),
-    Res2 = [{P, sniffle_grouping_state:to_json(G)} || {P, G} <- Res1],
+    Res2 = [{P, ft_grouping:to_json(G)} || {P, G} <- Res1],
     {ok,  lists:sort(Res2)};
 
 list(Requirements, false) ->

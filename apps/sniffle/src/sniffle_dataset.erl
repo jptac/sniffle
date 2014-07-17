@@ -66,7 +66,7 @@ delete(UUID) ->
 get(UUID) ->
     case get_(UUID) of
         {ok, D} ->
-            {ok, sniffle_dataset_state:to_json(D)};
+            {ok, ft_dataset:to_json(D)};
         R ->
             R
     end.

@@ -8,7 +8,7 @@
 -export([
          create/1,
          delete/1,
-         get/1,
+         get/1, get_/1,
          lookup/1,
          list/0,
          list/2,
@@ -85,10 +85,20 @@ create(Network) when
 delete(Network) ->
     do_write(Network, delete).
 
+-spec get_(Network::fifo:network_id()) ->
+                 not_found | {ok, IPR::fifo:object()} | {error, timeout}.
+get_(Network) ->
+    sniffle_entity_read_fsm:start({?VNODE, ?SERVICE}, get, Network).
+
 -spec get(Network::fifo:network_id()) ->
                  not_found | {ok, IPR::fifo:object()} | {error, timeout}.
 get(Network) ->
-    sniffle_entity_read_fsm:start({?VNODE, ?SERVICE}, get, Network).
+    case get_(Network) of
+        {ok, N} ->
+            {ok, ft_network:to_json(N)};
+        E ->
+            E
+    end.
 
 add_iprange(Network, IPRange) ->
     case sniffle_iprange:get(IPRange) of
@@ -141,9 +151,9 @@ claim_ip(UUID) ->
     claim_ip(UUID, []).
 
 claim_ip(UUID, Rules) ->
-    case sniffle_network:get(UUID) of
+    case sniffle_network:get_(UUID) of
         {ok, Network} ->
-            {ok, Rs} = jsxd:get(<<"ipranges">>, Network),
+            Rs = ft_network:ipranges(Network),
             get_ip(Rs, Rules);
         R ->
             R
@@ -168,9 +178,9 @@ get_ip([N | R], []) ->
     end;
 
 get_ip([N | R], Rules) ->
-    case sniffle_iprange:get(N) of
+    case sniffle_iprange:get_(N) of
         {ok, E} ->
-            case rankmatcher:match(E, fun getter/2, Rules) of
+            case rankmatcher:match(E, fun ft_iprange:getter/2, Rules) of
                 false ->
                     get_ip(R, Rules);
                 _ ->
@@ -187,6 +197,3 @@ get_ip([N | R], Rules) ->
 
 get_ip([], _) ->
     not_found.
-
-getter(O, V) ->
-    jsxd:get(V, 0, O).

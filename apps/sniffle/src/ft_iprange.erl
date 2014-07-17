@@ -5,9 +5,10 @@
 %%% @end
 %%% Created : 23 Aug 2012 by Heinz Nikolaus Gies <heinz@licenser.net>
 
--module(sniffle_iprange_state).
+-module(ft_iprange).
 
 -include("sniffle.hrl").
+-include("ft.hrl").
 
 -ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").

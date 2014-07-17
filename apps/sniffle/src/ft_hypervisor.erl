@@ -5,9 +5,10 @@
 %%% @end
 %%% Created : 23 Aug 2012 by Heinz Nikolaus Gies <heinz@licenser.net>
 
--module(sniffle_hypervisor_state).
+-module(ft_hypervisor).
 
 -include("sniffle.hrl").
+-include("ft.hrl").
 
 -ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").
@@ -32,6 +33,7 @@
          networks/3,
          path/3,
          port/3,
+         endpoint/1,
          set_resource/4,
          set_service/4,
          sysinfo/3,
@@ -125,6 +127,9 @@ etherstubs(H) ->
 etherstubs({T, _ID}, V, H) ->
     {ok, V1} = riak_dt_lwwreg:update({assign, V, T}, none, H#?HYPERVISOR.etherstubs),
     H#?HYPERVISOR{etherstubs = V1}.
+
+endpoint(H) ->
+    {binary_to_list(host(H)), port(H)}.
 
 host(H) ->
     riak_dt_lwwreg:value(H#?HYPERVISOR.host).

@@ -10,7 +10,7 @@
 
 -compile(export_all).
 
--define(I, sniffle_iprange_state).
+-define(I, ft_iprange).
 %% This is larger then and time we ever get in the size, used for ensure setting data
 %% in LWW registers.
 -define(BIG_TIME, 1000000000).

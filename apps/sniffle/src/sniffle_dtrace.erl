@@ -63,7 +63,7 @@ add(Name, Script) ->
 get(UUID) ->
     case get_(UUID) of
         {ok, O} ->
-            {ok, sniffle_dtrace_state:to_json(O)};
+            {ok, ft_dtrace:to_json(O)};
         E ->
             E
     end.

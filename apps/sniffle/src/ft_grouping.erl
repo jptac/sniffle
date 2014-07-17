@@ -1,10 +1,7 @@
--module(sniffle_grouping_state).
+-module(ft_grouping).
 
 -include("sniffle.hrl").
-
--ifdef(TEST).
--include_lib("eunit/include/eunit.hrl").
--endif.
+-include("ft.hrl").
 
 -export([
          uuid/3,

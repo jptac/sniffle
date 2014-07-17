@@ -10,7 +10,7 @@
 
 -compile(export_all).
 
--define(D, sniffle_dtrace_state).
+-define(D, ft_dtrace).
 %% This is larger then and time we ever get in the size, used for ensure setting data
 %% in LWW registers.
 -define(BIG_TIME, 1000000000).

@@ -122,7 +122,7 @@ set(Preflist, ReqID, Dtrace, Data) ->
 
 init([Part]) ->
     sniffle_vnode:init(Part, <<"dtrace">>, ?SERVICE, ?MODULE,
-                       sniffle_dtrace_state).
+                       ft_dtrace).
 
 %%%===================================================================
 %%% General
@@ -130,10 +130,10 @@ init([Part]) ->
 
 handle_command({create, {ReqID, Coordinator} = ID, Dtrace, [Name, Script]},
                _Sender, State) ->
-    I0 = sniffle_dtrace_state:new(ID),
-    I1 = sniffle_dtrace_state:uuid(ID, Dtrace, I0),
-    I2 = sniffle_dtrace_state:name(ID, Name, I1),
-    I3 = sniffle_dtrace_state:script(ID, Script, I2),
+    I0 = ft_dtrace:new(ID),
+    I1 = ft_dtrace:uuid(ID, Dtrace, I0),
+    I2 = ft_dtrace:name(ID, Name, I1),
+    I3 = ft_dtrace:script(ID, Script, I2),
     VC0 = vclock:fresh(),
     VC = vclock:increment(Coordinator, VC0),
     Obj = #sniffle_obj{val=I3, vclock=VC},

@@ -10,7 +10,7 @@
 
 -compile(export_all).
 
--define(G, sniffle_grouping_state).
+-define(G, ft_grouping).
 %% This is larger then and time we ever get in the size, used for ensure setting data
 %% in LWW registers.
 -define(BIG_TIME, 1000000000).
@@ -32,6 +32,7 @@ grouping(Size) ->
 
                                {call, ?G, add_element, [id(Size), non_blank_string(), O]},
                                {call, ?G, remove_element, [id(Size), maybe_oneof(calc_elements(O)), O]},
+
                                {call, ?G, add_grouping, [id(Size), non_blank_string(), O]},
                                {call, ?G, remove_grouping, [id(Size), maybe_oneof(calc_groupings(O)), O]},
 

@@ -10,7 +10,7 @@
 
 -compile(export_all).
 
--define(H, sniffle_hypervisor_state).
+-define(H, ft_hypervisor).
 %% This is larger then and time we ever get in the size, used for ensure setting data
 %% in LWW registers.
 -define(BIG_TIME, 1000000000).

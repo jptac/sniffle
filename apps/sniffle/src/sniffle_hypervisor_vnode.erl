@@ -116,18 +116,18 @@ set(Preflist, ReqID, Hypervisor, Data) ->
 
 init([Part]) ->
     sniffle_vnode:init(Part, <<"hypervisor">>, ?SERVICE, ?MODULE,
-                       sniffle_hypervisor_state).
+                       ft_hypervisor).
 
 %%%===================================================================
 %%% Node Specific
 %%%===================================================================
 
 handle_command({register, {ReqID, Coordinator} = ID, Hypervisor, [IP, Port]}, _Sender, State) ->
-    H0 = sniffle_hypervisor_state:new(ID),
-    H1 = sniffle_hypervisor_state:port(ID, Port, H0),
-    H2 = sniffle_hypervisor_state:host(ID, IP, H1),
-    H3 = sniffle_hypervisor_state:uuid(ID, Hypervisor, H2),
-    H4 = sniffle_hypervisor_state:path(ID, [{Hypervisor, 1}], H3),
+    H0 = ft_hypervisor:new(ID),
+    H1 = ft_hypervisor:port(ID, Port, H0),
+    H2 = ft_hypervisor:host(ID, IP, H1),
+    H3 = ft_hypervisor:uuid(ID, Hypervisor, H2),
+    H4 = ft_hypervisor:path(ID, [{Hypervisor, 1}], H3),
     VC0 = vclock:fresh(),
     VC = vclock:increment(Coordinator, VC0),
     HObject = #sniffle_obj{val=H4, vclock=VC},
@@ -180,9 +180,8 @@ delete(State) ->
 handle_coverage(status, _KeySpaces, Sender, State) ->
     ID = sniffle_vnode:mkid(list),
     FoldFn = fun(K, #sniffle_obj{val=S0}, {Res, Warnings}) ->
-                     S1 = sniffle_hypervisor_state:load(ID, S0),
-                     Host = sniffle_hypervisor_state:host(S1),
-                     Port = sniffle_hypervisor_state:port(S1),
+                     S1 = ft_hypervisor:load(ID, S0),
+                     {Host, Port} = ft_hypervisor:endpoint(S1),
                      W1 =
                          case libchunter:ping(binary_to_list(Host), Port) of
                              pong ->
@@ -194,17 +193,17 @@ handle_coverage(status, _KeySpaces, Sender, State) ->
                                      {<<"type">>, <<"critical">>},
                                      {<<"message">>,
                                       bin_fmt("Chunter server ~s down.",
-                                              [sniffle_hypervisor_state:alias(S0)])}]) |
+                                              [ft_hypervisor:alias(S0)])}]) |
                                   Warnings]
                          end,
                      {Res1, W2} =
-                         case sniffle_hypervisor_state:pools(S1) of
+                         case ft_hypervisor:pools(S1) of
                              [] ->
-                                 {sniffle_hypervisor_state:resources(S1), W1};
+                                 {ft_hypervisor:resources(S1), W1};
                              Pools ->
                                  jsxd:fold(
                                    fun status_fold/3,
-                                   {sniffle_hypervisor_state:resources(S1), W1},
+                                   {ft_hypervisor:resources(S1), W1},
                                    Pools)
                          end,
                      {[{K, Res1} | Res], W2}
@@ -234,7 +233,6 @@ handle_info(Msg, State) ->
 bin_fmt(F, L) ->
     list_to_binary(io_lib:format(F, L)).
 
-
 status_fold(Name, Pool, {ResAcc, WarningsAcc}) ->
     Size = jsxd:get(<<"size">>, 0, Pool),
     Used = jsxd:get(<<"used">>, 0, Pool),
@@ -261,3 +259,24 @@ status_fold(Name, Pool, {ResAcc, WarningsAcc}) ->
                   bin_fmt("Zpool ~s in state ~s.", [Name, PoolState])}])|
               WarningsAcc]}
     end.
+
+
+%% %% Taken from (and slightly modified):
+%% %% from https://www.cs.umd.edu/class/fall2010/cmsc433/examples/erlang/pmap.erl
+%% %% applies F to each element of L in a separate process.  The results
+%% %% returned may not be in the same order as they appear in L.
+%% pmap(F, L) ->
+%%     S = self(),
+%%     Ref = erlang:make_ref(),
+%%     [spawn(fun() -> do_f1(S, Ref, F, I) end) || I <- L],
+%%     %% gather the results
+%%     gather1(length(L), Ref, []).
+
+%% do_f1(Parent, Ref, F, I) ->
+%%     Parent ! {Ref, (catch F(I))}.
+
+%% gather1(0, _, L) -> L;
+%% gather1(N, Ref, L) ->
+%%     receive
+%%         {Ref, Ret} -> gather1(N-1, Ref, [Ret|L])
+%%     end.
