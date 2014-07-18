@@ -73,6 +73,7 @@ to_json(P) ->
          {<<"name">>, name(P)},
          {<<"quota">>, quota(P)},
          {<<"ram">>, ram(P)},
+         {<<"requirements">>, requirements(P)},
          {<<"uuid">>, uuid(P)}
         ],
     J1 = case blocksize(P) of
@@ -152,15 +153,16 @@ load(_, #?PACKAGE{} = P) ->
 load({T, ID}, D) ->
     {ok, UUID} = jsxd:get(<<"uuid">>, D),
     {ok, Name} = jsxd:get(<<"name">>, D),
-    {ok, BlockSize} = jsxd:get(<<"blocksize">>, undefined, D),
-    {ok, Compression} = jsxd:get(<<"compression">>, undefined, D),
+    BlockSize = jsxd:get(<<"blocksize">>, undefined, D),
+    Compression = jsxd:get(<<"compression">>, undefined, D),
     {ok, CpuCap} = jsxd:get(<<"cpu_cap">>, D),
     {ok, CpuShares} = jsxd:get(<<"cpu_shares">>, D),
-    {ok, MaxSwap} = jsxd:get(<<"max_swap">>, undefined, D),
+    MaxSwap = jsxd:get(<<"max_swap">>, undefined, D),
     {ok, Quota} = jsxd:get(<<"quota">>, D),
     {ok, RAM} = jsxd:get(<<"ram">>, D),
-    {ok, ZFSIOPriority} = jsxd:get(<<"zfs_io_priority">>, undefined, D),
-    {ok, Metadata} = jsxd:get(<<"metadata">>, [], D),
+    ZFSIOPriority = jsxd:get(<<"zfs_io_priority">>, undefined, D),
+    Requirements = jsxd:get(<<"requirements">>, [], D),
+    Metadata = jsxd:get(<<"metadata">>, [], D),
 
     {ok, UUID1} = ?NEW_LWW(T, UUID),
     {ok, Name1} = ?NEW_LWW(T, Name),
@@ -173,6 +175,9 @@ load({T, ID}, D) ->
     {ok, MaxSwap1} = ?NEW_LWW(T, MaxSwap),
     {ok, RAM1} = ?NEW_LWW(T, RAM),
     {ok, ZFSIOPriority1} = ?NEW_LWW(T, ZFSIOPriority),
+    Requirements1 = riak_dt_orswot:update(
+                      {add_all, Requirements}, ID,
+                      riak_dt_orswot:new()),
     Metadata1 = fifo_map:from_orddict(Metadata, ID, T),
 
     D1 =
@@ -188,6 +193,8 @@ load({T, ID}, D) ->
            max_swap        = MaxSwap1,
            quota           = Quota1,
            ram             = RAM1,
+           requirements    = Requirements1,
+
            zfs_io_priority = ZFSIOPriority1
           },
     load({T, ID}, D1).
@@ -229,46 +236,44 @@ set_metadata({T, ID}, Attribute, Value, G) ->
     G#?PACKAGE{metadata = M1}.
 
 merge(#?PACKAGE{
-          uuid            = UUID1,
-          name            = Name1,
-          metadata        = Metadata1,
-
           blocksize       = BlockSize1,
           compression     = Compression1,
           cpu_cap         = CpuCap1,
           cpu_shares      = CpuShares1,
           max_swap        = MaxSwap1,
+          metadata        = Metadata1,
+          name            = Name1,
           quota           = Quota1,
           ram             = RAM1,
+          requirements    = Req1,
+          uuid            = UUID1,
           zfs_io_priority = ZFSIOPriority1
-
          },
       #?PACKAGE{
-          uuid            = UUID2,
-          name            = Name2,
-          metadata        = Metadata2,
-
           blocksize       = BlockSize2,
           compression     = Compression2,
           cpu_cap         = CpuCap2,
           cpu_shares      = CpuShares2,
           max_swap        = MaxSwap2,
+          metadata        = Metadata2,
+          name            = Name2,
           quota           = Quota2,
           ram             = RAM2,
+          requirements    = Req2,
+          uuid            = UUID2,
           zfs_io_priority = ZFSIOPriority2
          }) ->
     #?PACKAGE{
-        uuid            = riak_dt_lwwreg:merge(UUID1, UUID2),
-        name            = riak_dt_lwwreg:merge(Name1, Name2),
-        metadata       = fifo_map:merge(Metadata1, Metadata2),
-
         blocksize       = riak_dt_lwwreg:merge(BlockSize1, BlockSize2),
         compression     = riak_dt_lwwreg:merge(Compression1, Compression2),
         cpu_cap         = riak_dt_lwwreg:merge(CpuCap1, CpuCap2),
         cpu_shares      = riak_dt_lwwreg:merge(CpuShares1, CpuShares2),
         max_swap        = riak_dt_lwwreg:merge(MaxSwap1, MaxSwap2),
+        metadata        = fifo_map:merge(Metadata1, Metadata2),
+        name            = riak_dt_lwwreg:merge(Name1, Name2),
         quota           = riak_dt_lwwreg:merge(Quota1, Quota2),
         ram             = riak_dt_lwwreg:merge(RAM1, RAM2),
+        requirements    = riak_dt_orswot:merge(Req1, Req2),
+        uuid            = riak_dt_lwwreg:merge(UUID1, UUID2),
         zfs_io_priority = riak_dt_lwwreg:merge(ZFSIOPriority1, ZFSIOPriority2)
-
        }.

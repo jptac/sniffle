@@ -15,8 +15,12 @@
 %% in LWW registers.
 -define(BIG_TIME, 1000000000).
 
+dataset_type() ->
+    oneof([kvm, zone]).
 dataset() ->
     ?SIZED(Size, dataset(Size+1)).
+
+
 
 dataset(Size) ->
     ?LAZY(oneof([{call, ?D, new, [id(Size)]} || Size == 1] ++
@@ -29,6 +33,7 @@ dataset(Size) ->
                                {call, ?D, uuid, [id(Size), non_blank_string(), O]},
                                {call, ?D, status, [id(Size), non_blank_string(), O]},
                                {call, ?D, imported, [id(Size), int(), O]},
+                               {call, ?D, type, [id(Size), dataset_type(), O]},
 
                                {call, ?D, dataset, [id(Size), non_blank_string(), O]},
                                {call, ?D, description, [id(Size), non_blank_string(), O]},
@@ -42,14 +47,14 @@ dataset(Size) ->
                                {call, ?D, users, [id(Size), list(non_blank_string()), O]},
                                {call, ?D, version, [id(Size), non_blank_string(), O]},
 
+                               {call, ?D, add_requirement, [id(Size), non_blank_string(), O]},
+                               {call, ?D, remove_requirement, [id(Size), maybe_oneof(calc_requirements(O)), O]},
+
                                {call, ?D, set_metadata, [id(Size), non_blank_string(), non_blank_string(), O]},
                                {call, ?D, set_metadata, [id(Size), maybe_oneof(calc_map(set_metadata, O)), delete, O]}
 
                               ]))
                      || Size > 1])).
-
-type() ->
-    oneof([none, cluster, stack]).
 
 calc_map(M, {call, _, M, [_, delete, K, U]}) ->
     lists:delete(K, lists:usort(calc_map(M, U)));
@@ -60,6 +65,15 @@ calc_map(M, {call, _, _, P}) ->
 calc_map(_M, _) ->
     [].
 
+calc_requirements({call, _, remove_requirement, [_, K, U]}) ->
+    lists:delete(K, lists:usort(calc_requirements(U)));
+calc_requirements({call, _, add_requirements, [_, E, U]}) ->
+    [E | calc_requirements(U)];
+calc_requirements({call, _, _, P}) ->
+    calc_requirements(lists:last(P));
+calc_requirements(_) ->
+    [].
+
 r(K, V, U) ->
     lists:keystore(K, 1, U, {K, V}).
 
@@ -68,6 +82,12 @@ model_uuid(N, R) ->
 
 model_status(N, R) ->
     r(<<"status">>, N, R).
+
+model_type(zone, R) ->
+    r(<<"type">>, <<"zone">>, R);
+
+model_type(kvm, R) ->
+    r(<<"type">>, <<"kvm">>, R).
 
 model_imported(N, R) ->
     r(<<"imported">>, N, R).
@@ -105,6 +125,12 @@ model_users(N, R) ->
 model_version(N, R) ->
     r(<<"version">>, N, R).
 
+model_add_requirement(E, U) ->
+    r(<<"requirements">>, lists:usort([E | requirements(U)]), U).
+
+model_remove_requirement(E, U) ->
+    r(<<"requirements">>, lists:delete(E, requirements(U)), U).
+
 model_set_metadata(K, V, U) ->
     r(<<"metadata">>, lists:usort(r(K, V, metadata(U))), U).
 
@@ -118,12 +144,17 @@ metadata(U) ->
     {<<"metadata">>, M} = lists:keyfind(<<"metadata">>, 1, U),
     M.
 
+requirements(U) ->
+    {<<"requirements">>, M} = lists:keyfind(<<"requirements">>, 1, U),
+    M.
+
+
 prop_merge() ->
     ?FORALL(R,
             dataset(),
             begin
                 Hv = eval(R),
-                ?WHENFAIL(io:format(user, "History: ~p~nHv: ~p~n", [R, Hv]),
+                ?WHENFAIL(io:format(user, "[prop_merge]~nHistory: ~p~nHv: ~p~n", [R, Hv]),
                           model(?D:merge(Hv, Hv)) ==
                               model(Hv))
             end).
@@ -133,7 +164,7 @@ prop_load() ->
             dataset(),
             begin
                 Hv = eval(R),
-                ?WHENFAIL(io:format(user, "History: ~p~nHv: ~p~n", [R, Hv]),
+                ?WHENFAIL(io:format(user, "[prop_load]~nHistory: ~p~nHv: ~p~n", [R, Hv]),
                           model(?D:load(id(?BIG_TIME), Hv)) ==
                               model(Hv))
             end).
@@ -145,6 +176,20 @@ prop_uuid() ->
                 ?WHENFAIL(io:format(user, "History: ~p~nHv: ~p~n", [R, Hv]),
                           model(?D:uuid(id(?BIG_TIME), N, Hv)) ==
                               model_uuid(N, model(Hv)))
+            end).
+
+prop_type() ->
+    ?FORALL({N, R},
+            {dataset_type(), dataset()},
+            begin
+                Hv = eval(R),
+                Hv1 = ?D:type(id(?BIG_TIME), N, Hv),
+                M1 = model(Hv1),
+                M1x = model_type(N, model(Hv)),
+                ?WHENFAIL(io:format(user, "History: ~p~nHv: ~p~nHv1: ~p~n"
+                                    "M1: ~p~nM1x: ~p~n",
+                                    [R, Hv, Hv1, M1, M1x]),
+                          M1 == M1x)
             end).
 
 prop_status() ->
@@ -275,6 +320,28 @@ prop_version() ->
                 ?WHENFAIL(io:format(user, "History: ~p~nHv: ~p~n", [R,Hv]),
                           model(?D:version(id(?BIG_TIME), N, Hv)) ==
                               model_version(N, model(Hv)))
+            end).
+
+prop_add_requirement() ->
+    ?FORALL({E, O}, {non_blank_string(), dataset()},
+            begin
+                Hv = eval(O),
+                O1 = ?D:add_requirement(id(?BIG_TIME), E, Hv),
+                M1 = model_add_requirement(E, model(Hv)),
+                ?WHENFAIL(io:format(user, "History: ~p~nHv: ~p~nModel: ~p~n"
+                                    "Hv': ~p~nModel': ~p~n", [O, Hv, model(Hv), O1, M1]),
+                          model(O1) == M1)
+            end).
+
+prop_remove_requirement() ->
+    ?FORALL({O, K}, ?LET(O, dataset(), {O, maybe_oneof(calc_requirements(O))}),
+            begin
+                Hv = eval(O),
+                O1 = ?D:remove_requirement(id(?BIG_TIME), K, Hv),
+                M1 = model_remove_requirement(K, model(Hv)),
+                ?WHENFAIL(io:format(user, "History: ~p~nHv: ~p~nModel: ~p~n"
+                                    "Hv': ~p~nModel': ~p~n", [O, Hv, model(Hv), O1, M1]),
+                          model(O1) == M1)
             end).
 
 prop_set_metadata() ->

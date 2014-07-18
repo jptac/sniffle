@@ -260,7 +260,6 @@ status_fold(Name, Pool, {ResAcc, WarningsAcc}) ->
               WarningsAcc]}
     end.
 
-
 %% %% Taken from (and slightly modified):
 %% %% from https://www.cs.umd.edu/class/fall2010/cmsc433/examples/erlang/pmap.erl
 %% %% applies F to each element of L in a separate process.  The results

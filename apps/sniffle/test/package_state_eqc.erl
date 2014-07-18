@@ -43,6 +43,9 @@ package(Size) ->
                                {call, ?P, ram, [id(Size), non_neg_int(), O]},
                                {call, ?P, zfs_io_priority, [id(Size), non_neg_int(), O]},
 
+                               {call, ?P, add_requirement, [id(Size), non_blank_string(), O]},
+                               {call, ?P, remove_requirement, [id(Size), maybe_oneof(calc_requirements(O)), O]},
+
                                {call, ?P, set_metadata, [id(Size), non_blank_string(), non_blank_string(), O]},
                                {call, ?P, set_metadata, [id(Size), maybe_oneof(calc_map(set_metadata, O)), delete, O]}
 
@@ -59,6 +62,15 @@ calc_map(M, {call, _, M, [_, I, _K, U]}) ->
 calc_map(M, {call, _, _, P}) ->
     calc_map(M, lists:last(P));
 calc_map(_M, _) ->
+    [].
+
+calc_requirements({call, _, remove_requirement, [_, K, U]}) ->
+    lists:delete(K, lists:usort(calc_requirements(U)));
+calc_requirements({call, _, add_requirements, [_, E, U]}) ->
+    [E | calc_requirements(U)];
+calc_requirements({call, _, _, P}) ->
+    calc_requirements(lists:last(P));
+calc_requirements(_) ->
     [].
 
 r(K, V, U) ->
@@ -94,6 +106,12 @@ model_ram(N, R) ->
 model_zfs_io_priority(N, R) ->
     r(<<"zfs_io_priority">>, N, R).
 
+model_add_requirement(E, U) ->
+    r(<<"requirements">>, lists:usort([E | requirements(U)]), U).
+
+model_remove_requirement(E, U) ->
+    r(<<"requirements">>, lists:delete(E, requirements(U)), U).
+
 model_set_metadata(K, V, U) ->
     r(<<"metadata">>, lists:usort(r(K, V, metadata(U))), U).
 
@@ -105,6 +123,10 @@ model(R) ->
 
 metadata(U) ->
     {<<"metadata">>, M} = lists:keyfind(<<"metadata">>, 1, U),
+    M.
+
+requirements(U) ->
+    {<<"requirements">>, M} = lists:keyfind(<<"requirements">>, 1, U),
     M.
 
 prop_merge() ->
@@ -228,6 +250,28 @@ prop_zfs_io_priority() ->
                 ?WHENFAIL(io:format(user, "History: ~p~nHv: ~p~n", [R,Hv]),
                           model(?P:zfs_io_priority(id(?BIG_TIME), N, Hv)) ==
                               model_zfs_io_priority(N, model(Hv)))
+            end).
+
+prop_add_requirement() ->
+    ?FORALL({E, O}, {non_blank_string(), package()},
+            begin
+                Hv = eval(O),
+                O1 = ?P:add_requirement(id(?BIG_TIME), E, Hv),
+                M1 = model_add_requirement(E, model(Hv)),
+                ?WHENFAIL(io:format(user, "History: ~p~nHv: ~p~nModel: ~p~n"
+                                    "Hv': ~p~nModel': ~p~n", [O, Hv, model(Hv), O1, M1]),
+                          model(O1) == M1)
+            end).
+
+prop_remove_requirement() ->
+    ?FORALL({O, K}, ?LET(O, package(), {O, maybe_oneof(calc_requirements(O))}),
+            begin
+                Hv = eval(O),
+                O1 = ?P:remove_requirement(id(?BIG_TIME), K, Hv),
+                M1 = model_remove_requirement(K, model(Hv)),
+                ?WHENFAIL(io:format(user, "History: ~p~nHv: ~p~nModel: ~p~n"
+                                    "Hv': ~p~nModel': ~p~n", [O, Hv, model(Hv), O1, M1]),
+                          model(O1) == M1)
             end).
 
 prop_set_metadata() ->

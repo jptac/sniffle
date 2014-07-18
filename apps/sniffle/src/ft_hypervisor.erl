@@ -319,39 +319,23 @@ load({T, ID}, Sb) ->
            },
     load({T, ID}, H1).
 
-to_json(#?HYPERVISOR{
-            characteristics = Characteristics,
-            alias = Alias,
-            etherstubs = Etherstubs,
-            host = Host,
-            metadata = Metadata,
-            networks = Networks,
-            path = Path,
-            pools = Pools,
-            port = Port,
-            resources = Resources,
-            services = Services,
-            sysinfo = Sysinfo,
-            uuid = UUID,
-            version = Version,
-            virtualisation = Virtualisation
-           }) ->
+to_json(H) ->
     [
-     {<<"alias">>, riak_dt_lwwreg:value(Alias)},
-     {<<"characteristics">>, fifo_map:value(Characteristics)},
-     {<<"etherstubs">>, riak_dt_lwwreg:value(Etherstubs)},
-     {<<"host">>, riak_dt_lwwreg:value(Host)},
-     {<<"metadata">>, fifo_map:value(Metadata)},
-     {<<"networks">>, riak_dt_lwwreg:value(Networks)},
-     {<<"path">>, path_to_json(riak_dt_lwwreg:value(Path))},
-     {<<"pools">>, fifo_map:value(Pools)},
-     {<<"port">>, riak_dt_lwwreg:value(Port)},
-     {<<"resources">>, fifo_map:value(Resources)},
-     {<<"services">>, fifo_map:value(Services)},
-     {<<"sysinfo">>, riak_dt_lwwreg:value(Sysinfo)},
-     {<<"uuid">>, riak_dt_lwwreg:value(UUID)},
-     {<<"version">>, riak_dt_lwwreg:value(Version)},
-     {<<"virtualisation">>, riak_dt_lwwreg:value(Virtualisation)}
+     {<<"alias">>, alias(H)},
+     {<<"characteristics">>, characteristics(H)},
+     {<<"etherstubs">>, etherstubs(H)},
+     {<<"host">>, host(H)},
+     {<<"metadata">>, metadata(H)},
+     {<<"networks">>, networks(H)},
+     {<<"path">>, path_to_json(path(H))},
+     {<<"pools">>, pools(H)},
+     {<<"port">>, port(H)},
+     {<<"resources">>, resources(H)},
+     {<<"services">>, services(H)},
+     {<<"sysinfo">>, sysinfo(H)},
+     {<<"uuid">>, uuid(H)},
+     {<<"version">>, version(H)},
+     {<<"virtualisation">>, virtualisation(H)}
     ].
 
 path_to_json(<<>>) ->
