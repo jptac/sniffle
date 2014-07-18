@@ -29,7 +29,7 @@
 -define(LOGLEN, 100).
 
 -export([
-         load/2, new/1, getter/2, merge/2, to_json/1
+         load/2, new/1, getter/2, merge/2, to_json/1, set/4
         ]).
 
 -export([
@@ -68,7 +68,7 @@
               groupings/1, add_grouping/3, remove_grouping/3
              ]).
 
--ignore_xref([load/2, set/4, set/3, getter/2, uuid/1, merge/2]).
+-ignore_xref([load/2, set/4, getter/2, uuid/1, merge/2]).
 
 new(_) ->
     #?VM{}.
@@ -83,6 +83,31 @@ new(_) ->
 ?G(<<"config">>, config);
 ?G(<<"services">>, services);
 ?G(<<"metadata">>, hypervisor).
+
+?S(<<"uuid">>, uuid);
+?S(<<"alias">>, alias);
+?S(<<"state">>, state);
+?S(<<"owner">>, owner);
+?S(<<"dataset">>, dataset);
+?S(<<"package">>, package);
+?S(<<"hypervisor">>, hypervisor);
+?S(<<"metadata">>, hypervisor);
+
+set(ID, K = <<"config.", _/binary>>, V, H) ->
+    set(ID, re:split(K, "\\."), V, H);
+set(ID, [<<"config">> | R], V, H) ->
+    set_config(ID, R, V, H);
+
+set(ID, K = <<"services.", _/binary>>, V, H) ->
+    set(ID, re:split(K, "\\."), V, H);
+set(ID, [<<"services">> | R], V, H) ->
+    set_service(ID, R, V, H);
+
+set(ID, K = <<"metadata.", _/binary>>, V, H) ->
+    set(ID, re:split(K, "\\."), V, H);
+set(ID, [<<"metadata">> | R], V, H) ->
+    set_metadata(ID, R, V, H).
+
 
 ?G(uuid).
 ?S(uuid).

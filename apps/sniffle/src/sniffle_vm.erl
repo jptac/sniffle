@@ -612,7 +612,7 @@ get_(Vm) ->
 get(Vm) ->
     case get_(Vm) of
         {ok, V} ->
-            ft_vm:to_json(V);
+            {ok, ft_vm:to_json(V)};
         E ->
             E
     end.
