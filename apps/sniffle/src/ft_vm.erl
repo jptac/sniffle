@@ -98,10 +98,10 @@ set(ID, K = <<"config.", _/binary>>, V, H) ->
 set(ID, <<"config">>, V, H) ->
     set(ID, [<<"config">>], V, H);
 
-set(ID, [<<"config">> | R], R, H) when is_list(R) ->
+set(ID, [<<"config">> | R], Vs, H) when is_list(Vs) ->
     lists:foldl(fun({K, V}, AccH) ->
                         set_config(ID, R ++ [K], V, AccH)
-                end, H, R);
+                end, H, Vs);
 
 set(ID, K = <<"services.", _/binary>>, V, H) ->
     set(ID, re:split(K, "\\."), V, H);
@@ -109,10 +109,10 @@ set(ID, K = <<"services.", _/binary>>, V, H) ->
 set(ID, <<"services">>, V, H) ->
     set(ID, [<<"services">>], V, H);
 
-set(ID, [<<"services">> | R], R, H) when is_list(R) ->
+set(ID, [<<"services">> | R], Vs, H) when is_list(Vs) ->
     lists:foldl(fun({K, V}, AccH) ->
                         set_service(ID, R ++ [K], V, AccH)
-                end, H, R);
+                end, H, Vs);
 
 set(ID, [<<"services">> | R], V, H) ->
     set_service(ID, R, V, H);
@@ -123,10 +123,10 @@ set(ID, K = <<"metadata.", _/binary>>, V, H) ->
 set(ID, <<"metadata">>, V, H) ->
     set(ID, [<<"metadata">>], V, H);
 
-set(ID, [<<"metadata">> | R], R, H) when is_list(R) ->
+set(ID, [<<"metadata">> | R], Vs, H) when is_list(Vs) ->
     lists:foldl(fun({K, V}, AccH) ->
                         set_metadata(ID, R ++ [K], V, AccH)
-                end, H, R);
+                end, H, Vs);
 
 set(ID, [<<"metadata">> | R], V, H) ->
     set_metadata(ID, R, V, H).
