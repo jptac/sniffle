@@ -183,7 +183,7 @@ handle_coverage(status, _KeySpaces, Sender, State) ->
                      S1 = ft_hypervisor:load(ID, S0),
                      {Host, Port} = ft_hypervisor:endpoint(S1),
                      W1 =
-                         case libchunter:ping(binary_to_list(Host), Port) of
+                         case libchunter:ping(Host, Port) of
                              pong ->
                                  Warnings;
                              _ ->
