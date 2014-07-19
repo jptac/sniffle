@@ -128,6 +128,10 @@ new({T, _ID}) ->
 ?S(uuid).
 
 ?G(type).
+type(ID, <<"kvm">>, H) ->
+    type(ID, kvm, H);
+type(ID, <<"zone">>, H) ->
+    type(ID, zone, H);
 type({T, _ID}, V, H) when V =:= kvm;
                           V =:= zone ->
     {ok, V1} = riak_dt_lwwreg:update({assign, V, T}, none, H#?DATASET.type),
@@ -328,6 +332,7 @@ load({T, ID}, Sb) ->
 
 ?S(<<"uuid">>, uuid);
 ?S(<<"status">>, status);
+?S(<<"type">>, type);
 ?S(<<"imported">>, imported);
 
 ?S(<<"dataset">>, dataset);
