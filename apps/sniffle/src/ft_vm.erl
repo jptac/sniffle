@@ -91,10 +91,12 @@ new(_) ->
 ?S(<<"dataset">>, dataset);
 ?S(<<"package">>, package);
 ?S(<<"hypervisor">>, hypervisor);
-?S(<<"metadata">>, hypervisor);
 
 set(ID, K = <<"config.", _/binary>>, V, H) ->
     set(ID, re:split(K, "\\."), V, H);
+
+set(ID, <<"config">>, V, H) ->
+    set(ID, [<<"config">>], V, H);
 
 set(ID, [<<"config">> | R], R, H) when is_list(R) ->
     lists:foldl(fun({K, V}, AccH) ->
@@ -103,6 +105,9 @@ set(ID, [<<"config">> | R], R, H) when is_list(R) ->
 
 set(ID, K = <<"services.", _/binary>>, V, H) ->
     set(ID, re:split(K, "\\."), V, H);
+
+set(ID, <<"services">>, V, H) ->
+    set(ID, [<<"services">>], V, H);
 
 set(ID, [<<"services">> | R], R, H) when is_list(R) ->
     lists:foldl(fun({K, V}, AccH) ->
@@ -114,6 +119,9 @@ set(ID, [<<"services">> | R], V, H) ->
 
 set(ID, K = <<"metadata.", _/binary>>, V, H) ->
     set(ID, re:split(K, "\\."), V, H);
+
+set(ID, <<"metadata">>, V, H) ->
+    set(ID, [<<"metadata">>], V, H);
 
 set(ID, [<<"metadata">> | R], R, H) when is_list(R) ->
     lists:foldl(fun({K, V}, AccH) ->
