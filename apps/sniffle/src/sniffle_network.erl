@@ -124,8 +124,9 @@ list() ->
 list(Requirements, true) ->
     {ok, Res} = sniffle_full_coverage:start(
                   ?MASTER, ?SERVICE, {list, Requirements, true}),
-    Res1 = rankmatcher:apply_scales(Res),
-    {ok,  lists:sort(Res1)};
+    Res1 = lists:sort(rankmatcher:apply_scales(Res)),
+    Res2 = [{M, ft_network:to_json(V)} || {M, V} <- Res1],
+    {ok,  Res2};
 
 list(Requirements, false) ->
     {ok, Res} = sniffle_coverage:start(
