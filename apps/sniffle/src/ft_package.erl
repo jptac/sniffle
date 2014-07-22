@@ -66,9 +66,6 @@
 
 to_json(P) ->
     J = [
-         {<<"cpu_cap">>, cpu_cap(P)},
-         {<<"cpu_shares">>, cpu_shares(P)},
-         {<<"max_swap">>, max_swap(P)},
          {<<"metadata">>, metadata(P)},
          {<<"name">>, name(P)},
          {<<"quota">>, quota(P)},
@@ -88,11 +85,29 @@ to_json(P) ->
              C ->
                  jsxd:set([<<"compression">>], C, J1)
          end,
+    J3 = case max_swap(P) of
+             undefined ->
+                 J2;
+             MS ->
+                 jsxd:set([<<"max_swap">>], MS, J2)
+         end,
+    J4 = case cpu_cap(P) of
+             undefined ->
+                 J3;
+             CC ->
+                 jsxd:set([<<"cpu_cap">>], CC, J3)
+         end,
+    J5 = case cpu_shares(P) of
+             undefined ->
+                 J4;
+             CS ->
+                 jsxd:set([<<"cpu_shares">>], CS, J4)
+         end,
     case zfs_io_priority(P) of
         undefined ->
-            J2;
+            J5;
         Prio ->
-            jsxd:set([<<"zfs_io_priority">>], Prio, J2)
+            jsxd:set([<<"zfs_io_priority">>], Prio, J5)
     end.
 
 ?G(<<"uuid">>, uuid);
@@ -155,8 +170,8 @@ load({T, ID}, D) ->
     {ok, Name} = jsxd:get(<<"name">>, D),
     BlockSize = jsxd:get(<<"blocksize">>, undefined, D),
     Compression = jsxd:get(<<"compression">>, undefined, D),
-    {ok, CpuCap} = jsxd:get(<<"cpu_cap">>, D),
-    {ok, CpuShares} = jsxd:get(<<"cpu_shares">>, D),
+    CpuCap = jsxd:get(<<"cpu_cap">>, undefined, D),
+    CpuShares = jsxd:get(<<"cpu_shares">>, undefined, D),
     MaxSwap = jsxd:get(<<"max_swap">>, undefined, D),
     {ok, Quota} = jsxd:get(<<"quota">>, D),
     {ok, RAM} = jsxd:get(<<"ram">>, D),
@@ -199,10 +214,12 @@ load({T, ID}, D) ->
           },
     load({T, ID}, D1).
 
-new({T, _ID}) ->
-    {ok, Undefined} = ?NEW_LWW(undefined, T),
+new({_T, _ID}) ->
+    {ok, Undefined} = ?NEW_LWW(undefined, 0),
     #?PACKAGE{
         blocksize = Undefined,
+        cpu_shares = Undefined,
+        cpu_cap = Undefined,
         compression = Undefined,
         max_swap = Undefined,
         zfs_io_priority = Undefined
@@ -224,8 +241,8 @@ set({_T, ID}, <<"requirements">>, V, H = #?PACKAGE{requirements = R}) ->
     VSet = ordsets:from_list(V),
     ToDelete = ordsets:subtract(Actual, VSet),
     ToAdd = ordsets:subtract(VSet, Actual),
-    R1 = riak_dt_orswot:update({remove_all, ToDelete}, ID, R),
-    R2 = riak_dt_orswot:update({add_all, ToAdd}, ID, R1),
+    {ok, R1}  = riak_dt_orswot:update({remove_all, ToDelete}, ID, R),
+    {ok, R2} = riak_dt_orswot:update({add_all, ToAdd}, ID, R1),
     H#?PACKAGE{requirements = R2};
 set(ID, K = <<"metadata.", _/binary>>, V, H) ->
     set(ID, re:split(K, "\\."), V, H);
