@@ -75,7 +75,7 @@ calc_requirements(_) ->
     [].
 
 r(K, V, U) ->
-    lists:keystore(K, 1, U, {K, V}).
+    lists:usort(lists:keystore(K, 1, U, {K, V})).
 
 model_uuid(N, R) ->
     r(<<"uuid">>, N, R).
@@ -303,13 +303,15 @@ prop_os() ->
             end).
 
 prop_users() ->
-    ?FORALL({N, R},
+    ?FORALL({N, O},
             {non_blank_string(), dataset()},
             begin
-                Hv = eval(R),
-                ?WHENFAIL(io:format(user, "History: ~p~nHv: ~p~n", [R,Hv]),
-                          model(?D:users(id(?BIG_TIME), N, Hv)) ==
-                              model_users(N, model(Hv)))
+                Hv = eval(O),
+                O1 = ?D:users(id(?BIG_TIME), N, Hv),
+                M1 = model_users(N, model(Hv)),
+                ?WHENFAIL(io:format(user, "History: ~p~nHv: ~p~nModel: ~p~n"
+                                    "Hv': ~p~nModel': ~p~n", [O, Hv, model(Hv), O1, M1]),
+                          model(O1) == M1)
             end).
 
 prop_version() ->

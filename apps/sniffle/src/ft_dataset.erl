@@ -198,32 +198,52 @@ set_metadata({T, ID}, Attribute, Value, G) ->
 
 to_json(D) ->
     Type = case type(D) of
-               <<>> ->
-                   <<>>;
-               kvm ->
-                   <<"kvm">>;
-               zone ->
-                   <<"zone">>
+               <<>> -> <<>>;
+               kvm -> <<"kvm">>;
+               zone -> <<"zone">>
            end,
-    [
-     {<<"dataset">>, dataset(D)},
-     {<<"description">>, description(D)},
-     {<<"disk_driver">>, disk_driver(D)},
-     {<<"homepage">>, homepage(D)},
-     {<<"image_size">>, image_size(D)},
-     {<<"imported">>, imported(D)},
-     {<<"metadata">>, metadata(D)},
-     {<<"name">>, name(D)},
-     {<<"networks">>, networks(D)},
-     {<<"nic_driver">>, nic_driver(D)},
-     {<<"os">>, os(D)},
-     {<<"requirements">>, requirements(D)},
-     {<<"status">>, status(D)},
-     {<<"type">>, Type},
-     {<<"users">>, users(D)},
-     {<<"uuid">>, uuid(D)},
-     {<<"version">>, version(D)}
-    ].
+    Vs = [
+          {<<"dataset">>, fun dataset/1},
+          {<<"description">>, fun description/1},
+          {<<"disk_driver">>, fun disk_driver/1},
+          {<<"homepage">>, fun homepage/1},
+          {<<"image_size">>, fun image_size/1},
+          {<<"imported">>, fun imported/1},
+          {<<"metadata">>, fun metadata/1},
+          {<<"name">>, fun name/1},
+          {<<"networks">>, fun networks/1},
+          {<<"nic_driver">>, fun nic_driver/1},
+          {<<"os">>, fun os/1},
+          {<<"requirements">>, fun requirements/1},
+          {<<"status">>, fun status/1},
+          {<<"users">>, fun users/1},
+          {<<"uuid">>, fun uuid/1},
+          {<<"version">>, fun version/1}
+         ],
+    add(Vs, D, [{<<"type">>, Type}]).
+
+add([], _, D) ->
+    D;
+add([{<<"type">> = N, F} | R], In, D) ->
+    case F(In) of
+        <<>> ->
+            add(R, In, D);
+        kvm ->
+            add(R, In, jsxd:set(N, <<"kvm">>, D));
+        zone ->
+            add(R, In, jsxd:set(N, <<"zone">>, D))
+    end;
+add([{N, F} | R], In, D) ->
+    case F(In) of
+        <<>> ->
+            add(R, In, D);
+        undefined ->
+            add(R, In, D);
+        V ->
+            add(R, In, jsxd:set(N, V, D))
+    end.
+
+
 
 load(_, #?DATASET{} = H) ->
     H;
@@ -252,77 +272,77 @@ load({T, ID}, Sb) ->
            metadata = Metadata1
           },
     D1 = case jsxd:get([<<"dataset">>], H) of
-             {k, Dataset} ->
+             {ok, Dataset} ->
                  {ok, Dataset1} = ?NEW_LWW(Dataset, T),
                  D#dataset_0_1_0{dataset = Dataset1};
              _->
                  D
          end,
     D2 = case jsxd:get([<<"description">>], H) of
-             {k, Description} ->
+             {ok, Description} ->
                  {ok, Description1} = ?NEW_LWW(Description, T),
                  D1#dataset_0_1_0{description = Description1};
              _->
                  D1
          end,
     D3 = case jsxd:get([<<"disk_driver">>], H) of
-             {k, DiskDriver} ->
+             {ok, DiskDriver} ->
                  {ok, DiskDriver1} = ?NEW_LWW(DiskDriver, T),
                  D2#dataset_0_1_0{disk_driver = DiskDriver1};
              _->
                  D2
          end,
     D4 = case jsxd:get([<<"homepage">>], H) of
-             {k, Homepage} ->
+             {ok, Homepage} ->
                  {ok, Homepage1} = ?NEW_LWW(Homepage, T),
                  D3#dataset_0_1_0{homepage = Homepage1};
              _->
                  D3
          end,
     D5 = case jsxd:get([<<"image_size">>], H) of
-             {k, ImageSize} ->
+             {ok, ImageSize} ->
                  {ok, ImageSize1} = ?NEW_LWW(ImageSize, T),
                  D4#dataset_0_1_0{image_size = ImageSize1};
              _->
                  D4
          end,
     D6 = case jsxd:get([<<"name">>], H) of
-             {k, Name} ->
+             {ok, Name} ->
                  {ok, Name1} = ?NEW_LWW(Name, T),
                  D5#dataset_0_1_0{name = Name1};
              _->
                  D5
          end,
     D7 = case jsxd:get([<<"networks">>], H) of
-             {k, Networks} ->
+             {ok, Networks} ->
                  {ok, Networks1} = ?NEW_LWW(Networks, T),
                  D6#dataset_0_1_0{networks = Networks1};
              _->
                  D6
          end,
     D7 = case jsxd:get([<<"nic_driver">>], H) of
-             {k, NicDriver} ->
+             {ok, NicDriver} ->
                  {ok, NicDriver1} = ?NEW_LWW(NicDriver, T),
                  D6#dataset_0_1_0{nic_driver = NicDriver1};
              _->
                  D6
          end,
     D8 = case jsxd:get([<<"os">>], H) of
-             {k, OS} ->
+             {ok, OS} ->
                  {ok, OS1} = ?NEW_LWW(OS, T),
                  D7#dataset_0_1_0{os = OS1};
              _->
                  D7
          end,
     D9 = case jsxd:get([<<"users">>], H) of
-             {k, Users} ->
+             {ok, Users} ->
                  {ok, Users1} = ?NEW_LWW(Users, T),
                  D8#dataset_0_1_0{users = Users1};
              _->
                  D8
          end,
     D10 = case jsxd:get([<<"version">>], H) of
-              {k, Version} ->
+              {ok, Version} ->
                   {ok, Version1} = ?NEW_LWW(Version, T),
                   D9#dataset_0_1_0{version = Version1};
               _->

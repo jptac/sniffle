@@ -65,49 +65,32 @@
 -ignore_xref([merge/2, load/2, name/1, set/4, set/3, getter/2, uuid/1]).
 
 to_json(P) ->
-    J = [
-         {<<"metadata">>, metadata(P)},
-         {<<"name">>, name(P)},
-         {<<"quota">>, quota(P)},
-         {<<"ram">>, ram(P)},
-         {<<"requirements">>, requirements(P)},
-         {<<"uuid">>, uuid(P)}
-        ],
-    J1 = case blocksize(P) of
-             undefined ->
-                 J;
-             BS ->
-                 jsxd:set([<<"blocksize">>], BS, J)
-         end,
-    J2 = case compression(P) of
-             undefined ->
-                 J1;
-             C ->
-                 jsxd:set([<<"compression">>], C, J1)
-         end,
-    J3 = case max_swap(P) of
-             undefined ->
-                 J2;
-             MS ->
-                 jsxd:set([<<"max_swap">>], MS, J2)
-         end,
-    J4 = case cpu_cap(P) of
-             undefined ->
-                 J3;
-             CC ->
-                 jsxd:set([<<"cpu_cap">>], CC, J3)
-         end,
-    J5 = case cpu_shares(P) of
-             undefined ->
-                 J4;
-             CS ->
-                 jsxd:set([<<"cpu_shares">>], CS, J4)
-         end,
-    case zfs_io_priority(P) of
+    Vs = [
+          {<<"metadata">>, fun metadata/1},
+          {<<"name">>, fun name/1},
+          {<<"quota">>, fun quota/1},
+          {<<"ram">>, fun ram/1},
+          {<<"requirements">>, fun requirements/1},
+          {<<"uuid">>, fun uuid/1},
+          {<<"blocksize">>, fun blocksize/1},
+          {<<"compression">>, fun compression/1},
+          {<<"max_swap">>, fun max_swap/1},
+          {<<"cpu_cap">>, fun cpu_cap/1},
+          {<<"cpu_shares">>, fun cpu_shares/1},
+          {<<"zfs_io_priority">>, fun zfs_io_priority/1}
+         ],
+    add(Vs, P, []).
+
+add([], _, D) ->
+    D;
+add([{N, F} | R], In, D) ->
+    case F(In) of
+        <<>> ->
+            add(R, In, D);
         undefined ->
-            J5;
-        Prio ->
-            jsxd:set([<<"zfs_io_priority">>], Prio, J5)
+            add(R, In, D);
+        V ->
+            add(R, In, jsxd:set(N, V, D))
     end.
 
 ?G(<<"uuid">>, uuid);
