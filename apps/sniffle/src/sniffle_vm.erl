@@ -445,7 +445,7 @@ primary_nic(Vm, Mac) ->
             NicMap = make_nic_map(V),
             case jsxd:get(Mac, NicMap) of
                 {ok, _Idx}  ->
-                    {ok, H} = ?S:hypervisor(V),
+                    H = ?S:hypervisor(V),
                     {Server, Port} = get_hypervisor(H),
                     libchunter:ping(Server, Port),
                     case ?S:state(V) of
@@ -549,7 +549,7 @@ unregister(Vm) ->
                     ok
             end,
             case ?S:groupings(V) of
-                <<>> ->
+                [] ->
                     ok;
                 Gs ->
                     [sniffle_grouping:remove_element(G, Vm) || G <- Gs]
