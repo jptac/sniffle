@@ -14,6 +14,13 @@
 -include_lib("eunit/include/eunit.hrl").
 -endif.
 
+-define(G(N, F),
+        getter(#sniffle_obj{val=S0}, N) ->
+               F(S0)).
+
+-define(G(E),
+        E(H) -> riak_dt_lwwreg:value(H#?PACKAGE.E)).
+
 -export([
          load/2,
          new/1,
@@ -251,8 +258,11 @@ set_service({T, ID}, Attribute, Value, H) ->
     {ok, M1} = fifo_map:set(Attribute, Value, ID, T, H#?HYPERVISOR.services),
     H#?HYPERVISOR{services = M1}.
 
-getter(#sniffle_obj{val=S0}, <<"path">>) ->
-    path(S0);
+?G(<<"path">>, path);
+?G(<<"virtualisation">>, virtualisation);
+?G(<<"etherstubs">>, etherstubs);
+?G(<<"alias">>, alias);
+?G(<<"resources">>, resources);
 
 getter(#sniffle_obj{val=S0}, Resource) ->
     JSON = to_json(S0),
