@@ -150,19 +150,19 @@ unregister(Preflist, ReqID, Vm) ->
 
 set_network_map(Preflist, ReqID, Vm, [IP, Net]) ->
     riak_core_vnode_master:command(Preflist,
-                                   {set_network_map, ReqID, Vm, [IP, Net]},
+                                   {set_network_map, ReqID, Vm, IP, Net},
                                    {fsm, undefined, self()},
                                    ?MASTER).
 
 set_backup(Preflist, ReqID, Vm, [K, V]) ->
     riak_core_vnode_master:command(Preflist,
-                                   {set_backup, ReqID, Vm, [K, V]},
+                                   {set_backup, ReqID, Vm, K, V},
                                    {fsm, undefined, self()},
                                    ?MASTER).
 
 set_config(Preflist, ReqID, Vm, [K, V]) ->
     riak_core_vnode_master:command(Preflist,
-                                   {set_config, ReqID, Vm, [K, V]},
+                                   {set_config, ReqID, Vm, K, V},
                                    {fsm, undefined, self()},
                                    ?MASTER).
 
