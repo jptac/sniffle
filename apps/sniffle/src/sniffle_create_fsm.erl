@@ -664,8 +664,7 @@ update_nics(UUID, Nics, Config, Nets, State) ->
               {ok, NicTag} = jsxd:get(Name, Nets),
               vm_log(State, <<"Fetching network ", NicTag/binary, " for NIC ", Name/binary>>),
               case sniffle_iprange:claim_ip(NicTag) of
-                  {ok, {Tag, IP, Net, Gw}} ->
-                      {ok, Range} = sniffle_iprange:get(NicTag),
+                  {ok, {Tag, IP, Net, Gw, VLAN}} ->
                       IPb = ft_iprange:to_bin(IP),
                       Netb = ft_iprange:to_bin(Net),
                       GWb = ft_iprange:to_bin(Gw),
@@ -678,7 +677,7 @@ update_nics(UUID, Nics, Config, Nets, State) ->
                                             {<<"ip">>, IPb},
                                             {<<"netmask">>, Netb},
                                             {<<"gateway">>, GWb}]),
-                      Res1 = case jsxd:get(<<"vlan">>, 0, Range) of
+                      Res1 = case VLAN of
                                  0 ->
                                      eplugin:apply(
                                        'vm:ip_assigned',
