@@ -943,10 +943,10 @@ set_config(UUID, P, V) ->
     do_write(UUID, set_config, [P, V]).
 
 add_grouping(UUID, Grouping) ->
-    do_write(UUID, add_grouping, [Grouping]).
+    do_write(UUID, add_grouping, Grouping).
 
 remove_grouping(UUID, Grouping) ->
-    do_write(UUID, remove_grouping, [Grouping]).
+    do_write(UUID, remove_grouping, Grouping).
 
 -define(S(T),
         T(UUID, V) ->

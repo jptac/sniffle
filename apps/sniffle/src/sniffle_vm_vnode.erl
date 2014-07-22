@@ -27,7 +27,19 @@
          handle_coverage/4,
          handle_exit/3,
          handle_info/2,
-         sync_repair/4]).
+         sync_repair/4,
+         set_network_map/4,
+         set_backup/4,
+         set_config/4,
+         add_grouping/4,
+         remove_grouping/4,
+         state/4,
+         alias/4,
+         owner/4,
+         dataset/4,
+         package/4,
+         hypervisor/4
+        ]).
 
 -export([
          master/0,
@@ -37,6 +49,18 @@
 
 %% those functions do not get called directly.
 -ignore_xref([
+              set_network_map/4,
+              set_backup/4,
+              set_config/4,
+              add_grouping/4,
+              remove_grouping/4,
+              state/4,
+              alias/4,
+              owner/4,
+              dataset/4,
+              package/4,
+              hypervisor/4,
+
               get/3,
               log/4,
               register/4,
@@ -123,6 +147,49 @@ unregister(Preflist, ReqID, Vm) ->
                                    {delete, ReqID, Vm},
                                    {fsm, undefined, self()},
                                    ?MASTER).
+
+set_network_map(Preflist, ReqID, Vm, [IP, Net]) ->
+    riak_core_vnode_master:command(Preflist,
+                                   {set_network_map, ReqID, Vm, [IP, Net]},
+                                   {fsm, undefined, self()},
+                                   ?MASTER).
+
+set_backup(Preflist, ReqID, Vm, [K, V]) ->
+    riak_core_vnode_master:command(Preflist,
+                                   {set_backup, ReqID, Vm, [K, V]},
+                                   {fsm, undefined, self()},
+                                   ?MASTER).
+
+set_config(Preflist, ReqID, Vm, [K, V]) ->
+    riak_core_vnode_master:command(Preflist,
+                                   {set_config, ReqID, Vm, [K, V]},
+                                   {fsm, undefined, self()},
+                                   ?MASTER).
+
+add_grouping(Preflist, ReqID, Vm, Grouping) ->
+    riak_core_vnode_master:command(Preflist,
+                                   {add_grouping, ReqID, Vm, Grouping},
+                                   {fsm, undefined, self()},
+                                   ?MASTER).
+
+remove_grouping(Preflist, ReqID, Vm, Grouping) ->
+    riak_core_vnode_master:command(Preflist,
+                                   {remove_grouping, ReqID, Vm, Grouping},
+                                   {fsm, undefined, self()},
+                                   ?MASTER).
+
+-define(S(Field),
+        Field(Preflist, ReqID, Vm, Val) ->
+               riak_core_vnode_master:command(Preflist,
+                                              {Field, ReqID, Vm, Val},
+                                              {fsm, undefined, self()},
+                                              ?MASTER)).
+?S(state).
+?S(alias).
+?S(owner).
+?S(dataset).
+?S(package).
+?S(hypervisor).
 
 
 -spec set(any(), any(), fifo:uuid(), [{Key::binary(), V::fifo:value()}]) -> ok.
