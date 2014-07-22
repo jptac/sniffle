@@ -320,6 +320,10 @@ to_json(V) ->
     M = lists:sort(
           [{ft_iprange:to_bin(IP), Range} ||
               {IP, Range} <- network_map(V)]),
+    L = lists:sort(
+          [[{<<"date">>, T},
+            {<<"log">>, L}] ||
+              {T, L} <- logs(V)]),
     [
      {<<"alias">>, alias(V)},
      {<<"backups">>, backups(V)},
@@ -327,7 +331,7 @@ to_json(V) ->
      {<<"dataset">>, dataset(V)},
      {<<"groupings">>, groupings(V)},
      {<<"hypervisor">>, hypervisor(V)},
-     {<<"log">>, logs(V)},
+     {<<"log">>, L},
      {<<"metadata">>, metadata(V)},
      {<<"network_mappings">>, M},
      {<<"owner">>, owner(V)},
