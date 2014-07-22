@@ -338,7 +338,10 @@ get_server(_Event, State = #state{
     Ram = ft_package:ram(Package),
     vm_set(State, <<"state">>, <<"fetching_server">>),
     Permission = [<<"hypervisors">>, {<<"res">>, <<"name">>}, <<"create">>],
-    Type = ft_dataset:type(Dataset),
+    Type = case ft_dataset:type(Dataset) of
+               kvm -> <<"kvm">>;
+               zone -> <<"zone">>
+           end,
     case libsnarl:user_cache(Creator) of
         {ok, Permissions} ->
             Conditions0 = ft_package:requirements(Package)
