@@ -166,7 +166,7 @@ remove_backup(Vm, BID) ->
     case sniffle_vm:get_(Vm) of
         {ok, V} ->
             {Server, Port} = get_hypervisor(V),
-            case jsxd:get([<<"backups">>, BID], V) of
+            case jsxd:get([BID], ?S:backups(V)) of
                 {ok, _} ->
                     libchunter:delete_backup(Server, Port, Vm, BID);
                 _ ->
@@ -445,7 +445,7 @@ primary_nic(Vm, Mac) ->
             NicMap = make_nic_map(V),
             case jsxd:get(Mac, NicMap) of
                 {ok, _Idx}  ->
-                    {ok, H} = jsxd:get(<<"hypervisor">>, V),
+                    {ok, H} = ?S:hypervisor(V),
                     {Server, Port} = get_hypervisor(H),
                     libchunter:ping(Server, Port),
                     case ?S:state(V) of
