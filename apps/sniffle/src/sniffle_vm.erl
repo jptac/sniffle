@@ -950,7 +950,7 @@ remove_grouping(UUID, Grouping) ->
 
 -define(S(T),
         T(UUID, V) ->
-               do_write(UUID, T, [V])).
+               do_write(UUID, T, V)).
 
 ?S(state).
 ?S(alias).
