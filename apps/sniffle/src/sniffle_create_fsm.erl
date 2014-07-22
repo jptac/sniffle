@@ -180,7 +180,7 @@ generate_grouping_rules(_Event, State = #state{
             Rules = sniffle_grouping:create_rules(Grouping),
             case sniffle_grouping:add_element(Grouping, UUID) of
                 ok ->
-                    vm_set(State, <<"grouping">>, Grouping),
+                    sniffle_vm:add_grouping(UUID, Grouping),
                     {next_state, create_permissions,
                      State#state{grouping_rules = Rules}, 0};
                 E ->
@@ -191,12 +191,6 @@ generate_grouping_rules(_Event, State = #state{
         _ ->
             {next_state, create_permissions, State, 0}
     end.
-
-vm_set(#state{test_pid = {_,_}}, _, _)  ->
-    ok;
-
-vm_set(#state{uuid = UUID}, K, V)  ->
-    sniffle_vm:set(UUID, K, V).
 
 vm_log(#state{test_pid = {_,_}}, _)  ->
     ok;
@@ -254,7 +248,7 @@ create_permissions(_Event, State = #state{
                 {ok, Org} ->
                     lager:info("[create] User ~p has active org: ~p.",
                                [Creator, Org]),
-                    vm_set(State, <<"owner">>, Org),
+                    sniffle_vm:owner(UUID, Org),
                     libsnarl:org_execute_trigger(Org, vm_create, UUID),
                     Org
             end,
@@ -269,23 +263,25 @@ create_permissions(_Event, State = #state{
       }, 0}.
 
 get_package(_Event, State = #state{
+                               uuid = UUID,
                                package_name = PackageName
                               }) ->
     lager:info("[create] Fetching package: ~p", [PackageName]),
     vm_log(State, <<"Fetching package ", PackageName/binary>>),
-    vm_set(State, <<"state">>, <<"fetching_package">>),
+    sniffle_vm:state(UUID, <<"fetching_package">>),
     {ok, Package} = sniffle_package:get_(PackageName),
-    vm_set(State, <<"package">>, PackageName),
+    sniffle_vm:package(UUID, PackageName),
     {next_state, get_dataset, State#state{package = Package}, 0}.
 
 get_dataset(_Event, State = #state{
+                               uuid = UUID,
                                dataset_name = DatasetName
                               }) ->
     lager:info("[create] Fetching Dataset: ~p", [DatasetName]),
     vm_log(State, <<"Fetching dataset ", DatasetName/binary>>),
-    vm_set(State, <<"state">>, <<"fetching_dataset">>),
+    sniffle_vm:state(UUID, <<"fetching_dataset">>),
     {ok, Dataset} = sniffle_dataset:get_(DatasetName),
-    vm_set(State, <<"dataset">>, DatasetName),
+    sniffle_vm:dataset(UUID, DatasetName),
     {next_state, callbacks, State#state{dataset = Dataset}, 0}.
 
 
@@ -301,11 +297,11 @@ callbacks(_Event, State = #state{
                                  package = Package1,
                                  config = Config1}, 0}.
 
-get_networks(_event, State = #state{retry = R, max_retries = Max})
+get_networks(_event, State = #state{retry = R, max_retries = Max, uuid=UUID})
   when R > Max ->
     lager:error("[create] Failed after too many retries: ~p > ~p.",
                 [R, Max]),
-    vm_set(State, <<"state">>, <<"failed">>),
+    sniffle_vm:state(UUID, <<"failed">>),
     BR = integer_to_binary(R),
     BMax= integer_to_binary(Max),
     vm_log(State, <<"Failed after too many retries: ", BR/binary, " > ",
@@ -336,7 +332,7 @@ get_server(_Event, State = #state{
                               grouping_rules = GroupingRules}) ->
     lager:debug("[create] get_server: ~p", [Nets]),
     Ram = ft_package:ram(Package),
-    vm_set(State, <<"state">>, <<"fetching_server">>),
+    sniffle_vm:state(UUID, <<"fetching_server">>),
     Permission = [<<"hypervisors">>, {<<"res">>, <<"name">>}, <<"create">>],
     Type = case ft_dataset:type(Dataset) of
                kvm -> <<"kvm">>;
@@ -389,8 +385,8 @@ get_ips(_Event, State = #state{nets = Nets,
             lager:warning("[create] Could not map networks."),
             do_retry(State);
         {Nics1, Mapping} ->
-            vm_set(State, <<"network_mappings">>,
-                   [{IP, Range} || {Range, IP} <- Mapping]),
+            [sniffle_vm:add_network_map(UUID, IP, Range)
+             || {Range, IP} <- Mapping],
             {next_state, build_key,
              State#state{mapping=Mapping, resulting_networks=Nics1},
              0}
@@ -432,13 +428,19 @@ create(_Event, State = #state{
                           hypervisor = {Host, Port},
                           mapping = Mapping}) ->
     vm_log(State, <<"Handing off to hypervisor.">>),
-    vm_set(State, <<"state">>, <<"creating">>),
+    sniffle_vm:state(UUID, <<"creating">>),
     Package1 = ft_package:to_json(Package),
     Dataset1 = ft_dataset:to_json(Dataset),
     Dataset2 = jsxd:set(<<"networks">>, Nics, Dataset1),
     case libchunter:create_machine(Host, Port, UUID, Package1, Dataset2, Config) of
         {error, lock} ->
-            [sniffle_iprange:release_ip(Range, IP) ||{Range, IP} <- Mapping],
+            [sniffle_vm:add_network_map(UUID, IP, Range)
+             || {Range, IP} <- Mapping],
+
+            [begin
+                 sniffle_iprange:release_ip(Range, IP),
+                 sniffle_vm:remove_network_map(UUID, IP)
+             end || {Range, IP} <- Mapping],
             lager:warning("[create] Could not get log."),
             do_retry(State);
         ok ->
@@ -527,10 +529,10 @@ terminate(_Reason, StateName, #state{test_pid={Pid, Ref}}) ->
     Pid ! {Ref, {failed, StateName}},
     ok;
 
-terminate(_Reason, StateName, State = #state{uuid=UUID}) ->
+terminate(_Reason, StateName, #state{uuid=UUID}) ->
     eplugin:call('create:fail', UUID, StateName),
     StateBin = list_to_binary(atom_to_list(StateName)),
-    vm_set(State, <<"state">>, <<"failed-", StateBin/binary>>),
+    sniffle_vm:state(UUID, <<"failed-", StateBin/binary>>),
     ok.
 
 %%--------------------------------------------------------------------

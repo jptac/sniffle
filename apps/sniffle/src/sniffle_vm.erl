@@ -56,13 +56,34 @@
          dry_run/3
         ]).
 
+
+-export([
+         add_network_map/3,
+         remove_network_map/2,
+         add_grouping/2,
+         remove_grouping/2,
+         state/2,
+         alias/2,
+         owner/2,
+         dataset/2,
+         package/2,
+         hypervisor/2
+        ]).
+
 -ignore_xref([
+              alias/2,
+              hypervisor/2,
+
+              add_grouping/2,
+              remove_grouping/2,
+              dataset/2,
               get_/1,
               logs/1,
               sync_repair/2,
               list_/0,
               wipe/1,
-              children/2]).
+              children/2
+             ]).
 
 -type backup_opts() ::
         delete |
@@ -87,13 +108,13 @@ store(Vm) ->
             Bs = ?S:backups(V),
             case has_xml(Bs) of
                 true ->
-                    set(Vm, <<"state">>, <<"storing">>),
-                    [sniffle_vm:set(Vm, [<<"backups">>, B, <<"local">>], false)
+                    state(Vm, <<"storing">>),
+                    [set_backup(Vm, [B, <<"local">>], false)
                      || {B, _} <- Bs],
-                    [sniffle_vm:set(Vm, [<<"backups">>, B, <<"local_size">>], 0)
+                    [set_backup(Vm, [B, <<"local_size">>], 0)
                      || {B, _} <- Bs],
                     sniffle_vm:set(Vm, <<"snapshots">>, delete),
-                    sniffle_vm:set(Vm, <<"hypervisor">>, delete),
+                    hypervisor(Vm, delete),
                     {Host, Port} = get_hypervisor(V),
                     libchunter:delete_machine(Host, Port, Vm);
                 false ->
@@ -262,10 +283,9 @@ do_snap(Vm, V, Comment, Opts) ->
             libchunter:backup(Server, Port, Vm, UUID,
                               S3Host, S3Port, Bucket, AKey,
                               SKey, Bucket, Opts1),
-            C = [{[<<"backups">>, UUID, <<"comment">>], Comment},
-                 {[<<"backups">>, UUID, <<"timestamp">>], timestamp()},
-                 {[<<"backups">>, UUID, <<"state">>], <<"pending">>}],
-            sniffle_vm:set(Vm, C),
+            set_backup(Vm, [UUID, <<"comment">>], Comment),
+            set_backup(Vm, [UUID, <<"timestamp">>], Comment),
+            set_backup(Vm, [UUID, <<"pending">>], Comment),
             {ok, UUID}
     end.
 
@@ -377,10 +397,7 @@ add_nic(Vm, Network) ->
                                 end,
                             UR = [{<<"add_nics">>, [NicSpec2]}],
                             ok = libchunter:update_machine(Server, Port, Vm, [], UR),
-                            M = [{<<"network">>, IPRange},
-                                 {<<"ip">>, IP}],
-                            Ms1 = [M | ?S:network_map(V)],
-                            sniffle_vm:set(Vm, [<<"network_mappings">>], Ms1);
+                            add_network_map(Vm, IP, IPRange);
                         E ->
                             lager:error("Could not get claim new IP: ~p for ~p ~p",
                                         [E, Network, Requirements]),
@@ -407,21 +424,11 @@ remove_nic(Vm, Mac) ->
                             UR = [{<<"remove_nics">>, [Mac]}],
                             {ok, IpStr} = jsxd:get([<<"networks">>, Idx, <<"ip">>], ?S:config(V)),
                             IP = ft_iprange:parse_bin(IpStr),
-                            {ok, Ms} = ?S:network_map(V),
+                            Ms = ?S:network_map(V),
                             ok = libchunter:update_machine(Server, Port, Vm, [], UR),
-                            case [ Network || [{<<"network">>, Network},
-                                               {<<"ip">>, IP1}] <- Ms, IP1 =:= IP] of
-                                [Network] ->
-                                    sniffle_iprange:release_ip(Network, IP),
-                                    Ms1 = [ [{<<"network">>, N},
-                                             {<<"ip">>, IP1}] ||
-                                              [{<<"network">>, N},
-                                               {<<"ip">>, IP1}] <- Ms,
-                                              IP1 =/= IP],
-                                    sniffle_vm:set(Vm, [<<"network_mappings">>], Ms1);
-                                _ ->
-                                    ok
-                            end;
+                            remove_network_map(Vm, IP),
+                            [{IP, Network}] = [ {IP1, Network} || {IP1, Network} <- Ms, IP1 =:= IP],
+                            sniffle_iprange:release_ip(Network, IP);
                         _ ->
                             {error, not_stopped}
                     end;
@@ -481,7 +488,7 @@ update(Vm, Package, Config) ->
                                           ft_hypervisor:resources(H)) of
                                 {ok, Ram} when
                                       Ram > (NewRam - OrigRam) ->
-                                    set(Vm, <<"package">>, Package),
+                                    package(Vm, Package),
                                     log(Vm, <<"Updating VM from package '",
                                               OrigPkg/binary, "' to '",
                                               Package/binary, "'.">>),
@@ -518,9 +525,7 @@ register(Vm, Hypervisor) ->
 unregister(Vm) ->
     case sniffle_vm:get_(Vm) of
         {ok, V} ->
-            lists:map(fun(N) ->
-                              {ok, Net} = jsxd:get(<<"network">>, N),
-                              {ok, Ip} = jsxd:get(<<"ip">>, N),
+            lists:map(fun({Ip, Net}) ->
                               sniffle_iprange:release_ip(Net, Ip)
                       end, ?S:network_map(V)),
             VmPrefix = [<<"vms">>, Vm],
@@ -574,10 +579,11 @@ create(Package, Dataset, Config) ->
                                                        {<<"network">>, Net}]
                                               end, N))
                           end, [], Config1),
-    sniffle_vm:set(UUID, <<"config">>, Config2),
-    sniffle_vm:set(UUID, <<"state">>, <<"pooled">>),
-    sniffle_vm:set(UUID, <<"package">>, Package),
-    sniffle_vm:set(UUID, <<"dataset">>, Dataset),
+    [set_config(UUID, [K], V)
+     || {K, V} <- Config2],
+    state(UUID, <<"pooled">>),
+    package(UUID, Package),
+    dataset(UUID, Dataset),
     libhowl:send(UUID, [{<<"event">>, <<"update">>},
                         {<<"data">>,
                          [{<<"config">>, Config2},
@@ -676,10 +682,10 @@ delete(Vm) ->
                                   {<<"uuid">>, uuid:uuid4s()},
                                   {<<"data">>,
                                    [{<<"uuid">>, Vm}]}]),
-                    set(Vm, [{<<"state">>, <<"stored">>},
-                             {<<"hypervisor">>, delete}]);
+                    state(Vm, <<"stored">>),
+                    hypervisor(Vm, <<>>);
                 {H, _} ->
-                    set(Vm, <<"state">>, <<"deleting">>),
+                    state(Vm, <<"deleting">>),
                     {Host, Port} = get_hypervisor(H),
                     libchunter:delete_machine(Host, Port, Vm)
             end;
@@ -782,7 +788,7 @@ set_owner(Vm, Owner) ->
     libhowl:send(Vm, [{<<"event">>, <<"update">>},
                       {<<"data">>,
                        [{<<"owner">>, Owner}]}]),
-    set(Vm, <<"owner">>, Owner).
+    owner(Vm, Owner).
 
 %%--------------------------------------------------------------------
 %% @doc Adds a new log to the VM and timestamps it.
@@ -924,6 +930,35 @@ set(Vm, Attribute, Value) ->
 set(Vm, Attributes) ->
     do_write(Vm, set, Attributes).
 
+add_network_map(UUID, IP, Net) ->
+    do_write(UUID, set_network_map, [IP, Net]).
+
+remove_network_map(UUID, IP) ->
+    do_write(UUID, set_network_map, [IP, delete]).
+
+set_backup(UUID, P, V) ->
+    do_write(UUID, set_backup, [P, V]).
+
+set_config(UUID, P, V) ->
+    do_write(UUID, set_config, [P, V]).
+
+add_grouping(UUID, Grouping) ->
+    do_write(UUID, add_grouping, [Grouping]).
+
+remove_grouping(UUID, Grouping) ->
+    do_write(UUID, remove_grouping, [Grouping]).
+
+-define(S(T),
+        T(UUID, V) ->
+               do_write(UUID, T, [V])).
+
+?S(state).
+?S(alias).
+?S(owner).
+?S(dataset).
+?S(package).
+?S(hypervisor).
+
 %%%===================================================================
 %%% Internal Functions
 %%%===================================================================
@@ -1006,7 +1041,7 @@ do_delete_backup(UUID, VM, BID) ->
     H = ?S:hypervisor(VM),
     {Server, Port} = get_hypervisor(H),
     libchunter:delete_snapshot(Server, Port, UUID, BID),
-    sniffle_vm:set(UUID, [<<"backups">>, BID], delete),
+    set_backup(UUID, [BID], delete),
     libhowl:send(UUID, [{<<"event">>, <<"backup">>},
                         {<<"data">>, [{<<"action">>, <<"deleted">>},
                                       {<<"uuid">>, BID}]}]).

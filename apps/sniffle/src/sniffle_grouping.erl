@@ -70,7 +70,7 @@ add_element(UUID, Element) ->
                 cluster ->
                     case sniffle_vm:get(Element) of
                         {ok, _} ->
-                            sniffle_vm:set(Element, <<"grouping">>, UUID),
+                            sniffle_vm:add_grouping(Element, UUID),
                             do_write(UUID, add_element, Element);
                         E ->
                             E
@@ -78,7 +78,7 @@ add_element(UUID, Element) ->
                 none ->
                     case sniffle_vm:get(Element) of
                         {ok, _} ->
-                            sniffle_vm:set(Element, <<"grouping">>, UUID),
+                            sniffle_vm:add_grouping(Element, UUID),
                             do_write(UUID, add_element, Element);
                         E ->
                             E
@@ -111,7 +111,7 @@ remove_element(UUID, Element) ->
                     do_write(Element, remove_grouping, UUID),
                     do_write(UUID, remove_element, Element);
                 _ ->
-                    sniffle_vm:set(Element, <<"grouping">>, delete),
+                    sniffle_vm:remove_grouping(Element, UUID),
                     do_write(UUID, remove_element, Element)
             end;
         E ->
@@ -198,7 +198,7 @@ delete(UUID) ->
                     [do_write(Element, remove_grouping, UUID) ||
                         Element <- Elements];
                 _ ->
-                    [sniffle_vm:set(Element, <<"grouping">>, delete) ||
+                    [sniffle_vm:remove_grouping(Element,UUID) ||
                         Element <- Elements],
                     [do_write(Stack, remove_element, UUID) ||
                         Stack <- ft_grouping:groupings(T)]
