@@ -14,6 +14,24 @@
 -include_lib("eunit/include/eunit.hrl").
 -endif.
 
+
+-define(G(N, F),
+        getter(#sniffle_obj{val=S0}, N) ->
+               F(S0)).
+
+-define(G(E),
+        E(H) -> riak_dt_lwwreg:value(H#?IPRANGE.E)).
+
+-define(S(E),
+        E({T, _ID}, V, H) ->
+               {ok, V1} = riak_dt_lwwreg:update({assign, V, T}, none, H#?IPRANGE.E),
+               H#?IPRANGE{E = V1}).
+
+-define(S(N, F),
+        set(TID, N, Value, D) ->
+               F(TID, Value, D)).
+
+
 -define(IS_IP, is_integer(V), V > 0, V < 16#FFFFFFFF).
 
 -export([
@@ -51,51 +69,33 @@
 
 -ignore_xref([load/2, name/1, set/4, set/3, getter/2, uuid/1]).
 
-uuid(H) ->
-    riak_dt_lwwreg:value(H#?IPRANGE.uuid).
+?G(uuid).
+?S(uuid).
 
-uuid({T, _ID}, V, H) when is_binary(V)  ->
-    {ok, V1} = riak_dt_lwwreg:update({assign, V, T}, none, H#?IPRANGE.uuid),
-    H#?IPRANGE{uuid = V1}.
+?G(name).
+?S(name).
 
-name(H) ->
-    riak_dt_lwwreg:value(H#?IPRANGE.name).
-
-name({T, _ID}, V, H) when is_binary(V) ->
-    {ok, V1} = riak_dt_lwwreg:update({assign, V, T}, none, H#?IPRANGE.name),
-    H#?IPRANGE{name = V1}.
-
-network(H) ->
-    riak_dt_lwwreg:value(H#?IPRANGE.network).
-
+?G(network).
 network({T, _ID}, V, H) when ?IS_IP ->
     {ok, V1} = riak_dt_lwwreg:update({assign, V, T}, none, H#?IPRANGE.network),
     H#?IPRANGE{network = V1}.
 
-netmask(H) ->
-    riak_dt_lwwreg:value(H#?IPRANGE.netmask).
-
+?G(netmask).
 netmask({T, _ID}, V, H) when ?IS_IP ->
     {ok, V1} = riak_dt_lwwreg:update({assign, V, T}, none, H#?IPRANGE.netmask),
     H#?IPRANGE{netmask = V1}.
 
-gateway(H) ->
-    riak_dt_lwwreg:value(H#?IPRANGE.gateway).
-
+?G(gateway).
 gateway({T, _ID}, V, H) when ?IS_IP ->
     {ok, V1} = riak_dt_lwwreg:update({assign, V, T}, none, H#?IPRANGE.gateway),
     H#?IPRANGE{gateway = V1}.
 
-tag(H) ->
-    riak_dt_lwwreg:value(H#?IPRANGE.tag).
-
+?G(tag).
 tag({T, _ID}, V, H) when is_binary(V) ->
     {ok, V1} = riak_dt_lwwreg:update({assign, V, T}, none, H#?IPRANGE.tag),
     H#?IPRANGE{tag = V1}.
 
-vlan(H) ->
-    riak_dt_lwwreg:value(H#?IPRANGE.vlan).
-
+?G(vlan).
 vlan({T, _ID}, V, H) when is_integer(V),
                           V >= 0, V < 4096 ->
     {ok, V1} = riak_dt_lwwreg:update({assign, V, T}, none, H#?IPRANGE.vlan),
@@ -107,13 +107,19 @@ free(H) ->
 used(H) ->
     riak_dt_orswot:value(H#?IPRANGE.used).
 
-getter(#sniffle_obj{val=S0}, Resource) ->
-    jsxd:get(Resource, 0, statebox:value(S0)).
+?G(<<"uuid">>, uuid);
+?G(<<"name">>, name);
+?G(<<"network">>, network);
+?G(<<"netmask">>, netmask);
+?G(<<"gateway">>, gateway);
+?G(<<"tag">>, tag);
+?G(<<"vlan">>, vlan).
 
 load(_, #?IPRANGE{} = I) ->
     I;
 
-load({T, ID}, I) ->
+load({T, ID}, Sb) ->
+    I = statebox:value(Sb),
     {ok, UUID} = jsxd:get(<<"uuid">>, I),
     {ok, Name} = jsxd:get(<<"name">>, I),
     {ok, Network} = jsxd:get(<<"network">>, I),
