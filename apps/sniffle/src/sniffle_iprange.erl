@@ -169,7 +169,7 @@ claim_ip(Iprange, N) ->
             case ft_iprange:free(Obj) of
                 [] ->
                     {error, full};
-                [FoundIP | R] ->
+                [FoundIP | _] ->
                     case do_write(Iprange, claim_ip, FoundIP) of
                         {error, _} ->
                             timer:sleep(N*50),
