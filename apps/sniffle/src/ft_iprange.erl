@@ -16,7 +16,7 @@
 
 
 -define(G(N, F),
-        getter(#sniffle_obj{val=S0}, N) ->
+        getter(S0, N) ->
                F(S0)).
 
 -define(G(E),
@@ -106,7 +106,8 @@ free(H) ->
 
 used(H) ->
     riak_dt_orswot:value(H#?IPRANGE.used).
-
+getter(#sniffle_obj{val=S0}, E) ->
+    getter(S0, E);
 ?G(<<"uuid">>, uuid);
 ?G(<<"name">>, name);
 ?G(<<"network">>, network);
@@ -281,62 +282,3 @@ parse_bin(Bin) ->
     [A,B,C,D] = [ list_to_integer(binary_to_list(P)) || P <- re:split(Bin, "[.]")],
     <<IP:32>> = <<A:8, B:8, C:8, D:8>>,
     IP.
-
--ifdef(TESTE).
-
-example_setup() ->
-    R = new(),
-    R1 = network(100, R),
-    R2 = gateway(200, R1),
-    R3 = netmask(0, R2),
-    R4 = first(110, R3),
-    R5 = current(110, R4),
-    last(120, R5).
-
-example_setup_test() ->
-    R = example_setup(),
-    ?assertEqual({ok, 100}, jsxd:get(<<"network">>, R)),
-    ?assertEqual({ok, 200}, jsxd:get(<<"gateway">>, R)),
-    ?assertEqual({ok, 0}, jsxd:get(<<"netmask">>, R)),
-    ?assertEqual({ok, 110}, jsxd:get(<<"first">>, R)),
-    ?assertEqual({ok, 110}, jsxd:get(<<"current">>, R)),
-    ?assertEqual({ok, 120}, jsxd:get(<<"last">>, R)).
-
-claim1_test() ->
-    R = example_setup(),
-    R1 = claim_ip(110, R),
-    ?assertEqual({ok, 110}, jsxd:get(<<"first">>, R1)),
-    ?assertEqual({ok, 111}, jsxd:get(<<"current">>, R1)),
-    R2 = claim_ip(111, R1),
-    ?assertEqual({ok, 112}, jsxd:get(<<"current">>, R2)).
-
-claim2_test() ->
-    R = example_setup(),
-    R1 = jsxd:set(<<"free">>, [123, 124], R),
-    R2 = jsxd:set(<<"current">>, 125, R1),
-    R3 = claim_ip(123, R2),
-    ?assertEqual({ok, 125}, jsxd:get(<<"current">>, R3)),
-    ?assertEqual({ok, [124]}, jsxd:get(<<"free">>, R3)),
-    R4 = claim_ip(125, R2),
-    ?assertEqual({ok, 126}, jsxd:get(<<"current">>, R4)),
-    ?assertEqual({ok, [123, 124]}, jsxd:get(<<"free">>, R4)),
-    R5 = claim_ip(124, R2),
-    ?assertEqual({ok, 125}, jsxd:get(<<"current">>, R5)),
-    ?assertEqual({ok, [123]}, jsxd:get(<<"free">>, R5)).
-
-return_test() ->
-    R = example_setup(),
-    R1 = jsxd:thread([{set, <<"free">>, []},
-                      {set, <<"current">>, 115}],
-                     R),
-    R2 = release_ip(114, R1),
-    ?assertEqual({ok, 114}, jsxd:get(<<"current">>, R2)),
-    ?assertEqual({ok, []}, jsxd:get(<<"free">>, R2)),
-    R3 = release_ip(113, R1),
-    ?assertEqual({ok, 115}, jsxd:get(<<"current">>, R3)),
-    ?assertEqual({ok, [113]}, jsxd:get(<<"free">>, R3)),
-    R4 = release_ip(115, R1),
-    ?assertEqual({ok, 115}, jsxd:get(<<"current">>, R4)),
-    ?assertEqual({ok, []}, jsxd:get(<<"free">>, R4)).
-
--endif.
