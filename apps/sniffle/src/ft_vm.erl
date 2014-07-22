@@ -317,6 +317,9 @@ load({T, ID}, Sb) ->
        }.
 
 to_json(V) ->
+    M = lists:sort(
+          [{ft_iprange:to_bin(IP), Range} ||
+              {IP, Range} <- network_map(V)]),
     [
      {<<"alias">>, alias(V)},
      {<<"backups">>, backups(V)},
@@ -326,7 +329,7 @@ to_json(V) ->
      {<<"hypervisor">>, hypervisor(V)},
      {<<"log">>, logs(V)},
      {<<"metadata">>, metadata(V)},
-     {<<"network_mappings">>, network_map(V)},
+     {<<"network_mappings">>, M},
      {<<"owner">>, owner(V)},
      {<<"package">>, package(V)},
      {<<"services">>, services(V)},

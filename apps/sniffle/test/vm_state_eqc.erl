@@ -18,6 +18,9 @@
 vm() ->
     ?SIZED(Size, vm(Size+1)).
 
+ip() ->
+    choose(16#00000000, 16#FFFFFFFF).
+
 vm(Size) ->
     ?LAZY(oneof([{call, ?V, new, [id(Size)]} || Size == 1] ++
                     [?LETSHRINK(
@@ -46,8 +49,8 @@ vm(Size) ->
                                {call, ?V, set_service, [id(Size), non_blank_string(), non_blank_string(), O]},
                                {call, ?V, set_service, [id(Size), maybe_oneof(calc_map(set_service, O)), delete, O]},
 
-                               {call, ?V, set_network_map, [id(Size), int(), non_blank_string(), O]},
-                               {call, ?V, set_network_map, [id(Size), maybe_oneof(calc_map(set_network_map, O), int()), delete, O]},
+                               {call, ?V, set_network_map, [id(Size), ip(), non_blank_string(), O]},
+                               {call, ?V, set_network_map, [id(Size), maybe_oneof(calc_map(set_network_map, O), ip()), delete, O]},
 
                                {call, ?V, add_grouping, [id(Size), non_blank_string(), O]},
                                {call, ?V, remove_grouping, [id(Size), maybe_oneof(calc_groupings(O)), O]},
@@ -134,10 +137,10 @@ model_delete_service(K, U) ->
     r(<<"services">>, lists:keydelete(K, 1, services(U)), U).
 
 model_set_network_map(K, V, U) ->
-    r(<<"network_mappings">>, lists:usort(r(K, V, network_map(U))), U).
+    r(<<"network_mappings">>, lists:usort(r(ft_iprange:to_bin(K), V, network_map(U))), U).
 
 model_delete_network_map(K, U) ->
-    r(<<"network_mappings">>, lists:keydelete(K, 1, network_map(U)), U).
+    r(<<"network_mappings">>, lists:keydelete(ft_iprange:to_bin(K), 1, network_map(U)), U).
 
 model_add_grouping(E, U) ->
     r(<<"groupings">>, lists:usort([E | get_groupings(U)]), U).
@@ -377,7 +380,7 @@ prop_remove_service() ->
             end).
 
 prop_set_network_map() ->
-    ?FORALL({IP, V, O}, {int(), non_blank_string(), vm()},
+    ?FORALL({IP, V, O}, {ip(), non_blank_string(), vm()},
             begin
                 Hv = eval(O),
                 O1 = ?V:set_network_map(id(?BIG_TIME), IP, V, Hv),
@@ -388,7 +391,7 @@ prop_set_network_map() ->
             end).
 
 prop_remove_network_map() ->
-    ?FORALL({O, K}, ?LET(O, vm(), {O, maybe_oneof(calc_map(set_network_map, O), int())}),
+    ?FORALL({O, K}, ?LET(O, vm(), {O, maybe_oneof(calc_map(set_network_map, O), ip())}),
             begin
                 Hv = eval(O),
                 O1 = ?V:set_network_map(id(?BIG_TIME), K, delete, Hv),
