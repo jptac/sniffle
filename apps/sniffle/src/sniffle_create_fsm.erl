@@ -385,14 +385,12 @@ get_ips(_Event, State = #state{nets = Nets,
     case update_nics(UUID, Nics0, Config, Nets, State) of
         {error, E, Mapping} ->
             lager:error("[create] Failed to get ips: ~p", [E]),
-            [sniffle_iprange:release_ip(Range, IP) ||{Range, IP} <- Mapping],
+            [sniffle_iprange:release_ip(Range, IP) || {Range, IP} <- Mapping],
             lager:warning("[create] Could not map networks."),
             do_retry(State);
         {Nics1, Mapping} ->
-            MappingsJSON = [[{<<"ip">>, IP},
-                             {<<"network">>, Range}]
-                            || {Range, IP} <- Mapping],
-            vm_set(State, <<"network_mappings">>, MappingsJSON),
+            vm_set(State, <<"network_mappings">>,
+                   [{IP, Range} || {Range, IP} <- Mapping]),
             {next_state, build_key,
              State#state{mapping=Mapping, resulting_networks=Nics1},
              0}

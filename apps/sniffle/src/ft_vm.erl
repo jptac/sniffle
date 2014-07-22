@@ -117,6 +117,17 @@ set(ID, [<<"services">> | R], Vs, H) when is_list(Vs) ->
 set(ID, [<<"services">> | R], V, H) ->
     set_service(ID, R, V, H);
 
+set(ID, <<"network_mappings">>, V, H) ->
+    set(ID, [<<"network_mappings">>], V, H);
+
+set(ID, [<<"network_mappings">> | R], Vs, H) when is_list(Vs) ->
+    lists:foldl(fun({K, V}, AccH) ->
+                        set_network_map(ID, R ++ [K], V, AccH)
+                end, H, Vs);
+
+set(ID, [<<"network_mappings">> | R], V, H) ->
+    set_service(ID, R, V, H);
+
 set(ID, K = <<"metadata.", _/binary>>, V, H) ->
     set(ID, re:split(K, "\\."), V, H);
 
@@ -207,8 +218,8 @@ set_metadata({T, ID}, Attribute, Value, G) ->
 network_map(H) ->
     fifo_map:value(H#?VM.network_map).
 
-set_network_map({T, ID}, P, Value, User) when is_binary(P) ->
-    set_network_map({T, ID}, fifo_map:split_path(P), Value, User);
+set_network_map({T, ID}, IP, Value, User) when is_integer(IP) ->
+    set_network_map({T, ID}, [IP], Value, User);
 
 set_network_map({_T, ID}, Attribute, delete, G) ->
     {ok, M1} = fifo_map:remove(Attribute, ID, G#?VM.network_map),
@@ -315,7 +326,7 @@ to_json(V) ->
      {<<"hypervisor">>, hypervisor(V)},
      {<<"log">>, logs(V)},
      {<<"metadata">>, metadata(V)},
-     {<<"network_mapping">>, network_map(V)},
+     {<<"network_mappings">>, network_map(V)},
      {<<"owner">>, owner(V)},
      {<<"package">>, package(V)},
      {<<"services">>, services(V)},

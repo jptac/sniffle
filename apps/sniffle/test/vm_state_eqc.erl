@@ -46,8 +46,8 @@ vm(Size) ->
                                {call, ?V, set_service, [id(Size), non_blank_string(), non_blank_string(), O]},
                                {call, ?V, set_service, [id(Size), maybe_oneof(calc_map(set_service, O)), delete, O]},
 
-                               {call, ?V, set_network_map, [id(Size), non_blank_string(), non_blank_string(), O]},
-                               {call, ?V, set_network_map, [id(Size), maybe_oneof(calc_map(set_network_map, O)), delete, O]},
+                               {call, ?V, set_network_map, [id(Size), int(), non_blank_string(), O]},
+                               {call, ?V, set_network_map, [id(Size), maybe_oneof(calc_map(set_network_map, O), int()), delete, O]},
 
                                {call, ?V, add_grouping, [id(Size), non_blank_string(), O]},
                                {call, ?V, remove_grouping, [id(Size), maybe_oneof(calc_groupings(O)), O]},
@@ -134,10 +134,10 @@ model_delete_service(K, U) ->
     r(<<"services">>, lists:keydelete(K, 1, services(U)), U).
 
 model_set_network_map(K, V, U) ->
-    r(<<"network_mapping">>, lists:usort(r(K, V, network_map(U))), U).
+    r(<<"network_mappings">>, lists:usort(r(K, V, network_map(U))), U).
 
 model_delete_network_map(K, U) ->
-    r(<<"network_mapping">>, lists:keydelete(K, 1, network_map(U)), U).
+    r(<<"network_mappings">>, lists:keydelete(K, 1, network_map(U)), U).
 
 model_add_grouping(E, U) ->
     r(<<"groupings">>, lists:usort([E | get_groupings(U)]), U).
@@ -169,7 +169,7 @@ services(U) ->
     M.
 
 network_map(U) ->
-    {<<"network_mapping">>, M} = lists:keyfind(<<"network_mapping">>, 1, U),
+    {<<"network_mappings">>, M} = lists:keyfind(<<"network_mappings">>, 1, U),
     M.
 
 get_groupings(U) ->
@@ -377,18 +377,18 @@ prop_remove_service() ->
             end).
 
 prop_set_network_map() ->
-    ?FORALL({K, V, O}, {non_blank_string(), non_blank_string(), vm()},
+    ?FORALL({IP, V, O}, {int(), non_blank_string(), vm()},
             begin
                 Hv = eval(O),
-                O1 = ?V:set_network_map(id(?BIG_TIME), K, V, Hv),
-                M1 = model_set_network_map(K, V, model(Hv)),
+                O1 = ?V:set_network_map(id(?BIG_TIME), IP, V, Hv),
+                M1 = model_set_network_map(IP, V, model(Hv)),
                 ?WHENFAIL(io:format(user, "History: ~p~nHv: ~p~nModel: ~p~n"
                                     "Hv': ~p~nModel': ~p~n", [O, Hv, model(Hv), O1, M1]),
                           model(O1) == M1)
             end).
 
 prop_remove_network_map() ->
-    ?FORALL({O, K}, ?LET(O, vm(), {O, maybe_oneof(calc_map(set_network_map, O))}),
+    ?FORALL({O, K}, ?LET(O, vm(), {O, maybe_oneof(calc_map(set_network_map, O), int())}),
             begin
                 Hv = eval(O),
                 O1 = ?V:set_network_map(id(?BIG_TIME), K, delete, Hv),
