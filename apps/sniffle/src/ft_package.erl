@@ -219,6 +219,14 @@ new({T, _ID}) ->
 ?S(<<"ram">>, ram);
 ?S(<<"zfs_io_priority">>, zfs_io_priority);
 
+set({_T, ID}, <<"requirements">>, V, H = #?PACKAGE{requirements = R}) ->
+    Actual = ordsets:from_list(requirements(H)),
+    VSet = ordsets:from_list(V),
+    ToDelete = ordsets:subtract(Actual, VSet),
+    ToAdd = ordsets:subtract(VSet, Actual),
+    R1 = riak_dt_orswot:update({remove_all, ToDelete}, ID, R),
+    R2 = riak_dt_orswot:update({add_all, ToAdd}, ID, R1),
+    H#?PACKAGE{requirements = R2};
 set(ID, K = <<"metadata.", _/binary>>, V, H) ->
     set(ID, re:split(K, "\\."), V, H);
 set(ID, [<<"metadata">> | R], V, H) ->
