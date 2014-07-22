@@ -183,7 +183,7 @@ claim_ip(Iprange, N) ->
 full(Iprange) ->
     case sniffle_iprange:get_(Iprange) of
         {ok, Obj} ->
-            not ft_iprange:free(Obj) == [];
+            not (ft_iprange:free(Obj) == []);
         E ->
             E
     end.
