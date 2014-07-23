@@ -829,10 +829,10 @@ snapshot(Vm, Comment) ->
             TimeStamp = timestamp(),
             libchunter:snapshot(Server, Port, Vm, UUID),
             Prefix = [<<"snapshots">>, UUID],
-            do_write(Vm, set,
-                     [{Prefix ++ [<<"timestamp">>], TimeStamp},
-                      {Prefix ++ [<<"comment">>], Comment},
-                      {Prefix ++ [<<"state">>], <<"pending">>}]),
+            set_snapshot(Vm,
+                         [{Prefix ++ [<<"timestamp">>], TimeStamp},
+                          {Prefix ++ [<<"comment">>], Comment},
+                          {Prefix ++ [<<"state">>], <<"pending">>}]),
             log(Vm, <<"Created snapshot ", UUID/binary, ": ", Comment/binary>>),
             {ok, UUID};
         E ->
@@ -853,8 +853,8 @@ delete_snapshot(Vm, UUID) ->
                     {Server, Port} = get_hypervisor(V),
                     libchunter:delete_snapshot(Server, Port, Vm, UUID),
                     Prefix = [<<"snapshots">>, UUID],
-                    do_write(Vm, set,
-                             [{Prefix ++ [<<"state">>], <<"deleting">>}]),
+                    set_snapshot(Vm,
+                                 [{Prefix ++ [<<"state">>], <<"deleting">>}]),
                     log(Vm, <<"Deleting snapshot ", UUID/binary, ".">>),
                     ok;
                 undefined ->
@@ -908,7 +908,7 @@ commit_snapshot_rollback(Vm, UUID) ->
                                           jsxd:set(SUUID, Sn, A)
                                   end
                           end, [], ?S:snapshots(V)),
-                    do_write(Vm, set, [{[<<"snapshots">>], Snapshots1}]);
+                    set_snapshot(Vm, Snapshots1);
                 undefined ->
                     {error, not_found}
             end;
