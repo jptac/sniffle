@@ -11,6 +11,7 @@
 -include("ft.hrl").
 
 -export([
+         set/4,
          new/1,
          load/2,
          to_json/1,
@@ -29,6 +30,7 @@
 -ignore_xref([merge/2, load/2, getter/2, uuid/1]).
 
 -ignore_xref([
+         set/4,
          name/1, name/3,
          uuid/1, uuid/3,
          script/1, script/3,
@@ -126,6 +128,26 @@ to_json(D) ->
      {<<"uuid">>, uuid(D)}
     ].
 
+set(ID, [K], V, H) ->
+    set(ID, K, V, H);
+
+set({T, ID}, <<"config">>, V, H) ->
+    H#?DTRACE{config = fifo_map:from_orddict(V, ID, T)};
+
+set(ID, K = <<"config.", _/binary>>, V, H) ->
+    set(ID, re:split(K, "\\."), V, H);
+
+set(ID, [<<"config">> | R], V, H) ->
+    set_config(ID, R, V, H);
+
+set({T, ID}, <<"metadata">>, V, H) ->
+    H#?DTRACE{metadata = fifo_map:from_orddict(V, ID, T)};
+
+set(ID, K = <<"metadata.", _/binary>>, V, H) ->
+    set(ID, re:split(K, "\\."), V, H);
+
+set(ID, [<<"metadata">> | R], V, H) ->
+    set_metadata(ID, R, V, H).
 
 merge(#?DTRACE{
           config = Config1,
