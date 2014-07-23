@@ -30,7 +30,9 @@
          sync_repair/4,
          set_network_map/4,
          set_backup/4,
+         set_snapshot/4,
          set_config/4,
+         set_metadata/4,
          add_grouping/4,
          remove_grouping/4,
          state/4,
@@ -52,6 +54,8 @@
               set_network_map/4,
               set_backup/4,
               set_config/4,
+              set_snapshot/4,
+              set_metadata/4,
               add_grouping/4,
               remove_grouping/4,
               state/4,
@@ -148,23 +152,17 @@ unregister(Preflist, ReqID, Vm) ->
                                    {fsm, undefined, self()},
                                    ?MASTER).
 
-set_network_map(Preflist, ReqID, Vm, [IP, Net]) ->
-    riak_core_vnode_master:command(Preflist,
-                                   {set_network_map, ReqID, Vm, IP, Net},
-                                   {fsm, undefined, self()},
-                                   ?MASTER).
-
-set_backup(Preflist, ReqID, Vm, [K, V]) ->
-    riak_core_vnode_master:command(Preflist,
-                                   {set_backup, ReqID, Vm, K, V},
-                                   {fsm, undefined, self()},
-                                   ?MASTER).
-
-set_config(Preflist, ReqID, Vm, [K, V]) ->
-    riak_core_vnode_master:command(Preflist,
-                                   {set_config, ReqID, Vm, K, V},
-                                   {fsm, undefined, self()},
-                                   ?MASTER).
+-define(NS(T),
+        T(Preflist, ReqID, Vm, [K, V]) ->
+               riak_core_vnode_master:command(Preflist,
+                                              {T, ReqID, Vm, K, V},
+                                              {fsm, undefined, self()},
+                                              ?MASTER)).
+?NS(set_network_map).
+?NS(set_backup).
+?NS(set_snapshot).
+?NS(set_config).
+?NS(set_metadata).
 
 add_grouping(Preflist, ReqID, Vm, Grouping) ->
     riak_core_vnode_master:command(Preflist,

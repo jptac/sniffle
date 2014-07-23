@@ -53,7 +53,9 @@
          wipe/1,
          sync_repair/2,
          list_/0,
-         dry_run/3
+         dry_run/3,
+         set_backup/3,
+         set_snapshot/3
         ]).
 
 
@@ -62,6 +64,8 @@
          remove_network_map/2,
          add_grouping/2,
          remove_grouping/2,
+         set_config/3,
+         set_metadata/3,
          state/2,
          alias/2,
          owner/2,
@@ -939,8 +943,14 @@ remove_network_map(UUID, IP) ->
 set_backup(UUID, P, V) ->
     do_write(UUID, set_backup, [P, V]).
 
+set_snapshot(UUID, P, V) ->
+    do_write(UUID, set_snapshot, [P, V]).
+
 set_config(UUID, P, V) ->
     do_write(UUID, set_config, [P, V]).
+
+set_metadata(UUID, P, V) ->
+    do_write(UUID, set_metadata, [P, V]).
 
 add_grouping(UUID, Grouping) ->
     do_write(UUID, add_grouping, Grouping).

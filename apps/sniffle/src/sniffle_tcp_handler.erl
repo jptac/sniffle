@@ -390,6 +390,36 @@ message({vm, reboot, force, Vm}, State) when
      sniffle_vm:reboot(Vm, [force]),
      State};
 
+message({vm, state, Vm, Value}, State) when
+      is_binary(Vm) ->
+    {reply,
+     sniffle_vm:state(Vm, Value),
+     State};
+
+message({vm, set_backup, Vm, Attribute, Value}, State) when
+      is_binary(Vm) ->
+    {reply,
+     sniffle_vm:set_backup(Vm, Attribute, Value),
+     State};
+
+message({vm, set_snapshot, Vm, Attribute, Value}, State) when
+      is_binary(Vm) ->
+    {reply,
+     sniffle_vm:set_snapshot(Vm, Attribute, Value),
+     State};
+
+message({vm, set_config, Vm, Attribute, Value}, State) when
+      is_binary(Vm) ->
+    {reply,
+     sniffle_vm:set_config(Vm, Attribute, Value),
+     State};
+
+message({vm, set_metadata, Vm, Attribute, Value}, State) when
+      is_binary(Vm) ->
+    {reply,
+     sniffle_vm:set_metadata(Vm, Attribute, Value),
+     State};
+
 message({vm, set, Vm, Attribute, Value}, State) when
       is_binary(Vm) ->
     {reply,
