@@ -14,6 +14,7 @@
          new/1,
          load/2,
          to_json/1,
+         set/4,
          name/1, name/3,
          uuid/1, uuid/3,
          add_iprange/3, remove_iprange/3, ipranges/1,
@@ -25,11 +26,21 @@
 -ignore_xref([load/2, to_json/1, getter/2, merge/2]).
 
 -ignore_xref([
+              set/4,
               add_iprange/3, remove_iprange/3, ipranges/1,
               name/1, name/3,
               uuid/1, uuid/3,
               metadata/1, set_metadata/4
              ]).
+
+set({T, ID}, <<"metadata">>, V, H) ->
+    H#?HYPERVISOR{metadata = fifo_map:from_orddict(V, ID, T)};
+
+set(ID, K = <<"metadata.", _/binary>>, V, H) ->
+    set(ID, re:split(K, "\\."), V, H);
+
+set(ID, [<<"metadata">> | R], V, H) ->
+    set_metadata(ID, R, V, H).
 
 to_json(N) ->
     [
