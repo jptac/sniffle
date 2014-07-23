@@ -42,6 +42,7 @@
          package/1, package/3,
          hypervisor/1, hypervisor/3,
          config/1, set_config/4,
+         info/1, set_info/4,
          backups/1, set_backup/4,
          snapshots/1, set_snapshot/4,
          services/1, set_service/4,
@@ -60,6 +61,7 @@
               package/1, package/3,
               hypervisor/1, hypervisor/3,
               config/1, set_config/4,
+              info/1, set_info/4,
               services/1, set_service/4,
               metadata/1, set_metadata/4,
               network_map/1, set_network_map/4,
@@ -101,6 +103,17 @@ set(ID, <<"config">>, V, H) ->
 set(ID, [<<"config">> | R], Vs, H) when is_list(Vs) ->
     lists:foldl(fun({K, V}, AccH) ->
                         set_config(ID, R ++ [K], V, AccH)
+                end, H, Vs);
+
+set(ID, K = <<"info.", _/binary>>, V, H) ->
+    set(ID, re:split(K, "\\."), V, H);
+
+set(ID, <<"info">>, V, H) ->
+    set(ID, [<<"info">>], V, H);
+
+set(ID, [<<"info">> | R], Vs, H) when is_list(Vs) ->
+    lists:foldl(fun({K, V}, AccH) ->
+                        set_info(ID, R ++ [K], V, AccH)
                 end, H, Vs);
 
 set(ID, K = <<"services.", _/binary>>, V, H) ->
@@ -171,6 +184,20 @@ set_config({_T, ID}, Attribute, delete, G) ->
 set_config({T, ID}, Attribute, Value, G) ->
     {ok, M1} = fifo_map:set(Attribute, Value, ID, T, G#?VM.config),
     G#?VM{config = M1}.
+
+info(H) ->
+    fifo_map:value(H#?VM.info).
+
+set_info({T, ID}, P, Value, User) when is_binary(P) ->
+    set_info({T, ID}, fifo_map:split_path(P), Value, User);
+
+set_info({_T, ID}, Attribute, delete, G) ->
+    {ok, M1} = fifo_map:remove(Attribute, ID, G#?VM.info),
+    G#?VM{info = M1};
+
+set_info({T, ID}, Attribute, Value, G) ->
+    {ok, M1} = fifo_map:set(Attribute, Value, ID, T, G#?VM.info),
+    G#?VM{info = M1}.
 
 services(H) ->
     fifo_map:value(H#?VM.services).
@@ -272,6 +299,7 @@ load({T, ID}, Sb) ->
 
     NetworkMap = jsxd:get([<<"network_mappings">>], [], V),
     Config = jsxd:get([<<"config">>], [], V),
+    Info = jsxd:get([<<"info">>], [], V),
     Backups = jsxd:get([<<"backups">>], [], V),
     Snapshots = jsxd:get([<<"snapshots">>], [], V),
     Services = jsxd:get([<<"services">>], [], V),
@@ -288,6 +316,7 @@ load({T, ID}, Sb) ->
 
     NetworkMap1 = fifo_map:from_orddict(NetworkMap, ID, T),
     Config1 = fifo_map:from_orddict(Config, ID, T),
+    Info1 = fifo_map:from_orddict(Info, ID, T),
     Backups1 = fifo_map:from_orddict(Backups, ID, T),
     Snapshots1 = fifo_map:from_orddict(Snapshots, ID, T),
     Services1 = fifo_map:from_orddict(Services, ID, T),
@@ -310,6 +339,7 @@ load({T, ID}, Sb) ->
 
         network_map = NetworkMap1,
         config = Config1,
+        info = Info1,
         backups = Backups1,
         snapshots = Snapshots1,
         services = Services1,
@@ -331,6 +361,7 @@ to_json(V) ->
      {<<"dataset">>, dataset(V)},
      {<<"groupings">>, groupings(V)},
      {<<"hypervisor">>, hypervisor(V)},
+     {<<"info">>, info(V)},
      {<<"log">>, L},
      {<<"metadata">>, metadata(V)},
      {<<"network_mappings">>, M},
@@ -356,6 +387,7 @@ merge(#?VM{
 
           network_map = NetworkMap1,
           config = Config1,
+          info = Info1,
           backups = Backups1,
           snapshots = Snapshots1,
           services = Services1,
@@ -375,6 +407,7 @@ merge(#?VM{
 
           network_map = NetworkMap2,
           config = Config2,
+          info = Info2,
           backups = Backups2,
           snapshots = Snapshots2,
           services = Services2,
@@ -394,6 +427,7 @@ merge(#?VM{
 
         network_map = fifo_map:merge(NetworkMap1, NetworkMap2),
         config = fifo_map:merge(Config1, Config2),
+        info = fifo_map:merge(Info1, Info2),
         backups = fifo_map:merge(Backups1, Backups2),
         snapshots = fifo_map:merge(Snapshots1, Snapshots2),
         services = fifo_map:merge(Services1, Services2),

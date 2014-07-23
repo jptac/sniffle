@@ -31,6 +31,7 @@
          set_network_map/4,
          set_backup/4,
          set_snapshot/4,
+         set_service/4,
          set_config/4,
          set_metadata/4,
          add_grouping/4,
@@ -55,6 +56,7 @@
               set_backup/4,
               set_config/4,
               set_snapshot/4,
+              set_service/4,
               set_metadata/4,
               add_grouping/4,
               remove_grouping/4,
@@ -159,6 +161,7 @@ unregister(Preflist, ReqID, Vm) ->
                                               {fsm, undefined, self()},
                                               ?MASTER)).
 ?NS(set_network_map).
+?NS(set_service).
 ?NS(set_backup).
 ?NS(set_snapshot).
 ?NS(set_config).

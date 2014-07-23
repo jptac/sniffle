@@ -226,6 +226,12 @@ message({vm, service, clear, Vm, Service}, State) when
      sniffle_vm:service_clear(Vm, Service),
      State};
 
+message({vm, service, set, Vm, Service, Value}, State) when
+      is_binary(Vm) ->
+    {reply,
+     sniffle_vm:set_service(Vm, Service, Value),
+     State};
+
 message({vm, snapshot, Vm, Comment}, State) when
       is_binary(Vm),
       is_binary(Comment) ->

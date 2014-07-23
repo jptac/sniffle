@@ -115,6 +115,7 @@
           network_map    = riak_dt_map:new()    :: riak_dt_map:map(),
 
           config         = riak_dt_map:new()    :: riak_dt_map:map(),
+          info           = riak_dt_map:new()    :: riak_dt_map:map(),
           services       = riak_dt_map:new()    :: riak_dt_map:map(),
           backups        = riak_dt_map:new()    :: riak_dt_map:map(),
           snapshots      = riak_dt_map:new()    :: riak_dt_map:map(),

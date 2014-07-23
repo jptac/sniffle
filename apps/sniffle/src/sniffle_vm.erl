@@ -55,7 +55,10 @@
          list_/0,
          dry_run/3,
          set_backup/3,
-         set_snapshot/3
+         set_config/3,
+         set_service/3,
+         set_snapshot/3,
+         set_metadata/3
         ]).
 
 
@@ -64,8 +67,6 @@
          remove_network_map/2,
          add_grouping/2,
          remove_grouping/2,
-         set_config/3,
-         set_metadata/3,
          state/2,
          alias/2,
          owner/2,
@@ -939,6 +940,9 @@ add_network_map(UUID, IP, Net) ->
 
 remove_network_map(UUID, IP) ->
     do_write(UUID, set_network_map, [IP, delete]).
+
+set_service(UUID, P, V) ->
+    do_write(UUID, set_service, [P, V]).
 
 set_backup(UUID, P, V) ->
     do_write(UUID, set_backup, [P, V]).

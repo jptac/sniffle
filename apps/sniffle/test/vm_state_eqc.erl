@@ -40,6 +40,9 @@ vm(Size) ->
                                {call, ?V, set_config, [id(Size), non_blank_string(), non_blank_string(), O]},
                                {call, ?V, set_config, [id(Size), maybe_oneof(calc_map(set_config, O)), delete, O]},
 
+                               {call, ?V, set_info, [id(Size), non_blank_string(), non_blank_string(), O]},
+                               {call, ?V, set_info, [id(Size), maybe_oneof(calc_map(set_info, O)), delete, O]},
+
                                {call, ?V, set_backup, [id(Size), non_blank_string(), non_blank_string(), O]},
                                {call, ?V, set_backup, [id(Size), maybe_oneof(calc_map(set_backup, O)), delete, O]},
 
@@ -118,6 +121,12 @@ model_set_config(K, V, U) ->
 model_delete_config(K, U) ->
     r(<<"config">>, lists:keydelete(K, 1, config(U)), U).
 
+model_set_info(K, V, U) ->
+    r(<<"info">>, lists:usort(r(K, V, info(U))), U).
+
+model_delete_info(K, U) ->
+    r(<<"info">>, lists:keydelete(K, 1, info(U)), U).
+
 model_set_backup(K, V, U) ->
     r(<<"backups">>, lists:usort(r(K, V, backups(U))), U).
 
@@ -157,6 +166,10 @@ metadata(U) ->
 
 config(U) ->
     {<<"config">>, M} = lists:keyfind(<<"config">>, 1, U),
+    M.
+
+info(U) ->
+    {<<"info">>, M} = lists:keyfind(<<"info">>, 1, U),
     M.
 
 backups(U) ->
@@ -307,6 +320,28 @@ prop_remove_config() ->
                 Hv = eval(O),
                 O1 = ?V:set_config(id(?BIG_TIME), K, delete, Hv),
                 M1 = model_delete_config(K, model(Hv)),
+                ?WHENFAIL(io:format(user, "History: ~p~nHv: ~p~nModel: ~p~n"
+                                    "Hv': ~p~nModel': ~p~n", [O, Hv, model(Hv), O1, M1]),
+                          model(O1) == M1)
+            end).
+
+prop_set_info() ->
+    ?FORALL({K, V, O}, {non_blank_string(), non_blank_string(), vm()},
+            begin
+                Hv = eval(O),
+                O1 = ?V:set_info(id(?BIG_TIME), K, V, Hv),
+                M1 = model_set_info(K, V, model(Hv)),
+                ?WHENFAIL(io:format(user, "History: ~p~nHv: ~p~nModel: ~p~n"
+                                    "Hv': ~p~nModel': ~p~n", [O, Hv, model(Hv), O1, M1]),
+                          model(O1) == M1)
+            end).
+
+prop_remove_info() ->
+    ?FORALL({O, K}, ?LET(O, vm(), {O, maybe_oneof(calc_map(set_info, O))}),
+            begin
+                Hv = eval(O),
+                O1 = ?V:set_info(id(?BIG_TIME), K, delete, Hv),
+                M1 = model_delete_info(K, model(Hv)),
                 ?WHENFAIL(io:format(user, "History: ~p~nHv: ~p~nModel: ~p~n"
                                     "Hv': ~p~nModel': ~p~n", [O, Hv, model(Hv), O1, M1]),
                           model(O1) == M1)
