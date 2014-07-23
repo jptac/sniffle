@@ -54,12 +54,12 @@
          sync_repair/2,
          list_/0,
          dry_run/3,
-         set_backup/3,
-         set_config/3,
-         set_info/3,
-         set_service/3,
-         set_snapshot/3,
-         set_metadata/3
+         set_backup/2,
+         set_config/2,
+         set_info/2,
+         set_service/2,
+         set_snapshot/2,
+         set_metadata/2
         ]).
 
 
@@ -115,9 +115,9 @@ store(Vm) ->
             case has_xml(Bs) of
                 true ->
                     state(Vm, <<"storing">>),
-                    [set_backup(Vm, [B, <<"local">>], false)
+                    [set_backup(Vm, [{[B, <<"local">>], false}])
                      || {B, _} <- Bs],
-                    [set_backup(Vm, [B, <<"local_size">>], 0)
+                    [set_backup(Vm, [{[B, <<"local_size">>], 0}])
                      || {B, _} <- Bs],
                     sniffle_vm:set(Vm, <<"snapshots">>, delete),
                     hypervisor(Vm, delete),
@@ -289,9 +289,9 @@ do_snap(Vm, V, Comment, Opts) ->
             libchunter:backup(Server, Port, Vm, UUID,
                               S3Host, S3Port, Bucket, AKey,
                               SKey, Bucket, Opts1),
-            set_backup(Vm, [UUID, <<"comment">>], Comment),
-            set_backup(Vm, [UUID, <<"timestamp">>], Comment),
-            set_backup(Vm, [UUID, <<"pending">>], Comment),
+            set_backup(Vm, [{[UUID, <<"comment">>], Comment},
+                            {[UUID, <<"timestamp">>], Comment},
+                            {[UUID, <<"pending">>], Comment}]),
             {ok, UUID}
     end.
 
@@ -585,8 +585,7 @@ create(Package, Dataset, Config) ->
                                                        {<<"network">>, Net}]
                                               end, N))
                           end, [], Config1),
-    [set_config(UUID, [K], V)
-     || {K, V} <- Config2],
+    set_config(UUID, Config2),
     state(UUID, <<"pooled">>),
     package(UUID, Package),
     dataset(UUID, Dataset),
@@ -942,23 +941,23 @@ add_network_map(UUID, IP, Net) ->
 remove_network_map(UUID, IP) ->
     do_write(UUID, set_network_map, [IP, delete]).
 
-set_service(UUID, P, V) ->
-    do_write(UUID, set_service, [P, V]).
+set_service(UUID, AVs) ->
+    do_write(UUID, set_service, AVs).
 
-set_backup(UUID, P, V) ->
-    do_write(UUID, set_backup, [P, V]).
+set_backup(UUID, AVs) ->
+    do_write(UUID, set_backup, AVs).
 
-set_snapshot(UUID, P, V) ->
-    do_write(UUID, set_snapshot, [P, V]).
+set_snapshot(UUID, AVs) ->
+    do_write(UUID, set_snapshot, AVs).
 
-set_config(UUID, P, V) ->
-    do_write(UUID, set_config, [P, V]).
+set_config(UUID, AVs) ->
+    do_write(UUID, set_config, AVs).
 
-set_info(UUID, P, V) ->
-    do_write(UUID, set_info, [P, V]).
+set_info(UUID, AVs) ->
+    do_write(UUID, set_info, AVs).
 
-set_metadata(UUID, P, V) ->
-    do_write(UUID, set_metadata, [P, V]).
+set_metadata(UUID, AVs) ->
+    do_write(UUID, set_metadata, AVs).
 
 add_grouping(UUID, Grouping) ->
     do_write(UUID, add_grouping, Grouping).
@@ -1059,7 +1058,7 @@ do_delete_backup(UUID, VM, BID) ->
     H = ?S:hypervisor(VM),
     {Server, Port} = get_hypervisor(H),
     libchunter:delete_snapshot(Server, Port, UUID, BID),
-    set_backup(UUID, [BID], delete),
+    set_backup(UUID, [{[BID], delete}]),
     libhowl:send(UUID, [{<<"event">>, <<"backup">>},
                         {<<"data">>, [{<<"action">>, <<"deleted">>},
                                       {<<"uuid">>, BID}]}]).

@@ -41,12 +41,12 @@
          dataset/1, dataset/3,
          package/1, package/3,
          hypervisor/1, hypervisor/3,
-         config/1, set_config/4,
-         info/1, set_info/4,
-         backups/1, set_backup/4,
-         snapshots/1, set_snapshot/4,
-         services/1, set_service/4,
-         metadata/1, set_metadata/4,
+         config/1, set_config/3, set_config/4,
+         info/1, set_info/3, set_info/4,
+         backups/1, set_backup/3, set_backup/4,
+         snapshots/1, set_snapshot/3, set_snapshot/4,
+         services/1, set_service/3, set_service/4,
+         metadata/1, set_metadata/3, set_metadata/4,
          network_map/1, set_network_map/4,
          groupings/1, add_grouping/3, remove_grouping/3
         ]).
@@ -62,11 +62,14 @@
               hypervisor/1, hypervisor/3,
               config/1, set_config/4,
               info/1, set_info/4,
-              services/1, set_service/4,
-              metadata/1, set_metadata/4,
-              network_map/1, set_network_map/4,
-              backups/1, set_backup/4,
-              snapshots/1, set_snapshot/4,
+         network_map/1, set_network_map/4,
+
+              config/1, set_config/3, set_config/4,
+              info/1, set_info/3, set_info/4,
+              backups/1, set_backup/3, set_backup/4,
+              snapshots/1, set_snapshot/3, set_snapshot/4,
+              services/1, set_service/3, set_service/4,
+              metadata/1, set_metadata/3, set_metadata/4,
               groupings/1, add_grouping/3, remove_grouping/3
              ]).
 
@@ -174,6 +177,13 @@ set(ID, [<<"metadata">> | R], V, H) ->
 config(H) ->
     fifo_map:value(H#?VM.config).
 
+
+set_config(ID, [{K, V} | R] , Vm) ->
+    set_config(ID, R, set_config(ID, K, V, Vm));
+
+set_config(_ID, _, Vm) ->
+    Vm.
+
 set_config({_T, _ID}, _P, [{}], Vm) ->
     Vm;
 
@@ -191,6 +201,12 @@ set_config({T, ID}, Attribute, Value, Vm) ->
 info(H) ->
     fifo_map:value(H#?VM.info).
 
+set_info(ID, [{K, V} | R] , Vm) ->
+    set_info(ID, R, set_info(ID, K, V, Vm));
+
+set_info(_ID, _, Vm) ->
+    Vm.
+
 set_info({_T, _ID}, _P, [{}], Vm) ->
     Vm;
 
@@ -207,6 +223,12 @@ set_info({T, ID}, Attribute, Value, Vm) ->
 
 services(H) ->
     fifo_map:value(H#?VM.services).
+
+set_service(ID, [{K, V} | R] , Vm) ->
+    set_service(ID, R, set_service(ID, K, V, Vm));
+
+set_service(_ID, _, Vm) ->
+    Vm.
 
 set_service({_T, _ID}, _P, [{}], Vm) ->
     Vm;
@@ -240,6 +262,12 @@ remove_grouping({_T, ID}, V, H) ->
 metadata(H) ->
     fifo_map:value(H#?VM.metadata).
 
+set_metadata(ID, [{K, V} | R] , Vm) ->
+    set_metadata(ID, R, set_metadata(ID, K, V, Vm));
+
+set_metadata(_ID, _, Vm) ->
+    Vm.
+
 set_metadata({T, ID}, P, Value, User) when is_binary(P) ->
     set_metadata({T, ID}, fifo_map:split_path(P), Value, User);
 
@@ -268,6 +296,12 @@ set_network_map({T, ID}, Attribute, Value, G) ->
 backups(H) ->
     fifo_map:value(H#?VM.backups).
 
+set_backup(ID, [{K, V} | R] , Vm) ->
+    set_backup(ID, R, set_backup(ID, K, V, Vm));
+
+set_backup(_ID, _, Vm) ->
+    Vm.
+
 set_backup({T, ID}, P, Value, User) when is_binary(P) ->
     set_backup({T, ID}, fifo_map:split_path(P), Value, User);
 
@@ -281,6 +315,12 @@ set_backup({T, ID}, Attribute, Value, G) ->
 
 snapshots(H) ->
     fifo_map:value(H#?VM.snapshots).
+
+set_snapshot(ID, [{K, V} | R] , Vm) ->
+    set_snapshot(ID, R, set_snapshot(ID, K, V, Vm));
+
+set_snapshot(_ID, _, Vm) ->
+    Vm.
 
 set_snapshot({T, ID}, P, Value, User) when is_binary(P) ->
     set_snapshot({T, ID}, fifo_map:split_path(P), Value, User);

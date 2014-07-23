@@ -157,9 +157,9 @@ unregister(Preflist, ReqID, Vm) ->
                                    ?MASTER).
 
 -define(NS(T),
-        T(Preflist, ReqID, Vm, [K, V]) ->
+        T(Preflist, ReqID, Vm, KVs) ->
                riak_core_vnode_master:command(Preflist,
-                                              {T, ReqID, Vm, K, V},
+                                              {T, ReqID, Vm, KVs},
                                               {fsm, undefined, self()},
                                               ?MASTER)).
 ?NS(set_network_map).

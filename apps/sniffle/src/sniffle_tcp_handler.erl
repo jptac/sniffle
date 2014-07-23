@@ -226,10 +226,10 @@ message({vm, service, clear, Vm, Service}, State) when
      sniffle_vm:service_clear(Vm, Service),
      State};
 
-message({vm, service, set, Vm, Service, Value}, State) when
+message({vm, service, set, Vm, AVs}, State) when
       is_binary(Vm) ->
     {reply,
-     sniffle_vm:set_service(Vm, Service, Value),
+     sniffle_vm:set_service(Vm, AVs),
      State};
 
 message({vm, snapshot, Vm, Comment}, State) when
@@ -402,34 +402,34 @@ message({vm, state, Vm, Value}, State) when
      sniffle_vm:state(Vm, Value),
      State};
 
-message({vm, set_info, Vm, Attribute, Value}, State) when
+message({vm, set_info, Vm, AVs}, State) when
       is_binary(Vm) ->
     {reply,
-     sniffle_vm:set_info(Vm, Attribute, Value),
+     sniffle_vm:set_info(Vm, AVs),
      State};
 
-message({vm, set_backup, Vm, Attribute, Value}, State) when
+message({vm, set_backup, Vm, AVs}, State) when
       is_binary(Vm) ->
     {reply,
-     sniffle_vm:set_backup(Vm, Attribute, Value),
+     sniffle_vm:set_backup(Vm, AVs),
      State};
 
-message({vm, set_snapshot, Vm, Attribute, Value}, State) when
+message({vm, set_snapshot, Vm, AVs}, State) when
       is_binary(Vm) ->
     {reply,
-     sniffle_vm:set_snapshot(Vm, Attribute, Value),
+     sniffle_vm:set_snapshot(Vm, AVs),
      State};
 
-message({vm, set_config, Vm, Attribute, Value}, State) when
+message({vm, set_config, Vm, AVs}, State) when
       is_binary(Vm) ->
     {reply,
-     sniffle_vm:set_config(Vm, Attribute, Value),
+     sniffle_vm:set_config(Vm, AVs),
      State};
 
-message({vm, set_metadata, Vm, Attribute, Value}, State) when
+message({vm, set_metadata, Vm, AVs}, State) when
       is_binary(Vm) ->
     {reply,
-     sniffle_vm:set_metadata(Vm, Attribute, Value),
+     sniffle_vm:set_metadata(Vm, AVs),
      State};
 
 message({vm, set, Vm, Attribute, Value}, State) when
