@@ -174,44 +174,53 @@ set(ID, [<<"metadata">> | R], V, H) ->
 config(H) ->
     fifo_map:value(H#?VM.config).
 
-set_config({T, ID}, P, Value, User) when is_binary(P) ->
-    set_config({T, ID}, fifo_map:split_path(P), Value, User);
+set_config({_T, _ID}, _P, [{}], Vm) ->
+    Vm;
 
-set_config({_T, ID}, Attribute, delete, G) ->
-    {ok, M1} = fifo_map:remove(Attribute, ID, G#?VM.config),
-    G#?VM{config = M1};
+set_config({T, ID}, P, Value, Vm) when is_binary(P) ->
+    set_config({T, ID}, fifo_map:split_path(P), Value, Vm);
 
-set_config({T, ID}, Attribute, Value, G) ->
-    {ok, M1} = fifo_map:set(Attribute, Value, ID, T, G#?VM.config),
-    G#?VM{config = M1}.
+set_config({_T, ID}, Attribute, delete, Vm) ->
+    {ok, M1} = fifo_map:remove(Attribute, ID, Vm#?VM.config),
+    Vm#?VM{config = M1};
+
+set_config({T, ID}, Attribute, Value, Vm) ->
+    {ok, M1} = fifo_map:set(Attribute, Value, ID, T, Vm#?VM.config),
+    Vm#?VM{config = M1}.
 
 info(H) ->
     fifo_map:value(H#?VM.info).
 
-set_info({T, ID}, P, Value, User) when is_binary(P) ->
-    set_info({T, ID}, fifo_map:split_path(P), Value, User);
+set_info({_T, _ID}, _P, [{}], Vm) ->
+    Vm;
 
-set_info({_T, ID}, Attribute, delete, G) ->
-    {ok, M1} = fifo_map:remove(Attribute, ID, G#?VM.info),
-    G#?VM{info = M1};
+set_info({T, ID}, P, Value, Vm) when is_binary(P) ->
+    set_info({T, ID}, fifo_map:split_path(P), Value, Vm);
 
-set_info({T, ID}, Attribute, Value, G) ->
-    {ok, M1} = fifo_map:set(Attribute, Value, ID, T, G#?VM.info),
-    G#?VM{info = M1}.
+set_info({_T, ID}, Attribute, delete, Vm) ->
+    {ok, M1} = fifo_map:remove(Attribute, ID, Vm#?VM.info),
+    Vm#?VM{info = M1};
+
+set_info({T, ID}, Attribute, Value, Vm) ->
+    {ok, M1} = fifo_map:set(Attribute, Value, ID, T, Vm#?VM.info),
+    Vm#?VM{info = M1}.
 
 services(H) ->
     fifo_map:value(H#?VM.services).
 
-set_service({T, ID}, P, Value, User) when is_binary(P) ->
-    set_service({T, ID}, fifo_map:split_path(P), Value, User);
+set_service({_T, _ID}, _P, [{}], Vm) ->
+    Vm;
 
-set_service({_T, ID}, Attribute, delete, G) ->
-    {ok, M1} = fifo_map:remove(Attribute, ID, G#?VM.services),
-    G#?VM{services = M1};
+set_service({T, ID}, P, Value, Vm) when is_binary(P) ->
+    set_service({T, ID}, fifo_map:split_path(P), Value, Vm);
 
-set_service({T, ID}, Attribute, Value, G) ->
-    {ok, M1} = fifo_map:set(Attribute, Value, ID, T, G#?VM.services),
-    G#?VM{services = M1}.
+set_service({_T, ID}, Attribute, delete, Vm) ->
+    {ok, M1} = fifo_map:remove(Attribute, ID, Vm#?VM.services),
+    Vm#?VM{services = M1};
+
+set_service({T, ID}, Attribute, Value, Vm) ->
+    {ok, M1} = fifo_map:set(Attribute, Value, ID, T, Vm#?VM.services),
+    Vm#?VM{services = M1}.
 
 groupings(H) ->
     riak_dt_orswot:value(H#?VM.groupings).
