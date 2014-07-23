@@ -47,7 +47,6 @@
          free/1, used/1,
          release_ip/3, claim_ip/3,
          set/4,
-         set/3,
          to_bin/1,
          parse_bin/1,
          getter/2
@@ -67,7 +66,7 @@
               merge/2
              ]).
 
--ignore_xref([load/2, name/1, set/4, set/3, getter/2, uuid/1]).
+-ignore_xref([load/2, name/1, set/4, getter/2, uuid/1]).
 
 ?G(uuid).
 ?S(uuid).
@@ -194,14 +193,14 @@ release_ip({_T, ID}, IP, I) when
             {ok, I#?IPRANGE{free=Free, used=Used}}
     end.
 
-set(_ID, Attribute, Value, D) ->
-    statebox:modify({fun set/3, [Attribute, Value]}, D).
+set({T, ID}, <<"metadata">>, V, H) ->
+    H#?IPRANGE{metadata = fifo_map:from_orddict(V, ID, T)};
 
-set(Resource, delete, Iprange) ->
-    jsxd:delete(Resource, Iprange);
+set(ID, K = <<"metadata.", _/binary>>, V, H) ->
+    set(ID, re:split(K, "\\."), V, H);
 
-set(Resource, Value, Iprange) ->
-    jsxd:set(Resource, Value, Iprange).
+set(ID, [<<"metadata">> | R], V, H) ->
+    set_metadata(ID, R, V, H).
 
 metadata(I) ->
     fifo_map:value(I#?IPRANGE.metadata).
