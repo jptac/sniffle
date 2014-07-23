@@ -162,7 +162,11 @@ unregister(Preflist, ReqID, Vm) ->
                                               {T, ReqID, Vm, KVs},
                                               {fsm, undefined, self()},
                                               ?MASTER)).
-?NS(set_network_map).
+set_network_map(Preflist, ReqID, Vm, [IP, Net]) ->
+    riak_core_vnode_master:command(Preflist,
+                                   {set_network_map, ReqID, Vm, IP, Net},
+                                   {fsm, undefined, self()},
+                                   ?MASTER).
 ?NS(set_service).
 ?NS(set_backup).
 ?NS(set_snapshot).

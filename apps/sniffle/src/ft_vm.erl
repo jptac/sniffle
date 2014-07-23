@@ -62,7 +62,7 @@
               hypervisor/1, hypervisor/3,
               config/1, set_config/4,
               info/1, set_info/4,
-         network_map/1, set_network_map/4,
+              network_map/1, set_network_map/4,
 
               config/1, set_config/3, set_config/4,
               info/1, set_info/3, set_info/4,
