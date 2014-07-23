@@ -56,6 +56,7 @@
          dry_run/3,
          set_backup/3,
          set_config/3,
+         set_info/3,
          set_service/3,
          set_snapshot/3,
          set_metadata/3
@@ -952,6 +953,9 @@ set_snapshot(UUID, P, V) ->
 
 set_config(UUID, P, V) ->
     do_write(UUID, set_config, [P, V]).
+
+set_info(UUID, P, V) ->
+    do_write(UUID, set_info, [P, V]).
 
 set_metadata(UUID, P, V) ->
     do_write(UUID, set_metadata, [P, V]).

@@ -33,6 +33,7 @@
          set_snapshot/4,
          set_service/4,
          set_config/4,
+         set_info/4,
          set_metadata/4,
          add_grouping/4,
          remove_grouping/4,
@@ -59,6 +60,7 @@
               set_service/4,
               set_metadata/4,
               add_grouping/4,
+              set_info/4,
               remove_grouping/4,
               state/4,
               alias/4,
@@ -165,6 +167,7 @@ unregister(Preflist, ReqID, Vm) ->
 ?NS(set_backup).
 ?NS(set_snapshot).
 ?NS(set_config).
+?NS(set_info).
 ?NS(set_metadata).
 
 add_grouping(Preflist, ReqID, Vm, Grouping) ->

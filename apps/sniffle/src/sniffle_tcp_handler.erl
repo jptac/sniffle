@@ -402,6 +402,12 @@ message({vm, state, Vm, Value}, State) when
      sniffle_vm:state(Vm, Value),
      State};
 
+message({vm, set_info, Vm, Attribute, Value}, State) when
+      is_binary(Vm) ->
+    {reply,
+     sniffle_vm:set_info(Vm, Attribute, Value),
+     State};
+
 message({vm, set_backup, Vm, Attribute, Value}, State) when
       is_binary(Vm) ->
     {reply,
