@@ -828,11 +828,10 @@ snapshot(Vm, Comment) ->
             UUID = uuid:uuid4s(),
             TimeStamp = timestamp(),
             libchunter:snapshot(Server, Port, Vm, UUID),
-            Prefix = [<<"snapshots">>, UUID],
             set_snapshot(Vm,
-                         [{Prefix ++ [<<"timestamp">>], TimeStamp},
-                          {Prefix ++ [<<"comment">>], Comment},
-                          {Prefix ++ [<<"state">>], <<"pending">>}]),
+                         [{[UUID, <<"timestamp">>], TimeStamp},
+                          {[UUID, <<"comment">>], Comment},
+                          {[UUID, <<"state">>], <<"pending">>}]),
             log(Vm, <<"Created snapshot ", UUID/binary, ": ", Comment/binary>>),
             {ok, UUID};
         E ->
@@ -852,9 +851,8 @@ delete_snapshot(Vm, UUID) ->
                 {ok, _} ->
                     {Server, Port} = get_hypervisor(V),
                     libchunter:delete_snapshot(Server, Port, Vm, UUID),
-                    Prefix = [<<"snapshots">>, UUID],
                     set_snapshot(Vm,
-                                 [{Prefix ++ [<<"state">>], <<"deleting">>}]),
+                                 [{[UUID, <<"state">>], <<"deleting">>}]),
                     log(Vm, <<"Deleting snapshot ", UUID/binary, ".">>),
                     ok;
                 undefined ->
