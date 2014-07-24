@@ -148,23 +148,22 @@ init([Part]) ->
 handle_command({create, {ReqID, Coordinator}=TID, UUID,
                 [Name]},
                _Sender, State) ->
-    I0 = ft_network:new(TID),
-    I1 = ft_network:uuid(TID, UUID, I0),
-    I2 = ft_network:name(TID, Name, I1),
-    VC0 = vclock:fresh(),
-    VC = vclock:increment(Coordinator, VC0),
-    HObject = #sniffle_obj{val=I2, vclock=VC},
-    sniffle_vnode:put(UUID, HObject, State),
+    V0 = ft_network:new(TID),
+    V1 = ft_network:uuid(TID, UUID, V0),
+    V2 = ft_network:name(TID, Name, V1),
+    Obj = ft_obj:new(V2, Coordinator),
+    sniffle_vnode:put(UUID, Obj, State),
     {reply, {ok, ReqID}, State};
 
 handle_command({add_iprange,
                 {ReqID, Coordinator} = TID, Network,
                 IPRange}, _Sender, State) ->
     case fifo_db:get(State#vstate.db, <<"network">>, Network) of
-        {ok, #sniffle_obj{val=H0} = O} ->
+        {ok, O} ->
+            H0 = ft_obj:val(O),
             H1 = ft_network:load(TID, H0),
             H2 = ft_network:add_iprange(TID, IPRange, H1),
-            Obj = sniffle_obj:update(H2, Coordinator, O),
+            Obj = ft_obj:update(H2, Coordinator, O),
             sniffle_vnode:put(Network, Obj, State),
             {reply, {ok, ReqID}, State};
         R ->
@@ -176,10 +175,11 @@ handle_command({remove_iprange,
                 {ReqID, Coordinator} = TID, Network,
                 IPRange}, _Sender, State) ->
     case fifo_db:get(State#vstate.db, <<"network">>, Network) of
-        {ok, #sniffle_obj{val=H0} = O} ->
+        {ok, O} ->
+            H0 = ft_obj:val(O),
             H1 = ft_network:load(TID, H0),
             H2 = ft_network:remove_iprange(TID, IPRange, H1),
-            Obj = sniffle_obj:update(H2, Coordinator, O),
+            Obj = ft_obj:update(H2, Coordinator, O),
             sniffle_vnode:put(Network, Obj, State),
             {reply, {ok, ReqID}, State};
         R ->

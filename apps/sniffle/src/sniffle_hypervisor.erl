@@ -91,43 +91,45 @@ get(Hypervisor) ->
                   {ok, {Resources::fifo:object(),
                         Warnings::fifo:object()}}.
 status() ->
-    {Resources0, Warnings} =
-        case sniffle_cloud_status:start() of
-            {ok, {Rx, Wx}} ->
-                {Rx, Wx};
-            _ ->
-                {[], []}
-        end,
     Storage = case backend() of
                   internal ->
                       <<"internal">>;
                   s3 ->
                       <<"s3">>
               end,
-    Resources = [{<<"storage">>, Storage} | Resources0],
-    Warnings1 = case riak_core_status:transfers() of
-                    {[], []} ->
-                        Warnings;
-                    {[], L} ->
-                        W = jsxd:from_list(
-                              [{<<"category">>, <<"sniffle">>},
-                               {<<"element">>, <<"handoff">>},
-                               {<<"type">>, <<"info">>},
-                               {<<"message">>, bin_fmt("~b handofs pending.",
-                                                       [length(L)])}]),
-                        [W | Warnings];
-                    {S, []} ->
-                        Warnings ++ server_errors(S);
-                    {S, L} ->
-                        W = jsxd:from_list(
-                              [{<<"category">>, <<"sniffle">>},
-                               {<<"element">>, <<"handoff">>},
-                               {<<"type">>, <<"info">>},
-                               {<<"message">>, bin_fmt("~b handofs pending.",
-                                                       [length(L)])}]),
-                        [W | Warnings ++ server_errors(S)]
-                end,
-    {ok, {ordsets:from_list(Resources), ordsets:from_list(Warnings1)}}.
+    case sniffle_cloud_status:start() of
+        {ok, {Resources0, Warnings}} ->
+            Resources = [{<<"storage">>, Storage} | Resources0],
+            Warnings1 = case riak_core_status:transfers() of
+                            {[], []} ->
+                                Warnings;
+                            {[], L} ->
+                                W = jsxd:from_list(
+                                      [{<<"category">>, <<"sniffle">>},
+                                       {<<"element">>, <<"handoff">>},
+                                       {<<"type">>, <<"info">>},
+                                       {<<"message">>, bin_fmt("~b handofs pending.",
+                                                               [length(L)])}]),
+                                [W | Warnings];
+                            {S, []} ->
+                                Warnings ++ server_errors(S);
+                            {S, L} ->
+                                W = jsxd:from_list(
+                                      [{<<"category">>, <<"sniffle">>},
+                                       {<<"element">>, <<"handoff">>},
+                                       {<<"type">>, <<"info">>},
+                                       {<<"message">>, bin_fmt("~b handofs pending.",
+                                                               [length(L)])}]),
+                                [W | Warnings ++ server_errors(S)]
+                        end,
+            {ok, {ordsets:from_list(Resources), ordsets:from_list(Warnings1)}};
+        E ->
+            {ok, {[{<<"storage">>, Storage}],
+                  [[{<<"category">>, <<"sniffle">>},
+                    {<<"element">>, <<"general">>},
+                    {<<"type">>, <<"error">>},
+                    {<<"message">>, bin_fmt("Failed with ~b.", [E])}]]}}
+    end.
 
 -spec list() ->
                   {ok, [IPR::fifo:hypervisor_id()]} | {error, timeout}.

@@ -162,9 +162,7 @@ handle_command({create, {ReqID, Coordinator} = ID, UUID, [Name, Type]},
     G1 = ft_grouping:uuid(ID, UUID, G0),
     G2 = ft_grouping:name(ID, Name, G1),
     G3 = ft_grouping:type(ID, Type, G2),
-    VC0 = vclock:fresh(),
-    VC = vclock:increment(Coordinator, VC0),
-    Obj = #sniffle_obj{val=G3, vclock=VC},
+    Obj = ft_obj:new(Coordinator, G3),
     sniffle_vnode:put(UUID, Obj, State),
     {reply, {ok, ReqID}, State};
 

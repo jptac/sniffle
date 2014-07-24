@@ -94,10 +94,10 @@ raw_merge([{Score, V} | R]) ->
     raw_merge(R, Score, [V]).
 
 raw_merge([], recalculate, Vs) ->
-    {0, sniffle_obj:merge(sniffle_entity_read_fsm, Vs)};
+    {0, ft_obj:merge(sniffle_entity_read_fsm, Vs)};
 
 raw_merge([], Score, Vs) ->
-    {Score, sniffle_obj:merge(sniffle_entity_read_fsm, Vs)};
+    {Score, ft_obj:merge(sniffle_entity_read_fsm, Vs)};
 
 raw_merge([{Score, V} | R], Score, Vs) ->
     raw_merge(R, Score, [V | Vs]);
@@ -122,8 +122,9 @@ merge([{_Score1, V} | R], _Score2, Vs) when _Score1 =/= _Score2->
     merge(R, recalculate, [V | Vs]).
 
 merge_obj(Vs) ->
-    case sniffle_obj:merge(sniffle_entity_read_fsm, Vs) of
-        #sniffle_obj{val = V} ->
+    case ft_obj:merge(sniffle_entity_read_fsm, Vs) of
+        O ->
+            V = ft_obj:val(O),
             case statebox:is_statebox(V) of
                 true ->
                     statebox:value(V);

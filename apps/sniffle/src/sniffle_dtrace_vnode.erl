@@ -135,9 +135,7 @@ handle_command({create, {ReqID, Coordinator} = ID, Dtrace, [Name, Script]},
     I1 = ft_dtrace:uuid(ID, Dtrace, I0),
     I2 = ft_dtrace:name(ID, Name, I1),
     I3 = ft_dtrace:script(ID, Script, I2),
-    VC0 = vclock:fresh(),
-    VC = vclock:increment(Coordinator, VC0),
-    Obj = #sniffle_obj{val=I3, vclock=VC},
+    Obj = ft_obj:new(I3, Coordinator),
     sniffle_vnode:put(Dtrace, Obj, State),
     {reply, {ok, ReqID}, State};
 

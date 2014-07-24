@@ -189,10 +189,7 @@ handle_command({register, {ReqID, Coordinator} = ID, Hypervisor, [IP, Port]}, _S
     H2 = ft_hypervisor:host(ID, IP, H1),
     H3 = ft_hypervisor:uuid(ID, Hypervisor, H2),
     H4 = ft_hypervisor:path(ID, [{Hypervisor, 1}], H3),
-    VC0 = vclock:fresh(),
-    VC = vclock:increment(Coordinator, VC0),
-    HObject = #sniffle_obj{val=H4, vclock=VC},
-
+    HObject = ft_obj:new(H4, Coordinator),
     sniffle_vnode:put(Hypervisor, HObject, State),
     {reply, {ok, ReqID}, State};
 
@@ -240,7 +237,8 @@ delete(State) ->
 
 handle_coverage(status, _KeySpaces, Sender, State) ->
     ID = sniffle_vnode:mkid(list),
-    FoldFn = fun(K, #sniffle_obj{val=S0}, {Res, Warnings}) ->
+    FoldFn = fun(K, O, {Res, Warnings}) ->
+                     S0 = ft_obj:val(O),
                      S1 = ft_hypervisor:load(ID, S0),
                      {Host, Port} = ft_hypervisor:endpoint(S1),
                      W1 =

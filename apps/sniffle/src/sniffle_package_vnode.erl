@@ -129,10 +129,8 @@ handle_command({create, {ReqID, Coordinator}=ID, UUID, [Package]},
     I0 = ft_package:new(ID),
     I1 = ft_package:uuid(ID, UUID, I0),
     I2 = ft_package:name(ID, Package, I1),
-    VC0 = vclock:fresh(),
-    VC = vclock:increment(Coordinator, VC0),
-    HObject = #sniffle_obj{val=I2, vclock=VC},
-    sniffle_vnode:put(UUID, HObject, State),
+    Obj = ft_obj:new(I2, Coordinator),
+    sniffle_vnode:put(UUID, Obj, State),
     {reply, {ok, ReqID}, State};
 
 handle_command(Message, Sender, State) ->

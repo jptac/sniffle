@@ -636,8 +636,8 @@ do_update(MainMod, StateMod) ->
     io:format("  Grabbing UUIDs"),
     US1 = [begin
                io:format("."),
-               {StateMod:uuid(V), U}
-           end|| U = #sniffle_obj{val = V} <- US],
+               {StateMod:uuid(ft_obj:val(U)), ft_obj:update(U)}
+           end|| U <- US],
     io:format(" done.~n"),
 
     io:format("  Wipeing old entries"),

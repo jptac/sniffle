@@ -127,9 +127,7 @@ handle_command({create, {ReqID, Coordinator}, Dataset, []},
                _Sender, State) ->
     I0 = ft_dataset:new({ReqID, Coordinator}),
     I1 = ft_dataset:uuid({ReqID, Coordinator}, Dataset, I0),
-    VC0 = vclock:fresh(),
-    VC = vclock:increment(Coordinator, VC0),
-    Obj = #sniffle_obj{val=I1, vclock=VC},
+    Obj = ft_obj:new(I1, Coordinator),
     sniffle_vnode:put(Dataset, Obj, State),
     {reply, {ok, ReqID}, State};
 

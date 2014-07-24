@@ -237,13 +237,12 @@ handle_command({register, {ReqID, Coordinator}=ID, Vm, Hypervisor}, _Sender, Sta
                       H0 = ft_vm:new(ID),
                       H1 = ft_vm:uuid(ID, Vm, H0),
                       H2 = ft_vm:hypervisor(ID, Hypervisor, H1),
-                      VC0 = vclock:fresh(),
-                      VC = vclock:increment(Coordinator, VC0),
-                      #sniffle_obj{val=H2, vclock=VC};
-                  {ok, #sniffle_obj{val=H0} = O} ->
+                      ft_obj:new(H2, Coordinator);
+                  {ok, O} ->
+                      H0 = ft_obj:val(O),
                       H1 = ft_vm:load(ID, H0),
                       H2 = ft_vm:hypervisor(ID, Hypervisor, H1),
-                      sniffle_obj:update(H2, Coordinator, O)
+                      ft_obj:update(H2, Coordinator, O)
               end,
     sniffle_vnode:put(Vm, HObject, State),
     {reply, {ok, ReqID}, State};
@@ -252,10 +251,11 @@ handle_command({log,
                 {ReqID, Coordinator}=ID, Vm,
                 {Time, Log}}, _Sender, State) ->
     case fifo_db:get(State#vstate.db, <<"vm">>, Vm) of
-        {ok, #sniffle_obj{val=H0} = O} ->
+        {ok, H0 = O} ->
+            H0 = ft_obj:val(O),
             H1 = ft_vm:load(ID, H0),
             H2 = ft_vm:log(ID, Time, Log, H1),
-            Obj = sniffle_obj:update(H2, Coordinator, O),
+            Obj = ft_obj:update(H2, Coordinator, O),
             sniffle_vnode:put(Vm, Obj, State),
             {reply, {ok, ReqID}, State};
         R ->
