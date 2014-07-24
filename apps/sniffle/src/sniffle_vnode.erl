@@ -2,6 +2,7 @@
 
 -include("sniffle.hrl").
 -include_lib("riak_core/include/riak_core_vnode.hrl").
+-include_lib("fifo_dt/include/ft.hrl").
 
 -export([init/5,
          is_empty/1,

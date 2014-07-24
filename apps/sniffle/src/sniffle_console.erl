@@ -4,6 +4,7 @@
 -module(sniffle_console).
 
 -include_lib("sniffle.hrl").
+-include_lib("fifo_dt/include/ft.hrl").
 -ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").
 -endif.

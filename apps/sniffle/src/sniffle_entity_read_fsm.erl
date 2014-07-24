@@ -4,7 +4,7 @@
 -module(sniffle_entity_read_fsm).
 -behavior(gen_fsm).
 -include("sniffle.hrl").
--include("ft.hrl").
+-include_lib("fifo_dt/include/ft.hrl").
 
 %% API
 -export([start_link/6, start/2, start/3, start/4]).

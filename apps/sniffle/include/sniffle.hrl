@@ -37,16 +37,6 @@
 
 -type val() ::  statebox:statebox().
 
--record(sniffle_obj, {val    :: val(),
-                      vclock :: vclock:vclock()}).
-
--type sniffle_obj() :: #sniffle_obj{} | not_found.
-
 -type idx_node() :: {integer(), node()}.
 
--type vnode_reply() :: {idx_node(), sniffle_obj() | not_found}.
-
-
--define(NEW_LWW(V, T), riak_dt_lwwreg:update(
-                         {assign, V, T}, none,
-                         riak_dt_lwwreg:new())).
+-type vnode_reply() :: {idx_node(), any() | not_found}.

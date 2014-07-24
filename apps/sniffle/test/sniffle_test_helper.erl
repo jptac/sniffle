@@ -4,6 +4,7 @@
 -include_lib("eqc/include/eqc.hrl").
 -include_lib("sniffle/include/sniffle.hrl").
 -include_lib("riak_core/include/riak_core_vnode.hrl").
+-include_lib("fifo_dt/include/ft.hrl").
 
 -compile(export_all).
 

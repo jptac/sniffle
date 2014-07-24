@@ -1,6 +1,6 @@
 -module(sniffle_hypervisor).
 -include("sniffle.hrl").
--include("ft.hrl").
+-include_lib("fifo_dt/include/ft.hrl").
 
 -define(MASTER, sniffle_hypervisor_vnode_master).
 -define(VNODE, sniffle_hypervisor_vnode).

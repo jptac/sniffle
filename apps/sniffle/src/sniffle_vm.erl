@@ -5,7 +5,7 @@
 -endif.
 
 -include("sniffle.hrl").
--include("ft.hrl").
+-include_lib("fifo_dt/include/ft.hrl").
 
 -define(MASTER, sniffle_vm_vnode_master).
 -define(VNODE, sniffle_vm_vnode).
