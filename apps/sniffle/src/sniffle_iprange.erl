@@ -8,7 +8,7 @@
 -export([
          create/8,
          delete/1,
-         get/1, get_/1,
+         get/1,
          lookup/1,
          list/0,
          list/2,
@@ -24,7 +24,7 @@
 
 -ignore_xref([
               sync_repair/2,
-              list_/0, get_/1,
+              list_/0,
               wipe/1
               ]).
 
@@ -79,18 +79,11 @@ create(Iprange, Network, Gateway, Netmask, First, Last, Tag, Vlan) when
 delete(Iprange) ->
     do_write(Iprange, delete).
 
--spec get_(Iprange::fifo:iprange_id()) ->
+-spec get(Iprange::fifo:iprange_id()) ->
                  not_found | {ok, IPR::fifo:object()} | {error, timeout}.
-get_(Iprange) ->
+get(Iprange) ->
     sniffle_entity_read_fsm:start({?VNODE, ?SERVICE}, get, Iprange).
 
-get(Iprange) ->
-    case get_(Iprange) of
-        {ok, R} ->
-            {ok, ft_iprange:to_json(R)};
-        E ->
-            E
-    end.
 -spec list() ->
                   {ok, [IPR::fifo:iprange_id()]} | {error, timeout}.
 list() ->
@@ -106,8 +99,7 @@ list(Requirements, true) ->
     {ok, Res} = sniffle_full_coverage:start(
                   ?MASTER, ?SERVICE, {list, Requirements, true}),
     Res1 = lists:sort(rankmatcher:apply_scales(Res)),
-    Res2 = [{M, ft_iprange:to_json(V)} || {M, V} <- Res1],
-    {ok,  Res2};
+    {ok,  Res1};
 
 list(Requirements, false) ->
     {ok, Res} = sniffle_coverage:start(
@@ -159,7 +151,7 @@ claim_ip(_Iprange, ?MAX_TRIES) ->
     {error, failed};
 
 claim_ip(Iprange, N) ->
-    case sniffle_iprange:get_(Iprange) of
+    case sniffle_iprange:get(Iprange) of
         {error, timeout} ->
             timer:sleep(N*50),
             claim_ip(Iprange, N + 1);
@@ -181,7 +173,7 @@ claim_ip(Iprange, N) ->
     end.
 
 full(Iprange) ->
-    case sniffle_iprange:get_(Iprange) of
+    case sniffle_iprange:get(Iprange) of
         {ok, Obj} ->
             ft_iprange:free(Obj) == [];
         E ->

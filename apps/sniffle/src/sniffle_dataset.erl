@@ -9,7 +9,6 @@
          create/1,
          delete/1,
          get/1,
-         get_/1,
          list/0,
          list/2,
          set/2,
@@ -60,20 +59,9 @@ delete(UUID) ->
             E
     end.
 
-
 -spec get(UUID::fifo:dtrace_id()) ->
-                 not_found | {ok, Dataset::fifo:dataset()} | {error, timeout}.
-get(UUID) ->
-    case get_(UUID) of
-        {ok, D} ->
-            {ok, ft_dataset:to_json(D)};
-        R ->
-            R
-    end.
-
--spec get_(UUID::fifo:dtrace_id()) ->
                   not_found | {ok, Dataset::fifo:dataset()} | {error, timeout}.
-get_(UUID) ->
+get(UUID) ->
     sniffle_entity_read_fsm:start({?VNODE, ?SERVICE}, get, UUID).
 
 -spec list() ->
@@ -91,8 +79,7 @@ list(Requirements, true) ->
     {ok, Res} = sniffle_full_coverage:start(
                   ?MASTER, ?SERVICE, {list, Requirements, true}),
     Res1 = lists:sort(rankmatcher:apply_scales(Res)),
-    Res2 = [{M, ft_dataset:to_json(V)} || {M, V} <- Res1],
-    {ok,  Res2};
+    {ok,  Res1};
 
 list(Requirements, false) ->
     {ok, Res} = sniffle_coverage:start(

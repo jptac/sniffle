@@ -269,7 +269,7 @@ get_package(_Event, State = #state{
     lager:info("[create] Fetching package: ~p", [PackageName]),
     vm_log(State, <<"Fetching package ", PackageName/binary>>),
     sniffle_vm:state(UUID, <<"fetching_package">>),
-    {ok, Package} = sniffle_package:get_(PackageName),
+    {ok, Package} = sniffle_package:get(PackageName),
     sniffle_vm:package(UUID, PackageName),
     {next_state, get_dataset, State#state{package = Package}, 0}.
 
@@ -280,7 +280,7 @@ get_dataset(_Event, State = #state{
     lager:info("[create] Fetching Dataset: ~p", [DatasetName]),
     vm_log(State, <<"Fetching dataset ", DatasetName/binary>>),
     sniffle_vm:state(UUID, <<"fetching_dataset">>),
-    {ok, Dataset} = sniffle_dataset:get_(DatasetName),
+    {ok, Dataset} = sniffle_dataset:get(DatasetName),
     sniffle_vm:dataset(UUID, DatasetName),
     {next_state, callbacks, State#state{dataset = Dataset}, 0}.
 
@@ -311,9 +311,9 @@ get_networks(_event, State = #state{retry = R, max_retries = Max, uuid=UUID})
 get_networks(_Event, State = #state{config = Config, retry = Try}) ->
     Nets = jsxd:get([<<"networks">>], [], Config),
     Nets1 = lists:map(fun({Name, Network}) ->
-                              {ok, N} = sniffle_network:get_(Network),
+                              {ok, N} = sniffle_network:get(Network),
                               Rs = ft_network:ipranges(N),
-                              Rs1 = [{R, sniffle_iprange:get_(R)} || R <- Rs],
+                              Rs1 = [{R, sniffle_iprange:get(R)} || R <- Rs],
                               Rs2 = [{R, D} || {R, {ok, D}} <- Rs1],
                               Rs3 = lists:map(fun({ID, R}) ->
                                                       {ID, ft_iprange:tag(R)}
@@ -575,7 +575,7 @@ test_net(_Have, []) ->
 test_hypervisors(UUID, [{_, HypervisorID} | R], Nets) ->
     lager:debug("[create] test_hypervisors: ~p ~p",
                 [HypervisorID, Nets]),
-    {ok, H} = sniffle_hypervisor:get_(HypervisorID),
+    {ok, H} = sniffle_hypervisor:get(HypervisorID),
     case test_hypervisor(UUID, ft_hypervisor:networks(H), Nets, []) of
         {ok, Nets1} ->
             {Host, Port} = ft_hypervisor:endpoint(H),

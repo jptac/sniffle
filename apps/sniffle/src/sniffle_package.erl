@@ -8,7 +8,7 @@
 -export([
          create/1,
          delete/1,
-         get_/1, get/1,
+         get/1,
          lookup/1,
          list/0, list/2,
          set/2, set/3,
@@ -65,20 +65,10 @@ create(Package) ->
 delete(Package) ->
     do_write(Package, delete).
 
--spec get_(Package::fifo:package_id()) ->
-                 not_found | {ok, Pkg::fifo:object()} | {error, timeout}.
-get_(Package) ->
-    sniffle_entity_read_fsm:start({?VNODE, ?SERVICE}, get, Package).
-
 -spec get(Package::fifo:package_id()) ->
                  not_found | {ok, Pkg::fifo:object()} | {error, timeout}.
 get(Package) ->
-    case get_(Package) of
-        {ok, V} ->
-            {ok, ft_package:to_json(V)};
-        E ->
-            E
-    end.
+    sniffle_entity_read_fsm:start({?VNODE, ?SERVICE}, get, Package).
 
 -spec list() ->
                   {ok, [Pkg::fifo:package_id()]} | {error, timeout}.
@@ -95,8 +85,7 @@ list(Requirements, true) ->
     {ok, Res} = sniffle_full_coverage:start(
                   ?MASTER, ?SERVICE, {list, Requirements, true}),
     Res1 = lists:sort(rankmatcher:apply_scales(Res)),
-    Res2 = [{M, ft_package:to_json(V)} || {M, V} <- Res1],
-    {ok,  Res2};
+    {ok,  Res1};
 
 list(Requirements, false) ->
     {ok, Res} = sniffle_coverage:start(

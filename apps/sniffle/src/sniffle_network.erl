@@ -8,7 +8,7 @@
 -export([
          create/1,
          delete/1,
-         get/1, get_/1,
+         get/1,
          lookup/1,
          list/0,
          list/2,
@@ -85,20 +85,10 @@ create(Network) when
 delete(Network) ->
     do_write(Network, delete).
 
--spec get_(Network::fifo:network_id()) ->
-                 not_found | {ok, IPR::fifo:object()} | {error, timeout}.
-get_(Network) ->
-    sniffle_entity_read_fsm:start({?VNODE, ?SERVICE}, get, Network).
-
 -spec get(Network::fifo:network_id()) ->
                  not_found | {ok, IPR::fifo:object()} | {error, timeout}.
 get(Network) ->
-    case get_(Network) of
-        {ok, N} ->
-            {ok, ft_network:to_json(N)};
-        E ->
-            E
-    end.
+    sniffle_entity_read_fsm:start({?VNODE, ?SERVICE}, get, Network).
 
 add_iprange(Network, IPRange) ->
     case sniffle_iprange:get(IPRange) of
@@ -125,8 +115,7 @@ list(Requirements, true) ->
     {ok, Res} = sniffle_full_coverage:start(
                   ?MASTER, ?SERVICE, {list, Requirements, true}),
     Res1 = lists:sort(rankmatcher:apply_scales(Res)),
-    Res2 = [{M, ft_network:to_json(V)} || {M, V} <- Res1],
-    {ok,  Res2};
+    {ok,  Res1};
 
 list(Requirements, false) ->
     {ok, Res} = sniffle_coverage:start(
@@ -152,7 +141,7 @@ claim_ip(UUID) ->
     claim_ip(UUID, []).
 
 claim_ip(UUID, Rules) ->
-    case sniffle_network:get_(UUID) of
+    case sniffle_network:get(UUID) of
         {ok, Network} ->
             Rs = ft_network:ipranges(Network),
             get_ip(Rs, Rules);
@@ -179,7 +168,7 @@ get_ip([N | R], []) ->
     end;
 
 get_ip([N | R], Rules) ->
-    case sniffle_iprange:get_(N) of
+    case sniffle_iprange:get(N) of
         {ok, E} ->
             case rankmatcher:match(E, fun ft_iprange:getter/2, Rules) of
                 false ->

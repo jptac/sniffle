@@ -70,11 +70,11 @@ start_link([ID, Config, Listener]) ->
 %% @end
 %%--------------------------------------------------------------------
 init([ID, Config, Listener]) ->
-    {ok, ScriptObj} = sniffle_dtrace:get_(ID),
+    {ok, ScriptObj} = sniffle_dtrace:get(ID),
     {ok, Servers} = jsxd:get(<<"servers">>, Config),
     {ok, Script} = generate_script(ScriptObj, Config),
     Servers1 = [ft_hypervisor:endpoint(S1)
-                || {ok, S1} <- [sniffle_hypervisor:get_(S0) || S0 <- Servers]],
+                || {ok, S1} <- [sniffle_hypervisor:get(S0) || S0 <- Servers]],
     Runners = [ {L, Host, Port} ||
                   {{ok, L}, Host, Port} <-
                       [{libchunter_dtrace_server:dtrace(Host, Port, Script), Host, Port}

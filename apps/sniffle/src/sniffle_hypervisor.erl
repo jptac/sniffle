@@ -10,7 +10,6 @@
    [
     register/3,
     unregister/1,
-    get_/1,
     get/1,
     list/0,
     list/2,
@@ -65,20 +64,10 @@ unregister(Hypervisor) ->
     [sniffle_vm:set(VM, Values) || {_, VM} <- VMs],
     do_write(Hypervisor, unregister).
 
--spec get_(Hypervisor::fifo:hypervisor_id()) ->
-                 not_found | {ok, HV::#?HYPERVISOR{}} | {error, timeout}.
-get_(Hypervisor) ->
-    sniffle_entity_read_fsm:start({?VNODE, ?SERVICE}, get, Hypervisor).
-
 -spec get(Hypervisor::fifo:hypervisor_id()) ->
-                 not_found | {ok, HV::fifo:object()} | {error, timeout}.
+                 not_found | {ok, HV::#?HYPERVISOR{}} | {error, timeout}.
 get(Hypervisor) ->
-    case get_(Hypervisor) of
-        {ok, H} ->
-            {ok, ft_hypervisor:to_json(H)};
-        R ->
-            R
-    end.
+    sniffle_entity_read_fsm:start({?VNODE, ?SERVICE}, get, Hypervisor).
 
 -spec status() -> {error, timeout} |
                   {ok, {Resources::fifo:object(),
@@ -128,7 +117,7 @@ list() ->
     sniffle_coverage:start(?MASTER, ?SERVICE, list).
 
 service(UUID, Action, Service) ->
-    case sniffle_hypervisor:get_(UUID) of
+    case sniffle_hypervisor:get(UUID) of
         {ok, HypervisorObj} ->
             {Host, Port} = ft_hypervisor:endpoint(HypervisorObj),
             service(Host, Port, Action, Service);
@@ -144,7 +133,7 @@ service(Host, Port, clear, Service) ->
     libchunter:service_clear(Host, Port, Service).
 
 update(UUID) when is_binary(UUID) ->
-    {ok, HypervisorObj} = sniffle_hypervisor:get_(UUID),
+    {ok, HypervisorObj} = sniffle_hypervisor:get(UUID),
     update(HypervisorObj);
 
 update(HypervisorObj) ->
@@ -165,10 +154,8 @@ update() ->
 list(Requirements, true) ->
     {ok, Res} = sniffle_full_coverage:start(
                   ?MASTER, ?SERVICE, {list, Requirements, true}),
-    Res1 = rankmatcher:apply_scales(Res),
-    Res2 = [{Pts, ft_hypervisor:to_json(H)} ||
-               {Pts, H} <- Res1],
-    {ok,  lists:sort(Res2)};
+    Res1 = lists:sort(rankmatcher:apply_scales(Res)),
+    {ok,  Res1};
 
 list(Requirements, false) ->
     {ok, Res} = sniffle_coverage:start(
