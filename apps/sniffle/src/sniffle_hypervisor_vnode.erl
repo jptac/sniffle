@@ -192,7 +192,7 @@ handle_coverage(status, _KeySpaces, Sender, State) ->
                                      {<<"type">>, <<"critical">>},
                                      {<<"message">>,
                                       bin_fmt("Chunter server ~s down.",
-                                              [sniffle_hypervisor_state:alias(S0)])}]) |
+                                              [sniffle_hypervisor_state:alias(S1)])}]) |
                                   Warnings];
                              pong ->
                                  Warnings
