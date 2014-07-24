@@ -126,7 +126,7 @@ create_rules(UUID) ->
                 %% each hypervisor must be 1 (aka two machines can't be on the
                 %% same hypervisor)
                 cluster ->
-                    VMs = [sniffle_vm:get_(VM) ||
+                    VMs = [sniffle_vm:get(VM) ||
                               VM <- ft_grouping:elements(T)],
                     Hs = [ft_vm:hypervisor(VM) ||
                              {ok, VM} <- VMs],
@@ -153,7 +153,7 @@ create_rules(UUID) ->
                     VMs = [ft_grouping:elements(Cl) || {ok, Cl} <- Cls],
                     %% We can remove doublicate VM's before we read them.
                     VMs1 = ordsets:from_list(lists:flatten(VMs)),
-                    VMs2 = [sniffle_vm:get_(VM) || VM <- VMs1],
+                    VMs2 = [sniffle_vm:get(VM) || VM <- VMs1],
                     Hs = [ft_vm:hypervisor(VM) ||
                              {ok, VM} <- VMs2],
                     %% we can remove doublicate hypervisors.

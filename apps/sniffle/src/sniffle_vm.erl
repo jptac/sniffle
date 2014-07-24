@@ -22,7 +22,7 @@
          delete/1,
          delete_backup/2,
          delete_snapshot/2,
-         get/1, get_/1,
+         get/1,
          list/0,
          list/2,
          log/2,
@@ -83,7 +83,6 @@
               add_grouping/2,
               remove_grouping/2,
               dataset/2,
-              get_/1,
               logs/1,
               sync_repair/2,
               list_/0,
@@ -109,7 +108,7 @@ list_() ->
     {ok,  Res1}.
 
 store(Vm) ->
-    case sniffle_vm:get_(Vm) of
+    case sniffle_vm:get(Vm) of
         {ok, V} ->
             Bs = ?S:backups(V),
             case has_xml(Bs) of
@@ -141,7 +140,7 @@ has_xml([{_, B} | Bs]) ->
     end.
 
 restore(Vm, BID, Hypervisor) ->
-    case sniffle_vm:get_(Vm) of
+    case sniffle_vm:get(Vm) of
         {ok, V} ->
             case ?S:hypervisor(V) of
                 undefined ->
@@ -169,7 +168,7 @@ restore(Vm, BID, Hypervisor) ->
 
 %% Removes a backup from the hypervisor
 remove_backup(Vm, BID) ->
-    case sniffle_vm:get_(Vm) of
+    case sniffle_vm:get(Vm) of
         {ok, V} ->
             {Server, Port} = get_hypervisor(V),
             case jsxd:get([BID], ?S:backups(V)) of
@@ -183,7 +182,7 @@ remove_backup(Vm, BID) ->
     end.
 
 delete_backup(VM, BID) ->
-    case sniffle_vm:get_(VM) of
+    case sniffle_vm:get(VM) of
         {ok, V} ->
             case jsxd:get([BID], ?S:backups(V)) of
                 {ok, _} ->
@@ -202,7 +201,7 @@ delete_backup(VM, BID) ->
                             {error, not_supported} |
                             {error, nopath}.
 restore_backup(Vm, Snap) ->
-    case sniffle_vm:get_(Vm) of
+    case sniffle_vm:get(Vm) of
         {ok, V} ->
             {Server, Port} = get_hypervisor(V),
             case jsxd:get([Snap], ?S:backups(V)) of
@@ -238,7 +237,7 @@ create_backup(Vm, full, Comment, Opts) ->
     end;
 
 create_backup(Vm, incremental, Comment, Opts) ->
-    case sniffle_vm:get_(Vm) of
+    case sniffle_vm:get(Vm) of
         {ok, V} ->
             Parent = proplists:get_value(parent, Opts),
             case jsxd:get([Parent, <<"local">>], ?S:backups(V)) of
@@ -252,7 +251,7 @@ create_backup(Vm, incremental, Comment, Opts) ->
     end.
 
 service_enable(Vm, Service) ->
-    case sniffle_vm:get_(Vm) of
+    case sniffle_vm:get(Vm) of
         {ok, V} ->
             {Server, Port} = get_hypervisor(V),
             libchunter:service_enable(Server, Port, Vm, Service);
@@ -296,7 +295,7 @@ do_snap(Vm, V, Comment, Opts) ->
     end.
 
 promote_to_image(Vm, SnapID, Config) ->
-    case sniffle_vm:get_(Vm) of
+    case sniffle_vm:get(Vm) of
         {ok, V} ->
             case jsxd:get([SnapID, <<"timestamp">>], ?S:snapshots(V)) of
                 {ok, _} ->
@@ -358,11 +357,11 @@ promote_to_image(Vm, SnapID, Config) ->
 
 add_nic(Vm, Network) ->
     lager:info("[NIC ADD] Adding a new nic in ~s to ~s", [Network, Vm]),
-    case sniffle_vm:get_(Vm) of
+    case sniffle_vm:get(Vm) of
         {ok, V} ->
             lager:info("[NIC ADD] VM found.", []),
             H = ?S:hypervisor(V),
-            {ok, HypervisorObj} = sniffle_hypervisor:get_(H),
+            {ok, HypervisorObj} = sniffle_hypervisor:get(H),
             HypervisorsNetwork = ft_hypervisor:networks(HypervisorObj),
             {Server, Port} = ft_hypervisor:endpoint(HypervisorObj),
             libchunter:ping(Server, Port),
@@ -419,7 +418,7 @@ add_nic(Vm, Network) ->
     end.
 
 remove_nic(Vm, Mac) ->
-    case sniffle_vm:get_(Vm) of
+    case sniffle_vm:get(Vm) of
         {ok, V} ->
             NicMap = make_nic_map(V),
             case jsxd:get(Mac, NicMap) of
@@ -446,7 +445,7 @@ remove_nic(Vm, Mac) ->
     end.
 
 primary_nic(Vm, Mac) ->
-    case sniffle_vm:get_(Vm) of
+    case sniffle_vm:get(Vm) of
         {ok, V} ->
             NicMap = make_nic_map(V),
             case jsxd:get(Mac, NicMap) of
@@ -476,10 +475,10 @@ primary_nic(Vm, Mac) ->
 -spec update(Vm::fifo:uuid(), Package::fifo:uuid(), Config::fifo:config()) ->
                     not_found | {error, timeout} | ok.
 update(Vm, Package, Config) ->
-    case sniffle_vm:get_(Vm) of
+    case sniffle_vm:get(Vm) of
         {ok, V} ->
             Hypervisor = ?S:hypervisor(V),
-            {ok, H} = sniffle_hypervisor:get_(Hypervisor),
+            {ok, H} = sniffle_hypervisor:get(Hypervisor),
             {Host, Port} = get_hypervisor(H),
             {ok, OrigRam} = jsxd:get([<<"ram">>], ?S:config(V)),
             OrigPkg = ?S:package(V),
@@ -487,7 +486,7 @@ update(Vm, Package, Config) ->
                 undefined ->
                     libchunter:update_machine(Host, Port, Vm, [], Config);
                 _ ->
-                    case sniffle_package:get_(Package) of
+                    case sniffle_package:get(Package) of
                         {ok, P} ->
                             NewRam = ft_package:ram(P),
                             case jsxd:get([<<"free-memory">>],
@@ -529,7 +528,7 @@ register(Vm, Hypervisor) ->
                         {error, timeout} |
                         ok.
 unregister(Vm) ->
-    case sniffle_vm:get_(Vm) of
+    case sniffle_vm:get(Vm) of
         {ok, V} ->
             lists:map(fun({Ip, Net}) ->
                               sniffle_iprange:release_ip(Net, Ip)
@@ -613,20 +612,10 @@ dry_run(Package, Dataset, Config) ->
 %% @doc Reads a VM object form the DB.
 %% @end
 %%--------------------------------------------------------------------
--spec get_(Vm::fifo:uuid()) ->
-                 not_found | {error, timeout} | fifo:vm_config().
-get_(Vm) ->
-    sniffle_entity_read_fsm:start({?VNODE, ?SERVICE}, get, Vm).
-
 -spec get(Vm::fifo:uuid()) ->
                  not_found | {error, timeout} | fifo:vm_config().
 get(Vm) ->
-    case get_(Vm) of
-        {ok, V} ->
-            {ok, ft_vm:to_json(V)};
-        E ->
-            E
-    end.
+    sniffle_entity_read_fsm:start({?VNODE, ?SERVICE}, get, Vm).
 
 
 %%--------------------------------------------------------------------
@@ -666,7 +655,7 @@ list(Requirements, false) ->
 -spec delete(Vm::fifo:uuid()) ->
                     {error, timeout} | not_found | ok.
 delete(Vm) ->
-    case sniffle_vm:get_(Vm) of
+    case sniffle_vm:get(Vm) of
         {ok, V} ->
             case {?S:hypervisor(V), ?S:state(V)} of
                 {undefined, _} ->
@@ -775,7 +764,7 @@ reboot(Vm, Options) ->
 -spec logs(Vm::fifo:uuid()) ->
                   not_found | {error, timeout} | [fifo:log()].
 logs(Vm) ->
-    case sniffle_vm:get_(Vm) of
+    case sniffle_vm:get(Vm) of
         {ok, V} ->
             {ok, ?S:logs(V)};
         E ->
@@ -822,7 +811,7 @@ log(Vm, Log) ->
 -spec snapshot(VM::fifo:uuid(), Comment::binary()) ->
                       {error, timeout} | not_found | {ok, UUID::fifo:uuid()}.
 snapshot(Vm, Comment) ->
-    case sniffle_vm:get_(Vm) of
+    case sniffle_vm:get(Vm) of
         {ok, V} ->
             {Server, Port} = get_hypervisor(V),
             UUID = uuid:uuid4s(),
@@ -845,7 +834,7 @@ snapshot(Vm, Comment) ->
 -spec delete_snapshot(VM::fifo:uuid(), UUID::binary()) ->
                              {error, timeout} | not_found | ok.
 delete_snapshot(Vm, UUID) ->
-    case sniffle_vm:get_(Vm) of
+    case sniffle_vm:get(Vm) of
         {ok, V} ->
             case jsxd:get([UUID, <<"timestamp">>], ?S:snapshots(V)) of
                 {ok, _} ->
@@ -870,7 +859,7 @@ delete_snapshot(Vm, UUID) ->
 -spec rollback_snapshot(VM::fifo:uuid(), UUID::binary()) ->
                                {error, timeout} | not_found | ok.
 rollback_snapshot(Vm, UUID) ->
-    case sniffle_vm:get_(Vm) of
+    case sniffle_vm:get(Vm) of
         {ok, V} ->
             case ?S:state(V) of
                 <<"stopped">> ->
@@ -891,7 +880,7 @@ rollback_snapshot(Vm, UUID) ->
                                       {error, timeout} | not_found | ok.
 
 commit_snapshot_rollback(Vm, UUID) ->
-    case sniffle_vm:get_(Vm) of
+    case sniffle_vm:get(Vm) of
         {ok, V} ->
             case jsxd:get([UUID, <<"timestamp">>], ?S:snapshots(V)) of
                 {ok, T} when is_number(T) ->
@@ -998,7 +987,7 @@ get_hypervisor(not_found) ->
     not_found;
 
 get_hypervisor(Hypervisor) ->
-    case sniffle_hypervisor:get_(Hypervisor) of
+    case sniffle_hypervisor:get(Hypervisor) of
         {ok, HypervisorObj} ->
             get_hypervisor(HypervisorObj);
         E ->
@@ -1006,7 +995,7 @@ get_hypervisor(Hypervisor) ->
     end.
 
 fetch_hypervisor(Vm) ->
-    case sniffle_vm:get_(Vm) of
+    case sniffle_vm:get(Vm) of
         {ok, V} ->
             {Server, Port} = get_hypervisor(V),
             {ok, Server, Port};
