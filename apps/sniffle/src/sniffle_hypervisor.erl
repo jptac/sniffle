@@ -120,7 +120,7 @@ status() ->
                   [[{<<"category">>, <<"sniffle">>},
                     {<<"element">>, <<"general">>},
                     {<<"type">>, <<"error">>},
-                    {<<"message">>, bin_fmt("Failed with ~b.", [E])}]]}}
+                    {<<"message">>, bin_fmt("Failed with ~p.", [E])}]]}}
     end.
 
 -spec list() ->
