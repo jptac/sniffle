@@ -157,23 +157,25 @@ unregister(Preflist, ReqID, Vm) ->
                                    {fsm, undefined, self()},
                                    ?MASTER).
 
--define(NS(T),
-        T(Preflist, ReqID, Vm, KVs) ->
-               riak_core_vnode_master:command(Preflist,
-                                              {T, ReqID, Vm, KVs},
-                                              {fsm, undefined, self()},
-                                              ?MASTER)).
 set_network_map(Preflist, ReqID, Vm, [IP, Net]) ->
     riak_core_vnode_master:command(Preflist,
                                    {set_network_map, ReqID, Vm, IP, Net},
                                    {fsm, undefined, self()},
                                    ?MASTER).
-?NS(set_service).
-?NS(set_backup).
-?NS(set_snapshot).
-?NS(set_config).
-?NS(set_info).
-?NS(set_metadata).
+
+-define(S(Field),
+        Field(Preflist, ReqID, Vm, Val) ->
+               riak_core_vnode_master:command(Preflist,
+                                              {Field, ReqID, Vm, Val},
+                                              {fsm, undefined, self()},
+                                              ?MASTER)).
+
+?S(set_service).
+?S(set_backup).
+?S(set_snapshot).
+?S(set_config).
+?S(set_info).
+?S(set_metadata).
 
 add_grouping(Preflist, ReqID, Vm, Grouping) ->
     riak_core_vnode_master:command(Preflist,
@@ -186,13 +188,6 @@ remove_grouping(Preflist, ReqID, Vm, Grouping) ->
                                    {remove_grouping, ReqID, Vm, Grouping},
                                    {fsm, undefined, self()},
                                    ?MASTER).
-
--define(S(Field),
-        Field(Preflist, ReqID, Vm, Val) ->
-               riak_core_vnode_master:command(Preflist,
-                                              {Field, ReqID, Vm, Val},
-                                              {fsm, undefined, self()},
-                                              ?MASTER)).
 ?S(state).
 ?S(alias).
 ?S(owner).

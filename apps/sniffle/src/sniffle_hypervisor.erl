@@ -24,11 +24,29 @@
     list_/0
    ]).
 
+-export([
+         set_resource/2,
+         set_characteristic/2,
+         set_metadata/2,
+         set_pool/2,
+         set_service/2,
+         alias/2,
+         etherstubs/2,
+         host/2,
+         networks/2,
+         path/2,
+         port/2,
+         sysinfo/2,
+         uuid/2,
+         version/2,
+         virtualisation/2
+        ]).
+
 -ignore_xref([
               sync_repair/2,
               list_/0,
               wipe/1
-              ]).
+             ]).
 
 wipe(UUID) ->
     sniffle_coverage:start(?MASTER, ?SERVICE, {wipe, UUID}).
@@ -144,6 +162,26 @@ update() ->
     {ok, L} = list([], true),
     [update(O) || {_, O} <- L],
     ok.
+
+-define(S(T),
+        T(UUID, V) ->
+               do_write(UUID, T, V)).
+?S(set_resource).
+?S(set_characteristic).
+?S(set_metadata).
+?S(set_pool).
+?S(set_service).
+?S(alias).
+?S(etherstubs).
+?S(host).
+?S(networks).
+?S(path).
+?S(port).
+?S(sysinfo).
+?S(uuid).
+?S(version).
+?S(virtualisation).
+
 
 %%--------------------------------------------------------------------
 %% @doc Lists all vm's and fiters by a given matcher set.

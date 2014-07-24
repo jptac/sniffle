@@ -28,6 +28,42 @@
          handle_info/2,
          sync_repair/4]).
 
+-export([
+         set_resource/4,
+         set_characteristic/4,
+         set_metadata/4,
+         set_pool/4,
+         set_service/4,
+         alias/4,
+         etherstubs/4,
+         host/4,
+         networks/4,
+         path/4,
+         port/4,
+         sysinfo/4,
+         uuid/4,
+         version/4,
+         virtualisation/4
+        ]).
+
+-ignore_xref([
+              set_resource/4,
+              set_characteristic/4,
+              set_metadata/4,
+              set_pool/4,
+              set_service/4,
+              alias/4,
+              etherstubs/4,
+              host/4,
+              networks/4,
+              path/4,
+              port/4,
+              sysinfo/4,
+              uuid/4,
+              version/4,
+              virtualisation/4
+             ]).
+
 -export([master/0,
          aae_repair/2,
          hash_object/2]).
@@ -110,6 +146,30 @@ set(Preflist, ReqID, Hypervisor, Data) ->
                                    {set, ReqID, Hypervisor, Data},
                                    {fsm, undefined, self()},
                                    ?MASTER).
+
+
+-define(S(Field),
+        Field(Preflist, ReqID, Vm, Val) ->
+               riak_core_vnode_master:command(Preflist,
+                                              {Field, ReqID, Vm, Val},
+                                              {fsm, undefined, self()},
+                                              ?MASTER)).
+
+?S(set_resource).
+?S(set_characteristic).
+?S(set_metadata).
+?S(set_pool).
+?S(set_service).
+?S(alias).
+?S(etherstubs).
+?S(host).
+?S(networks).
+?S(path).
+?S(port).
+?S(sysinfo).
+?S(uuid).
+?S(version).
+?S(virtualisation).
 
 %%%===================================================================
 %%% VNode

@@ -6,6 +6,19 @@
 
 -ignore_xref([init/2, message/2, raw/2]).
 
+-define(HM(M),
+        message({hypervisor, M, Hypervisor, V}, State) when
+      is_binary(Hypervisor) ->
+               {reply,
+                sniffle_hypervisor:M(Hypervisor, V),
+                State}).
+
+-define(VM(M),
+        message({vm, M, VM, V}, State) when
+      is_binary(VM) ->
+               {reply,
+                sniffle_vm:M(VM, V),
+                State}).
 
 -record(state, {port}).
 
@@ -226,12 +239,6 @@ message({vm, service, clear, Vm, Service}, State) when
      sniffle_vm:service_clear(Vm, Service),
      State};
 
-message({vm, set_service, Vm, AVs}, State) when
-      is_binary(Vm) ->
-    {reply,
-     sniffle_vm:set_service(Vm, AVs),
-     State};
-
 message({vm, snapshot, Vm, Comment}, State) when
       is_binary(Vm),
       is_binary(Comment) ->
@@ -396,53 +403,10 @@ message({vm, reboot, force, Vm}, State) when
      sniffle_vm:reboot(Vm, [force]),
      State};
 
-message({vm, state, Vm, Value}, State) when
-      is_binary(Vm) ->
-    {reply,
-     sniffle_vm:state(Vm, Value),
-     State};
-
-message({vm, set_info, Vm, AVs}, State) when
-      is_binary(Vm) ->
-    {reply,
-     sniffle_vm:set_info(Vm, AVs),
-     State};
-
-message({vm, set_backup, Vm, AVs}, State) when
-      is_binary(Vm) ->
-    {reply,
-     sniffle_vm:set_backup(Vm, AVs),
-     State};
-
-message({vm, set_snapshot, Vm, AVs}, State) when
-      is_binary(Vm) ->
-    {reply,
-     sniffle_vm:set_snapshot(Vm, AVs),
-     State};
-
-message({vm, set_config, Vm, AVs}, State) when
-      is_binary(Vm) ->
-    {reply,
-     sniffle_vm:set_config(Vm, AVs),
-     State};
-
-message({vm, set_metadata, Vm, AVs}, State) when
-      is_binary(Vm) ->
-    {reply,
-     sniffle_vm:set_metadata(Vm, AVs),
-     State};
-
 message({vm, set, Vm, Attribute, Value}, State) when
       is_binary(Vm) ->
     {reply,
      sniffle_vm:set(Vm, Attribute, Value),
-     State};
-
-message({vm, owner, Vm, Owner}, State) when
-      is_binary(Vm),
-      is_binary(Owner) ->
-    {reply,
-     sniffle_vm:set_owner(Vm, Owner),
      State};
 
 message({vm, set, Vm, Attributes}, State) when
@@ -451,6 +415,20 @@ message({vm, set, Vm, Attributes}, State) when
     {reply,
      sniffle_vm:set(Vm, Attributes),
      State};
+
+message({vm, owner, Vm, Owner}, State) when
+      is_binary(Vm) ->
+    {reply,
+     sniffle_vm:set_owner(Vm, Owner),
+     State};
+
+?VM(set_service);
+?VM(state);
+?VM(set_info);
+?VM(set_backup);
+?VM(set_snapshot);
+?VM(set_config);
+?VM(set_metadata);
 
 message({vm, list}, State) ->
     {reply,
@@ -469,6 +447,24 @@ message({vm, list, Requirements, Full}, State) when
 %%%===================================================================
 %%%  Hypervisor Functions
 %%%===================================================================
+
+?HM(set_resource);
+?HM(set_characteristic);
+?HM(set_metadata);
+?HM(set_pool);
+?HM(set_service);
+
+?HM(alias);
+?HM(etherstubs);
+?HM(host);
+?HM(networks);
+?HM(path);
+?HM(port);
+?HM(sysinfo);
+?HM(uuid);
+?HM(version);
+?HM(virtualisation);
+
 
 message({hypervisor, register, Hypervisor, Host, Port}, State) when
       is_binary(Hypervisor),

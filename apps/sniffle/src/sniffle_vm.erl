@@ -927,33 +927,17 @@ add_network_map(UUID, IP, Net) ->
 remove_network_map(UUID, IP) ->
     do_write(UUID, set_network_map, [IP, delete]).
 
-set_service(UUID, AVs) ->
-    do_write(UUID, set_service, AVs).
-
-set_backup(UUID, AVs) ->
-    do_write(UUID, set_backup, AVs).
-
-set_snapshot(UUID, AVs) ->
-    do_write(UUID, set_snapshot, AVs).
-
-set_config(UUID, AVs) ->
-    do_write(UUID, set_config, AVs).
-
-set_info(UUID, AVs) ->
-    do_write(UUID, set_info, AVs).
-
-set_metadata(UUID, AVs) ->
-    do_write(UUID, set_metadata, AVs).
-
-add_grouping(UUID, Grouping) ->
-    do_write(UUID, add_grouping, Grouping).
-
-remove_grouping(UUID, Grouping) ->
-    do_write(UUID, remove_grouping, Grouping).
-
 -define(S(T),
         T(UUID, V) ->
                do_write(UUID, T, V)).
+?S(remove_grouping).
+?S(add_grouping).
+?S(set_metadata).
+?S(set_info).
+?S(set_config).
+?S(set_backup).
+?S(set_snapshot).
+?S(set_service).
 
 ?S(state).
 ?S(alias).
