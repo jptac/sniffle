@@ -147,29 +147,21 @@ set(Preflist, ReqID, Hypervisor, Data) ->
                                    {fsm, undefined, self()},
                                    ?MASTER).
 
-
--define(S(Field),
-        Field(Preflist, ReqID, Vm, Val) ->
-               riak_core_vnode_master:command(Preflist,
-                                              {Field, ReqID, Vm, Val},
-                                              {fsm, undefined, self()},
-                                              ?MASTER)).
-
-?S(set_resource).
-?S(set_characteristic).
-?S(set_metadata).
-?S(set_pool).
-?S(set_service).
-?S(alias).
-?S(etherstubs).
-?S(host).
-?S(networks).
-?S(path).
-?S(port).
-?S(sysinfo).
-?S(uuid).
-?S(version).
-?S(virtualisation).
+?VSET(set_resource).
+?VSET(set_characteristic).
+?VSET(set_metadata).
+?VSET(set_pool).
+?VSET(set_service).
+?VSET(alias).
+?VSET(etherstubs).
+?VSET(host).
+?VSET(networks).
+?VSET(path).
+?VSET(port).
+?VSET(sysinfo).
+?VSET(uuid).
+?VSET(version).
+?VSET(virtualisation).
 
 %%%===================================================================
 %%% VNode

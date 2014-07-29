@@ -165,25 +165,21 @@ update() ->
     [update(O) || {_, O} <- L],
     ok.
 
--define(S(T),
-        T(UUID, V) ->
-               do_write(UUID, T, V)).
-?S(set_resource).
-?S(set_characteristic).
-?S(set_metadata).
-?S(set_pool).
-?S(set_service).
-?S(alias).
-?S(etherstubs).
-?S(host).
-?S(networks).
-?S(path).
-?S(port).
-?S(sysinfo).
-?S(uuid).
-?S(version).
-?S(virtualisation).
-
+?SET(set_resource).
+?SET(set_characteristic).
+?SET(set_metadata).
+?SET(set_pool).
+?SET(set_service).
+?SET(alias).
+?SET(etherstubs).
+?SET(host).
+?SET(networks).
+?SET(path).
+?SET(port).
+?SET(sysinfo).
+?SET(uuid).
+?SET(version).
+?SET(virtualisation).
 
 %%--------------------------------------------------------------------
 %% @doc Lists all vm's and fiters by a given matcher set.

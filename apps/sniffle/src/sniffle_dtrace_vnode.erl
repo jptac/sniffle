@@ -49,6 +49,24 @@
               sync_repair/4
              ]).
 
+-export([
+         name/4,
+         uuid/4,
+         script/4,
+         set_metadata/4,
+         set_config/4
+        ]).
+
+
+-ignore_xref([
+         name/4,
+         uuid/4,
+         script/4,
+         set_metadata/4,
+         set_config/4
+        ]).
+
+
 -define(SERVICE, sniffle_dtrace).
 
 -define(MASTER, sniffle_dtrace_vnode_master).
@@ -116,6 +134,12 @@ set(Preflist, ReqID, Dtrace, Data) ->
                                    {set, ReqID, Dtrace, Data},
                                    {fsm, undefined, self()},
                                    ?MASTER).
+
+?VSET(name).
+?VSET(uuid).
+?VSET(script).
+?VSET(set_metadata).
+?VSET(set_config).
 
 %%%===================================================================
 %%% VNode

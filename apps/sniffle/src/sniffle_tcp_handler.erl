@@ -20,6 +20,41 @@
                 sniffle_vm:M(VM, V),
                 State}).
 
+-define(DSM(M),
+        message({dataset, M, VM, V}, State) when
+      is_binary(VM) ->
+               {reply,
+                sniffle_dataset:M(VM, V),
+                State}).
+-define(DTM(M),
+        message({dtrace, M, VM, V}, State) when
+      is_binary(VM) ->
+               {reply,
+                sniffle_dtrace:M(VM, V),
+                State}).
+
+
+-define(IPM(M),
+        message({iprange, M, VM, V}, State) when
+      is_binary(VM) ->
+               {reply,
+                sniffle_iprange:M(VM, V),
+                State}).
+
+-define(NM(M),
+        message({network, M, VM, V}, State) when
+      is_binary(VM) ->
+               {reply,
+                sniffle_network:M(VM, V),
+                State}).
+
+-define(PM(M),
+        message({package, M, VM, V}, State) when
+      is_binary(VM) ->
+               {reply,
+                sniffle_package:M(VM, V),
+                State}).
+
 -record(state, {port}).
 
 init(Prot, []) ->
@@ -179,6 +214,12 @@ message({dtrace, set, ID, Attributes}, State) when
 message({dtrace, run, ID, Servers}, State) ->
     {ok, _Pid} = sniffle_dtrace_server:run(ID, Servers, self()),
     {claim, State};
+
+?DTM(name);
+?DTM(uuid);
+?DTM(script);
+?DTM(set_metadata);
+?DTM(set_config);
 
 %%%===================================================================
 %%%  VM Functions
@@ -584,6 +625,17 @@ message({dataset, import, URL}, State) ->
      sniffle_dataset:import(URL),
      State};
 
+?DSM(dataset);
+?DSM(description);
+?DSM(disk_driver);
+?DSM(homepage);
+?DSM(image_size);
+?DSM(name);
+?DSM(networks);
+?DSM(nic_driver);
+?DSM(os);
+?DSM(users);
+?DSM(version);
 
 %%%===================================================================
 %%%  Img Functions
@@ -688,6 +740,9 @@ message({network, list, Requirements, Full}, State) ->
      sniffle_network:list(Requirements, Full),
      State};
 
+?NM(name);
+?NM(uuid);
+
 %%%===================================================================
 %%%  IPRange Functions
 %%%===================================================================
@@ -753,6 +808,14 @@ message({iprange, set, Iprange, Attributes}, State) when
      sniffle_iprange:set(Iprange, Attributes),
      State};
 
+?IPM(name);
+?IPM(uuid);
+?IPM(network);
+?IPM(netmask);
+?IPM(gateway);
+?IPM(set_metadata);
+?IPM(tag);
+?IPM(vlan);
 
 %%%===================================================================
 %%%  PACKAGE Functions
@@ -802,6 +865,20 @@ message({package, list, Requirements, Full}, State) when
     {reply,
      sniffle_package:list(Requirements, Full),
      State};
+
+?PM(set_metadata);
+?PM(blocksize);
+?PM(compression);
+?PM(cpu_cap);
+?PM(cpu_shares);
+?PM(max_swap);
+?PM(name);
+?PM(quota);
+?PM(ram);
+?PM(uuid);
+?PM(zfs_io_priority);
+?PM(remove_requirement);
+?PM(add_requirement);
 
 %%%===================================================================
 %%%  Cloud Functions

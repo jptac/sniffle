@@ -36,6 +36,14 @@
    ]
   ).
 
+-export([
+         name/2,
+         uuid/2,
+         script/2,
+         set_metadata/2,
+         set_config/2
+        ]).
+
 wipe(UUID) ->
     sniffle_coverage:start(?MASTER, ?SERVICE, {wipe, UUID}).
 
@@ -101,6 +109,12 @@ set(UUID, Attribute, Value) ->
                  ok | {error, timeout}.
 set(UUID, Attributes) ->
     do_write(UUID, set, Attributes).
+
+?SET(name).
+?SET(uuid).
+?SET(script).
+?SET(set_metadata).
+?SET(set_config).
 
 %%%===================================================================
 %%% Internal Functions

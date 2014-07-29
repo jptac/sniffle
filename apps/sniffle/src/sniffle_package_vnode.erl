@@ -41,6 +41,38 @@
               handle_info/2,
               sync_repair/4]).
 
+-export([
+         set_metadata/4,
+         blocksize/4,
+         compression/4,
+         cpu_cap/4,
+         cpu_shares/4,
+         max_swap/4,
+         name/4,
+         quota/4,
+         ram/4,
+         uuid/4,
+         zfs_io_priority/4,
+         remove_requirement/4,
+         add_requirement/4
+        ]).
+
+-ignore_xref([
+         set_metadata/4,
+         blocksize/4,
+         compression/4,
+         cpu_cap/4,
+         cpu_shares/4,
+         max_swap/4,
+         name/4,
+         quota/4,
+         ram/4,
+         uuid/4,
+         zfs_io_priority/4,
+         remove_requirement/4,
+         add_requirement/4
+        ]).
+
 -define(SERVICE, sniffle_package).
 
 -define(MASTER, sniffle_package_vnode_master).
@@ -111,6 +143,20 @@ set(Preflist, ReqID, Vm, Data) ->
                                    {set, ReqID, Vm, Data},
                                    {fsm, undefined, self()},
                                    ?MASTER).
+
+?VSET(set_metadata).
+?VSET(blocksize).
+?VSET(compression).
+?VSET(cpu_cap).
+?VSET(cpu_shares).
+?VSET(max_swap).
+?VSET(name).
+?VSET(quota).
+?VSET(ram).
+?VSET(uuid).
+?VSET(zfs_io_priority).
+?VSET(remove_requirement).
+?VSET(add_requirement).
 
 %%%===================================================================
 %%% VNode

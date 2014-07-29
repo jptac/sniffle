@@ -28,6 +28,18 @@
               wipe/1
               ]).
 
+-export([
+         name/2,
+         uuid/2,
+         network/2,
+         netmask/2,
+         gateway/2,
+         set_metadata/2,
+         tag/2,
+         vlan/2
+        ]).
+
+
 -define(MAX_TRIES, 3).
 
 wipe(UUID) ->
@@ -136,6 +148,15 @@ set(Iprange, Attribute, Value) ->
                  ok | {error, timeout}.
 set(Iprange, Attributes) ->
     do_write(Iprange, set, Attributes).
+
+?SET(name).
+?SET(uuid).
+?SET(network).
+?SET(netmask).
+?SET(gateway).
+?SET(set_metadata).
+?SET(tag).
+?SET(vlan).
 
 %%%===================================================================
 %%% Internal Functions

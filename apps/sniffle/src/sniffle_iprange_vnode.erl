@@ -52,6 +52,28 @@
               sync_repair/4
              ]).
 
+-export([
+         name/4,
+         uuid/4,
+         network/4,
+         netmask/4,
+         gateway/4,
+         set_metadata/4,
+         tag/4,
+         vlan/4
+        ]).
+
+-ignore_xref([
+              name/4,
+              uuid/4,
+              network/4,
+              netmask/4,
+              gateway/4,
+              set_metadata/4,
+              tag/4,
+              vlan/4
+             ]).
+
 -define(SERVICE, sniffle_iprange).
 
 -define(MASTER, sniffle_iprange_vnode_master).
@@ -133,6 +155,15 @@ set(Preflist, ReqID, Hypervisor, Data) ->
                                    {set, ReqID, Hypervisor, Data},
                                    {fsm, undefined, self()},
                                    ?MASTER).
+
+?VSET(name).
+?VSET(uuid).
+?VSET(network).
+?VSET(netmask).
+?VSET(gateway).
+?VSET(set_metadata).
+?VSET(tag).
+?VSET(vlan).
 
 %%%===================================================================
 %%% VNode

@@ -49,6 +49,34 @@
               sync_repair/4
              ]).
 
+-export([
+         dataset/4,
+         description/4,
+         disk_driver/4,
+         homepage/4,
+         image_size/4,
+         name/4,
+         networks/4,
+         nic_driver/4,
+         os/4,
+         users/4,
+         version/4
+        ]).
+
+-ignore_xref([
+              dataset/4,
+              description/4,
+              disk_driver/4,
+              homepage/4,
+              image_size/4,
+              name/4,
+              networks/4,
+              nic_driver/4,
+              os/4,
+              users/4,
+              version/4
+             ]).
+
 -define(SERVICE, sniffle_dataset).
 
 -define(MASTER, sniffle_dataset_vnode_master).
@@ -115,6 +143,19 @@ set(Preflist, ReqID, Dataset, Data) ->
                                    {set, ReqID, Dataset, Data},
                                    {fsm, undefined, self()},
                                    ?MASTER).
+
+?VSET(dataset).
+?VSET(description).
+?VSET(disk_driver).
+?VSET(homepage).
+?VSET(image_size).
+?VSET(name).
+?VSET(networks).
+?VSET(nic_driver).
+?VSET(os).
+?VSET(users).
+?VSET(version).
+
 
 %%%===================================================================
 %%% VNode

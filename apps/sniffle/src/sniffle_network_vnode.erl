@@ -53,6 +53,9 @@
               sync_repair/4
              ]).
 
+-export([name/4, uuid/4]).
+-ignore_xref([name/4, uuid/4]).
+
 -define(SERVICE, sniffle_network).
 
 -define(MASTER, sniffle_network_vnode_master).
@@ -133,6 +136,10 @@ set(Preflist, ReqID, Hypervisor, Data) ->
                                    {set, ReqID, Hypervisor, Data},
                                    {fsm, undefined, self()},
                                    ?MASTER).
+
+
+?VSET(name).
+?VSET(uuid).
 
 %%%===================================================================
 %%% VNode

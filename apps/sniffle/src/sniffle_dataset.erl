@@ -26,6 +26,20 @@
               get_/1,
               wipe/1
               ]).
+-export([
+         dataset/2,
+         description/2,
+         disk_driver/2,
+         homepage/2,
+         image_size/2,
+         name/2,
+         networks/2,
+         nic_driver/2,
+         os/2,
+         users/2,
+         version/2
+        ]).
+
 
 wipe(UUID) ->
     sniffle_coverage:start(?MASTER, ?SERVICE, {wipe, UUID}).
@@ -129,6 +143,18 @@ import(URL) ->
         {ok, E, _, _} ->
             {error, E}
     end.
+
+?SET(dataset).
+?SET(description).
+?SET(disk_driver).
+?SET(homepage).
+?SET(image_size).
+?SET(name).
+?SET(networks).
+?SET(nic_driver).
+?SET(os).
+?SET(users).
+?SET(version).
 
 %%%===================================================================
 %%% Internal Functions

@@ -41,6 +41,11 @@
               wipe/1
              ]).
 
+-export([
+         name/2,
+         uuid/2
+        ]).
+
 -define(MAX_TRIES, 3).
 
 wipe(UUID) ->
@@ -148,6 +153,10 @@ claim_ip(UUID, Rules) ->
         R ->
             R
     end.
+
+?SET(name).
+?SET(uuid).
+
 
 %%%===================================================================
 %%% Internal Functions

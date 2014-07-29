@@ -23,6 +23,22 @@
               wipe/1
               ]).
 
+-export([
+         set_metadata/2,
+         blocksize/2,
+         compression/2,
+         cpu_cap/2,
+         cpu_shares/2,
+         max_swap/2,
+         name/2,
+         quota/2,
+         ram/2,
+         uuid/2,
+         zfs_io_priority/2,
+         remove_requirement/2,
+         add_requirement/2
+        ]).
+
 wipe(UUID) ->
     sniffle_coverage:start(?MASTER, ?SERVICE, {wipe, UUID}).
 
@@ -105,6 +121,21 @@ set(Package, Attribute, Value) ->
                  ok | {error, timeout}.
 set(Package, Attributes) ->
     do_write(Package, set, Attributes).
+
+
+?SET(set_metadata).
+?SET(blocksize).
+?SET(compression).
+?SET(cpu_cap).
+?SET(cpu_shares).
+?SET(max_swap).
+?SET(name).
+?SET(quota).
+?SET(ram).
+?SET(uuid).
+?SET(zfs_io_priority).
+?SET(remove_requirement).
+?SET(add_requirement).
 
 %%%===================================================================
 %%% Internal Functions
