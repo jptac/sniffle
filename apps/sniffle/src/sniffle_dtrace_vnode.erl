@@ -3,6 +3,7 @@
 -behaviour(riak_core_aae_vnode).
 -include("sniffle.hrl").
 -include_lib("riak_core/include/riak_core_vnode.hrl").
+-include_lib("fifo_dt/include/ft.hrl").
 
 -export([
          repair/4,
@@ -47,6 +48,24 @@
               handle_info/2,
               sync_repair/4
              ]).
+
+-export([
+         name/4,
+         uuid/4,
+         script/4,
+         set_metadata/4,
+         set_config/4
+        ]).
+
+
+-ignore_xref([
+         name/4,
+         uuid/4,
+         script/4,
+         set_metadata/4,
+         set_config/4
+        ]).
+
 
 -define(SERVICE, sniffle_dtrace).
 
@@ -116,27 +135,31 @@ set(Preflist, ReqID, Dtrace, Data) ->
                                    {fsm, undefined, self()},
                                    ?MASTER).
 
+?VSET(name).
+?VSET(uuid).
+?VSET(script).
+?VSET(set_metadata).
+?VSET(set_config).
+
 %%%===================================================================
 %%% VNode
 %%%===================================================================
 
 init([Part]) ->
     sniffle_vnode:init(Part, <<"dtrace">>, ?SERVICE, ?MODULE,
-                       sniffle_dtrace_state).
+                       ft_dtrace).
 
 %%%===================================================================
 %%% General
 %%%===================================================================
 
-handle_command({create, {ReqID, Coordinator}, Dtrace, [Name, Script]},
+handle_command({create, {ReqID, Coordinator} = ID, Dtrace, [Name, Script]},
                _Sender, State) ->
-    I0 = statebox:new(fun sniffle_dtrace_state:new/0),
-    I1 = statebox:modify({fun sniffle_dtrace_state:set/4, [dummy, <<"uuid">>, Dtrace]}, I0),
-    I2 = statebox:modify({fun sniffle_dtrace_state:set/4, [dummy, <<"name">>, Name]}, I1),
-    I3 = statebox:modify({fun sniffle_dtrace_state:set/4, [dummy, <<"script">>, Script]}, I2),
-    VC0 = vclock:fresh(),
-    VC = vclock:increment(Coordinator, VC0),
-    Obj = #sniffle_obj{val=I3, vclock=VC},
+    I0 = ft_dtrace:new(ID),
+    I1 = ft_dtrace:uuid(ID, Dtrace, I0),
+    I2 = ft_dtrace:name(ID, Name, I1),
+    I3 = ft_dtrace:script(ID, Script, I2),
+    Obj = ft_obj:new(I3, Coordinator),
     sniffle_vnode:put(Dtrace, Obj, State),
     {reply, {ok, ReqID}, State};
 

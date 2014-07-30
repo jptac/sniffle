@@ -28,6 +28,18 @@
               wipe/1
               ]).
 
+-export([
+         name/2,
+         uuid/2,
+         network/2,
+         netmask/2,
+         gateway/2,
+         set_metadata/2,
+         tag/2,
+         vlan/2
+        ]).
+
+
 -define(MAX_TRIES, 3).
 
 wipe(UUID) ->
@@ -41,7 +53,6 @@ list_() ->
                   ?MASTER, ?SERVICE, {list, [], true, true}),
     Res1 = [R || {_, R} <- Res],
     {ok,  Res1}.
-
 
 -spec lookup(IPRange::binary()) ->
                     not_found | {ok, IPR::fifo:object()} | {error, timeout}.
@@ -99,8 +110,8 @@ list() ->
 list(Requirements, true) ->
     {ok, Res} = sniffle_full_coverage:start(
                   ?MASTER, ?SERVICE, {list, Requirements, true}),
-    Res1 = rankmatcher:apply_scales(Res),
-    {ok,  lists:sort(Res1)};
+    Res1 = lists:sort(rankmatcher:apply_scales(Res)),
+    {ok,  Res1};
 
 list(Requirements, false) ->
     {ok, Res} = sniffle_coverage:start(
@@ -138,6 +149,15 @@ set(Iprange, Attribute, Value) ->
 set(Iprange, Attributes) ->
     do_write(Iprange, set, Attributes).
 
+?SET(name).
+?SET(uuid).
+?SET(network).
+?SET(netmask).
+?SET(gateway).
+?SET(set_metadata).
+?SET(tag).
+?SET(vlan).
+
 %%%===================================================================
 %%% Internal Functions
 %%%===================================================================
@@ -159,18 +179,10 @@ claim_ip(Iprange, N) ->
         not_found ->
             not_found;
         {ok, Obj} ->
-            case {jsxd:get(<<"free">>, [], Obj), jsxd:get(<<"current">>, 0, Obj), jsxd:get(<<"last">>, 0, Obj)} of
-                {[], FoundIP, Last} when FoundIP > Last ->
+            case ft_iprange:free(Obj) of
+                [] ->
                     {error, full};
-                {[], FoundIP, _} ->
-                    case do_write(Iprange, claim_ip, FoundIP) of
-                        {error, _} ->
-                            timer:sleep(N*50),
-                            claim_ip(Iprange, N + 1);
-                        R ->
-                            R
-                    end;
-                {[FoundIP|_], _, _} ->
+                [FoundIP | _] ->
                     case do_write(Iprange, claim_ip, FoundIP) of
                         {error, _} ->
                             timer:sleep(N*50),
@@ -184,12 +196,7 @@ claim_ip(Iprange, N) ->
 full(Iprange) ->
     case sniffle_iprange:get(Iprange) of
         {ok, Obj} ->
-            case {jsxd:get(<<"free">>, [], Obj), jsxd:get(<<"current">>, 0, Obj), jsxd:get(<<"last">>, 0, Obj)} of
-                {[], FoundIP, Last} when FoundIP > Last ->
-                    true;
-                _ ->
-                    false
-            end;
+            ft_iprange:free(Obj) == [];
         E ->
             E
     end.

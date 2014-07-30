@@ -3,6 +3,7 @@
 -behaviour(riak_core_aae_vnode).
 -include("sniffle.hrl").
 -include_lib("riak_core/include/riak_core_vnode.hrl").
+-include_lib("fifo_dt/include/ft.hrl").
 
 -export([
          repair/4,
@@ -49,6 +50,28 @@
               start_vnode/1,
               handle_info/2,
               sync_repair/4
+             ]).
+
+-export([
+         name/4,
+         uuid/4,
+         network/4,
+         netmask/4,
+         gateway/4,
+         set_metadata/4,
+         tag/4,
+         vlan/4
+        ]).
+
+-ignore_xref([
+              name/4,
+              uuid/4,
+              network/4,
+              netmask/4,
+              gateway/4,
+              set_metadata/4,
+              tag/4,
+              vlan/4
              ]).
 
 -define(SERVICE, sniffle_iprange).
@@ -133,55 +156,58 @@ set(Preflist, ReqID, Hypervisor, Data) ->
                                    {fsm, undefined, self()},
                                    ?MASTER).
 
+?VSET(name).
+?VSET(uuid).
+?VSET(network).
+?VSET(netmask).
+?VSET(gateway).
+?VSET(set_metadata).
+?VSET(tag).
+?VSET(vlan).
+
 %%%===================================================================
 %%% VNode
 %%%===================================================================
 
 init([Part]) ->
-    sniffle_vnode:init(Part, <<"iprange">>, ?SERVICE, ?MODULE,
-                       sniffle_iprange_state).
+    sniffle_vnode:init(Part, <<"iprange">>, ?SERVICE, ?MODULE, ft_iprange).
 
-handle_command({create, {ReqID, Coordinator}, UUID,
+handle_command({create, {ReqID, Coordinator} = ID, UUID,
                 [Iprange, Network, Gateway, Netmask, First, Last, Tag, Vlan]},
                _Sender, State) ->
-    I0 = statebox:new(fun sniffle_iprange_state:new/0),
+    I0 = ft_iprange:new(ID, First, Last),
     I1 = lists:foldl(
-           fun (OP, SB) ->
-                   statebox:modify(OP, SB)
-           end, I0, [{fun sniffle_iprange_state:uuid/2, [UUID]},
-                     {fun sniffle_iprange_state:name/2, [Iprange]},
-                     {fun sniffle_iprange_state:network/2, [Network]},
-                     {fun sniffle_iprange_state:gateway/2, [Gateway]},
-                     {fun sniffle_iprange_state:netmask/2, [Netmask]},
-                     {fun sniffle_iprange_state:first/2, [First]},
-                     {fun sniffle_iprange_state:current/2, [First]},
-                     {fun sniffle_iprange_state:last/2, [Last]},
-                     {fun sniffle_iprange_state:tag/2, [Tag]},
-                     {fun sniffle_iprange_state:vlan/2, [Vlan]}]),
-    VC0 = vclock:fresh(),
-    VC = vclock:increment(Coordinator, VC0),
-    Obj = #sniffle_obj{val=I1, vclock=VC},
+           fun ({F, A}, IPR) ->
+                   erlang:apply(F, [ID | A] ++ [IPR])
+           end, I0, [{fun ft_iprange:uuid/3, [UUID]},
+                     {fun ft_iprange:name/3, [Iprange]},
+                     {fun ft_iprange:network/3, [Network]},
+                     {fun ft_iprange:gateway/3, [Gateway]},
+                     {fun ft_iprange:netmask/3, [Netmask]},
+                     {fun ft_iprange:tag/3, [Tag]},
+                     {fun ft_iprange:vlan/3, [Vlan]}]),
+    Obj = ft_obj:new(I1, Coordinator),
     sniffle_vnode:put(UUID, Obj, State),
     {reply, {ok, ReqID}, State};
 
 handle_command({ip, claim,
-                {ReqID, Coordinator}, Iprange, IP}, _Sender, State) ->
+                {ReqID, Coordinator}=ID, Iprange, IP}, _Sender, State) ->
     case fifo_db:get(State#vstate.db, <<"iprange">>, Iprange) of
-        {ok, #sniffle_obj{val=H0} = O} ->
-            case sniffle_iprange_state:is_free(IP, statebox:value(H0)) of
-                true ->
-                    H1 = statebox:modify({fun sniffle_iprange_state:load/2, [dummy]}, H0),
-                    H2 = statebox:modify({fun sniffle_iprange_state:claim_ip/2, [ IP]}, H1),
-                    H3 = statebox:expire(?STATEBOX_EXPIRE, H2),
-                    Obj =  sniffle_obj:update(H3, Coordinator, O),
+        {ok, O} ->
+            H0 = ft_obj:val(O),
+            H1 = ft_iprange:load(ID, H0),
+            case ft_iprange:claim_ip(ID, IP, H1) of
+                {ok, H2} ->
+                    Obj = ft_obj:update(H2, Coordinator, O),
                     sniffle_vnode:put(Iprange, Obj, State),
-                    V1 = statebox:value(H3),
                     {reply, {ok, ReqID,
-                             {jsxd:get(<<"tag">>, <<"">>, V1),
+                             {ft_iprange:tag(H2),
                               IP,
-                              jsxd:get(<<"netmask">>, 0, V1),
-                              jsxd:get(<<"gateway">>, 0, V1)}}, State};
-                false ->
+                              ft_iprange:netmask(H2),
+                              ft_iprange:gateway(H2),
+                              ft_iprange:vlan(H2)}
+                            }, State};
+                _ ->
                     {reply, {error, ReqID, duplicate}, State}
             end;
         _ ->
@@ -189,14 +215,13 @@ handle_command({ip, claim,
     end;
 
 handle_command({ip, release,
-                {ReqID, Coordinator}, Iprange, IP}, _Sender, State) ->
+                {ReqID, Coordinator}=ID, Iprange, IP}, _Sender, State) ->
     case fifo_db:get(State#vstate.db, <<"iprange">>, Iprange) of
-        {ok, #sniffle_obj{val=H0} = O} ->
-
-            H1 = statebox:modify({fun sniffle_iprange_state:load/2, [dummy]}, H0),
-            H2 = statebox:modify({fun sniffle_iprange_state:release_ip/2,[IP]}, H1),
-            H3 = statebox:expire(?STATEBOX_EXPIRE, H2),
-            Obj =  sniffle_obj:update(H3, Coordinator, O),
+        {ok, O} ->
+            H0 = ft_obj:val(O),
+            H1 = ft_iprange:load(ID, H0),
+            {ok, H2} = ft_iprange:release_ip(ID, IP, H1),
+            Obj =  ft_obj:update(H2, Coordinator, O),
             sniffle_vnode:put(Iprange, Obj, State),
             {reply, {ok, ReqID}, State};
 

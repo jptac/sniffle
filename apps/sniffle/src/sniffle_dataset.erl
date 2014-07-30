@@ -23,8 +23,26 @@
 -ignore_xref([
               sync_repair/2,
               list_/0,
+              get_/1,
               wipe/1
               ]).
+-export([
+         set_metadata/2,
+         dataset/2,
+         description/2,
+         disk_driver/2,
+         homepage/2,
+         image_size/2,
+         name/2,
+         networks/2,
+         nic_driver/2,
+         os/2,
+         users/2,
+         status/2,
+         imported/2,
+         version/2
+        ]).
+
 
 wipe(UUID) ->
     sniffle_coverage:start(?MASTER, ?SERVICE, {wipe, UUID}).
@@ -59,7 +77,7 @@ delete(UUID) ->
     end.
 
 -spec get(UUID::fifo:dtrace_id()) ->
-                 not_found | {ok, Dataset::fifo:dataset()} | {error, timeout}.
+                  not_found | {ok, Dataset::fifo:dataset()} | {error, timeout}.
 get(UUID) ->
     sniffle_entity_read_fsm:start({?VNODE, ?SERVICE}, get, UUID).
 
@@ -77,8 +95,8 @@ list() ->
 list(Requirements, true) ->
     {ok, Res} = sniffle_full_coverage:start(
                   ?MASTER, ?SERVICE, {list, Requirements, true}),
-    Res1 = rankmatcher:apply_scales(Res),
-    {ok,  lists:sort(Res1)};
+    Res1 = lists:sort(rankmatcher:apply_scales(Res)),
+    {ok,  Res1};
 
 list(Requirements, false) ->
     {ok, Res} = sniffle_coverage:start(
@@ -128,6 +146,21 @@ import(URL) ->
         {ok, E, _, _} ->
             {error, E}
     end.
+
+?SET(set_metadata).
+?SET(dataset).
+?SET(description).
+?SET(disk_driver).
+?SET(homepage).
+?SET(image_size).
+?SET(name).
+?SET(networks).
+?SET(nic_driver).
+?SET(os).
+?SET(users).
+?SET(version).
+?SET(status).
+?SET(imported).
 
 %%%===================================================================
 %%% Internal Functions

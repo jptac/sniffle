@@ -21,20 +21,32 @@ deps:
 	$(REBAR) get-deps
 
 clean:
-	$(REBAR) clean
+	$(REBAR) clean -r
+	-rm -rf apps/sniffle/.eunit
+	-rm -rf apps/sniffle/ebin/
 	make -C rel/pkg clean
 
 distclean: clean devclean relclean
 	$(REBAR) delete-deps
 
-test: xref
-	$(REBAR) skip_deps=true eunit
+long-test:
+	-rm -r apps/sniffle/.eunit
+	$(REBAR) skip_deps=true -DEQC_LONG_TESTS eunit -v -r
+
+eunit: 
+	$(REBAR) compile
+	-rm -r apps/sniffle/.eunit
+	$(REBAR) eunit skip_deps=true -r -v
+
+test: eunit
+	$(REBAR) xref skip_deps=true -r
 
 quick-xref:
-	$(REBAR) xref skip_deps=true
+	$(REBAR) xref skip_deps=true -r
 
 quick-test:
-	$(REBAR) skip_deps=true eunit
+	-rm -r apps/sniffle/.eunit
+	$(REBAR) -DEQC_SHORT_TEST skip_deps=true eunit -r -v
 
 rel: all zabbix
 	-rm -r rel/sniffle/share
@@ -62,7 +74,7 @@ docs:
 ##
 
 xref: all
-	$(REBAR) xref skip_deps=true
+	$(REBAR) xref skip_deps=true -r
 
 stage : rel
 	$(foreach dep,$(wildcard deps/* wildcard apps/*), rm -rf rel/sniffle/lib/$(shell basename $(dep))-* && ln -sf $(abspath $(dep)) rel/sniffle/lib;)

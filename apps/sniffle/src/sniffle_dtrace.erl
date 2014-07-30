@@ -36,6 +36,14 @@
    ]
   ).
 
+-export([
+         name/2,
+         uuid/2,
+         script/2,
+         set_metadata/2,
+         set_config/2
+        ]).
+
 wipe(UUID) ->
     sniffle_coverage:start(?MASTER, ?SERVICE, {wipe, UUID}).
 
@@ -80,8 +88,8 @@ list() ->
 list(Requirements, true) ->
     {ok, Res} = sniffle_full_coverage:start(
                   ?MASTER, ?SERVICE, {list, Requirements, true}),
-    Res1 = rankmatcher:apply_scales(Res),
-    {ok,  lists:sort(Res1)};
+    Res1 = lists:sort(rankmatcher:apply_scales(Res)),
+    {ok,  Res1};
 
 list(Requirements, false) ->
     {ok, Res} = sniffle_coverage:start(?MASTER, ?SERVICE, {list, Requirements}),
@@ -101,6 +109,12 @@ set(UUID, Attribute, Value) ->
                  ok | {error, timeout}.
 set(UUID, Attributes) ->
     do_write(UUID, set, Attributes).
+
+?SET(name).
+?SET(uuid).
+?SET(script).
+?SET(set_metadata).
+?SET(set_config).
 
 %%%===================================================================
 %%% Internal Functions

@@ -3,6 +3,7 @@
 -behaviour(riak_core_aae_vnode).
 -include("sniffle.hrl").
 -include_lib("riak_core/include/riak_core_vnode.hrl").
+-include_lib("fifo_dt/include/ft.hrl").
 
 -export([
          repair/4,
@@ -46,6 +47,40 @@
               start_vnode/1,
               handle_info/2,
               sync_repair/4
+             ]).
+
+-export([
+         set_metadata/4,
+         dataset/4,
+         description/4,
+         disk_driver/4,
+         homepage/4,
+         image_size/4,
+         name/4,
+         networks/4,
+         nic_driver/4,
+         os/4,
+         users/4,
+         status/4,
+         imported/4,
+         version/4
+        ]).
+
+-ignore_xref([
+              set_metadata/4,
+              dataset/4,
+              description/4,
+              disk_driver/4,
+              homepage/4,
+              image_size/4,
+              name/4,
+              networks/4,
+              nic_driver/4,
+              os/4,
+              users/4,
+              status/4,
+              imported/4,
+              version/4
              ]).
 
 -define(SERVICE, sniffle_dataset).
@@ -115,21 +150,34 @@ set(Preflist, ReqID, Dataset, Data) ->
                                    {fsm, undefined, self()},
                                    ?MASTER).
 
+?VSET(set_metadata).
+?VSET(dataset).
+?VSET(description).
+?VSET(disk_driver).
+?VSET(homepage).
+?VSET(image_size).
+?VSET(name).
+?VSET(networks).
+?VSET(nic_driver).
+?VSET(os).
+?VSET(users).
+?VSET(version).
+?VSET(status).
+?VSET(imported).
+
+
 %%%===================================================================
 %%% VNode
 %%%===================================================================
 
 init([Part]) ->
-    sniffle_vnode:init(Part, <<"dataset">>, ?SERVICE, ?MODULE,
-                       sniffle_dataset_state).
+    sniffle_vnode:init(Part, <<"dataset">>, ?SERVICE, ?MODULE, ft_dataset).
 
 handle_command({create, {ReqID, Coordinator}, Dataset, []},
                _Sender, State) ->
-    I0 = statebox:new(fun sniffle_dataset_state:new/0),
-    I1 = statebox:modify({fun sniffle_dataset_state:name/2, [Dataset]}, I0),
-    VC0 = vclock:fresh(),
-    VC = vclock:increment(Coordinator, VC0),
-    Obj = #sniffle_obj{val=I1, vclock=VC},
+    I0 = ft_dataset:new({ReqID, Coordinator}),
+    I1 = ft_dataset:uuid({ReqID, Coordinator}, Dataset, I0),
+    Obj = ft_obj:new(I1, Coordinator),
     sniffle_vnode:put(Dataset, Obj, State),
     {reply, {ok, ReqID}, State};
 

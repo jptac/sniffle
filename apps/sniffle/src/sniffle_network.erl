@@ -41,6 +41,12 @@
               wipe/1
              ]).
 
+-export([
+         name/2,
+         set_metadata/2,
+         uuid/2
+        ]).
+
 -define(MAX_TRIES, 3).
 
 wipe(UUID) ->
@@ -114,8 +120,8 @@ list() ->
 list(Requirements, true) ->
     {ok, Res} = sniffle_full_coverage:start(
                   ?MASTER, ?SERVICE, {list, Requirements, true}),
-    Res1 = rankmatcher:apply_scales(Res),
-    {ok,  lists:sort(Res1)};
+    Res1 = lists:sort(rankmatcher:apply_scales(Res)),
+    {ok,  Res1};
 
 list(Requirements, false) ->
     {ok, Res} = sniffle_coverage:start(
@@ -143,11 +149,16 @@ claim_ip(UUID) ->
 claim_ip(UUID, Rules) ->
     case sniffle_network:get(UUID) of
         {ok, Network} ->
-            {ok, Rs} = jsxd:get(<<"ipranges">>, Network),
+            Rs = ft_network:ipranges(Network),
             get_ip(Rs, Rules);
         R ->
             R
     end.
+
+?SET(name).
+?SET(set_metadata).
+?SET(uuid).
+
 
 %%%===================================================================
 %%% Internal Functions
@@ -170,7 +181,7 @@ get_ip([N | R], []) ->
 get_ip([N | R], Rules) ->
     case sniffle_iprange:get(N) of
         {ok, E} ->
-            case rankmatcher:match(E, fun getter/2, Rules) of
+            case rankmatcher:match(E, fun ft_iprange:getter/2, Rules) of
                 false ->
                     get_ip(R, Rules);
                 _ ->
@@ -187,6 +198,3 @@ get_ip([N | R], Rules) ->
 
 get_ip([], _) ->
     not_found.
-
-getter(O, V) ->
-    jsxd:get(V, 0, O).

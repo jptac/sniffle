@@ -4,6 +4,7 @@
 -module(sniffle_entity_read_fsm).
 -behavior(gen_fsm).
 -include("sniffle.hrl").
+-include_lib("fifo_dt/include/ft.hrl").
 
 %% API
 -export([start_link/6, start/2, start/3, start/4]).
@@ -161,7 +162,7 @@ waiting({ok, ReqID, IdxNode, Obj},
                 not_found ->
                     From ! {ReqID, not_found};
                 Merged ->
-                    Reply = sniffle_obj:val(Merged),
+                    Reply = ft_obj:val(Merged),
                     case statebox:is_statebox(Reply) of
                         true ->
                             From ! {ReqID, ok, statebox:value(Reply)};
@@ -230,10 +231,10 @@ terminate(_Reason, _SN, _SD) ->
 %% @pure
 %%
 %% @doc Given a list of `Replies' return the merged value.
--spec merge([vnode_reply()]) -> sniffle_obj() | not_found.
+-spec merge([vnode_reply()]) -> ft_obj() | not_found.
 merge(Replies) ->
     Objs = [Obj || {_,Obj} <- Replies],
-    sniffle_obj:merge(sniffle_entity_read_fsm, Objs).
+    ft_obj:merge(sniffle_entity_read_fsm, Objs).
 
 %% @pure
 %%
@@ -241,27 +242,32 @@ merge(Replies) ->
 -spec reconcile([A :: statebox:statebox()]) -> A :: statebox:statebox().
 
 reconcile([V = #?HYPERVISOR{} | Vs]) ->
-    reconcile_hypervisor(Vs, V);
+    reconcile(ft_hypervisor, Vs, V);
 
 reconcile([V = #?GROUPING{} | Vs]) ->
-    reconcile_grouping(Vs, V);
+    reconcile(ft_grouping, Vs, V);
 
-reconcile([V0 | _ ] = Vals) ->
-    case statebox:is_statebox(V0) of
-        true ->
-            statebox:merge(Vals);
-        false ->
-            V0
-    end.
+reconcile([V = #?NETWORK{} | Vs]) ->
+    reconcile(ft_network, Vs, V);
 
-reconcile_hypervisor([H | R], Acc) ->
-    reconcile_hypervisor(R, sniffle_hypervisor_state:merge(Acc, H));
-reconcile_hypervisor(_, Acc) ->
-    Acc.
+reconcile([V = #?DATASET{} | Vs]) ->
+    reconcile(ft_dataset, Vs, V);
 
-reconcile_grouping([H | R], Acc) ->
-    reconcile_grouping(R, sniffle_grouping_state:merge(Acc, H));
-reconcile_grouping(_, Acc) ->
+reconcile([V = #?PACKAGE{} | Vs]) ->
+    reconcile(ft_package, Vs, V);
+
+reconcile([V = #?DTRACE{} | Vs]) ->
+    reconcile(ft_dtrace, Vs, V);
+
+reconcile([V = #?IPRANGE{} | Vs]) ->
+    reconcile(ft_iprange, Vs, V);
+
+reconcile([V = #?VM{} | Vs]) ->
+    reconcile(ft_vm, Vs, V).
+
+reconcile(M, [H | R], Acc) ->
+    reconcile(M, R, M:merge(Acc, H));
+reconcile(_M, _, Acc) ->
     Acc.
 
 %% @pure
@@ -274,16 +280,16 @@ needs_repair(MObj, Replies) ->
     lists:any(different(MObj), Objs).
 
 %% @pure
-different(A) -> fun(B) -> not sniffle_obj:equal(A,B) end.
+different(A) -> fun(B) -> not ft_obj:equal(A,B) end.
 
 %% @impure
 %%
 %% @doc Repair any vnodes that do not have the correct object.
--spec repair(atom(), string(), sniffle_obj(), [vnode_reply()]) -> io.
+-spec repair(atom(), string(), ft_obj(), [vnode_reply()]) -> io.
 repair(_, _, _, []) -> io;
 
 repair(VNode, StatName, MObj, [{IdxNode,Obj}|T]) ->
-    case sniffle_obj:equal(MObj, Obj) of
+    case ft_obj:equal(MObj, Obj) of
         true ->
             repair(VNode, StatName, MObj, T);
         false ->
@@ -291,7 +297,7 @@ repair(VNode, StatName, MObj, [{IdxNode,Obj}|T]) ->
                 not_found ->
                     VNode:repair(IdxNode, StatName, not_found, MObj);
                 _ ->
-                    VNode:repair(IdxNode, StatName, Obj#sniffle_obj.vclock, MObj)
+                    VNode:repair(IdxNode, StatName, ft_obj:vclock(Obj), MObj)
             end,
             repair(VNode, StatName, MObj, T)
     end.

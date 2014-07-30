@@ -4,6 +4,7 @@
 -module(sniffle_console).
 
 -include_lib("sniffle.hrl").
+-include_lib("fifo_dt/include/ft.hrl").
 -ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").
 -endif.
@@ -83,31 +84,31 @@ db_update(["img"]) ->
 
 db_update(["datasets"]) ->
     io:format("Updating datasets...~n"),
-    do_update(sniffle_dataset, sniffle_dataset_state);
+    do_update(sniffle_dataset, ft_dataset);
 
 db_update(["dtraces"]) ->
     io:format("Updating dtrace scripts...~n"),
-    do_update(sniffle_dtrace, sniffle_dtrace_state);
+    do_update(sniffle_dtrace, ft_dtrace);
 
 db_update(["hypervisors"]) ->
     io:format("Updating hypervisors...~n"),
-    do_update(sniffle_hypervisor, sniffle_hypervisor_state);
+    do_update(sniffle_hypervisor, ft_hypervisor);
 
 db_update(["ipranges"]) ->
     io:format("Updating ipranges...~n"),
-    do_update(sniffle_iprange, sniffle_iprange_state);
+    do_update(sniffle_iprange, ft_iprange);
 
 db_update(["networks"]) ->
     io:format("Updating networks...~n"),
-    do_update(sniffle_network, sniffle_network_state);
+    do_update(sniffle_network, ft_network);
 
 db_update(["packages"]) ->
     io:format("Updating packages...~n"),
-    do_update(sniffle_package, sniffle_package_state);
+    do_update(sniffle_package, ft_package);
 
 db_update(["vms"]) ->
     io:format("Updating vms...~n"),
-    do_update(sniffle_vm, sniffle_vm_state).
+    do_update(sniffle_vm, ft_vm).
 
 print_endpoints(Es) ->
     io:format("Hostname            "
@@ -635,8 +636,8 @@ do_update(MainMod, StateMod) ->
     io:format("  Grabbing UUIDs"),
     US1 = [begin
                io:format("."),
-               {StateMod:uuid(V), U}
-           end|| U = #sniffle_obj{val = V} <- US],
+               {StateMod:uuid(ft_obj:val(U)), ft_obj:update(U)}
+           end|| U <- US],
     io:format(" done.~n"),
 
     io:format("  Wipeing old entries"),
