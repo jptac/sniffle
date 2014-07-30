@@ -251,7 +251,7 @@ handle_command({log,
                 {ReqID, Coordinator}=ID, Vm,
                 {Time, Log}}, _Sender, State) ->
     case fifo_db:get(State#vstate.db, <<"vm">>, Vm) of
-        {ok, H0 = O} ->
+        {ok, O} ->
             H0 = ft_obj:val(O),
             H1 = ft_vm:load(ID, H0),
             H2 = ft_vm:log(ID, Time, Log, H1),
