@@ -50,6 +50,7 @@
              ]).
 
 -export([
+         set_metadata/4,
          dataset/4,
          description/4,
          disk_driver/4,
@@ -60,10 +61,13 @@
          nic_driver/4,
          os/4,
          users/4,
+         status/4,
+         imported/4,
          version/4
         ]).
 
 -ignore_xref([
+              set_metadata/4,
               dataset/4,
               description/4,
               disk_driver/4,
@@ -74,6 +78,8 @@
               nic_driver/4,
               os/4,
               users/4,
+              status/4,
+              imported/4,
               version/4
              ]).
 
@@ -144,6 +150,7 @@ set(Preflist, ReqID, Dataset, Data) ->
                                    {fsm, undefined, self()},
                                    ?MASTER).
 
+?VSET(set_metadata).
 ?VSET(dataset).
 ?VSET(description).
 ?VSET(disk_driver).
@@ -155,6 +162,8 @@ set(Preflist, ReqID, Dataset, Data) ->
 ?VSET(os).
 ?VSET(users).
 ?VSET(version).
+?VSET(status).
+?VSET(imported).
 
 
 %%%===================================================================

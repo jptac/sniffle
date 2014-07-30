@@ -27,6 +27,7 @@
               wipe/1
               ]).
 -export([
+         set_metadata/2,
          dataset/2,
          description/2,
          disk_driver/2,
@@ -37,6 +38,8 @@
          nic_driver/2,
          os/2,
          users/2,
+         status/2,
+         imported/2,
          version/2
         ]).
 
@@ -144,6 +147,7 @@ import(URL) ->
             {error, E}
     end.
 
+?SET(set_metadata).
 ?SET(dataset).
 ?SET(description).
 ?SET(disk_driver).
@@ -155,6 +159,8 @@ import(URL) ->
 ?SET(os).
 ?SET(users).
 ?SET(version).
+?SET(status).
+?SET(imported).
 
 %%%===================================================================
 %%% Internal Functions

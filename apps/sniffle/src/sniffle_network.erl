@@ -43,6 +43,7 @@
 
 -export([
          name/2,
+         set_metadata/2,
          uuid/2
         ]).
 
@@ -155,6 +156,7 @@ claim_ip(UUID, Rules) ->
     end.
 
 ?SET(name).
+?SET(set_metadata).
 ?SET(uuid).
 
 

@@ -626,6 +626,8 @@ message({dataset, import, URL}, State) ->
      State};
 
 ?DSM(dataset);
+?DSM(imported);
+?DSM(status);
 ?DSM(description);
 ?DSM(disk_driver);
 ?DSM(homepage);
@@ -636,6 +638,7 @@ message({dataset, import, URL}, State) ->
 ?DSM(os);
 ?DSM(users);
 ?DSM(version);
+?DSM(set_metadata);
 
 %%%===================================================================
 %%%  Img Functions
@@ -740,8 +743,9 @@ message({network, list, Requirements, Full}, State) ->
      sniffle_network:list(Requirements, Full),
      State};
 
-?NM(name);
 ?NM(uuid);
+?NM(name);
+?NM(set_metadata);
 
 %%%===================================================================
 %%%  IPRange Functions
