@@ -625,7 +625,6 @@ message({dataset, import, URL}, State) ->
      sniffle_dataset:import(URL),
      State};
 
-?DSM(dataset);
 ?DSM(imported);
 ?DSM(status);
 ?DSM(description);
