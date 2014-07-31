@@ -535,20 +535,20 @@ unregister(Vm) ->
                       end, ?S:network_map(V)),
             VmPrefix = [<<"vms">>, Vm],
             ChannelPrefix = [<<"channels">>, Vm],
-            case libsnarl:user_list() of
+            case ls_user:list() of
                 {ok, Users} ->
                     spawn(fun () ->
-                                  [libsnarl:user_revoke_prefix(U, VmPrefix) || U <- Users],
-                                  [libsnarl:user_revoke_prefix(U, ChannelPrefix) || U <- Users]
+                                  [ls_user:revoke_prefix(U, VmPrefix) || U <- Users],
+                                  [ls_user:revoke_prefix(U, ChannelPrefix) || U <- Users]
                           end);
                 _ ->
                     ok
             end,
-            case libsnarl:role_list() of
+            case ls_role:list() of
                 {ok, Roles} ->
                     spawn(fun () ->
-                                  [libsnarl:role_revoke_prefix(G, VmPrefix) || G <- Roles],
-                                  [libsnarl:role_revoke_prefix(G, ChannelPrefix) || G <- Roles]
+                                  [ls_role:revoke_prefix(G, VmPrefix) || G <- Roles],
+                                  [ls_role:revoke_prefix(G, ChannelPrefix) || G <- Roles]
                           end);
                 _ ->
                     ok
@@ -777,7 +777,7 @@ logs(Vm) ->
 -spec set_owner(Vm::fifo:uuid(), Owner::fifo:uuid()) ->
                        not_found | {error, timeout} | [fifo:log()].
 set_owner(Vm, Owner) ->
-    libsnarl:org_execute_trigger(Owner, vm_create, Vm),
+    ls_org:execute_trigger(Owner, vm_create, Vm),
     libhowl:send(Vm, [{<<"event">>, <<"update">>},
                       {<<"data">>,
                        [{<<"owner">>, Owner}]}]),

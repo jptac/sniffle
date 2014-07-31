@@ -28,7 +28,6 @@
               ]).
 -export([
          set_metadata/2,
-         dataset/2,
          description/2,
          disk_driver/2,
          homepage/2,
@@ -124,7 +123,7 @@ import(URL) ->
             hackney:close(Client1),
             JSON = jsxd:from_list(jsx:decode(Body)),
             Dataset = transform_dataset(JSON),
-            {ok, UUID} = jsxd:get([<<"dataset">>], Dataset),
+            {ok, UUID} = jsxd:get([<<"uuid">>], Dataset),
             {ok, ImgURL} = jsxd:get([<<"files">>, 0, <<"url">>], JSON),
             {ok, TotalSize} = jsxd:get([<<"files">>, 0, <<"size">>], JSON),
             sniffle_dataset:create(UUID),
@@ -148,7 +147,6 @@ import(URL) ->
     end.
 
 ?SET(set_metadata).
-?SET(dataset).
 ?SET(description).
 ?SET(disk_driver).
 ?SET(homepage).
@@ -175,7 +173,7 @@ transform_dataset(D1) ->
                              <<"version">>, <<"description">>,
                              <<"disk_driver">>, <<"nic_driver">>,
                              <<"users">>]},
-                    {set, <<"dataset">>, ID},
+                    {set, <<"uuid">>, ID},
                     {set, <<"image_size">>,
                      ensure_integer(jsxd:get(<<"image_size">>, 0, D1))},
                     {set, <<"networks">>,

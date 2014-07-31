@@ -215,7 +215,7 @@ vm_log(#state{uuid = UUID}, M)  ->
 %%--------------------------------------------------------------------
 create_permissions(_Event, State = #state{test_pid = {_,_}, config = Config}) ->
     {ok, Creator} = jsxd:get([<<"owner">>], Config),
-    Owner = case libsnarl:user_active_org(Creator) of
+    Owner = case ls_user:active_org(Creator) of
                 {ok, <<"">>} ->
                     lager:warning("[create] User ~p has no active org.",
                                   [Creator]),
@@ -237,10 +237,10 @@ create_permissions(_Event, State = #state{
                                       uuid = UUID,
                                       config = Config}) ->
     {ok, Creator} = jsxd:get([<<"owner">>], Config),
-    libsnarl:user_grant(Creator, [<<"vms">>, UUID, <<"...">>]),
-    libsnarl:user_grant(Creator, [<<"channels">>, UUID, <<"join">>]),
+    ls_user:grant(Creator, [<<"vms">>, UUID, <<"...">>]),
+    ls_user:grant(Creator, [<<"channels">>, UUID, <<"join">>]),
     eplugin:call('create:permissions', UUID, Config, Creator),
-    Owner = case libsnarl:user_active_org(Creator) of
+    Owner = case ls_user:active_org(Creator) of
                 {ok, <<>>} ->
                     lager:warning("[create] User ~p has no active org.",
                                   [Creator]),
@@ -249,7 +249,7 @@ create_permissions(_Event, State = #state{
                     lager:info("[create] User ~p has active org: ~p.",
                                [Creator, Org]),
                     sniffle_vm:owner(UUID, Org),
-                    libsnarl:org_execute_trigger(Org, vm_create, UUID),
+                    ls_org:execute_trigger(Org, vm_create, UUID),
                     Org
             end,
     libhowl:send(UUID, [{<<"event">>, <<"update">>},
@@ -338,7 +338,7 @@ get_server(_Event, State = #state{
                kvm -> <<"kvm">>;
                zone -> <<"zone">>
            end,
-    case libsnarl:user_cache(Creator) of
+    case ls_user:cache(Creator) of
         {ok, Permissions} ->
             Conditions0 = ft_package:requirements(Package)
                 ++ ft_dataset:requirements(Dataset)
@@ -395,7 +395,7 @@ get_ips(_Event, State = #state{nets = Nets,
 build_key(_Event, State = #state{
                              creator = Creator,
                              config = Config}) ->
-    case libsnarl:user_keys(Creator) of
+    case ls_user:keys(Creator) of
         {ok, []} ->
             {next_state, create, State, 0};
         {ok, Keys} ->
