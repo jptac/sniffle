@@ -74,7 +74,7 @@ start(VNodeInfo, Op, User) ->
 -spec start(VNodeInfo::term(), Op::atom(), Entity::term() | undefined, Val::term() | undefined) ->
                    ok | not_found | {ok, Res::term()} | {error, timeout}.
 start(VNodeInfo, Op, Entity, Val) ->
-    ReqID = mk_reqid(),
+    ReqID = sniffle_vnode:mk_reqid(),
     sniffle_entity_read_fsm_sup:start_read_fsm(
       [ReqID, VNodeInfo, Op, self(), Entity, Val]
      ),
@@ -308,9 +308,6 @@ repair(VNode, StatName, MObj, [{IdxNode,Obj}|T]) ->
 -spec unique([A::any()]) -> [A::any()].
 unique(L) ->
     sets:to_list(sets:from_list(L)).
-
-mk_reqid() ->
-    erlang:phash2(erlang:now()).
 
 %%stat_name(sniffle_dtrace_vnode) ->
 %%    "dtrace";
