@@ -50,7 +50,7 @@ init(Partition, Bucket, Service, VNode, StateMod) ->
      [FoldWorkerPool]}.
 
 list(Getter, Requirements, Sender, State=#vstate{state=StateMod}) ->
-    ID = mkid(list),
+    ID = mkid(),
     FoldFn = fun (Key, E, C) ->
                      E1 = load_obj(ID, StateMod, E),
                      case rankmatcher:match(E1, Getter, Requirements) of
@@ -75,7 +75,7 @@ list_keys(Sender, State=#vstate{db=DB, bucket=Bucket}) ->
     {async, {fold, AsyncWork, FinishFun}, Sender, State}.
 
 list_keys(Getter, Requirements, Sender, State=#vstate{state=StateMod}) ->
-    ID = mkid(list),
+    ID = mkid(),
     FoldFn = fun (Key, E, C) ->
                      E1 = load_obj(ID, StateMod, E),
                      case rankmatcher:match(E1, Getter, Requirements) of
@@ -87,9 +87,11 @@ list_keys(Getter, Requirements, Sender, State=#vstate{state=StateMod}) ->
              end,
     fold(FoldFn, [], Sender, State).
 
-fold_with_bucket(Fun, Acc0, Sender, State) ->
-    FoldFn = fun(K, V, O) ->
-                     Fun({State#vstate.bucket, K}, V, O)
+fold_with_bucket(Fun, Acc0, Sender, State=#vstate{state=StateMod}) ->
+    ID = mkid(),
+    FoldFn = fun(K, E, O) ->
+                     E1 = load_obj(ID, StateMod, E),
+                     Fun({State#vstate.bucket, K}, E1, O)
              end,
     fold(FoldFn, Acc0, Sender, State).
 
@@ -148,10 +150,11 @@ handle_coverage({wipe, UUID}, _KeySpaces, {_, ReqID, _}, State) ->
     {reply, {ok, ReqID}, State};
 
 handle_coverage({lookup, Name}, _KeySpaces, Sender, State=#vstate{state=Mod}) ->
-    ID = mkid(lookup),
+    ID = mkid(),
     FoldFn = fun (U, O, [not_found]) ->
-                     V = ft_obj:val(O),
-                     case Mod:name(Mod:load(ID, V)) of
+                     O1 = load_obj(ID, Mod, O),
+                     V = ft_obj:val(O1),
+                     case Mod:name(V) of
                          AName when AName =:= Name ->
                              [U];
                          _ ->
