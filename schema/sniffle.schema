@@ -81,14 +81,14 @@
   {datatype, {duration, s}}]}.
 
 %% @doc The path data gets stored into.
-{mapping, "data_dir", "riak_core.platform_data_dir",
+{mapping, "platform_data_dir", "riak_core.platform_data_dir",
  [{default, "{{platform_data_dir}}"},
   {datatype, string}]}.
 
 {translation,
  "fifo_db.db_path",
  fun(Conf) ->
-         cuttlefish:conf_get("data_dir", Conf)
+         cuttlefish:conf_get("platform_data_dir", Conf)
  end
 }.
 

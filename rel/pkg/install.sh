@@ -61,7 +61,13 @@ case $2 in
             fi
         else
             mv ${CONFFILE} ${CONFFILE}.old
-            cat ${CONFFILE}.old | grep -v mdns.server | grep -v anti_entropy.max_open_files | grep -v db.dir | grep -v anti_entropy.write_buffer_size | grep -v platform_data_dir > ${CONFFILE}
+            cat ${CONFFILE}.old \
+              | grep -v mdns.server \
+              | grep -v anti_entropy.max_open_files \
+              | grep -v db.dir \
+              | grep -v anti_entropy.write_buffer_size \
+              | sed 's/^[ ]*data_dir/platform_data_dir/' \
+              > ${CONFFILE}
             echo anti_entropy.write_buffer_size_min = 4MB >> ${CONFFILE}
             echo anti_entropy.write_buffer_size_max = 4MB >> ${CONFFILE}
         fi
