@@ -6,11 +6,11 @@ GROUP=$USER
 case $2 in
     PRE-INSTALL)
         if grep '^Image: base64 1[34].[1234].*$' /etc/product
-	then
-	    echo "Image version supported"
-	else
-	    echo "This image version is not supported please use the base64 13.2.1 image."
-	    exit 1
+        then
+            echo "Image version supported"
+        else
+            echo "This image version is not supported please use the base64 13.2.1 image."
+            exit 1
         fi
         if grep "^$GROUP:" /etc/group > /dev/null 2>&1
         then
@@ -50,26 +50,21 @@ case $2 in
             cp ${CONFFILE}.example ${CONFFILE}
             sed --in-place -e "s/127.0.0.1/${IP}/g" ${CONFFILE}
             md5sum ${CONFFILE} > ${CONFFILE}.md5
-        elif [ -f ${CONFFILE}.md5 ]
+        elif [ -f ${CONFFILE}.md5 ] && md5sum --quiet --strict -c ${CONFFILE}.md5 2&> /dev/null
         then
-            if md5sum --quiet --strict -c ${CONFFILE}.md5 2&> /dev/null
-            then
-                echo "The config was not adjusted we'll regenerate it."
-                cp ${CONFFILE}.example ${CONFFILE}
-                sed --in-place -e "s/127.0.0.1/${IP}/g" ${CONFFILE}
-                md5sum ${CONFFILE} > ${CONFFILE}.md5
-            fi
+            echo "The config was not adjusted we'll regenerate it."
+            cp ${CONFFILE}.example ${CONFFILE}
+            sed --in-place -e "s/127.0.0.1/${IP}/g" ${CONFFILE}
+            md5sum ${CONFFILE} > ${CONFFILE}.md5
         else
+            echo "The config file was changed updating old settings."
             mv ${CONFFILE} ${CONFFILE}.old
             cat ${CONFFILE}.old \
-              | grep -v mdns.server \
-              | grep -v anti_entropy.max_open_files \
-              | grep -v db.dir \
-              | grep -v anti_entropy.write_buffer_size \
-              | sed 's/^[ ]*data_dir/platform_data_dir/' \
-              > ${CONFFILE}
-            echo anti_entropy.write_buffer_size_min = 4MB >> ${CONFFILE}
-            echo anti_entropy.write_buffer_size_max = 4MB >> ${CONFFILE}
+                | grep -v mdns.server \
+                | grep -v anti_entropy.max_open_files \
+                | grep -v db.dir \
+                | sed 's/^[ ]*data_dir/platform_data_dir/' \
+                      > ${CONFFILE}
         fi
         ;;
 esac
