@@ -60,9 +60,6 @@ case $2 in
             echo "The config file was changed updating old settings."
             mv ${CONFFILE} ${CONFFILE}.old
             cat ${CONFFILE}.old \
-                | grep -v mdns.server \
-                | grep -v anti_entropy.max_open_files \
-                | grep -v db.dir \
                 | sed 's/^[ ]*data_dir/platform_data_dir/' \
                       > ${CONFFILE}
         fi
