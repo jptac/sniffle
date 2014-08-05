@@ -95,21 +95,21 @@
 {translation,
  "leveldb.data_root",
  fun(Conf) ->
-         cuttlefish:conf_get("data_dir", Conf)
+         cuttlefish:conf_get("platform_data_dir", Conf)
  end
 }.
 
 {translation,
  "hanoidb.data_root",
  fun(Conf) ->
-         cuttlefish:conf_get("data_dir", Conf)
+         cuttlefish:conf_get("platform_data_dir", Conf)
  end
 }.
 
 {translation,
  "bitcask.data_root",
  fun(Conf) ->
-         cuttlefish:conf_get("data_dir", Conf)
+         cuttlefish:conf_get("platform_data_dir", Conf)
  end
 }.
 
