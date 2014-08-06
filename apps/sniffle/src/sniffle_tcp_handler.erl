@@ -593,19 +593,6 @@ message({dataset, get, Dataset}, State) when
      sniffle_dataset:get(Dataset),
      State};
 
-message({dataset, set, Dataset, Attribute, Value}, State) when
-      is_binary(Dataset) ->
-    {reply,
-     sniffle_dataset:set(Dataset, Attribute, Value),
-     State};
-
-message({dataset, set, Dataset, Attributes}, State) when
-      is_binary(Dataset),
-      is_list(Attributes) ->
-    {reply,
-     sniffle_dataset:set(Dataset, Attributes),
-     State};
-
 message({dataset, list}, State) ->
     {reply,
      sniffle_dataset:list(),
@@ -635,6 +622,7 @@ message({dataset, import, URL}, State) ->
 ?DSM(networks);
 ?DSM(nic_driver);
 ?DSM(os);
+?DSM(type);
 ?DSM(users);
 ?DSM(version);
 ?DSM(set_metadata);

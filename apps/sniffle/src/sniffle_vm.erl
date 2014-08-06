@@ -294,16 +294,37 @@ do_snap(Vm, V, Comment, Opts) ->
             {ok, UUID}
     end.
 
+ds_set([], _UUID, _O) ->
+    ok;
+
+ds_set([{K, F} | R], UUID, O) ->
+    case jsxd:get([K], O) of
+        {ok, V}  ->
+            F(UUID, V);
+        _ ->
+            ok
+    end,
+    ds_set(R, UUID, O).
+
+
 promote_to_image(Vm, SnapID, Config) ->
     case sniffle_vm:get(Vm) of
         {ok, V} ->
             case jsxd:get([SnapID, <<"timestamp">>], ?S:snapshots(V)) of
                 {ok, _} ->
                     {Server, Port} = get_hypervisor(V),
-                    Img = uuid:uuid4s(),
+                    UUID = uuid:uuid4s(),
+                    ok = sniffle_dataset:create(UUID),
                     C = ?S:config(V),
-                    Config1 = jsxd:select([<<"name">>, <<"version">>, <<"os">>, <<"description">>],
-                                          jsxd:from_list(Config)),
+                    Config1 = jsxd:from_list(Config),
+                    ds_set(
+                      [
+                       {<<"name">>, fun sniffle_dataset:name/2},
+                       {<<"version">>, fun sniffle_dataset:version/2},
+                       {<<"os">>, fun sniffle_dataset:os/2},
+                       {<<"description">>, fun sniffle_dataset:description/2}
+                      ], UUID, jsxd:from_list(Config)),
+
                     {ok, Nets} = jsxd:get([<<"networks">>], C),
                     Nets1 =
                         jsxd:map(fun (Idx, E) ->
@@ -311,43 +332,38 @@ promote_to_image(Vm, SnapID, Config) ->
                                          [{<<"description">>, jsxd:get(<<"tag">>, <<"undefined">>, E)},
                                           {<<"name">>, list_to_binary(Name)}]
                                  end, Nets),
-                    Config2 =
-                        jsxd:thread([{set, <<"type">>, jsxd:get([<<"type">>], <<"zone">>, C)},
-                                     {set, <<"dataset">>, Img},
-                                     {set, <<"networks">>, Nets1}], Config1),
-                    Config3 =
-                        case jsxd:get(<<"type">>, Config2) of
-                            {ok, <<"zone">>} ->
-                                Config2;
-                            _ ->
-                                ND = case jsxd:get(<<"nic_driver">>, Config) of
-                                         {ok, ND0} ->
-                                             ND0;
-                                         _ ->
-                                             jsxd:get([<<"networks">>, 0, model], <<"virtio">>, C)
-                                     end,
-                                DD = case jsxd:get(<<"disk_driver">>, Config)  of
-                                         {ok, DD0} ->
-                                             DD0;
-                                         _ ->
-                                             jsxd:get([<<"disks">>, 0, model], <<"virtio">>, C)
-                                     end,
-                                jsxd:thread([{set, <<"disk_driver">>, DD},
-                                             {set, <<"nic_driver">>, ND}],
-                                            Config2)
-                        end,
-                    ok = sniffle_dataset:create(Img),
-                    sniffle_dataset:set(Img, Config3),
+                    sniffle_dataset:networks(UUID, Nets1),
+                    Type = jsxd:get([<<"type">>], <<"zone">>, C),
+                    sniffle_dataset:os(UUID, Type),
+                    case Type of
+                        <<"zone">> ->
+                            ok;
+                        _ ->
+                            ND = case jsxd:get(<<"nic_driver">>, Config) of
+                                     {ok, ND0} ->
+                                         ND0;
+                                     _ ->
+                                         jsxd:get([<<"networks">>, 0, model], <<"virtio">>, C)
+                                 end,
+                            DD = case jsxd:get(<<"disk_driver">>, Config)  of
+                                     {ok, DD0} ->
+                                         DD0;
+                                     _ ->
+                                         jsxd:get([<<"disks">>, 0, model], <<"virtio">>, C)
+                                 end,
+                            sniffle_dataset:nic_driver(UUID, ND),
+                            sniffle_dataset:disk_driver(UUID, DD)
+                    end,
                     case {backend(), sniffle_s3:config(image)} of
                         {s3, {ok, {S3Host, S3Port, AKey, SKey, Bucket}}} ->
                             ok = libchunter:store_snapshot(
-                                   Server, Port, Vm, SnapID, Img, S3Host,
+                                   Server, Port, Vm, SnapID, UUID, S3Host,
                                    S3Port, Bucket, AKey, SKey, []);
                         _ ->
                             ok = libchunter:store_snapshot(Server, Port, Vm,
-                                                           SnapID, Img)
-                        end,
-                    {ok, Img};
+                                                           SnapID, UUID)
+                    end,
+                    {ok, UUID};
                 undefined ->
                     not_found
             end;
