@@ -108,7 +108,7 @@ import(URL) ->
             {ok, Body, Client1} = hackney:body(Client),
             hackney:close(Client1),
             JSON = jsxd:from_list(jsx:decode(Body)),
-            {ok, UUID} = jsxd:get([<<"dataset">>], JSON),
+            {ok, UUID} = jsxd:get([<<"uuid">>], JSON),
             {ok, ImgURL} = jsxd:get([<<"files">>, 0, <<"url">>], JSON),
             {ok, TotalSize} = jsxd:get([<<"files">>, 0, <<"size">>], JSON),
             sniffle_dataset:create(UUID),
