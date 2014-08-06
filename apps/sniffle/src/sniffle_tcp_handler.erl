@@ -622,6 +622,7 @@ message({dataset, import, URL}, State) ->
 ?DSM(networks);
 ?DSM(nic_driver);
 ?DSM(os);
+?DSM(type);
 ?DSM(users);
 ?DSM(version);
 ?DSM(set_metadata);

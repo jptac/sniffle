@@ -57,6 +57,7 @@
          homepage/4,
          image_size/4,
          name/4,
+         type/4,
          networks/4,
          nic_driver/4,
          os/4,
@@ -78,6 +79,7 @@
               nic_driver/4,
               os/4,
               users/4,
+              type/4,
               status/4,
               imported/4,
               version/4
@@ -160,6 +162,7 @@ set(Preflist, ReqID, Dataset, Data) ->
 ?VSET(networks).
 ?VSET(nic_driver).
 ?VSET(os).
+?VSET(type).
 ?VSET(users).
 ?VSET(version).
 ?VSET(status).
