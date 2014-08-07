@@ -191,8 +191,10 @@ import_manifest(UUID, D1) ->
     end,
     case jsxd:get(<<"os">>, D1) of
         {ok, <<"smartos">>} ->
-            os(UUID, <<"zone">>);
-        {ok, _} ->
+            os(UUID, <<"smartos">>),
+            type(UUID, <<"zone">>);
+        {ok, OS} ->
+            os(UUID, OS),
             os(UUID, <<"kvm">>)
     end.
 
