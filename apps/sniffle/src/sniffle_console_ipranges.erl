@@ -5,9 +5,8 @@
 -define(T, ft_iprange).
 -define(F(Hs, Vs), sniffle_console:fields(Hs,Vs)).
 -define(H(Hs), sniffle_console:hdr(Hs)).
--define(Hdr, [{"UUID", 18}, {"Name", 10}, {"Tag", 8}, {"Next", 15},
-              {"Free", 8}, {"Used", 8}, {"Netmask", 15}, {"Gateway", 15},
-              {"Vlan", 4}]).
+-define(Hdr, [{"UUID", 18}, {"Name", 10}, {"Tag", 8}, {"Free", 8}, {"Used", 8},
+              {"Netmask", 15}, {"Gateway", 15}, {"VLAN", 4}]).
 
 help() ->
     io:format("Usage~n"
@@ -110,8 +109,8 @@ print(N) ->
     ?F(?Hdr, [?T:uuid(N),
               ?T:name(N),
               ?T:tag(N),
-              ?T:to_bin(length(?T:free(N))),
-              ?T:to_bin(length(?T:used(N))),
+              length(?T:free(N)),
+              length(?T:used(N)),
               ?T:to_bin(?T:netmask(N)),
               ?T:to_bin(?T:gateway(N)),
               ?T:vlan(N)]).

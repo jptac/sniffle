@@ -91,15 +91,9 @@ print(H) ->
                 _ ->
                     <<"disconnected">>
             end,
-    Name = case jsxd:get(<<"uuid">>, H) of
-               {ok, N} ->
-                   N;
-               _ ->
-                   jsxd:get(<<"name">>, <<"-">>, H)
-           end,
     R = ?T:resources(H),
     Mem = io_lib:format("~p/~p",
                         [jsxd:get(<<"provisioned-memory">>, 0, R),
                          jsxd:get(<<"total-memory">>, 0, R)]),
     ?F(?Hdr,
-       [?T:alias(H), ?T:uuid(Name), Host, Mem, State, ?T:version(H)]).
+       [?T:alias(H), ?T:uuid(H), Host, Mem, State, ?T:version(H)]).
