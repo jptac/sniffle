@@ -195,7 +195,7 @@ import_manifest(UUID, D1) ->
             type(UUID, <<"zone">>);
         {ok, OS} ->
             os(UUID, OS),
-            os(UUID, <<"kvm">>)
+            type(UUID, <<"kvm">>)
     end.
 
 ensure_integer(I) when is_integer(I) ->
