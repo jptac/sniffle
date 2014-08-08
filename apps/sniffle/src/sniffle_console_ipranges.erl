@@ -5,7 +5,7 @@
 -define(T, ft_iprange).
 -define(F(Hs, Vs), sniffle_console:fields(Hs,Vs)).
 -define(H(Hs), sniffle_console:hdr(Hs)).
--define(Hdr, [{"UUID", 18}, {"Name", 10}, {"Tag", 8}, {"Free", -8}, {"Used", -8},
+-define(Hdr, [{"UUID", 18}, {"Name", 10}, {"Tag", 8}, {"Free", 8}, {"Used", 8},
               {"Netmask", 15}, {"Gateway", 15}, {"VLAN", 4}]).
 
 help() ->
