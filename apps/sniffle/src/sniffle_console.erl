@@ -563,6 +563,10 @@ fields([{_, S}|R], [V | Vs], {Fmt, Vars}) when is_list(V)
     fields(R, Vs, {[$~ | integer_to_list(S) ++ [$s, $\  | Fmt]], [V | Vars]});
 
 
+fields([{_, S}|R], [V | Vs], {Fmt, Vars}) when is_integer(V) ->
+    %% there is a space that matters here ------------v
+    fields(R, Vs, {[$~ | integer_to_list(S) ++ [$b, $\  | Fmt]], [V | Vars]});
+
 fields([{_, S}|R], [V | Vs], {Fmt, Vars}) ->
     %% there is a space that matters here ------------v
     fields(R, Vs, {[$~ | integer_to_list(S) ++ [$p, $\  | Fmt]], [V | Vars]});
