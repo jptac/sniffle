@@ -6,6 +6,7 @@
 -include_lib("kernel/include/file.hrl").
 -include("sniffle_version.hrl").
 
+-define(T, ft_dataset).
 -define(F(Hs, Vs), sniffle_console:fields(Hs,Vs)).
 -define(H(Hs), sniffle_console:hdr(Hs)).
 -define(Hdr, [{"UUID", 36}, {"OS", 7}, {"Name", 15}, {"Version", 8},
@@ -30,7 +31,7 @@ command(text, ["delete", ID]) ->
 command(json, ["get", UUID]) ->
     case sniffle_dataset:get(list_to_binary(UUID)) of
         {ok, H} ->
-            sniffle_console:pp_json(H),
+            sniffle_console:pp_json(?T:to_json(H)),
             ok;
         _ ->
             sniffle_console:pp_json([]),
@@ -53,7 +54,7 @@ command(json, ["list"]) ->
             sniffle_console:pp_json(
               lists:map(fun (ID) ->
                                 {ok, H} = sniffle_dataset:get(ID),
-                                H
+                                ?T:to_json(H)
                         end, Hs)),
             ok;
         _ ->
@@ -78,9 +79,9 @@ command(_, C) ->
     error.
 
 print(D) ->
-    ?F(?Hdr, [jsxd:get(<<"dataset">>, <<"-">>, D),
-              jsxd:get(<<"os">>, <<"-">>, D),
-              jsxd:get(<<"name">>, <<"-">>, D),
-              jsxd:get(<<"version">>, <<"-">>, D),
-              jsxd:get(<<"imported">>, 1, D) * 100,
-              jsxd:get(<<"description">>, <<"-">>, D)]).
+    ?F(?Hdr, [?T:uuid(D),
+              ?T:os(D),
+              ?T:name(D),
+              ?T:version(D),
+              ?T:imported(D) * 100,
+              ?T:description(D)]).
