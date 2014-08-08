@@ -130,7 +130,8 @@ release_ip(Iprange, IP) ->
                       {ok, {Tag::binary(),
                             IP::pos_integer(),
                             Netmask::pos_integer(),
-                            Gateway::pos_integer()}} |
+                            Gateway::pos_integer(),
+                            VLAN::pos_integer()}} |
                       {error, failed} |
                       {'error','no_servers'}.
 claim_ip(Iprange) ->

@@ -2,6 +2,7 @@
 -module(sniffle_console_packages).
 -export([command/2, help/0]).
 
+-define(T, ft_package).
 -define(F(Hs, Vs), sniffle_console:fields(Hs,Vs)).
 -define(H(Hs), sniffle_console:hdr(Hs)).
 -define(Hdr, [{"UUID", 36}, {"Name", 18}, {"Ram (MB)", 6},
@@ -25,7 +26,7 @@ command(text, ["delete", ID]) ->
 command(json, ["get", UUID]) ->
     case sniffle_package:get(list_to_binary(UUID)) of
         {ok, H} ->
-            sniffle_console:pp_json(H),
+            sniffle_console:pp_json(?T:to_json(H)),
             ok;
         _ ->
             sniffle_console:pp_json([]),
@@ -48,7 +49,7 @@ command(json, ["list"]) ->
             sniffle_console:pp_json(
               lists:map(fun (ID) ->
                                 {ok, H} = sniffle_package:get(ID),
-                                H
+                                ?T:to_json(H)
                         end, Hs)),
             ok;
         _ ->
@@ -73,8 +74,8 @@ command(_, C) ->
     error.
 
 print(P) ->
-    ?F(?Hdr, [jsxd:get(<<"uuid">>, <<"-">>, P),
-              jsxd:get(<<"name">>, <<"-">>, P),
-              jsxd:get(<<"ram">>, 0, P),
-              jsxd:get(<<"quota">>, 0, P),
-              jsxd:get(<<"cpu_cap">>, 0, P)]).
+    ?F(?Hdr, [?T:uuid(P),
+              ?T:name(P),
+              ?T:ram(P),
+              ?T:quota(P),
+              ?T:cpu_cap(P)]).

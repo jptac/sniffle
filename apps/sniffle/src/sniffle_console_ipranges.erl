@@ -2,6 +2,7 @@
 -module(sniffle_console_ipranges).
 -export([command/2, help/0]).
 
+-define(T, ft_iprange).
 -define(F(Hs, Vs), sniffle_console:fields(Hs,Vs)).
 -define(H(Hs), sniffle_console:hdr(Hs)).
 -define(Hdr, [{"UUID", 18}, {"Name", 10}, {"Tag", 8}, {"First", 15},
@@ -50,13 +51,14 @@ command(text, ["list"]) ->
 
 command(text, ["claim", ID]) ->
     case get_ip(ID) of
-        {ok, {Tag, IP, Netmask, Gateway}} ->
+        {ok, {Tag, IP, Netmask, Gateway, VLan}} ->
             io:format("A IP address has been claimed from the netowkr ~s.~n"
                       "Tag:     ~s~n"
                       "IP:      ~s~n"
                       "Netmask: ~s~n"
-                      "Gateway: ~s~n",
-                      [ID, Tag, IP, Netmask, Gateway]),
+                      "Gateway: ~s~n"
+                      "VLAN:    ~s~n",
+                      [ID, Tag, IP, Netmask, Gateway, VLan]),
             ok;
         _ ->
             io:format("Could not get IP address.~n"),
@@ -65,19 +67,20 @@ command(text, ["claim", ID]) ->
 
 command(json, ["claim", ID]) ->
     case get_ip(ID) of
-        {ok, {Tag, IP, Netmask, Gateway}} ->
+        {ok, {Tag, IP, Netmask, Gateway, VLan}} ->
             sniffle_console:pp_json(
               [{<<"tag">>, Tag},
                {<<"ip">>, IP},
                {<<"netmask">>, Netmask},
-               {<<"gateway">>, Gateway}]),
+               {<<"gateway">>, Gateway},
+               {<<"vlan">>, VLan}]),
             ok;
         _ ->
             error
     end;
 
 command(text, ["release", ID, IPS]) ->
-    IP = ft_iprange:parse_bin(IPS),
+    IP = ?T:parse_bin(list_to_binary(IPS)),
     case sniffle_iprange:release_ip(list_to_binary(ID), IP) of
         ok ->
             io:format("Released ip.~n"),
@@ -93,22 +96,22 @@ command(_, C) ->
 
 get_ip(ID) ->
     case sniffle_iprange:claim_ip(list_to_binary(ID)) of
-        {ok, {Tag, IP, Netmask, Gateway}} ->
+        {ok, {Tag, IP, Netmask, Gateway, VLan}} ->
             {ok, {Tag,
-                  ft_iprange:to_bin(IP),
-                  ft_iprange:to_bin(Netmask),
-                  ft_iprange:to_bin(Gateway)}};
+                  ?T:to_bin(IP),
+                  ?T:to_bin(Netmask),
+                  ?T:to_bin(Gateway),
+                  VLan}};
         _ ->
             error
     end.
 
 print(N) ->
-    ?F(?Hdr, [jsxd:get(<<"uuid">>, <<"-">>, N),
-              jsxd:get(<<"name">>, <<"-">>, N),
-              jsxd:get(<<"tag">>, <<"-">>, N),
-              ft_iprange:to_bin(jsxd:get(<<"first">>, 0, N)),
-              ft_iprange:to_bin(jsxd:get(<<"current">>, 0, N)),
-              ft_iprange:to_bin(jsxd:get(<<"last">>, 0, N)),
-              ft_iprange:to_bin(jsxd:get(<<"netmask">>, 0, N)),
-              ft_iprange:to_bin(jsxd:get(<<"gateway">>, 0, N)),
-              jsxd:get(<<"vlan">>, 0, N)]).
+    ?F(?Hdr, [?T:uuid(N),
+              ?T:name(N),
+              ?T:tag(N),
+              ?T:to_bin(length(?T:free(N))),
+              ?T:to_bin(length(?T:used(N))),
+              ?T:to_bin(?T:netmask(N)),
+              ?T:to_bin(?T:gateway(N)),
+              ?T:vlan(N)]).

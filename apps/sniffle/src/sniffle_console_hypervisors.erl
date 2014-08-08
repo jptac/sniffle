@@ -2,6 +2,7 @@
 -module(sniffle_console_hypervisors).
 -export([command/2, help/0]).
 
+-define(T, ft_hypervisor).
 -define(F(Hs, Vs), sniffle_console:fields(Hs,Vs)).
 -define(H(Hs), sniffle_console:hdr(Hs)).
 -define(Hdr, [{"Hypervisor", 18}, {"UUID", 36}, {"IP", 16},
@@ -25,7 +26,7 @@ command(text, ["delete", UUID]) ->
 command(json, ["get", UUID]) ->
     case sniffle_hypervisor:get(list_to_binary(UUID)) of
         {ok, H} ->
-            sniffle_console:pp_json(H),
+            sniffle_console:pp_json(?T:to_json(H)),
             ok;
         _ ->
             sniffle_console:pp_json([]),
@@ -58,7 +59,7 @@ command(json, ["list"]) ->
             sniffle_console:pp_json(
               lists:map(fun (ID) ->
                                 {ok, H} = sniffle_hypervisor:get(ID),
-                                H
+                                ?T:to_json(H)
                         end, Hs)),
             ok;
         _ ->
@@ -83,8 +84,8 @@ command(_, C) ->
     error.
 
 print(H) ->
-    {ok, Host} = jsxd:get(<<"host">>, H),
-    {ok, Port} = jsxd:get(<<"port">>, H),
+    {ok, Host} = ?T:host(H),
+    {ok, Port} = ?T:port(H),
     State = case libchunter:ping(binary_to_list(Host), Port) of
                 pong ->
                     <<"ok">>;
@@ -97,9 +98,9 @@ print(H) ->
                _ ->
                    jsxd:get(<<"name">>, <<"-">>, H)
            end,
+    R = ?T:resources(H),
     Mem = io_lib:format("~p/~p",
-                        [jsxd:get(<<"resources.provisioned-memory">>, 0, H),
-                         jsxd:get(<<"resources.total-memory">>, 0, H)]),
+                        [jsxd:get(<<"provisioned-memory">>, 0, R),
+                         jsxd:get(<<"total-memory">>, 0, R)]),
     ?F(?Hdr,
-       [jsxd:get(<<"alias">>, <<"-">>, H), Name, Host, Mem, State,
-        jsxd:get(<<"version">>, <<"-">>, H)]).
+       [?T:alias(H), ?T:uuid(Name), Host, Mem, State, ?T:version(H)]).

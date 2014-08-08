@@ -2,6 +2,7 @@
 -module(sniffle_console_dtrace).
 -export([command/2, help/0]).
 
+-define(T, ft_dtrace).
 -define(F(Hs, Vs), sniffle_console:fields(Hs,Vs)).
 -define(H(Hs), sniffle_console:hdr(Hs)).
 -define(Hdr, [{"UUID", 36}, {"Name", 15}]).
@@ -29,7 +30,7 @@ command(json, ["get", UUID]) ->
             sniffle_console:pp_json(jsxd:update(<<"script">>,
                                                 fun(S) ->
                                                         list_to_binary(S)
-                                                end, <<>>, H)),
+                                                end, <<>>, ?T:to_json(H))),
             ok;
         _ ->
             sniffle_console:pp_json([]),
@@ -43,7 +44,7 @@ command(text, ["get", ID]) ->
             print(D),
             print_vars(D),
             io:format("~.78c~n~s~n~.78c~n",
-                      [$=, jsxd:get(<<"script">>,<<"">>, D), $=]),
+                      [$=, ?T:script(D), $=]),
             ok;
         _ ->
             error
@@ -58,12 +59,17 @@ command(_, ["import", File]) ->
             JSON = jsx:decode(B),
             JSX = jsxd:from_list(JSON),
             Name = jsxd:get(<<"name">>, <<"unnamed">>, JSX),
-            CopyFields = [<<"config">>, <<"type">>, <<"filter">>],
+            %% CopyFields = [<<"config">>, <<"type">>, <<"filter">>],
+            {ok, Config} = jsxd:get([<<"config">>], JSX),
+            %% {ok, Type} = jsxd:get([<<"config">>], JSX),
+            %% {ok, Filter} = jsxd:get([<<"config">>], JSX),
             {ok, UUID} =
                 sniffle_dtrace:add(
                   Name,
                   binary_to_list(jsxd:get(<<"script">>, <<"">>, JSX))),
-            sniffle_dtrace:set(UUID, jsxd:select(CopyFields, JSX)),
+            sniffle_dtrace:set_config(UUID, Config),
+            %% sniffle_dtrace:type(UUID, Type),
+            %% sniffle_dtrace:set_filter(UUID, Filter),
             io:format("Imported ~s with uuid ~s.~n", [Name, UUID]),
             ok
     end;
@@ -74,7 +80,7 @@ command(json, ["list"]) ->
             sniffle_console:pp_json(
               lists:map(fun (ID) ->
                                 {ok, H} = sniffle_dtrace:get(ID),
-                                H
+                                ?T:to_json(H)
                         end, Hs)),
             ok;
         _ ->
@@ -98,11 +104,11 @@ command(_, C) ->
     error.
 
 print(D) ->
-    ?F(?Hdr, [jsxd:get(<<"uuid">>, <<"-">>, D),
-              jsxd:get(<<"name">>, <<"-">>, D)]).
+    ?F(?Hdr, [?T:uuid(D),
+              ?T:name(D)]).
 
 
 print_vars(D) ->
     H = [{"Variable", 15}, {"Default", n}],
     ?H(H),
-    [?F(H, [N, Def]) || {N, Def} <- jsxd:get(<<"config">>, [], D)].
+    [?F(H, [N, Def]) || {N, Def} <- ?T:config(D)].
