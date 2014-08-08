@@ -84,9 +84,8 @@ command(_, C) ->
     error.
 
 print(H) ->
-    {ok, Host} = ?T:host(H),
-    {ok, Port} = ?T:port(H),
-    State = case libchunter:ping(binary_to_list(Host), Port) of
+    {Host, Port} = ?T:endpoint(H),
+    State = case libchunter:ping(Host, Port) of
                 pong ->
                     <<"ok">>;
                 _ ->
