@@ -6,7 +6,7 @@
 -define(F(Hs, Vs), sniffle_console:fields(Hs,Vs)).
 -define(H(Hs), sniffle_console:hdr(Hs)).
 -define(Hdr, [{"Hypervisor", 18}, {"UUID", 36}, {"IP", 16},
-              {"Memory", 18}, {"Version", -13}, {"State", n}]).
+              {"Memory", 18}, {"State", -8}, {"Version", n}]).
 help() ->
     io:format("Usage~n"
               "  list [-j]~n"
