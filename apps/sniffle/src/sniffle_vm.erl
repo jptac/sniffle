@@ -334,7 +334,7 @@ promote_to_image(Vm, SnapID, Config) ->
                                  end, Nets),
                     sniffle_dataset:networks(UUID, Nets1),
                     Type = jsxd:get([<<"type">>], <<"zone">>, C),
-                    sniffle_dataset:os(UUID, Type),
+                    sniffle_dataset:type(UUID, Type),
                     case Type of
                         <<"zone">> ->
                             ok;
