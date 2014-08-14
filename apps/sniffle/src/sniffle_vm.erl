@@ -513,7 +513,7 @@ update(Vm, Package, Config) ->
                                     log(Vm, <<"Updating VM from package '",
                                               OrigPkg/binary, "' to '",
                                               Package/binary, "'.">>),
-                                    libchunter:update_machine(Host, Port, Vm, P, Config);
+                                    libchunter:update_machine(Host, Port, Vm, ft_package:to_json(P), Config);
                                 _ ->
                                     {error, not_enough_resources}
                             end;
