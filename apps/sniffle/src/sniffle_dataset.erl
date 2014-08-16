@@ -254,7 +254,12 @@ read_image(UUID, _TotalSize, done, Acc, Idx, Ref, _) ->
     imported(UUID, 1),
     {ok, Ref1} = sniffle_img:create(UUID, Idx, Acc, Ref),
     io:format("~p~n", [Ref1]),
-    sniffle_img:create(UUID, done, <<>>, Ref1);
+    case sniffle_img:backend() of
+        internal ->
+            sniffle_img:create(UUID, done, <<>>, Ref1);
+        s3 ->
+            fifo_s3_upload:done(Ref)
+    end;
 
 read_image(UUID, TotalSize, Client, Acc, Idx, Ref, ChunkSize) ->
     case hackney:stream_body(Client) of
