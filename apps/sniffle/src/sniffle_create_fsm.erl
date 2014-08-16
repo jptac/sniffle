@@ -333,7 +333,7 @@ get_server(_Event, State = #state{
     lager:debug("[create] get_server: ~p", [Nets]),
     Ram = ft_package:ram(Package),
     sniffle_vm:state(UUID, <<"fetching_server">>),
-    Permission = [<<"hypervisors">>, {<<"res">>, <<"name">>}, <<"create">>],
+    Permission = [<<"hypervisors">>, {<<"res">>, <<"uuid">>}, <<"create">>],
     Type = case ft_dataset:type(Dataset) of
                kvm -> <<"kvm">>;
                zone -> <<"zone">>

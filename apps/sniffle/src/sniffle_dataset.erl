@@ -236,7 +236,7 @@ read_image(UUID, TotalSize, Client, All, Idx, Ref, ChunkSize)
                              ok ->
                                  {ok, Ref};
                              E ->
-                                 fail_import(UUID, E, Idx),
+                                 fail_import(UUID, E, Idx, Ref),
                                  E
                          end
                  end,
@@ -252,9 +252,14 @@ read_image(UUID, _TotalSize, done, Acc, Idx, Ref, _) ->
                  [{<<"event">>, <<"progress">>}, {<<"data">>, [{<<"imported">>, 1}]}]),
     status(UUID, <<"imported">>),
     imported(UUID, 1),
-    {ok, Ref1} = sniffle_img:create(UUID, Idx, Acc, Ref),
-    io:format("~p~n", [Ref1]),
-    sniffle_img:create(UUID, done, <<>>, Ref1);
+    case sniffle_img:backend() of
+        internal ->
+            {ok, Ref1} = sniffle_img:create(UUID, Idx, Acc, Ref),
+            sniffle_img:create(UUID, done, <<>>, Ref1);
+        s3 ->
+            fifo_s3_upload:part(Ref, binary:copy(Acc)),
+            fifo_s3_upload:done(Ref)
+    end;
 
 read_image(UUID, TotalSize, Client, Acc, Idx, Ref, ChunkSize) ->
     case hackney:stream_body(Client) of
@@ -265,7 +270,7 @@ read_image(UUID, TotalSize, Client, Acc, Idx, Ref, ChunkSize) ->
             hackney:close(Client2),
             read_image(UUID, TotalSize, done, Acc, Idx, Ref, ChunkSize);
         {error, Reason} ->
-            fail_import(UUID, Reason, Idx)
+            fail_import(UUID, Reason, Idx, Ref)
     end.
 
 fail_import(UUID, Reason, Idx) ->
@@ -275,6 +280,15 @@ fail_import(UUID, Reason, Idx) ->
                   {<<"data">>, [{<<"message">>, Reason},
                                 {<<"index">>, Idx}]}]),
     status(UUID, <<"failed">>).
+
+fail_import(UUID, Reason, Idx, Ref) ->
+    fail_import(UUID, Reason, Idx),
+    case sniffle_img:backend() of
+        internal ->
+            ok;
+        s3 ->
+            fifo_s3_upload:abort(Ref)
+    end.
 
 http_opts() ->
     case os:getenv("https_proxy") of
