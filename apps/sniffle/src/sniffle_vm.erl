@@ -184,9 +184,10 @@ remove_backup(Vm, BID) ->
 delete_backup(VM, BID) ->
     case sniffle_vm:get(VM) of
         {ok, V} ->
-            case jsxd:get([BID], ?S:backups(V)) of
+            Backups = ?S:backups(V),
+            case jsxd:get([BID], Backups) of
                 {ok, _} ->
-                    Children = children(V, BID, true),
+                    Children = children(Backups, BID, true),
                     [do_delete_backup(VM, V, C) || C <- Children],
                     do_delete_backup(VM, V, BID);
                 _ ->
