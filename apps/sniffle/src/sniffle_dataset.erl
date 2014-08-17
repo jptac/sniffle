@@ -12,7 +12,7 @@
          list/0,
          list/2,
          import/1,
-         read_image/7,
+         read_image/8,
          wipe/1,
          sync_repair/2,
          list_/0
@@ -122,9 +122,9 @@ import(URL) ->
                          sniffle_s3:get_bucket(image)},
                     ChunkSize = application:get_env(sniffle, image_chunk_size, 5*1024*1024),
                     {ok, U} = fifo_s3_upload:new(AKey, SKey, Host, Port, Bucket, UUID),
-                    spawn(?MODULE, read_image, [UUID, TotalSize, ImgURL, <<>>, 0, U, ChunkSize]);
+                    spawn(?MODULE, read_image, [UUID, TotalSize, ImgURL, <<>>, 0, U, ChunkSize, s3]);
                 internal ->
-                    spawn(?MODULE, read_image, [UUID, TotalSize, ImgURL, <<>>, 0, undefined, 1024*1024])
+                    spawn(?MODULE, read_image, [UUID, TotalSize, ImgURL, <<>>, 0, undefined, 1024*1024, internal])
             end,
             {ok, UUID};
         {ok, E, _, _} ->
@@ -212,11 +212,11 @@ do_write(Dataset, Op, Val) ->
     sniffle_entity_write_fsm:write({?VNODE, ?SERVICE}, Dataset, Op, Val).
 
 %% If more then one MB is in the accumulator read store it in 1MB chunks
-read_image(UUID, TotalSize, Url, Acc, Idx, Ref, ChunkSize) when is_binary(Url) ->
+read_image(UUID, TotalSize, Url, Acc, Idx, Ref, ChunkSize, Backend) when is_binary(Url) ->
     case hackney:request(get, Url, [], <<>>, http_opts()) of
         {ok, 200, _, Client} ->
             status(UUID, <<"importing">>),
-            read_image(UUID, TotalSize, Client, Acc, Idx, Ref, ChunkSize);
+            read_image(UUID, TotalSize, Client, Acc, Idx, Ref, ChunkSize, Backend);
         {ok, Reason, _, _} ->
             fail_import(UUID, Reason, 0)
     end;
@@ -224,11 +224,10 @@ read_image(UUID, TotalSize, Url, Acc, Idx, Ref, ChunkSize) when is_binary(Url) -
 %% If we're done (and less then one MB is left, store the rest)
 
 
-
-read_image(UUID, TotalSize, Client, All, Idx, Ref, ChunkSize)
+read_image(UUID, TotalSize, Client, All, Idx, Ref, ChunkSize, Backend)
   when byte_size(All) >= ChunkSize ->
     <<MB:ChunkSize/binary, Acc/binary>> = All,
-    {ok, Ref1} = case sniffle_img:backend() of
+    {ok, Ref1} = case Backend of
                      internal ->
                          sniffle_img:create(UUID, Idx, binary:copy(MB), Ref);
                      s3 ->
@@ -236,7 +235,7 @@ read_image(UUID, TotalSize, Client, All, Idx, Ref, ChunkSize)
                              ok ->
                                  {ok, Ref};
                              E ->
-                                 fail_import(UUID, E, Idx, Ref),
+                                 fail_import(UUID, E, Idx, Ref, Backend),
                                  E
                          end
                  end,
@@ -245,14 +244,14 @@ read_image(UUID, TotalSize, Client, All, Idx, Ref, ChunkSize)
     imported(UUID, Done),
     libhowl:send(UUID,
                  [{<<"event">>, <<"progress">>}, {<<"data">>, [{<<"imported">>, Done}]}]),
-    read_image(UUID, TotalSize, Client, binary:copy(Acc), Idx1, Ref1, ChunkSize);
+    read_image(UUID, TotalSize, Client, binary:copy(Acc), Idx1, Ref1, ChunkSize, Backend);
 
-read_image(UUID, _TotalSize, done, Acc, Idx, Ref, _) ->
+read_image(UUID, _TotalSize, done, Acc, Idx, Ref, _, Backend) ->
     libhowl:send(UUID,
                  [{<<"event">>, <<"progress">>}, {<<"data">>, [{<<"imported">>, 1}]}]),
     status(UUID, <<"imported">>),
     imported(UUID, 1),
-    case sniffle_img:backend() of
+    case Backend of
         internal ->
             {ok, Ref1} = sniffle_img:create(UUID, Idx, Acc, Ref),
             sniffle_img:create(UUID, done, <<>>, Ref1);
@@ -261,16 +260,16 @@ read_image(UUID, _TotalSize, done, Acc, Idx, Ref, _) ->
             fifo_s3_upload:done(Ref)
     end;
 
-read_image(UUID, TotalSize, Client, Acc, Idx, Ref, ChunkSize) ->
+read_image(UUID, TotalSize, Client, Acc, Idx, Ref, ChunkSize, Backend) ->
     case hackney:stream_body(Client) of
         {ok, Data, Client1} ->
             read_image(UUID, TotalSize, Client1,
-                       binary:copy(<<Acc/binary, Data/binary>>), Idx, Ref, ChunkSize);
+                       <<Acc/binary, Data/binary>>, Idx, Ref, ChunkSize, Backend);
         {done, Client2} ->
             hackney:close(Client2),
-            read_image(UUID, TotalSize, done, Acc, Idx, Ref, ChunkSize);
+            read_image(UUID, TotalSize, done, Acc, Idx, Ref, ChunkSize, Backend);
         {error, Reason} ->
-            fail_import(UUID, Reason, Idx, Ref)
+            fail_import(UUID, Reason, Idx, Ref, Backend)
     end.
 
 fail_import(UUID, Reason, Idx) ->
@@ -281,9 +280,9 @@ fail_import(UUID, Reason, Idx) ->
                                 {<<"index">>, Idx}]}]),
     status(UUID, <<"failed">>).
 
-fail_import(UUID, Reason, Idx, Ref) ->
+fail_import(UUID, Reason, Idx, Ref, Backend) ->
     fail_import(UUID, Reason, Idx),
-    case sniffle_img:backend() of
+    case Backend of
         internal ->
             ok;
         s3 ->
