@@ -1012,23 +1012,18 @@ timestamp() ->
     {Mega,Sec,Micro} = erlang:now(),
     (Mega*1000000+Sec)*1000000+Micro.
 
-children(VM, Parent) ->
-    children(VM, Parent, false).
+children(Backups, Parent) ->
+    children(Backups, Parent, false).
 
-children(VM, Parent, Recursive) ->
-    case ?S:backups(VM) of
-        {ok, Backups} ->
-            R = [U ||
-                    {U, B} <- Backups,
-                    jsxd:get(<<"parent">>, B) =:= {ok, Parent}],
-            case Recursive of
-                true ->
-                    lists:flatten([children(VM, C, true) || C <- R]) ++ R;
-                false ->
-                    R
-            end;
-        _ ->
-            []
+children(Backups, Parent, Recursive) ->
+    R = [U ||
+            {U, B} <- Backups,
+            jsxd:get(<<"parent">>, B) =:= {ok, Parent}],
+    case Recursive of
+        true ->
+            lists:flatten([children(Backups, C, true) || C <- R]) ++ R;
+        false ->
+            R
     end.
 
 do_delete_backup(UUID, VM, BID) ->
