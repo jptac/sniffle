@@ -289,8 +289,8 @@ do_snap(Vm, V, Comment, Opts) ->
                               S3Host, S3Port, Bucket, AKey,
                               SKey, Bucket, Opts1),
             set_backup(Vm, [{[UUID, <<"comment">>], Comment},
-                            {[UUID, <<"timestamp">>], Comment},
-                            {[UUID, <<"pending">>], Comment}]),
+                            {[UUID, <<"timestamp">>], timestamp()},
+                            {[UUID, <<"pending">>], true}]),
             {ok, UUID}
     end.
 
