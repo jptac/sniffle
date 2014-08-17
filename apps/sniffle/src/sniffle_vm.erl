@@ -1033,14 +1033,18 @@ children(VM, Parent, Recursive) ->
 
 do_delete_backup(UUID, VM, BID) ->
     Backups = ?S:backups(VM),
-    {ok, Files} = jsxd:get([BID, <<"files">>], Backups),
-    Fs = case jsxd:get([BID, <<"xml">>], false, Backups) of
-             true ->
-                 [<<UUID/binary, "/", BID/binary, ".xml">> | Files];
-             false ->
-                 Files
-         end,
-    [sniffle_s3:delete(snapshot, F) || F <- Fs],
+    case jsxd:get([BID, <<"files">>], Backups) of
+        {ok, Files} ->
+            Fs = case jsxd:get([BID, <<"xml">>], false, Backups) of
+                     true ->
+                         [<<UUID/binary, "/", BID/binary, ".xml">> | Files];
+                     _ ->
+                         Files
+                 end,
+            [sniffle_s3:delete(snapshot, F) || F <- Fs];
+        _ ->
+            ok
+    end,
     H = ?S:hypervisor(VM),
     {Server, Port} = get_hypervisor(H),
     libchunter:delete_snapshot(Server, Port, UUID, BID),
