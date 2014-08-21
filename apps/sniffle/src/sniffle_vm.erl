@@ -118,7 +118,8 @@ store(Vm) ->
                      || {B, _} <- Bs],
                     [set_backup(Vm, [{[B, <<"local_size">>], 0}])
                      || {B, _} <- Bs],
-                    sniffle_vm:set(Vm, <<"snapshots">>, delete),
+                    S1 = [{UUID, delete} || {UUID, _ } <- ?S:snapshots(V)],
+                    set_snapshot(Vm, S1),
                     hypervisor(Vm, delete),
                     {Host, Port} = get_hypervisor(V),
                     libchunter:delete_machine(Host, Port, Vm);
@@ -898,20 +899,16 @@ rollback_snapshot(Vm, UUID) ->
 commit_snapshot_rollback(Vm, UUID) ->
     case sniffle_vm:get(Vm) of
         {ok, V} ->
-            case jsxd:get([UUID, <<"timestamp">>], ?S:snapshots(V)) of
+            Snapshots = ?S:snapshots(V),
+            case jsxd:get([UUID, <<"timestamp">>], Snapshots) of
                 {ok, T} when is_number(T) ->
-                    Snapshots1 =
-                        jsxd:fold(
-                          fun (SUUID, Sn, A) ->
-                                  case jsxd:get(<<"timestamp">>, 0, Sn) of
-                                      X when is_number(X),
-                                             X > T ->
-                                          A;
-                                      _ ->
-                                          jsxd:set(SUUID, Sn, A)
-                                  end
-                          end, [], ?S:snapshots(V)),
-                    set_snapshot(Vm, Snapshots1);
+                    Snapshots1 = [{SUUID, jsxd:get([<<"timestamp">>], 0, Sn)}
+                                  || {SUUID, Sn} <- Snapshots],
+                    Snapshots2 = [{SUUID, delete}
+                                  || {SUUID, X} <- Snapshots1,
+                                     is_number(X), X > T],
+                    set_snapshot(Vm, Snapshots2),
+                    ok;
                 undefined ->
                     {error, not_found}
             end;
