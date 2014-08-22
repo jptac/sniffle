@@ -367,9 +367,9 @@ get_server(_Event, State = #state{
                     do_retry(S1);
                 {Hvs, EH} ->
                     S1 = warn(State,
-                              "loud not lock hypervisor.",
+                              "cloud not lock hypervisor.",
                               "[create] Cound claim a lock on any of "
-                              "the provided hypervisors: ~p ->",
+                              "the provided hypervisors: ~p -> ~p",
                               [Hvs, EH]),
                     do_retry(S1)
             end;
@@ -748,7 +748,7 @@ add_log(State = #state{log_cache = C}, Type, Msg) ->
 
 add_log(State = #state{log_cache = C}, Type, Msg, EID) ->
     Msg1 = io_lib:format("~s Please see thw warning log for further details"
-                         "the error id ~p will identify the entry.",
+                         "the error id ~s will identify the entry.",
                          [Msg, EID]),
     State#state{log_cache = [{Type, Msg1} | C]}.
 
