@@ -78,8 +78,10 @@ register(Hypervisor, IP, Port) ->
                         not_found | {error, timeout} | ok.
 unregister(Hypervisor) ->
     {ok, VMs} = sniffle_vm:list([{must, '=:=', <<"hypervisor">>, Hypervisor}], false),
-    Values = [{<<"state">>, <<"limbo">>}, {<<"hypervisor">>, delete}],
-    [sniffle_vm:set(VM, Values) || {_, VM} <- VMs],
+    [begin
+         sniffle_vm:hypervisor(VM, <<>>),
+         sniffle_vm:state(VM, <<"limbo">>)
+     end || {_, VM} <- VMs],
     do_write(Hypervisor, unregister).
 
 -spec get(Hypervisor::fifo:hypervisor_id()) ->
