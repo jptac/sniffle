@@ -294,17 +294,14 @@ callbacks(_Event, State = #state{
                                  package = Package1,
                                  config = Config1}, 0}.
 
-get_networks(_event, State = #state{retry = R, max_retries = Max, uuid=UUID,
-                                   log_cache = C})
+get_networks(_event, State = #state{retry = R, max_retries = Max})
   when R > Max ->
     lager:error("[create] Failed after too many retries: ~p > ~p.",
                 [R, Max]),
-    [vm_log(State, Type, Msg) || {Type, Msg} <- lists:reverse(C)],
-    sniffle_vm:state(UUID, <<"failed">>),
     BR = integer_to_binary(R),
     BMax= integer_to_binary(Max),
     vm_log(State, error, <<"Failed after too many retries: ", BR/binary, " > ",
-                    BMax/binary>>),
+                           BMax/binary>>),
     {stop, failed, State};
 
 get_networks(_Event, State = #state{config = Config, retry = Try}) ->
@@ -319,7 +316,8 @@ get_networks(_Event, State = #state{config = Config, retry = Try}) ->
                                               end, Rs2),
                               {Name, Rs3}
                       end, Nets),
-    {next_state, get_server, State#state{nets = Nets1, retry = Try + 1}, 0}.
+    {next_state, get_server,
+     State#state{nets = Nets1, retry = Try + 1, log_cache = []}, 0}.
 
 get_server(_Event, State = #state{
                               dataset = Dataset,
