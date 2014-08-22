@@ -123,12 +123,11 @@ create(UUID, Package, Dataset, Config, Pid) ->
 %%--------------------------------------------------------------------
 
 init([UUID, Package, Dataset, Config, Pid]) ->
+    sniffle_vm:state(UUID, <<"placing">>),
+    random:seed(now()),
     lager:info("[create] Starting FSM for ~s", [UUID]),
     process_flag(trap_exit, true),
     Config1 = jsxd:from_list(Config),
-    %% We're transforming the networks map {nic -> networkid} into
-    %% an array that is close to what it will look after the VM was
-    %% created, that way the structure stays consistant.
     Delay = case application:get_env(create_retry_delay) of
                 {ok, D} ->
                     D;
