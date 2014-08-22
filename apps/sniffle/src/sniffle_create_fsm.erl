@@ -75,7 +75,9 @@
           delay = 5000,
           retry = 0,
           max_retries = 0,
-          grouping_rules = []
+          grouping_rules = [],
+          log_cache = [],
+          last_error
          }).
 
 %%%===================================================================
@@ -184,6 +186,7 @@ generate_grouping_rules(_Event, State = #state{
                     {next_state, create_permissions,
                      State#state{grouping_rules = Rules}, 0};
                 E ->
+                    vm_log(State, error, "Failed to create routing rule."),
                     lager:error("[create] Creation Faild since grouing could not be "
                                 "joined: ~p", [E]),
                     {stop, E, State}
@@ -191,12 +194,6 @@ generate_grouping_rules(_Event, State = #state{
         _ ->
             {next_state, create_permissions, State, 0}
     end.
-
-vm_log(#state{test_pid = {_,_}}, _)  ->
-    ok;
-
-vm_log(#state{uuid = UUID}, M)  ->
-    sniffle_vm:log(UUID, M).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -267,7 +264,7 @@ get_package(_Event, State = #state{
                                package_name = PackageName
                               }) ->
     lager:info("[create] Fetching package: ~p", [PackageName]),
-    vm_log(State, <<"Fetching package ", PackageName/binary>>),
+    vm_log(State, info, <<"Fetching package ", PackageName/binary>>),
     sniffle_vm:state(UUID, <<"fetching_package">>),
     {ok, Package} = sniffle_package:get(PackageName),
     sniffle_vm:package(UUID, PackageName),
@@ -278,7 +275,7 @@ get_dataset(_Event, State = #state{
                                dataset_name = DatasetName
                               }) ->
     lager:info("[create] Fetching Dataset: ~p", [DatasetName]),
-    vm_log(State, <<"Fetching dataset ", DatasetName/binary>>),
+    vm_log(State, info, <<"Fetching dataset ", DatasetName/binary>>),
     sniffle_vm:state(UUID, <<"fetching_dataset">>),
     {ok, Dataset} = sniffle_dataset:get(DatasetName),
     sniffle_vm:dataset(UUID, DatasetName),
@@ -297,15 +294,14 @@ callbacks(_Event, State = #state{
                                  package = Package1,
                                  config = Config1}, 0}.
 
-get_networks(_event, State = #state{retry = R, max_retries = Max, uuid=UUID})
+get_networks(_event, State = #state{retry = R, max_retries = Max})
   when R > Max ->
     lager:error("[create] Failed after too many retries: ~p > ~p.",
                 [R, Max]),
-    sniffle_vm:state(UUID, <<"failed">>),
     BR = integer_to_binary(R),
     BMax= integer_to_binary(Max),
-    vm_log(State, <<"Failed after too many retries: ", BR/binary, " > ",
-                    BMax/binary>>),
+    vm_log(State, error, <<"Failed after too many retries: ", BR/binary, " > ",
+                           BMax/binary>>),
     {stop, failed, State};
 
 get_networks(_Event, State = #state{config = Config, retry = Try}) ->
@@ -320,7 +316,8 @@ get_networks(_Event, State = #state{config = Config, retry = Try}) ->
                                               end, Rs2),
                               {Name, Rs3}
                       end, Nets),
-    {next_state, get_server, State#state{nets = Nets1, retry = Try + 1}, 0}.
+    {next_state, get_server,
+     State#state{nets = Nets1, retry = Try + 1, log_cache = []}, 0}.
 
 get_server(_Event, State = #state{
                               dataset = Dataset,
@@ -354,22 +351,34 @@ get_server(_Event, State = #state{
             Hypervisors1 = eplugin:fold('create:hypervisor_select', Hypervisors),
             Hypervisors2 = lists:reverse(lists:sort(Hypervisors1)),
             lager:debug("[create] Hypervisors found: ~p", [Hypervisors2]),
-            case test_hypervisors(UUID, Hypervisors2, Nets) of
-                {ok, HypervisorID, H, Nets1} ->
+            case {Hypervisors2, test_hypervisors(UUID, Hypervisors2, Nets)} of
+                {_, {ok, HypervisorID, H, Nets1}} ->
                     RamB = list_to_binary(integer_to_list(Ram)),
-                    vm_log(State, <<"Assigning memory ", RamB/binary>>),
-                    vm_log(State, <<"Deploying on hypervisor ", HypervisorID/binary>>),
+                    S1 = add_log(State, info, <<"Assigning memory ", RamB/binary>>),
+                    S2 = add_log(S1, info, <<"Deploying on hypervisor ", HypervisorID/binary>>),
                     eplugin:call('create:handoff', UUID, HypervisorID),
                     {next_state, get_ips,
-                     State#state{hypervisor = H,
-                                 nets = Nets1}, 0};
-                _ ->
-                    lager:warning("[create] Cound not find hypervisor."),
-                    do_retry(State)
+                     S2#state{hypervisor = H, nets = Nets1}, 0};
+                {[], _} ->
+                    S1 = warn(State,
+                              "Could not find Hypervisors matching rules.",
+                              "[create] Cound not find hypervisor for "
+                              "rules: ~p.", [Conditions]),
+                    do_retry(S1);
+                {Hvs, EH} ->
+                    S1 = warn(State,
+                              "cloud not lock hypervisor.",
+                              "[create] Cound claim a lock on any of "
+                              "the provided hypervisors: ~p -> ~p",
+                              [Hvs, EH]),
+                    do_retry(S1)
             end;
-        _ ->
-            lager:warning("[create] Cound not cace user."),
-            do_retry(State)
+        EC ->
+            S1 = warn(State,
+                      "Cound not cache user.",
+                      "[create] Cound lot cache user: ~p -> ~p",
+                      [Creator, EC]),
+            do_retry(S1)
     end.
 
 get_ips(_Event, State = #state{nets = Nets,
@@ -380,10 +389,12 @@ get_ips(_Event, State = #state{nets = Nets,
     Nics0 = ft_dataset:networks(Dataset),
     case update_nics(UUID, Nics0, Config, Nets, State) of
         {error, E, Mapping} ->
-            lager:error("[create] Failed to get ips: ~p", [E]),
+            S1 = warn(State,
+                      "Could not get IP's.",
+                      "[create] Failed to get ips: ~p with mapping: ~p",
+                      [E, Mapping]),
             [sniffle_iprange:release_ip(Range, IP) || {Range, IP} <- Mapping],
-            lager:warning("[create] Could not map networks."),
-            do_retry(State);
+            do_retry(S1);
         {Nics1, Mapping} ->
             [sniffle_vm:add_network_map(UUID, IP, Range)
              || {Range, IP} <- Mapping],
@@ -529,10 +540,14 @@ terminate(_Reason, StateName, #state{test_pid={Pid, Ref}}) ->
     Pid ! {Ref, {failed, StateName}},
     ok;
 
-terminate(_Reason, StateName, #state{uuid=UUID}) ->
+terminate(Reason, StateName, State = #state{uuid = UUID, log_cache = C}) ->
     eplugin:call('create:fail', UUID, StateName),
-    StateBin = list_to_binary(atom_to_list(StateName)),
-    sniffle_vm:state(UUID, <<"failed-", StateBin/binary>>),
+    warn(State,
+         "Creation failed.",
+         "Hypervisor creation failed in state ~p for reason ~p",
+         [Reason, StateName]),
+    [vm_log(State, Type, Msg) || {Type, Msg} <- lists:reverse(C)],
+    sniffle_vm:state(UUID, <<"failed">>),
     ok.
 
 %%--------------------------------------------------------------------
@@ -662,13 +677,13 @@ update_nics(UUID, Nics, Config, Nets, State) ->
           (K, Nic, {NicsF, Mappings}) ->
               {ok, Name} = jsxd:get(<<"name">>, Nic),
               {ok, NicTag} = jsxd:get(Name, Nets),
-              vm_log(State, <<"Fetching network ", NicTag/binary, " for NIC ", Name/binary>>),
+              vm_log(State, info, <<"Fetching network ", NicTag/binary, " for NIC ", Name/binary>>),
               case sniffle_iprange:claim_ip(NicTag) of
                   {ok, {Tag, IP, Net, Gw, VLAN}} ->
                       IPb = ft_iprange:to_bin(IP),
                       Netb = ft_iprange:to_bin(Net),
                       GWb = ft_iprange:to_bin(Gw),
-                      vm_log(State,
+                      vm_log(State, info,
                              <<"Assigning IP ", IPb/binary,
                                " netmask ", Netb/binary,
                                " gateway ", GWb/binary,
@@ -703,3 +718,41 @@ do_retry(State = #state{test_pid = undefined,
 
 do_retry(State) ->
     {stop, error, State}.
+
+vm_log(#state{test_pid = {_,_}}, _)  ->
+    ok;
+
+vm_log(#state{uuid = UUID}, M)  ->
+    sniffle_vm:log(UUID, M).
+
+vm_log(#state{test_pid = {_,_}}, _, _)  ->
+    ok;
+
+vm_log(S, T, M) when is_list(M) ->
+    vm_log(S, T, list_to_binary(M));
+
+vm_log(State, info, M)  ->
+    vm_log(State, <<"[info] ", M/binary>>);
+
+vm_log(State, warning, M)  ->
+    vm_log(State, <<"[warning] ", M/binary>>);
+
+vm_log(State, error, M)  ->
+    vm_log(State, <<"[error] ", M/binary>>);
+
+vm_log(State, _, M)  ->
+    vm_log(State, M).
+
+add_log(State = #state{log_cache = C}, Type, Msg) ->
+    State#state{log_cache = [{Type, Msg} | C]}.
+
+add_log(State = #state{log_cache = C}, Type, Msg, EID) ->
+    Msg1 = io_lib:format("~s Please see thw warning log for further details"
+                         "the error id ~s will identify the entry.",
+                         [Msg, EID]),
+    State#state{log_cache = [{Type, Msg1} | C]}.
+
+warn(State, Log, S, Fmt) ->
+    EID = uuid:uuid4s(),
+    lager:warning("[~s] " ++ S, [EID] ++ Fmt),
+    add_log(State, error, Log, EID).
