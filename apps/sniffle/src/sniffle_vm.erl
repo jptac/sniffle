@@ -704,6 +704,8 @@ delete(Vm) ->
     end.
 
 finish_delete(Vm) ->
+    {ok, V} = ?MODULE:get(Vm),
+    [do_delete_backup(Vm, V, BID) || {BID, _} <- ?S:backups(V)],
     sniffle_vm:unregister(Vm),
     libhowl:send(Vm, [{<<"event">>, <<"delete">>}]),
     libhowl:send(<<"command">>,
