@@ -120,7 +120,7 @@ store(Vm) ->
                      || {B, _} <- Bs],
                     S1 = [{UUID, delete} || {UUID, _ } <- ?S:snapshots(V)],
                     set_snapshot(Vm, S1),
-                    hypervisor(Vm, delete),
+                    hypervisor(Vm, <<>>),
                     {Host, Port} = get_hypervisor(V),
                     libchunter:delete_machine(Host, Port, Vm);
                 false ->
@@ -144,7 +144,7 @@ restore(Vm, BID, Hypervisor) ->
     case sniffle_vm:get(Vm) of
         {ok, V} ->
             case ?S:hypervisor(V) of
-                undefined ->
+                <<>> ->
                     {Server, Port} = get_hypervisor(Hypervisor),
                     case jsxd:get([BID, <<"xml">>], true, ?S:backups(V)) of
                         true ->
@@ -468,8 +468,7 @@ primary_nic(Vm, Mac) ->
             NicMap = make_nic_map(V),
             case jsxd:get(Mac, NicMap) of
                 {ok, _Idx}  ->
-                    H = ?S:hypervisor(V),
-                    {Server, Port} = get_hypervisor(H),
+                    {Server, Port} = get_hypervisor(V),
                     libchunter:ping(Server, Port),
                     case ?S:state(V) of
                         <<"stopped">> ->
@@ -676,6 +675,8 @@ delete(Vm) ->
         {ok, V} ->
             case {?S:hypervisor(V), ?S:state(V)} of
                 {undefined, _} ->
+                    finish_delete(Vm);
+                {<<>>, _} ->
                     finish_delete(Vm);
                 {<<"pooled">>, _} ->
                     finish_delete(Vm);
