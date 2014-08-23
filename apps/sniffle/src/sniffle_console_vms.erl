@@ -61,10 +61,11 @@ command(text, ["delete", UUID]) ->
 command(json, ["get", UUID]) ->
     case sniffle_vm:get(list_to_binary(UUID)) of
         {ok, VM} ->
+            JSON = ?T:to_json(VM),
             sniffle_console:pp_json(
               jsxd:thread([{select, [<<"hypervisor">>, <<"state">>]},
-                           {merge, jsxd:get(<<"config">>, [], VM)}],
-                          ?T:to_json(VM))),
+                           {merge, jsxd:get(<<"config">>, [], JSON)}],
+                          JSON)),
             ok;
         _ ->
             sniffle_console:pp_json([]),

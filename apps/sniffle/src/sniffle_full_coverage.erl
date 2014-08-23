@@ -1,7 +1,6 @@
 -module(sniffle_full_coverage).
 
 -include("sniffle.hrl").
--include_lib("fifo_dt/include/ft.hrl").
 
 -behaviour(riak_core_coverage_fsm).
 
@@ -9,13 +8,21 @@
          init/2,
          process_results/2,
          finish/2,
-         start/3
+         list/3, raw/3, raw_img/3
         ]).
 
 -record(state, {replies, r, reqid, from, reqs, raw=false}).
 
-start(VNodeMaster, NodeCheckService, {list, Requirements, true}) ->
-    start(VNodeMaster, NodeCheckService, {list, Requirements, true, false});
+-spec raw(atom(), atom(), [fifo:matcher()]) -> {ok, [{integer(), ft_obj:obj()}]}.
+raw(VNodeMaster, NodeCheckService, Requirements) ->
+    start(VNodeMaster, NodeCheckService, {list, Requirements, true, true}).
+
+-spec raw_img(atom(), atom(), binary()) -> {ok, [{integer(), ft_obj:obj()}]}.
+raw_img(VNodeMaster, NodeCheckService, Requirements) ->
+    start(VNodeMaster, NodeCheckService, {list, Requirements, true, true}).
+
+list(VNodeMaster, NodeCheckService, Requirements) ->
+    start(VNodeMaster, NodeCheckService, {list, Requirements, true, false}).
 
 start(VNodeMaster, NodeCheckService, Request = {list, Requirements, true, _}) ->
     ReqID = mk_reqid(),

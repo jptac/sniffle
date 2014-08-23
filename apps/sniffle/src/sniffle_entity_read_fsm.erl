@@ -4,7 +4,6 @@
 -module(sniffle_entity_read_fsm).
 -behavior(gen_fsm).
 -include("sniffle.hrl").
--include_lib("fifo_dt/include/ft.hrl").
 
 %% API
 -export([start_link/6, start/2, start/3, start/4]).
@@ -231,7 +230,7 @@ terminate(_Reason, _SN, _SD) ->
 %% @pure
 %%
 %% @doc Given a list of `Replies' return the merged value.
--spec merge([vnode_reply()]) -> ft_obj() | not_found.
+-spec merge([vnode_reply()]) -> fifo:obj() | not_found.
 merge(Replies) ->
     Objs = [Obj || {_,Obj} <- Replies],
     ft_obj:merge(sniffle_entity_read_fsm, Objs).
@@ -241,31 +240,10 @@ merge(Replies) ->
 %% @doc Reconcile conflicts among conflicting values.
 -spec reconcile([A :: statebox:statebox()]) -> A :: statebox:statebox().
 
-reconcile([V = #?HYPERVISOR{} | Vs]) ->
-    reconcile(ft_hypervisor, Vs, V);
+reconcile([V | Vs]) ->
+    reconcile(fifo_dt:type(V), Vs, V).
 
-reconcile([V = #?GROUPING{} | Vs]) ->
-    reconcile(ft_grouping, Vs, V);
-
-reconcile([V = #?NETWORK{} | Vs]) ->
-    reconcile(ft_network, Vs, V);
-
-reconcile([V = #?DATASET{} | Vs]) ->
-    reconcile(ft_dataset, Vs, V);
-
-reconcile([V = #?PACKAGE{} | Vs]) ->
-    reconcile(ft_package, Vs, V);
-
-reconcile([V = #?DTRACE{} | Vs]) ->
-    reconcile(ft_dtrace, Vs, V);
-
-reconcile([V = #?IPRANGE{} | Vs]) ->
-    reconcile(ft_iprange, Vs, V);
-
-reconcile([V = #?VM{} | Vs]) ->
-    reconcile(ft_vm, Vs, V).
-
-reconcile(M, [H | R], Acc) ->
+reconcile(M, [H | R], Acc) when M /= undefined ->
     reconcile(M, R, M:merge(Acc, H));
 reconcile(_M, _, Acc) ->
     Acc.
@@ -285,7 +263,7 @@ different(A) -> fun(B) -> not ft_obj:equal(A,B) end.
 %% @impure
 %%
 %% @doc Repair any vnodes that do not have the correct object.
--spec repair(atom(), string(), ft_obj(), [vnode_reply()]) -> io.
+-spec repair(atom(), string(), fifo:obj(), [vnode_reply()]) -> io.
 repair(_, _, _, []) -> io;
 
 repair(VNode, StatName, MObj, [{IdxNode,Obj}|T]) ->

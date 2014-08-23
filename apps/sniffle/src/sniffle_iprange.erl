@@ -42,20 +42,25 @@
 
 -define(MAX_TRIES, 3).
 
+-spec wipe(fifo:iprange_id()) -> ok.
+
 wipe(UUID) ->
     sniffle_coverage:start(?MASTER, ?SERVICE, {wipe, UUID}).
+
+-spec sync_repair(fifo:iprange_id(), ft_obj:obj()) -> ok.
 
 sync_repair(UUID, Obj) ->
     do_write(UUID, sync_repair, Obj).
 
+-spec list_() -> {ok, [ft_obj:obj()]}.
+
 list_() ->
-    {ok, Res} = sniffle_full_coverage:start(
-                  ?MASTER, ?SERVICE, {list, [], true, true}),
+    {ok, Res} = sniffle_full_coverage:raw(?MASTER, ?SERVICE, []),
     Res1 = [R || {_, R} <- Res],
     {ok,  Res1}.
 
 -spec lookup(IPRange::binary()) ->
-                    not_found | {ok, IPR::fifo:object()} | {error, timeout}.
+                    not_found | {ok, IPR::fifo:iprange()} | {error, timeout}.
 lookup(Name) when
       is_binary(Name) ->
     {ok, Res} = sniffle_coverage:start(
@@ -74,7 +79,7 @@ lookup(Name) when
              Last::integer(),
              Tag::binary(),
              Vlan::integer()) ->
-                    duplicate | {error, timeout} | {ok, UUID::fifo:uuid()}.
+                    duplicate | {error, timeout} | {ok, UUID::fifo:iprange_id()}.
 create(Iprange, Network, Gateway, Netmask, First, Last, Tag, Vlan) when
       is_binary(Iprange) ->
     UUID = list_to_binary(uuid:to_string(uuid:uuid4())),
@@ -92,7 +97,7 @@ delete(Iprange) ->
     do_write(Iprange, delete).
 
 -spec get(Iprange::fifo:iprange_id()) ->
-                 not_found | {ok, IPR::fifo:object()} | {error, timeout}.
+                 not_found | {ok, IPR::fifo:iprange()} | {error, timeout}.
 get(Iprange) ->
     sniffle_entity_read_fsm:start({?VNODE, ?SERVICE}, get, Iprange).
 
@@ -105,11 +110,13 @@ list() ->
 %% @doc Lists all vm's and fiters by a given matcher set.
 %% @end
 %%--------------------------------------------------------------------
--spec list([fifo:matcher()], boolean()) -> {error, timeout} | {ok, [fifo:uuid()]}.
+-spec list([fifo:matcher()], boolean()) ->
+                  {error, timeout} |
+                  {ok, [{Rating::integer(), Value::fifo:iprange()}] |
+                   [{Rating::integer(), Value::fifo:iprange_id()}]}.
 
 list(Requirements, true) ->
-    {ok, Res} = sniffle_full_coverage:start(
-                  ?MASTER, ?SERVICE, {list, Requirements, true}),
+    {ok, Res} = sniffle_full_coverage:list(?MASTER, ?SERVICE, Requirements),
     Res1 = lists:sort(rankmatcher:apply_scales(Res)),
     {ok,  Res1};
 
@@ -128,10 +135,10 @@ release_ip(Iprange, IP) ->
 -spec claim_ip(Iprange::fifo:iprange_id()) ->
                       not_found |
                       {ok, {Tag::binary(),
-                            IP::pos_integer(),
-                            Netmask::pos_integer(),
-                            Gateway::pos_integer(),
-                            VLAN::pos_integer()}} |
+                            IP::non_neg_integer(),
+                            Netmask::non_neg_integer(),
+                            Gateway::non_neg_integer(),
+                            VLAN::non_neg_integer()}} |
                       {error, failed} |
                       {'error','no_servers'}.
 claim_ip(Iprange) ->

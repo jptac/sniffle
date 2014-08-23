@@ -32,8 +32,7 @@ sync_repair(<<Img:36/binary, Idx:32/integer>>, Obj) ->
     do_write({Img, Idx}, sync_repair, Obj).
 
 list_(Base) ->
-    {ok, Res} = sniffle_full_coverage:start(
-                  ?MASTER, ?SERVICE, {list, Base, true, true}),
+    {ok, Res} = sniffle_full_coverage:raw_img(?MASTER, ?SERVICE, Base),
     Res1 = [R || {_, R} <- Res],
     {ok,  Res1}.
 

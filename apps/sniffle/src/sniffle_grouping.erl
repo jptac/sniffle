@@ -206,9 +206,7 @@ list() ->
     sniffle_coverage:start(?MASTER, ?SERVICE, list).
 
 list_() ->
-    {ok, Res} = sniffle_full_coverage:start(
-                  sniffle_grouping_vnode_master, sniffle_grouping,
-                  {list, [], true, true}),
+    {ok, Res} = sniffle_full_coverage:raw(?MASTER, ?SERVICE, []),
     Res1 = [R || {_, R} <- Res],
     {ok,  Res1}.
 
@@ -233,8 +231,7 @@ metadata_set(Grouping, Attributes) ->
 %%--------------------------------------------------------------------
 
 list(Requirements, true) ->
-    {ok, Res} = sniffle_full_coverage:start(
-                  ?MASTER, ?SERVICE, {list, Requirements, true}),
+    {ok, Res} = sniffle_full_coverage:list(?MASTER, ?SERVICE, Requirements),
     Res1 = lists:sort(rankmatcher:apply_scales(Res)),
     {ok,  Res1};
 

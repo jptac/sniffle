@@ -5,7 +5,6 @@
 -endif.
 
 -include("sniffle.hrl").
--include_lib("fifo_dt/include/ft.hrl").
 
 -define(MASTER, sniffle_vm_vnode_master).
 -define(VNODE, sniffle_vm_vnode).
@@ -95,15 +94,17 @@
         {delete, parent} |
         xml.
 
+-spec wipe(fifo:vm_id()) -> ok.
+
 wipe(UUID) ->
     sniffle_coverage:start(?MASTER, ?SERVICE, {wipe, UUID}).
 
+-spec sync_repair(fifo:vm_id(), ft_obj:obj()) -> ok.
 sync_repair(UUID, Obj) ->
     do_write(UUID, sync_repair, Obj).
 
 list_() ->
-    {ok, Res} = sniffle_full_coverage:start(
-                  ?MASTER, ?SERVICE, {list, [], true, true}),
+    {ok, Res} = sniffle_full_coverage:raw(?MASTER, ?SERVICE, []),
     Res1 = [R || {_, R} <- Res],
     {ok,  Res1}.
 
@@ -419,7 +420,8 @@ add_nic(Vm, Network) ->
                                         jsxd:set(<<"vlan_id">>, VLAN, NicSpec1)
                                 end,
                             UR = [{<<"add_nics">>, [NicSpec2]}],
-                            ok = libchunter:update_machine(Server, Port, Vm, [], UR),
+                            ok = libchunter:update_machine(Server, Port, Vm,
+                                                           undefined, UR),
                             add_network_map(Vm, IP, IPRange);
                         E ->
                             lager:error("Could not get claim new IP: ~p for ~p ~p",
@@ -448,7 +450,8 @@ remove_nic(Vm, Mac) ->
                             {ok, IpStr} = jsxd:get([<<"networks">>, Idx, <<"ip">>], ?S:config(V)),
                             IP = ft_iprange:parse_bin(IpStr),
                             Ms = ?S:network_map(V),
-                            ok = libchunter:update_machine(Server, Port, Vm, [], UR),
+                            ok = libchunter:update_machine(Server, Port, Vm,
+                                                          undefined, UR),
                             remove_network_map(Vm, IP),
                             [{IP, Network}] = [ {IP1, Network} || {IP1, Network} <- Ms, IP1 =:= IP],
                             sniffle_iprange:release_ip(Network, IP);
@@ -473,7 +476,8 @@ primary_nic(Vm, Mac) ->
                     case ?S:state(V) of
                         <<"stopped">> ->
                             UR = [{<<"update_nics">>, [[{<<"mac">>, Mac}, {<<"primary">>, true}]]}],
-                            libchunter:update_machine(Server, Port, Vm, [], UR);
+                            libchunter:update_machine(Server, Port, Vm,
+                                                     undefined, UR);
                         _ ->
                             {error, not_stopped}
                     end;
@@ -489,7 +493,7 @@ primary_nic(Vm, Mac) ->
 %%   object.
 %% @end
 %%--------------------------------------------------------------------
--spec update(Vm::fifo:uuid(), Package::fifo:uuid(), Config::fifo:config()) ->
+-spec update(Vm::fifo:uuid(), Package::fifo:package_id(), Config::fifo:config()) ->
                     not_found | {error, timeout} | ok.
 update(Vm, Package, Config) ->
     case sniffle_vm:get(Vm) of
@@ -501,7 +505,8 @@ update(Vm, Package, Config) ->
             OrigPkg = ?S:package(V),
             case Package of
                 undefined ->
-                    libchunter:update_machine(Host, Port, Vm, [], Config);
+                    libchunter:update_machine(Host, Port, Vm,
+                                              undefined, Config);
                 _ ->
                     case sniffle_package:get(Package) of
                         {ok, P} ->
@@ -514,7 +519,8 @@ update(Vm, Package, Config) ->
                                     log(Vm, <<"Updating VM from package '",
                                               OrigPkg/binary, "' to '",
                                               Package/binary, "'.">>),
-                                    libchunter:update_machine(Host, Port, Vm, ft_package:to_json(P), Config);
+                                    libchunter:update_machine(Host, Port, Vm,
+                                                              P, Config);
                                 _ ->
                                     {error, not_enough_resources}
                             end;
@@ -630,7 +636,7 @@ dry_run(Package, Dataset, Config) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec get(Vm::fifo:uuid()) ->
-                 not_found | {error, timeout} | fifo:vm_config().
+                 not_found | {error, timeout} | fifo:vm().
 get(Vm) ->
     sniffle_entity_read_fsm:start({?VNODE, ?SERVICE}, get, Vm).
 
@@ -651,8 +657,7 @@ list() ->
 -spec list([fifo:matcher()], boolean()) -> {error, timeout} | {ok, [fifo:uuid()]}.
 
 list(Requirements, true) ->
-    {ok, Res} = sniffle_full_coverage:start(
-                  ?MASTER, ?SERVICE, {list, Requirements, true}),
+    {ok, Res} = sniffle_full_coverage:list(?MASTER, ?SERVICE, Requirements),
     Res1 = lists:sort(rankmatcher:apply_scales(Res)),
     {ok,  Res1};
 
@@ -975,16 +980,19 @@ do_write(VM, Op) ->
 do_write(VM, Op, Val) ->
     sniffle_entity_write_fsm:write({?VNODE, ?SERVICE}, VM, Op, Val).
 
-get_hypervisor(#?VM{}=V) ->
-    get_hypervisor(?S:hypervisor(V));
+get_hypervisor(V) ->
+    get_hypervisor(fifo_dt:type(V), V).
 
-get_hypervisor(#?HYPERVISOR{}=H) ->
+get_hypervisor(ft_vm, V) ->
+    get_hypervisor(undefined, ?S:hypervisor(V));
+
+get_hypervisor(ft_hypervisor, H) ->
     ft_hypervisor:endpoint(H);
 
-get_hypervisor(not_found) ->
+get_hypervisor(undefined, not_found) ->
     not_found;
 
-get_hypervisor(Hypervisor) ->
+get_hypervisor(undefined, Hypervisor) ->
     case sniffle_hypervisor:get(Hypervisor) of
         {ok, HypervisorObj} ->
             get_hypervisor(HypervisorObj);

@@ -49,20 +49,24 @@
 
 -define(MAX_TRIES, 3).
 
+-spec wipe(fifo:network_id()) ->
+                  ok.
 wipe(UUID) ->
     sniffle_coverage:start(?MASTER, ?SERVICE, {wipe, UUID}).
 
+-spec sync_repair(fifo:network_id(), ft_obj:obj()) ->
+                         ok.
 sync_repair(UUID, Obj) ->
     do_write(UUID, sync_repair, Obj).
 
+-spec list_() -> {ok, [fifo:obj()]}.
 list_() ->
-    {ok, Res} = sniffle_full_coverage:start(
-                  ?MASTER, ?SERVICE, {list, [], true, true}),
+    {ok, Res} = sniffle_full_coverage:raw(?MASTER, ?SERVICE, []),
     Res1 = [R || {_, R} <- Res],
     {ok,  Res1}.
 
 -spec lookup(Network::binary()) ->
-                    not_found | {ok, IPR::fifo:object()} | {error, timeout}.
+                    not_found | {ok, IPR::fifo:network()} | {error, timeout}.
 lookup(Name) when
       is_binary(Name) ->
     {ok, Res} = sniffle_coverage:start(
@@ -92,10 +96,12 @@ delete(Network) ->
     do_write(Network, delete).
 
 -spec get(Network::fifo:network_id()) ->
-                 not_found | {ok, IPR::fifo:object()} | {error, timeout}.
+                 not_found | {ok, IPR::fifo:network()} | {error, timeout}.
 get(Network) ->
     sniffle_entity_read_fsm:start({?VNODE, ?SERVICE}, get, Network).
 
+-spec add_iprange(fifo:network_id(), fifo:iprange_id()) ->
+                         ok | not_found | {error, timeout}.
 add_iprange(Network, IPRange) ->
     case sniffle_iprange:get(IPRange) of
         not_found ->
@@ -104,6 +110,8 @@ add_iprange(Network, IPRange) ->
             do_write(Network, add_iprange, IPRange)
     end.
 
+-spec remove_iprange(fifo:network_id(), fifo:iprange_id()) ->
+                         ok | not_found | {error, timeout}.
 remove_iprange(Network, IPRange) ->
     do_write(Network, remove_iprange, IPRange).
 
@@ -115,11 +123,13 @@ list() ->
 %% @doc Lists all vm's and fiters by a given matcher set.
 %% @end
 %%--------------------------------------------------------------------
--spec list([fifo:matcher()], boolean()) -> {error, timeout} | {ok, [fifo:uuid()]}.
+-spec list([fifo:matcher()], boolean()) ->
+                  {error, timeout} |
+                  {ok, [{integer(), fifo:network_id()}]
+                   | [{integer(), fifo:network()}]}.
 
 list(Requirements, true) ->
-    {ok, Res} = sniffle_full_coverage:start(
-                  ?MASTER, ?SERVICE, {list, Requirements, true}),
+    {ok, Res} = sniffle_full_coverage:list(?MASTER, ?SERVICE, Requirements),
     Res1 = lists:sort(rankmatcher:apply_scales(Res)),
     {ok,  Res1};
 
@@ -142,6 +152,15 @@ set(Network, Attribute, Value) ->
 set(Network, Attributes) ->
     do_write(Network, set, Attributes).
 
+-spec claim_ip(Iprange::fifo:network_id()) ->
+                      not_found |
+                      {ok, {Tag::binary(),
+                            IP::non_neg_integer(),
+                            Netmask::non_neg_integer(),
+                            Gateway::non_neg_integer(),
+                            VLAN::non_neg_integer()}} |
+                      {error, failed} |
+                      {'error','no_servers'}.
 
 claim_ip(UUID) ->
     claim_ip(UUID, []).

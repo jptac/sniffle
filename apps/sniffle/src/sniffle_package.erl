@@ -39,20 +39,22 @@
          add_requirement/2
         ]).
 
+-spec wipe(fifo:package_id()) -> ok.
 wipe(UUID) ->
     sniffle_coverage:start(?MASTER, ?SERVICE, {wipe, UUID}).
 
+-spec sync_repair(fifo:package_id(), ft_obj:obj()) -> ok.
 sync_repair(UUID, Obj) ->
     do_write(UUID, sync_repair, Obj).
 
+-spec list_() -> {ok, [ft_obj:obj()]}.
 list_() ->
-    {ok, Res} = sniffle_full_coverage:start(
-                  ?MASTER, ?SERVICE, {list, [], true, true}),
+    {ok, Res} = sniffle_full_coverage:raw(?MASTER, ?SERVICE, []),
     Res1 = [R || {_, R} <- Res],
     {ok,  Res1}.
 
 -spec lookup(Package::binary()) ->
-                    not_found | {ok, Pkg::fifo:object()} | {error, timeout}.
+                    not_found | {ok, Pkg::fifo:package()} | {error, timeout}.
 lookup(Package) ->
     {ok, Res} = sniffle_coverage:start(
                   ?MASTER, ?SERVICE, {lookup, Package}),
@@ -63,7 +65,7 @@ lookup(Package) ->
                 end, not_found, Res).
 
 -spec create(Package::binary()) ->
-                    duplicate | {error, timeout} | {ok, UUID::fifo:uuid()}.
+                    duplicate | {error, timeout} | {ok, UUID::fifo:package_id()}.
 create(Package) ->
     UUID = uuid:uuid4s(),
     case sniffle_package:lookup(Package) of
@@ -82,7 +84,7 @@ delete(Package) ->
     do_write(Package, delete).
 
 -spec get(Package::fifo:package_id()) ->
-                 not_found | {ok, Pkg::fifo:object()} | {error, timeout}.
+                 not_found | {ok, Pkg::fifo:package()} | {error, timeout}.
 get(Package) ->
     sniffle_entity_read_fsm:start({?VNODE, ?SERVICE}, get, Package).
 
@@ -95,11 +97,13 @@ list() ->
 %% @doc Lists all vm's and fiters by a given matcher set.
 %% @end
 %%--------------------------------------------------------------------
--spec list([fifo:matcher()], boolean()) -> {error, timeout} | {ok, [fifo:uuid()]}.
+-spec list([fifo:matcher()], boolean()) ->
+                  {error, timeout} |
+                  {ok, [{integer(), fifo:package_id()}] |
+                   [{integer(), fifo:package()}]}.
 
 list(Requirements, true) ->
-    {ok, Res} = sniffle_full_coverage:start(
-                  ?MASTER, ?SERVICE, {list, Requirements, true}),
+    {ok, Res} = sniffle_full_coverage:list(?MASTER, ?SERVICE, Requirements),
     Res1 = lists:sort(rankmatcher:apply_scales(Res)),
     {ok,  Res1};
 
