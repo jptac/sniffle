@@ -49,8 +49,8 @@ sync_repair(UUID, Obj) ->
     do_write(UUID, sync_repair, Obj).
 
 list_() ->
-    {ok, Res} = sniffle_full_coverage:start(
-                  ?MASTER, ?SERVICE, {list, [], true, true}),
+    {ok, Res} = sniffle_full_coverage:raw(
+                  ?MASTER, ?SERVICE, []),
     Res1 = [R || {_, R} <- Res],
     {ok,  Res1}.
 
@@ -91,8 +91,8 @@ list() ->
 -spec list([fifo:matcher()], boolean()) -> {error, timeout} | {ok, [fifo:uuid()]}.
 
 list(Requirements, true) ->
-    {ok, Res} = sniffle_full_coverage:start(
-                  ?MASTER, ?SERVICE, {list, Requirements, true}),
+    {ok, Res} = sniffle_full_coverage:list(
+                  ?MASTER, ?SERVICE, Requirements),
     Res1 = lists:sort(rankmatcher:apply_scales(Res)),
     {ok,  Res1};
 

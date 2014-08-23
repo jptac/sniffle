@@ -2,7 +2,6 @@
 
 -include("sniffle.hrl").
 -include_lib("riak_core/include/riak_core_vnode.hrl").
--include_lib("fifo_dt/include/ft.hrl").
 
 -export([init/5,
          is_empty/1,
@@ -21,10 +20,7 @@
 -ignore_xref([mkid/0, mkid/1, change/5]).
 
 hash_object(Key, Obj) ->
-    Obj1 = lists:sort(Obj),
-    Hash = term_to_binary(erlang:phash2({Key, Obj1})),
-    lager:debug("Hashing Key: ~p + ~p -> ~p", [Key, Obj1, Hash]),
-    Hash.
+    term_to_binary(erlang:phash2({Key, Obj})).
 
 mkid() ->
     mkid(node()).
@@ -107,7 +103,7 @@ fold(Fun, Acc0, Sender, State=#vstate{db=DB, bucket=Bucket}) ->
 put(Key, Obj, State) ->
     fifo_db:put(State#vstate.db, State#vstate.bucket, Key, Obj),
     riak_core_aae_vnode:update_hashtree(
-      State#vstate.service_bin, Key, ft_obj:vclock(Obj), State#vstate.hashtrees).
+      State#vstate.service_bin, Key, vc_bin(ft_obj:vclock(Obj)), State#vstate.hashtrees).
 
 change(UUID, Action, Vals, {ReqID, Coordinator} = ID,
        State=#vstate{state=Mod}) ->
@@ -297,7 +293,7 @@ handle_command({rehash, {_, UUID}}, _,
     case get(UUID, State) of
         {ok, Obj} ->
             riak_core_aae_vnode:update_hashtree(
-              ServiceBin, UUID, ft_obj:vclock(Obj), HT);
+              ServiceBin, UUID, vc_bin(ft_obj:vclock(Obj)), HT);
         _ ->
             %% Make sure hashtree isn't tracking deleted data
             riak_core_index_hashtree:delete({ServiceBin, UUID}, HT)
@@ -346,3 +342,6 @@ handle_info(_, State) ->
 load_obj({T, ID}, Mod, Obj) ->
     V = ft_obj:val(Obj),
     ft_obj:update(Mod:load({T-1, ID}, V), ID, Obj).
+
+vc_bin(VClock) ->
+    term_to_binary(lists:sort(VClock)).

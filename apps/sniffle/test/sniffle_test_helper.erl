@@ -4,7 +4,6 @@
 -include_lib("eqc/include/eqc.hrl").
 -include_lib("sniffle/include/sniffle.hrl").
 -include_lib("riak_core/include/riak_core_vnode.hrl").
--include_lib("fifo_dt/include/ft.hrl").
 
 -compile(export_all).
 
@@ -104,10 +103,8 @@ start_fake_read_fsm() ->
                         ReqID = id(),
                         R = M:C(dummy, ReqID, E),
                         Res = case R of
-                                  {ok, ReqID, _, #sniffle_obj{val=V}} ->
-                                      {ok, V};
                                   {ok, ReqID, _, O} ->
-                                      O;
+                                      mk_reply(O);
                                   Err ->
                                       Err
                               end,
@@ -137,10 +134,8 @@ start_fake_write_fsm() ->
                         ReqID = id(),
                         R = M:C(dummy, ReqID, E),
                         Res = case R of
-                                  {ok, ReqID, _, #sniffle_obj{val=V}} ->
-                                      {ok, V};
                                   {ok, ReqID, _, O} ->
-                                      O;
+                                      mk_reply(O);
                                   {ok, _} ->
                                       ok;
                                   Err ->
@@ -153,10 +148,8 @@ start_fake_write_fsm() ->
                         ReqID = id(),
                         R = M:C(dummy, ReqID, E, Val),
                         Res = case R of
-                                  {ok, ReqID, _, #sniffle_obj{val=V}} ->
-                                      {ok, V};
                                   {ok, ReqID, _, O} ->
-                                      O;
+                                      mk_reply(O);
                                   {ok, _} ->
                                       ok;
                                   {ok, _, O} ->
@@ -190,7 +183,7 @@ start_fake_coverage(Pid) ->
                         sniffle_full_coverage:start(A, B, {C, Req, Full});
                     (A, B, {C, Req, Full, false}) ->
                         {ok, R} = sniffle_full_coverage:start(A, B, {C, Req, Full}),
-                        {ok, [U || #sniffle_obj{val = U} <- R]};
+                        {ok, [ft_obj:val(O) || O <- R]};
                     (_, O, {C, Req, Full}) ->
                         M = list_to_atom(atom_to_list(O) ++ "_vnode"),
                         Ref = make_ref(),
@@ -351,4 +344,13 @@ mock_vnode_loop(M, S) ->
             mock_vnode_loop(M, S)
     end.
 
+mk_reply(O) ->
+    case ft_obj:is_a(O) of
+        true ->
+            {ok, ft_obj:val(O)};
+        _ ->
+            O
+    end.
+
 -endif.
+

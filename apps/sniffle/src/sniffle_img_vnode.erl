@@ -4,7 +4,6 @@
 -include("sniffle.hrl").
 -include_lib("riak_core/include/riak_core_vnode.hrl").
 -include("bitcask.hrl").
--include_lib("fifo_dt/include/ft.hrl").
 
 
 -export([
@@ -207,15 +206,13 @@ handle_command(?FOLD_REQ{foldfun=Fun, acc0=Acc0}, _Sender, State) ->
 handle_command({get, ReqID, ImgAndIdx}, _Sender, State) ->
     Res = case get(State#vstate.db, ImgAndIdx) of
               {ok, In} ->
-                  R = ft_obj:update(In),
-                  V = ft_obj:val(R),
-                  case statebox:is_statebox(V) of
-                      true ->
-                          R1 = R#ft_obj{val=statebox:value(V)},
+                  case ft_obj:needs_update(In) of
+                      true  ->
+                          R1 = ft_obj:update(In),
                           put(State#vstate.db, ImgAndIdx, R1),
                           R1;
-                      false  ->
-                          R
+                      false ->
+                          In
                   end;
               not_found ->
                   not_found
