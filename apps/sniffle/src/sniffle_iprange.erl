@@ -15,8 +15,6 @@
          claim_ip/1,
          full/1,
          release_ip/2,
-         set/3,
-         set/2,
          wipe/1,
          sync_repair/2,
          list_/0
@@ -143,19 +141,6 @@ release_ip(Iprange, IP) ->
                       {'error','no_servers'}.
 claim_ip(Iprange) ->
     claim_ip(Iprange, 0).
-
--spec set(Iprange::fifo:iprange_id(),
-          Attribute::fifo:keys(),
-          Value::fifo:value()) ->
-                 ok | {error, timeout}.
-set(Iprange, Attribute, Value) ->
-    set(Iprange, [{Attribute, Value}]).
-
--spec set(Iprange::fifo:iprange_id(),
-          Attributes::fifo:attr_list()) ->
-                 ok | {error, timeout}.
-set(Iprange, Attributes) ->
-    do_write(Iprange, set, Attributes).
 
 ?SET(name).
 ?SET(uuid).

@@ -19,8 +19,7 @@
          add_grouping/2,
          remove_grouping/2,
          list_/0,
-         metadata_set/2,
-         metadata_set/3
+         metadata_set/2
         ]).
 
 -ignore_xref([
@@ -209,14 +208,6 @@ list_() ->
     {ok, Res} = sniffle_full_coverage:raw(?MASTER, ?SERVICE, []),
     Res1 = [R || {_, R} <- Res],
     {ok,  Res1}.
-
--spec metadata_set(Grouping::fifo:uuid(),
-                   Attirbute::fifo:key(), Value::fifo:value()) ->
-                          not_found |
-                          {error, timeout} |
-                          ok.
-metadata_set(Grouping, Attribute, Value) ->
-    metadata_set(Grouping, [{Attribute, Value}]).
 
 -spec metadata_set(Grouping::fifo:uuid(), Attirbutes::fifo:attr_list()) ->
                  not_found |
