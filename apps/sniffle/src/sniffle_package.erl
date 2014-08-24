@@ -11,7 +11,6 @@
          get/1,
          lookup/1,
          list/0, list/2,
-         set/2, set/3,
          wipe/1,
          sync_repair/2,
          list_/0
@@ -112,20 +111,6 @@ list(Requirements, false) ->
                   ?MASTER, ?SERVICE, {list, Requirements}),
     Res1 = rankmatcher:apply_scales(Res),
     {ok,  lists:sort(Res1)}.
-
--spec set(Package::fifo:package_id(),
-          Attribute::fifo:keys(),
-          Value::fifo:value()) ->
-                 ok | {error, timeout}.
-set(Package, Attribute, Value) ->
-    set(Package, [{Attribute, Value}]).
-
--spec set(Package::fifo:package_id(),
-          Attributes::fifo:attr_list()) ->
-                 ok | {error, timeout}.
-set(Package, Attributes) ->
-    do_write(Package, set, Attributes).
-
 
 ?SET(set_metadata).
 ?SET(blocksize).

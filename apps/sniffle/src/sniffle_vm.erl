@@ -39,8 +39,6 @@
          service_clear/2,
          service_disable/2,
          service_enable/2,
-         set/2,
-         set/3,
          set_owner/2,
          snapshot/2,
          start/1,
@@ -921,25 +919,6 @@ commit_snapshot_rollback(Vm, UUID) ->
         E ->
             E
     end.
-
-%%--------------------------------------------------------------------
-%% @doc Sets a attribute on the VM object.
-%% @end
-%%--------------------------------------------------------------------
--spec set(Vm::fifo:uuid(), Attribute::fifo:keys(), Value::fifo:value()|delete) ->
-                 {error, timeout} | not_found | ok.
-set(Vm, Attribute, Value) ->
-    do_write(Vm, set, [{Attribute, Value}]).
-
-
-%%--------------------------------------------------------------------
-%% @doc Sets multiple attributes on the VM object.
-%% @end
-%%--------------------------------------------------------------------
--spec set(Vm::fifo:uuid(), Attributes::fifo:attr_list()) ->
-                 {error, timeout} | not_found | ok.
-set(Vm, Attributes) ->
-    do_write(Vm, set, Attributes).
 
 add_network_map(UUID, IP, Net) ->
     do_write(UUID, set_network_map, [IP, Net]).

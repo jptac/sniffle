@@ -12,8 +12,6 @@
     get/1,
     list/0,
     list/2,
-    set/3,
-    set/2,
     status/0,
     service/3,
     update/1,
@@ -68,7 +66,8 @@ register(Hypervisor, IP, Port) ->
         not_found ->
             do_write(Hypervisor, register, [IP, Port]);
         {ok, _UserObj} ->
-            set(Hypervisor, [{<<"host">>, IP}, {<<"port">>, Port}]),
+            host(Hypervisor, IP),
+            port(Hypervisor, Port),
             duplicate
     end.
 
@@ -197,19 +196,6 @@ list(Requirements, false) ->
                   ?MASTER, ?SERVICE, {list, Requirements}),
     Res1 = rankmatcher:apply_scales(Res),
     {ok,  lists:sort(Res1)}.
-
--spec set(Hypervisor::fifo:hypervisor_id(),
-          Attribute::fifo:keys(),
-          Value::fifo:value()) ->
-                 ok | {error, timeout}.
-set(Hypervisor, Attribute, Value) ->
-    set(Hypervisor, [{Attribute, Value}]).
-
--spec set(Hypervisor::fifo:hypervisor_id(),
-          Attributes::fifo:attr_list()) ->
-                 ok | {error, timeout}.
-set(Hypervisor, Attributes) ->
-    do_write(Hypervisor, set, Attributes).
 
 %%%===================================================================
 %%% Internal Functions
