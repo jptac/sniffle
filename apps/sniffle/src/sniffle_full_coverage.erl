@@ -129,13 +129,5 @@ merge([{_Score1, V} | R], _Score2, Vs) when _Score1 =/= _Score2->
     merge(R, recalculate, [V | Vs]).
 
 merge_obj(Vs) ->
-    case ft_obj:merge(sniffle_entity_read_fsm, Vs) of
-        O ->
-            V = ft_obj:val(O),
-            case statebox:is_statebox(V) of
-                true ->
-                    statebox:value(V);
-                false ->
-                    V
-            end
-    end.
+    O = ft_obj:merge(sniffle_entity_read_fsm, Vs),
+    ft_obj:val(O).
