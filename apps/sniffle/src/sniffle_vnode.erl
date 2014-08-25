@@ -341,7 +341,12 @@ handle_info(_, State) ->
 %% are ensured to overwrite load changes.
 load_obj({T, ID}, Mod, Obj) ->
     V = ft_obj:val(Obj),
-    ft_obj:update(Mod:load({T-1, ID}, V), ID, Obj).
+    case Mod:load({T-1, ID}, V) of
+        V1 when V1 /= V ->
+            ft_obj:update(V1, ID, Obj);
+        _ ->
+            ft_obj:update(Obj)
+    end.
 
 vc_bin(VClock) ->
     term_to_binary(lists:sort(VClock)).
