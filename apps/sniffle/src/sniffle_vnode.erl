@@ -20,10 +20,7 @@
 -ignore_xref([mkid/0, mkid/1, change/5]).
 
 hash_object(Key, Obj) ->
-    Obj1 = lists:sort(Obj),
-    Hash = term_to_binary(erlang:phash2({Key, Obj1})),
-    lager:debug("Hashing Key: ~p + ~p -> ~p", [Key, Obj1, Hash]),
-    Hash.
+    term_to_binary(erlang:phash2({Key, Obj})).
 
 mkid() ->
     mkid(node()).
@@ -49,9 +46,9 @@ init(Partition, Bucket, Service, VNode, StateMod) ->
      [FoldWorkerPool]}.
 
 list(Getter, Requirements, Sender, State=#vstate{state=StateMod}) ->
-    ID = mkid(list),
+    ID = mkid(),
     FoldFn = fun (Key, E, C) ->
-                     E1 = E#sniffle_obj{val=StateMod:load(ID, E#sniffle_obj.val)},
+                     E1 = load_obj(ID, StateMod, E),
                      case rankmatcher:match(E1, Getter, Requirements) of
                          false ->
                              C;
@@ -74,9 +71,9 @@ list_keys(Sender, State=#vstate{db=DB, bucket=Bucket}) ->
     {async, {fold, AsyncWork, FinishFun}, Sender, State}.
 
 list_keys(Getter, Requirements, Sender, State=#vstate{state=StateMod}) ->
-    ID = mkid(list),
+    ID = mkid(),
     FoldFn = fun (Key, E, C) ->
-                     E1 = E#sniffle_obj{val=StateMod:load(ID, E#sniffle_obj.val)},
+                     E1 = load_obj(ID, StateMod, E),
                      case rankmatcher:match(E1, Getter, Requirements) of
                          false ->
                              C;
@@ -86,9 +83,11 @@ list_keys(Getter, Requirements, Sender, State=#vstate{state=StateMod}) ->
              end,
     fold(FoldFn, [], Sender, State).
 
-fold_with_bucket(Fun, Acc0, Sender, State) ->
-    FoldFn = fun(K, V, O) ->
-                     Fun({State#vstate.bucket, K}, V, O)
+fold_with_bucket(Fun, Acc0, Sender, State=#vstate{state=StateMod}) ->
+    ID = mkid(),
+    FoldFn = fun(K, E, O) ->
+                     E1 = load_obj(ID, StateMod, E),
+                     Fun({State#vstate.bucket, K}, E1, O)
              end,
     fold(FoldFn, Acc0, Sender, State).
 
@@ -104,20 +103,21 @@ fold(Fun, Acc0, Sender, State=#vstate{db=DB, bucket=Bucket}) ->
 put(Key, Obj, State) ->
     fifo_db:put(State#vstate.db, State#vstate.bucket, Key, Obj),
     riak_core_aae_vnode:update_hashtree(
-      State#vstate.service_bin, Key, Obj#sniffle_obj.vclock, State#vstate.hashtrees).
+      State#vstate.service_bin, Key, vc_bin(ft_obj:vclock(Obj)), State#vstate.hashtrees).
 
 change(UUID, Action, Vals, {ReqID, Coordinator} = ID,
        State=#vstate{state=Mod}) ->
     case fifo_db:get(State#vstate.db, State#vstate.bucket, UUID) of
-        {ok, #sniffle_obj{val=H0} = O} ->
-            H1 = Mod:load(ID, H0),
+        {ok, O} ->
+            O1 = load_obj(ID, Mod, O),
+            H1 = ft_obj:val(O1),
             H2 = case Vals of
                      [Val] ->
                          Mod:Action(ID, Val, H1);
                      [Val1, Val2] ->
                          Mod:Action(ID, Val1, Val2, H1)
                  end,
-            Obj = sniffle_obj:update(H2, Coordinator, O),
+            Obj = ft_obj:update(H2, Coordinator, O1),
             sniffle_vnode:put(UUID, Obj, State),
             {reply, {ok, ReqID}, State};
         R ->
@@ -146,9 +146,11 @@ handle_coverage({wipe, UUID}, _KeySpaces, {_, ReqID, _}, State) ->
     {reply, {ok, ReqID}, State};
 
 handle_coverage({lookup, Name}, _KeySpaces, Sender, State=#vstate{state=Mod}) ->
-    ID = mkid(lookup),
-    FoldFn = fun (U, #sniffle_obj{val=V}, [not_found]) ->
-                     case Mod:name(Mod:load(ID, V)) of
+    ID = mkid(),
+    FoldFn = fun (U, O, [not_found]) ->
+                     O1 = load_obj(ID, Mod, O),
+                     V = ft_obj:val(O1),
+                     case Mod:name(V) of
                          AName when AName =:= Name ->
                              [U];
                          _ ->
@@ -189,7 +191,7 @@ handle_command({repair, UUID, _VClock, Obj}, _Sender,
         {ok, Old} ->
             ID = mkid(),
             Old1 = load_obj(ID, Mod, Old),
-            Merged = sniffle_obj:merge(sniffle_entity_read_fsm, [Old1, Obj]),
+            Merged = ft_obj:merge(sniffle_entity_read_fsm, [Old1, Obj]),
             sniffle_vnode:put(UUID, Merged, State);
         not_found ->
             sniffle_vnode:put(UUID, Obj, State);
@@ -199,14 +201,14 @@ handle_command({repair, UUID, _VClock, Obj}, _Sender,
     end,
     {noreply, State};
 
-handle_command({sync_repair, {ReqID, _}, UUID, Obj = #sniffle_obj{}}, _Sender,
+handle_command({sync_repair, {ReqID, _}, UUID, Obj}, _Sender,
                State=#vstate{state=Mod}) ->
     case get(UUID, State) of
         {ok, Old} ->
             ID = sniffle_vnode:mkid(),
             Old1 = load_obj(ID, Mod, Old),
             lager:info("[sync-repair:~s] Merging with old object", [UUID]),
-            Merged = sniffle_obj:merge(sniffle_entity_read_fsm, [Old1, Obj]),
+            Merged = ft_obj:merge(sniffle_entity_read_fsm, [Old1, Obj]),
             sniffle_vnode:put(UUID, Merged, State);
         not_found ->
             lager:info("[sync-repair:~s] Writing new object", [UUID]),
@@ -248,19 +250,14 @@ handle_command({set,
                 Resources}, _Sender,
                State = #vstate{db=DB, state=Mod, bucket=Bucket}) ->
     case fifo_db:get(DB, Bucket, UUID) of
-        {ok, #sniffle_obj{val=H0} = O} ->
-            H1 = Mod:load(ID, H0),
+        {ok, O} ->
+            O1 = load_obj(ID, Mod, O),
+            H1 = ft_obj:val(O1),
             H2 = lists:foldr(
                    fun ({Resource, Value}, H) ->
                            Mod:set(ID, Resource, Value, H)
                    end, H1, Resources),
-            H3 = case statebox:is_statebox(H2) of
-                     true ->
-                         statebox:expire(?STATEBOX_EXPIRE, H2);
-                     _ ->
-                         H2
-                 end,
-            Obj = sniffle_obj:update(H3, Coordinator, O),
+            Obj = ft_obj:update(H2, Coordinator, O),
             sniffle_vnode:put(UUID, Obj, State),
             {reply, {ok, ReqID}, State};
         R ->
@@ -296,7 +293,7 @@ handle_command({rehash, {_, UUID}}, _,
     case get(UUID, State) of
         {ok, Obj} ->
             riak_core_aae_vnode:update_hashtree(
-              ServiceBin, UUID, Obj#sniffle_obj.vclock, HT);
+              ServiceBin, UUID, vc_bin(ft_obj:vclock(Obj)), HT);
         _ ->
             %% Make sure hashtree isn't tracking deleted data
             riak_core_index_hashtree:delete({ServiceBin, UUID}, HT)
@@ -342,5 +339,14 @@ handle_info(_, State) ->
 
 %% We decrement the Time by 1 to make sure that the following actions
 %% are ensured to overwrite load changes.
-load_obj({T, ID}, Mod, Obj = #sniffle_obj{val = V}) ->
-    Obj#sniffle_obj{val = Mod:load({T-1, ID}, V)}.
+load_obj({T, ID}, Mod, Obj) ->
+    V = ft_obj:val(Obj),
+    case Mod:load({T-1, ID}, V) of
+        V1 when V1 /= V ->
+            ft_obj:update(V1, ID, Obj);
+        _ ->
+            ft_obj:update(Obj)
+    end.
+
+vc_bin(VClock) ->
+    term_to_binary(lists:sort(VClock)).

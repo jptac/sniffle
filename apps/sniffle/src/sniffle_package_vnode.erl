@@ -40,6 +40,38 @@
               handle_info/2,
               sync_repair/4]).
 
+-export([
+         set_metadata/4,
+         blocksize/4,
+         compression/4,
+         cpu_cap/4,
+         cpu_shares/4,
+         max_swap/4,
+         name/4,
+         quota/4,
+         ram/4,
+         uuid/4,
+         zfs_io_priority/4,
+         remove_requirement/4,
+         add_requirement/4
+        ]).
+
+-ignore_xref([
+         set_metadata/4,
+         blocksize/4,
+         compression/4,
+         cpu_cap/4,
+         cpu_shares/4,
+         max_swap/4,
+         name/4,
+         quota/4,
+         ram/4,
+         uuid/4,
+         zfs_io_priority/4,
+         remove_requirement/4,
+         add_requirement/4
+        ]).
+
 -define(SERVICE, sniffle_package).
 
 -define(MASTER, sniffle_package_vnode_master).
@@ -111,27 +143,39 @@ set(Preflist, ReqID, Vm, Data) ->
                                    {fsm, undefined, self()},
                                    ?MASTER).
 
+?VSET(set_metadata).
+?VSET(blocksize).
+?VSET(compression).
+?VSET(cpu_cap).
+?VSET(cpu_shares).
+?VSET(max_swap).
+?VSET(name).
+?VSET(quota).
+?VSET(ram).
+?VSET(uuid).
+?VSET(zfs_io_priority).
+?VSET(remove_requirement).
+?VSET(add_requirement).
+
 %%%===================================================================
 %%% VNode
 %%%===================================================================
 
 init([Part]) ->
     sniffle_vnode:init(Part, <<"package">>, ?SERVICE, ?MODULE,
-                       sniffle_package_state).
+                       ft_package).
 
 %%%===================================================================
 %%% General
 %%%===================================================================
 
-handle_command({create, {ReqID, Coordinator}, UUID, [Package]},
+handle_command({create, {ReqID, Coordinator}=ID, UUID, [Package]},
                _Sender, State) ->
-    I0 = statebox:new(fun sniffle_package_state:new/0),
-    I1 = statebox:modify({fun sniffle_package_state:uuid/2, [UUID]}, I0),
-    I2 = statebox:modify({fun sniffle_package_state:name/2, [Package]}, I1),
-    VC0 = vclock:fresh(),
-    VC = vclock:increment(Coordinator, VC0),
-    HObject = #sniffle_obj{val=I2, vclock=VC},
-    sniffle_vnode:put(UUID, HObject, State),
+    I0 = ft_package:new(ID),
+    I1 = ft_package:uuid(ID, UUID, I0),
+    I2 = ft_package:name(ID, Package, I1),
+    Obj = ft_obj:new(I2, Coordinator),
+    sniffle_vnode:put(UUID, Obj, State),
     {reply, {ok, ReqID}, State};
 
 handle_command(Message, Sender, State) ->

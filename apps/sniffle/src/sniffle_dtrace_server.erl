@@ -73,8 +73,7 @@ init([ID, Config, Listener]) ->
     {ok, ScriptObj} = sniffle_dtrace:get(ID),
     {ok, Servers} = jsxd:get(<<"servers">>, Config),
     {ok, Script} = generate_script(ScriptObj, Config),
-    Servers1 = [{binary_to_list(jsxd:get(<<"host">>, <<"">>, S1)),
-                 jsxd:get(<<"port">>, 4200, S1)}
+    Servers1 = [ft_hypervisor:endpoint(S1)
                 || {ok, S1} <- [sniffle_hypervisor:get(S0) || S0 <- Servers]],
     Runners = [ {L, Host, Port} ||
                   {{ok, L}, Host, Port} <-
@@ -210,13 +209,13 @@ merge_fn(_, _A, B) when is_list(B) ->
     B.
 
 generate_script(ScriptObj, Config) ->
-    Script = case jsxd:get(<<"script">>, ScriptObj) of
-                 {ok, S} when is_binary(S) ->
+    Script = case ft_dtrace:script(ScriptObj) of
+                 S when is_binary(S) ->
                      binary_to_list(S);
-                 {ok, S} when is_list(S) ->
+                 S when is_list(S) ->
                      S
              end,
-    Config0 = jsxd:get(<<"config">>, [], ScriptObj),
+    Config0 = ft_dtrace:config(ScriptObj),
     Config1 = jsxd:merge(Config, Config0),
 
     Filter = jsxd:get(<<"filter">>, [], Config1),

@@ -8,13 +8,21 @@
          init/2,
          process_results/2,
          finish/2,
-         start/3
+         list/3, raw/3, raw_img/3
         ]).
 
 -record(state, {replies, r, reqid, from, reqs, raw=false}).
 
-start(VNodeMaster, NodeCheckService, {list, Requirements, true}) ->
-    start(VNodeMaster, NodeCheckService, {list, Requirements, true, false});
+-spec raw(atom(), atom(), [fifo:matcher()]) -> {ok, [{integer(), ft_obj:obj()}]}.
+raw(VNodeMaster, NodeCheckService, Requirements) ->
+    start(VNodeMaster, NodeCheckService, {list, Requirements, true, true}).
+
+-spec raw_img(atom(), atom(), binary()) -> {ok, [{integer(), ft_obj:obj()}]}.
+raw_img(VNodeMaster, NodeCheckService, Requirements) ->
+    start(VNodeMaster, NodeCheckService, {list, Requirements, true, true}).
+
+list(VNodeMaster, NodeCheckService, Requirements) ->
+    start(VNodeMaster, NodeCheckService, {list, Requirements, true, false}).
 
 start(VNodeMaster, NodeCheckService, Request = {list, Requirements, true, _}) ->
     ReqID = mk_reqid(),
@@ -93,10 +101,10 @@ raw_merge([{Score, V} | R]) ->
     raw_merge(R, Score, [V]).
 
 raw_merge([], recalculate, Vs) ->
-    {0, sniffle_obj:merge(sniffle_entity_read_fsm, Vs)};
+    {0, ft_obj:merge(sniffle_entity_read_fsm, Vs)};
 
 raw_merge([], Score, Vs) ->
-    {Score, sniffle_obj:merge(sniffle_entity_read_fsm, Vs)};
+    {Score, ft_obj:merge(sniffle_entity_read_fsm, Vs)};
 
 raw_merge([{Score, V} | R], Score, Vs) ->
     raw_merge(R, Score, [V | Vs]);
@@ -121,12 +129,5 @@ merge([{_Score1, V} | R], _Score2, Vs) when _Score1 =/= _Score2->
     merge(R, recalculate, [V | Vs]).
 
 merge_obj(Vs) ->
-    case sniffle_obj:merge(sniffle_entity_read_fsm, Vs) of
-        #sniffle_obj{val = V} ->
-            case statebox:is_statebox(V) of
-                true ->
-                    statebox:value(V);
-                false ->
-                    V
-            end
-    end.
+    O = ft_obj:merge(sniffle_entity_read_fsm, Vs),
+    ft_obj:val(O).

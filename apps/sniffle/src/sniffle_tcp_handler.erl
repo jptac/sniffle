@@ -6,6 +6,54 @@
 
 -ignore_xref([init/2, message/2, raw/2]).
 
+-define(HM(M),
+        message({hypervisor, M, Hypervisor, V}, State) when
+      is_binary(Hypervisor) ->
+               {reply,
+                sniffle_hypervisor:M(Hypervisor, V),
+                State}).
+
+-define(VM(M),
+        message({vm, M, VM, V}, State) when
+      is_binary(VM) ->
+               {reply,
+                sniffle_vm:M(VM, V),
+                State}).
+
+-define(DSM(M),
+        message({dataset, M, VM, V}, State) when
+      is_binary(VM) ->
+               {reply,
+                sniffle_dataset:M(VM, V),
+                State}).
+-define(DTM(M),
+        message({dtrace, M, VM, V}, State) when
+      is_binary(VM) ->
+               {reply,
+                sniffle_dtrace:M(VM, V),
+                State}).
+
+
+-define(IPM(M),
+        message({iprange, M, VM, V}, State) when
+      is_binary(VM) ->
+               {reply,
+                sniffle_iprange:M(VM, V),
+                State}).
+
+-define(NM(M),
+        message({network, M, VM, V}, State) when
+      is_binary(VM) ->
+               {reply,
+                sniffle_network:M(VM, V),
+                State}).
+
+-define(PM(M),
+        message({package, M, VM, V}, State) when
+      is_binary(VM) ->
+               {reply,
+                sniffle_package:M(VM, V),
+                State}).
 
 -record(state, {port}).
 
@@ -29,7 +77,18 @@ raw(_Data, State) ->
 %%%  General Functions
 %%%===================================================================
 
--spec message(fifo:sniffle_message(), any()) -> any().
+-type message() ::
+        fifo:sniffle_message() |
+        fifo:sniffle_dataset_message() |
+        fifo:sniffle_dtrace_message() |
+        fifo:sniffle_grouping_message() |
+        fifo:sniffle_hypervisor_message() |
+        fifo:sniffle_image_message() |
+        fifo:sniffle_iprange_message() |
+        fifo:sniffle_network_message() |
+        fifo:sniffle_package_message() |
+        fifo:sniffle_vm_message().
+-spec message(message(), any()) -> any().
 
 message(version, State) ->
     {reply, {ok, ?VERSION}, State};
@@ -105,12 +164,6 @@ message({grouping, grouping, remove, ID, Grouping}, State) when
      sniffle_grouping:remove_grouping(ID, Grouping),
      State};
 
-message({grouping, metadata, set, ID, Attribute, Value}, State) when
-      is_binary(ID) ->
-    {reply,
-     sniffle_grouping:metadata_set(ID, Attribute, Value),
-     State};
-
 message({grouping, metadata, set, ID, Attributes}, State) when
       is_binary(ID),
       is_list(Attributes) ->
@@ -150,22 +203,15 @@ message({dtrace, list, Requreiments, Full}, State) ->
      sniffle_dtrace:list(Requreiments, Full),
      State};
 
-message({dtrace, set, ID, Attribute, Value}, State) when
-      is_binary(ID) ->
-    {reply,
-     sniffle_dtrace:set(ID, Attribute, Value),
-     State};
-
-message({dtrace, set, ID, Attributes}, State) when
-      is_binary(ID),
-      is_list(Attributes) ->
-    {reply,
-     sniffle_dtrace:set(ID, Attributes),
-     State};
-
 message({dtrace, run, ID, Servers}, State) ->
     {ok, _Pid} = sniffle_dtrace_server:run(ID, Servers, self()),
     {claim, State};
+
+?DTM(name);
+?DTM(uuid);
+?DTM(script);
+?DTM(set_metadata);
+?DTM(set_config);
 
 %%%===================================================================
 %%%  VM Functions
@@ -390,25 +436,19 @@ message({vm, reboot, force, Vm}, State) when
      sniffle_vm:reboot(Vm, [force]),
      State};
 
-message({vm, set, Vm, Attribute, Value}, State) when
-      is_binary(Vm) ->
-    {reply,
-     sniffle_vm:set(Vm, Attribute, Value),
-     State};
-
 message({vm, owner, Vm, Owner}, State) when
-      is_binary(Vm),
-      is_binary(Owner) ->
+      is_binary(Vm) ->
     {reply,
      sniffle_vm:set_owner(Vm, Owner),
      State};
 
-message({vm, set, Vm, Attributes}, State) when
-      is_binary(Vm),
-      is_list(Attributes) ->
-    {reply,
-     sniffle_vm:set(Vm, Attributes),
-     State};
+?VM(set_service);
+?VM(state);
+?VM(set_info);
+?VM(set_backup);
+?VM(set_snapshot);
+?VM(set_config);
+?VM(set_metadata);
 
 message({vm, list}, State) ->
     {reply,
@@ -427,6 +467,24 @@ message({vm, list, Requirements, Full}, State) when
 %%%===================================================================
 %%%  Hypervisor Functions
 %%%===================================================================
+
+?HM(set_resource);
+?HM(set_characteristic);
+?HM(set_metadata);
+?HM(set_pool);
+?HM(set_service);
+
+?HM(alias);
+?HM(etherstubs);
+?HM(host);
+?HM(networks);
+?HM(path);
+?HM(port);
+?HM(sysinfo);
+?HM(uuid);
+?HM(version);
+?HM(virtualisation);
+
 
 message({hypervisor, register, Hypervisor, Host, Port}, State) when
       is_binary(Hypervisor),
@@ -465,19 +523,6 @@ message({hypervisor, update}, State) ->
      sniffle_hypervisor:update(),
      State};
 
-message({hypervisor, set, Hypervisor, Resource, Value}, State) when
-      is_binary(Hypervisor) ->
-    {reply,
-     sniffle_hypervisor:set(Hypervisor, Resource, Value),
-     State};
-
-message({hypervisor, set, Hypervisor, Resources}, State) when
-      is_binary(Hypervisor),
-      is_list(Resources) ->
-    {reply,
-     sniffle_hypervisor:set(Hypervisor, Resources),
-     State};
-
 message({hypervisor, list}, State) ->
     {reply,
      sniffle_hypervisor:list(),
@@ -514,19 +559,6 @@ message({dataset, get, Dataset}, State) when
      sniffle_dataset:get(Dataset),
      State};
 
-message({dataset, set, Dataset, Attribute, Value}, State) when
-      is_binary(Dataset) ->
-    {reply,
-     sniffle_dataset:set(Dataset, Attribute, Value),
-     State};
-
-message({dataset, set, Dataset, Attributes}, State) when
-      is_binary(Dataset),
-      is_list(Attributes) ->
-    {reply,
-     sniffle_dataset:set(Dataset, Attributes),
-     State};
-
 message({dataset, list}, State) ->
     {reply,
      sniffle_dataset:list(),
@@ -546,6 +578,20 @@ message({dataset, import, URL}, State) ->
      sniffle_dataset:import(URL),
      State};
 
+?DSM(imported);
+?DSM(status);
+?DSM(description);
+?DSM(disk_driver);
+?DSM(homepage);
+?DSM(image_size);
+?DSM(name);
+?DSM(networks);
+?DSM(nic_driver);
+?DSM(os);
+?DSM(type);
+?DSM(users);
+?DSM(version);
+?DSM(set_metadata);
 
 %%%===================================================================
 %%%  Img Functions
@@ -611,20 +657,6 @@ message({network, get, Network}, State) when
      sniffle_network:get(Network),
      State};
 
-message({network, set, Network, Attribute, Value}, State) when
-      is_binary(Network) ->
-    {reply,
-     sniffle_network:set(Network, Attribute, Value),
-     State};
-
-message({network, set, Network, Attributes}, State) when
-      is_binary(Network),
-      is_list(Attributes) ->
-    {reply,
-     sniffle_network:set(Network, Attributes),
-     State};
-
-
 message({network, add_iprange, Network, IPRange}, State) when
       is_binary(Network) ->
     {reply,
@@ -649,6 +681,10 @@ message({network, list, Requirements, Full}, State) ->
     {reply,
      sniffle_network:list(Requirements, Full),
      State};
+
+?NM(uuid);
+?NM(name);
+?NM(set_metadata);
 
 %%%===================================================================
 %%%  IPRange Functions
@@ -702,19 +738,14 @@ message({iprange, list, Requirements, Full}, State) when
      sniffle_iprange:list(Requirements, Full),
      State};
 
-message({iprange, set, Iprange, Attribute, Value}, State) when
-      is_binary(Iprange) ->
-    {reply,
-     sniffle_iprange:set(Iprange, Attribute, Value),
-     State};
-
-message({iprange, set, Iprange, Attributes}, State) when
-      is_binary(Iprange),
-      is_list(Attributes) ->
-    {reply,
-     sniffle_iprange:set(Iprange, Attributes),
-     State};
-
+?IPM(name);
+?IPM(uuid);
+?IPM(network);
+?IPM(netmask);
+?IPM(gateway);
+?IPM(set_metadata);
+?IPM(tag);
+?IPM(vlan);
 
 %%%===================================================================
 %%%  PACKAGE Functions
@@ -738,32 +769,33 @@ message({package, get, Package}, State) when
      sniffle_package:get(Package),
      State};
 
-message({package, set, Package, Attribute, Value}, State) when
-      is_binary(Package) ->
-    {reply,
-     sniffle_package:set(Package, Attribute, Value),
-     State};
-
-message({package, set, Package, Attributes}, State) when
-      is_binary(Package),
-      is_list(Attributes) ->
-    {reply,
-     sniffle_package:set(Package, Attributes),
-     State};
-
 message({package, list}, State) ->
     {reply,
      sniffle_package:list(),
      State};
 
 message({package, list, Requirements}, State) ->
-      message({package, list, Requirements, false}, State);
+    message({package, list, Requirements, false}, State);
 
 message({package, list, Requirements, Full}, State) when
       is_list(Requirements) ->
     {reply,
      sniffle_package:list(Requirements, Full),
      State};
+
+?PM(set_metadata);
+?PM(blocksize);
+?PM(compression);
+?PM(cpu_cap);
+?PM(cpu_shares);
+?PM(max_swap);
+?PM(name);
+?PM(quota);
+?PM(ram);
+?PM(uuid);
+?PM(zfs_io_priority);
+?PM(remove_requirement);
+?PM(add_requirement);
 
 %%%===================================================================
 %%%  Cloud Functions

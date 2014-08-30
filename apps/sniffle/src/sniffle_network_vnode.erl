@@ -52,6 +52,9 @@
               sync_repair/4
              ]).
 
+-export([name/4, uuid/4, set_metadata/4]).
+-ignore_xref([name/4, uuid/4, set_metadata/4]).
+
 -define(SERVICE, sniffle_network).
 
 -define(MASTER, sniffle_network_vnode_master).
@@ -133,44 +136,40 @@ set(Preflist, ReqID, Hypervisor, Data) ->
                                    {fsm, undefined, self()},
                                    ?MASTER).
 
+?VSET(uuid).
+?VSET(name).
+?VSET(set_metadata).
+
 %%%===================================================================
 %%% VNode
 %%%===================================================================
 
 init([Part]) ->
-    sniffle_vnode:init(Part, <<"network">>, ?SERVICE, ?MODULE,
-                       sniffle_network_state).
+    sniffle_vnode:init(Part, <<"network">>, ?SERVICE, ?MODULE, ft_network).
 
 %%%===================================================================
 %%% General
 %%%===================================================================
 
-handle_command({create, {ReqID, Coordinator}, UUID,
+handle_command({create, {ReqID, Coordinator}=TID, UUID,
                 [Name]},
                _Sender, State) ->
-    I0 = statebox:new(fun sniffle_network_state:new/0),
-    I1 = lists:foldl(
-           fun (OP, SB) ->
-                   statebox:modify(OP, SB)
-           end, I0, [{fun sniffle_network_state:uuid/2, [UUID]},
-                     {fun sniffle_network_state:name/2, [Name]}]),
-    VC0 = vclock:fresh(),
-    VC = vclock:increment(Coordinator, VC0),
-    HObject = #sniffle_obj{val=I1, vclock=VC},
-    sniffle_vnode:put(UUID, HObject, State),
+    V0 = ft_network:new(TID),
+    V1 = ft_network:uuid(TID, UUID, V0),
+    V2 = ft_network:name(TID, Name, V1),
+    Obj = ft_obj:new(V2, Coordinator),
+    sniffle_vnode:put(UUID, Obj, State),
     {reply, {ok, ReqID}, State};
 
 handle_command({add_iprange,
-                {ReqID, Coordinator}, Network,
+                {ReqID, Coordinator} = TID, Network,
                 IPRange}, _Sender, State) ->
     case fifo_db:get(State#vstate.db, <<"network">>, Network) of
-        {ok, #sniffle_obj{val=H0} = O} ->
-            H1 = statebox:modify({fun sniffle_network_state:load/2,[dummy]}, H0),
-            H2 = statebox:modify(
-                   {fun sniffle_network_state:add_iprange/2,
-                    [IPRange]}, H1),
-            H3 = statebox:expire(?STATEBOX_EXPIRE, H2),
-            Obj = sniffle_obj:update(H3, Coordinator, O),
+        {ok, O} ->
+            H0 = ft_obj:val(O),
+            H1 = ft_network:load(TID, H0),
+            H2 = ft_network:add_iprange(TID, IPRange, H1),
+            Obj = ft_obj:update(H2, Coordinator, O),
             sniffle_vnode:put(Network, Obj, State),
             {reply, {ok, ReqID}, State};
         R ->
@@ -179,16 +178,14 @@ handle_command({add_iprange,
     end;
 
 handle_command({remove_iprange,
-                {ReqID, Coordinator}, Network,
+                {ReqID, Coordinator} = TID, Network,
                 IPRange}, _Sender, State) ->
     case fifo_db:get(State#vstate.db, <<"network">>, Network) of
-        {ok, #sniffle_obj{val=H0} = O} ->
-            H1 = statebox:modify({fun sniffle_network_state:load/2,[dummy]}, H0),
-            H2 = statebox:modify(
-                   {fun sniffle_network_state:remove_iprange/2,
-                    [IPRange]}, H1),
-            H3 = statebox:expire(?STATEBOX_EXPIRE, H2),
-            Obj = sniffle_obj:update(H3, Coordinator, O),
+        {ok, O} ->
+            H0 = ft_obj:val(O),
+            H1 = ft_network:load(TID, H0),
+            H2 = ft_network:remove_iprange(TID, IPRange, H1),
+            Obj = ft_obj:update(H2, Coordinator, O),
             sniffle_vnode:put(Network, Obj, State),
             {reply, {ok, ReqID}, State};
         R ->

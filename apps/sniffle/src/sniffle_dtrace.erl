@@ -36,6 +36,14 @@
    ]
   ).
 
+-export([
+         name/2,
+         uuid/2,
+         script/2,
+         set_metadata/2,
+         set_config/2
+        ]).
+
 wipe(UUID) ->
     sniffle_coverage:start(?MASTER, ?SERVICE, {wipe, UUID}).
 
@@ -43,8 +51,7 @@ sync_repair(UUID, Obj) ->
     do_write(UUID, sync_repair, Obj).
 
 list_() ->
-    {ok, Res} = sniffle_full_coverage:start(
-                  ?MASTER, ?SERVICE, {list, [], true, true}),
+    {ok, Res} = sniffle_full_coverage:raw(?MASTER, ?SERVICE, []),
     Res1 = [R || {_, R} <- Res],
     {ok,  Res1}.
 
@@ -57,7 +64,7 @@ add(Name, Script) ->
     {ok, UUID}.
 
 -spec get(UUID::fifo:dtrace_id()) ->
-                 not_found | {ok, DTrance::fifo:object()} | {error, timeout}.
+                 not_found | {ok, DTrance::fifo:dtrace()} | {error, timeout}.
 get(UUID) ->
     sniffle_entity_read_fsm:start({?VNODE, ?SERVICE},get, UUID).
 
@@ -75,13 +82,14 @@ list() ->
 %% @doc Lists all vm's and fiters by a given matcher set.
 %% @end
 %%--------------------------------------------------------------------
--spec list([fifo:matcher()], boolean()) -> {error, timeout} | {ok, [fifo:uuid()]}.
+-spec list([fifo:matcher()], boolean()) ->
+                  {error, timeout} |
+                  {ok, [{integer(), fifo:uuid() | fifo:dtrace()}]}.
 
 list(Requirements, true) ->
-    {ok, Res} = sniffle_full_coverage:start(
-                  ?MASTER, ?SERVICE, {list, Requirements, true}),
-    Res1 = rankmatcher:apply_scales(Res),
-    {ok,  lists:sort(Res1)};
+    {ok, Res} = sniffle_full_coverage:list(?MASTER, ?SERVICE, Requirements),
+    Res1 = lists:sort(rankmatcher:apply_scales(Res)),
+    {ok,  Res1};
 
 list(Requirements, false) ->
     {ok, Res} = sniffle_coverage:start(?MASTER, ?SERVICE, {list, Requirements}),
@@ -101,6 +109,12 @@ set(UUID, Attribute, Value) ->
                  ok | {error, timeout}.
 set(UUID, Attributes) ->
     do_write(UUID, set, Attributes).
+
+?SET(name).
+?SET(uuid).
+?SET(script).
+?SET(set_metadata).
+?SET(set_config).
 
 %%%===================================================================
 %%% Internal Functions

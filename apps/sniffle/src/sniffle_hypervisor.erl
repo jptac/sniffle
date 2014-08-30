@@ -9,12 +9,9 @@
    [
     register/3,
     unregister/1,
-    get_/1,
     get/1,
     list/0,
     list/2,
-    set/3,
-    set/2,
     status/0,
     service/3,
     update/1,
@@ -23,6 +20,24 @@
     sync_repair/2,
     list_/0
    ]).
+
+-export([
+         set_resource/2,
+         set_characteristic/2,
+         set_metadata/2,
+         set_pool/2,
+         set_service/2,
+         alias/2,
+         etherstubs/2,
+         host/2,
+         networks/2,
+         path/2,
+         port/2,
+         sysinfo/2,
+         uuid/2,
+         version/2,
+         virtualisation/2
+        ]).
 
 -ignore_xref([
               sync_repair/2,
@@ -37,8 +52,7 @@ sync_repair(UUID, Obj) ->
     do_write(UUID, sync_repair, Obj).
 
 list_() ->
-    {ok, Res} = sniffle_full_coverage:start(
-                  ?MASTER, ?SERVICE, {list, [], true, true}),
+    {ok, Res} = sniffle_full_coverage:raw(?MASTER, ?SERVICE, []),
     Res1 = [R || {_, R} <- Res],
     {ok,  Res1}.
 
@@ -52,7 +66,8 @@ register(Hypervisor, IP, Port) ->
         not_found ->
             do_write(Hypervisor, register, [IP, Port]);
         {ok, _UserObj} ->
-            set(Hypervisor, [{<<"host">>, IP}, {<<"port">>, Port}]),
+            host(Hypervisor, IP),
+            port(Hypervisor, Port),
             duplicate
     end.
 
@@ -60,24 +75,16 @@ register(Hypervisor, IP, Port) ->
                         not_found | {error, timeout} | ok.
 unregister(Hypervisor) ->
     {ok, VMs} = sniffle_vm:list([{must, '=:=', <<"hypervisor">>, Hypervisor}], false),
-    Values = [{<<"state">>, <<"limbo">>}, {<<"hypervisor">>, delete}],
-    [sniffle_vm:set(VM, Values) || {_, VM} <- VMs],
+    [begin
+         sniffle_vm:hypervisor(VM, <<>>),
+         sniffle_vm:state(VM, <<"limbo">>)
+     end || {_, VM} <- VMs],
     do_write(Hypervisor, unregister).
 
--spec get_(Hypervisor::fifo:hypervisor_id()) ->
-                  not_found | {ok, HV::#?HYPERVISOR{}} | {error, timeout}.
-get_(Hypervisor) ->
-    sniffle_entity_read_fsm:start({?VNODE, ?SERVICE}, get, Hypervisor).
-
 -spec get(Hypervisor::fifo:hypervisor_id()) ->
-                 not_found | {ok, HV::fifo:object()} | {error, timeout}.
+                 not_found | {ok, HV::fifo:hypervisor()} | {error, timeout}.
 get(Hypervisor) ->
-    case get_(Hypervisor) of
-        {ok, H} ->
-            {ok, sniffle_hypervisor_state:to_json(H)};
-        R ->
-            R
-    end.
+    sniffle_entity_read_fsm:start({?VNODE, ?SERVICE}, get, Hypervisor).
 
 -spec status() -> {error, timeout} |
                   {ok, {Resources::fifo:object(),
@@ -120,7 +127,7 @@ status() ->
                   [[{<<"category">>, <<"sniffle">>},
                     {<<"element">>, <<"general">>},
                     {<<"type">>, <<"error">>},
-                    {<<"message">>, bin_fmt("Failed with ~p.", [E])}]]}}
+                    {<<"message">>, bin_fmt("Failed with ~b.", [E])}]]}}
     end.
 
 -spec list() ->
@@ -131,9 +138,7 @@ list() ->
 service(UUID, Action, Service) ->
     case sniffle_hypervisor:get(UUID) of
         {ok, HypervisorObj} ->
-            {ok, Port} = jsxd:get(<<"port">>, HypervisorObj),
-            {ok, HostB} = jsxd:get(<<"host">>, HypervisorObj),
-            Host = binary_to_list(HostB),
+            {Host, Port} = ft_hypervisor:endpoint(HypervisorObj),
             service(Host, Port, Action, Service);
         E ->
             E
@@ -151,15 +156,29 @@ update(UUID) when is_binary(UUID) ->
     update(HypervisorObj);
 
 update(HypervisorObj) ->
-    {ok, Port} = jsxd:get(<<"port">>, HypervisorObj),
-    {ok, HostB} = jsxd:get(<<"host">>, HypervisorObj),
-    Host = binary_to_list(HostB),
+    {Host, Port} = ft_hypervisor:endpoint(HypervisorObj),
     libchunter:update(Host, Port).
 
 update() ->
     {ok, L} = list([], true),
     [update(O) || {_, O} <- L],
     ok.
+
+?SET(set_resource).
+?SET(set_characteristic).
+?SET(set_metadata).
+?SET(set_pool).
+?SET(set_service).
+?SET(alias).
+?SET(etherstubs).
+?SET(host).
+?SET(networks).
+?SET(path).
+?SET(port).
+?SET(sysinfo).
+?SET(uuid).
+?SET(version).
+?SET(virtualisation).
 
 %%--------------------------------------------------------------------
 %% @doc Lists all vm's and fiters by a given matcher set.
@@ -168,31 +187,15 @@ update() ->
 -spec list([fifo:matcher()], boolean()) -> {error, timeout} | {ok, [fifo:uuid()]}.
 
 list(Requirements, true) ->
-    {ok, Res} = sniffle_full_coverage:start(
-                  ?MASTER, ?SERVICE, {list, Requirements, true}),
-    Res1 = rankmatcher:apply_scales(Res),
-    Res2 = [{Pts, sniffle_hypervisor_state:to_json(H)} ||
-               {Pts, H} <- Res1],
-    {ok,  lists:sort(Res2)};
+    {ok, Res} = sniffle_full_coverage:list(?MASTER, ?SERVICE, Requirements),
+    Res1 = lists:sort(rankmatcher:apply_scales(Res)),
+    {ok,  Res1};
 
 list(Requirements, false) ->
     {ok, Res} = sniffle_coverage:start(
                   ?MASTER, ?SERVICE, {list, Requirements}),
     Res1 = rankmatcher:apply_scales(Res),
     {ok,  lists:sort(Res1)}.
-
--spec set(Hypervisor::fifo:hypervisor_id(),
-          Attribute::fifo:keys(),
-          Value::fifo:value()) ->
-                 ok | {error, timeout}.
-set(Hypervisor, Attribute, Value) ->
-    set(Hypervisor, [{Attribute, Value}]).
-
--spec set(Hypervisor::fifo:hypervisor_id(),
-          Attributes::fifo:attr_list()) ->
-                 ok | {error, timeout}.
-set(Hypervisor, Attributes) ->
-    do_write(Hypervisor, set, Attributes).
 
 %%%===================================================================
 %%% Internal Functions

@@ -37,101 +37,18 @@
 
 -type val() ::  statebox:statebox().
 
--record(sniffle_obj, {val    :: val(),
-                      vclock :: vclock:vclock()}).
-
--type sniffle_obj() :: #sniffle_obj{} | not_found.
-
 -type idx_node() :: {integer(), node()}.
 
--type vnode_reply() :: {idx_node(), sniffle_obj() | not_found}.
-
--record(hypervisor,
-        {
-          name :: binary(),
-          host :: inet:ip_address() | inet:hostname(),
-          port :: inet:port_number(),
-          resources :: dict()
-        }).
-
--record(vm,
-        {
-          uuid :: fifo:uuid(),
-          alias :: binary(),
-          hypervisor :: binary(),
-          log :: [fifo:log()],
-          attributes :: dict()
-        }).
-
--record(iprange,
-        {
-          name :: binary(),
-          network :: integer(),
-          gateway :: integer(),
-          netmask :: integer(),
-          first :: integer(),
-          last :: integer(),
-          current :: integer(),
-          tag :: binary(),
-          free :: [integer()]
-        }).
-
--record(package,
-        {
-          uuid :: fifo:uuid(),
-          name :: binary(),
-          attributes :: dict()
-        }).
-
--record(dataset,
-        {
-          uuid :: fifo:uuid(),
-          name :: binary(),
-          attributes :: dict()
-        }).
-
--record(hypervisor_0_1_0,
-        {
-          characteristics = riak_dt_map:new()    :: riak_dt_map:map(),
-          etherstubs      = riak_dt_lwwreg:new() :: riak_dt_lwwreg:orswot(),
-          host            = riak_dt_lwwreg:new() :: riak_dt_lwwreg:lwwreg(),
-          metadata        = riak_dt_map:new()    :: riak_dt_map:map(),
-          alias           = riak_dt_lwwreg:new() :: riak_dt_lwwreg:lwwreg(),
-          networks        = riak_dt_lwwreg:new() :: riak_dt_lwwreg:lwwreg(),
-          path            = riak_dt_lwwreg:new() :: riak_dt_lwwreg:orswot(),
-          pools           = riak_dt_map:new()    :: riak_dt_map:map(),
-          port            = riak_dt_lwwreg:new() :: riak_dt_lwwreg:lwwreg(),
-          resources       = riak_dt_map:new()    :: riak_dt_map:map(),
-          services        = riak_dt_map:new()    :: riak_dt_map:map(),
-          sysinfo         = riak_dt_lwwreg:new() :: riak_dt_lwwreg:lwwreg(),
-          uuid            = riak_dt_lwwreg:new() :: riak_dt_lwwreg:lwwreg(),
-          version         = riak_dt_lwwreg:new() :: riak_dt_lwwreg:lwwreg(),
-          virtualisation  = riak_dt_lwwreg:new() :: riak_dt_lwwreg:lwwreg()
-        }).
-
--record(grouping_0_1_0,
-        {
-          uuid           = riak_dt_lwwreg:new() :: riak_dt_lwwreg:lwwreg(),
-          name           = riak_dt_lwwreg:new() :: riak_dt_lwwreg:lwwreg(),
-          type           = riak_dt_lwwreg:new() :: riak_dt_lwwreg:lwwreg(),
-          groupings      = riak_dt_orswot:new() :: riak_dt_orswot:orswot(),
-          elements       = riak_dt_orswot:new() :: riak_dt_orswot:orswot(),
-          metadata       = riak_dt_map:new()    :: riak_dt_map:map()
-        }).
+-type vnode_reply() :: {idx_node(), any() | not_found}.
 
 
--define(DATASET, dataset).
--define(PACKAGE, package).
--define(IPRANGE, iprange).
--define(VM, vm).
--define(HYPERVISOR, hypervisor_0_1_0).
--define(GROUPING, grouping_0_1_0).
+-define(SET(T),
+        T(UUID, V) ->
+               do_write(UUID, T, V)).
 
--define(NEW_LWW(V, T), riak_dt_lwwreg:update(
-                         {assign, V, T}, none,
-                         riak_dt_lwwreg:new())).
-
--define(CONVERT_LIST(S),
-        riak_dt_orswot:update(
-          {add_all, S}, none,
-          riak_dt_orswot:new())).
+-define(VSET(Field),
+        Field(Preflist, ReqID, Vm, Val) ->
+               riak_core_vnode_master:command(Preflist,
+                                              {Field, ReqID, Vm, Val},
+                                              {fsm, undefined, self()},
+                                              ?MASTER)).

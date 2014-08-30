@@ -2,6 +2,7 @@
 -module(sniffle_console_vms).
 -export([command/2, help/0]).
 
+-define(T, ft_vm).
 -define(F(Hs, Vs), sniffle_console:fields(Hs,Vs)).
 -define(H(Hs), sniffle_console:hdr(Hs)).
 
@@ -60,10 +61,11 @@ command(text, ["delete", UUID]) ->
 command(json, ["get", UUID]) ->
     case sniffle_vm:get(list_to_binary(UUID)) of
         {ok, VM} ->
+            JSON = ?T:to_json(VM),
             sniffle_console:pp_json(
               jsxd:thread([{select, [<<"hypervisor">>, <<"state">>]},
-                           {merge, jsxd:get(<<"config">>, [], VM)}],
-                          VM)),
+                           {merge, jsxd:get(<<"config">>, [], JSON)}],
+                          JSON)),
             ok;
         _ ->
             sniffle_console:pp_json([]),
@@ -79,9 +81,9 @@ command(text, ["get", UUID]) ->
     case sniffle_vm:get(list_to_binary(UUID)) of
         {ok, VM} ->
             ?F(H, [UUID,
-                   jsxd:get(<<"hypervisor">>, <<"-">>, VM),
-                   jsxd:get(<<"state">>, <<"-">>, VM),
-                   jsxd:get(<<"config.alias">>, <<"-">>, VM)]),
+                   ?T:hypervisor(VM),
+                   ?T:state(VM),
+                   jsxd:get([<<"alias">>], <<"-">>, ?T:config(VM))]),
             ok;
         _ ->
             ok
@@ -90,7 +92,7 @@ command(text, ["get", UUID]) ->
 command(json, ["logs", UUID]) ->
     case sniffle_vm:get(list_to_binary(UUID)) of
         {ok, VM} ->
-            sniffle_console:pp_json(jsxd:get(<<"log">>, [], VM)),
+            sniffle_console:pp_json(jsxd:get(<<"log">>, [], ?T:to_json(VM))),
             ok;
         _ ->
             sniffle_console:pp_json([]),
@@ -103,10 +105,7 @@ command(text, ["logs", UUID]) ->
     ?H(H),
     case sniffle_vm:get(list_to_binary(UUID)) of
         {ok, VM} ->
-            lists:map(fun (Log) ->
-                              ?F(H, [jsxd:get(<<"date">>, <<"-">>, Log),
-                                     jsxd:get(<<"log">>, <<"-">>, Log)])
-                      end, jsxd:get(<<"log">>, [], VM)),
+            [?F(H, [Date, Log]) || {Date, Log} <- ?T:logs(VM)],
             ok;
         _ ->
             ok
@@ -127,7 +126,7 @@ command(text, ["snapshot", UUID | Comment]) ->
 command(json, ["snapshots", UUID]) ->
     case sniffle_vm:get(list_to_binary(UUID)) of
         {ok, VM} ->
-            sniffle_console:pp_json(jsxd:get(<<"snapshots">>, [], VM)),
+            sniffle_console:pp_json(?T:snapshots(VM)),
             ok;
         _ ->
             sniffle_console:pp_json([]),
@@ -146,7 +145,7 @@ command(text, ["snapshots", UUID]) ->
                       ?F(H, [jsxd:get(<<"timestamp">>, <<"-">>, Snapshot),
                              SUUID,
                              jsxd:get(<<"comment">>, <<"-">>, Snapshot)])
-              end, jsxd:get(<<"snapshots">>, [], VM)),
+              end, ?T:snapshots(VM)),
             ok;
         _ ->
             ok
@@ -159,8 +158,9 @@ command(json, ["list"]) ->
               lists:map(fun (UUID) ->
                                 {ok, VM} = sniffle_vm:get(UUID),
                                 jsxd:thread(
-                                  [{select, [<<"hypervisor">>, <<"state">>]},
-                                   {merge, jsxd:get(<<"config">>, [], VM)}],
+                                  [{set, <<"hypervisor">>, ?T:hypervisor(VM)},
+                                   {set, <<"state">>, ?T:hypervisor(VM)},
+                                   {merge, ?T:config(VM)}],
                                   VM)
                         end, VMs)),
             ok;
@@ -181,9 +181,9 @@ command(text, ["list"]) ->
               fun (UUID) ->
                       {ok, VM} = sniffle_vm:get(UUID),
                       ?F(H, [UUID,
-                             jsxd:get(<<"hypervisor">>, <<"-">>, VM),
-                             jsxd:get(<<"config.alias">>, <<"-">>, VM),
-                             jsxd:get(<<"state">>, <<"-">>, VM)])
+                             ?T:hypervisor(VM),
+                             jsxd:get([<<"alias">>], <<"-">>, ?T:config(VM)),
+                             ?T:state(VM)])
               end, VMs);
         _ ->
             []

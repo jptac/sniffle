@@ -27,7 +27,23 @@
          handle_coverage/4,
          handle_exit/3,
          handle_info/2,
-         sync_repair/4]).
+         sync_repair/4,
+         set_network_map/4,
+         set_backup/4,
+         set_snapshot/4,
+         set_service/4,
+         set_config/4,
+         set_info/4,
+         set_metadata/4,
+         add_grouping/4,
+         remove_grouping/4,
+         state/4,
+         alias/4,
+         owner/4,
+         dataset/4,
+         package/4,
+         hypervisor/4
+        ]).
 
 -export([
          master/0,
@@ -37,6 +53,22 @@
 
 %% those functions do not get called directly.
 -ignore_xref([
+              set_network_map/4,
+              set_backup/4,
+              set_config/4,
+              set_snapshot/4,
+              set_service/4,
+              set_metadata/4,
+              add_grouping/4,
+              set_info/4,
+              remove_grouping/4,
+              state/4,
+              alias/4,
+              owner/4,
+              dataset/4,
+              package/4,
+              hypervisor/4,
+
               get/3,
               log/4,
               register/4,
@@ -124,6 +156,44 @@ unregister(Preflist, ReqID, Vm) ->
                                    {fsm, undefined, self()},
                                    ?MASTER).
 
+set_network_map(Preflist, ReqID, Vm, [IP, Net]) ->
+    riak_core_vnode_master:command(Preflist,
+                                   {set_network_map, ReqID, Vm, IP, Net},
+                                   {fsm, undefined, self()},
+                                   ?MASTER).
+
+-define(S(Field),
+        Field(Preflist, ReqID, Vm, Val) ->
+               riak_core_vnode_master:command(Preflist,
+                                              {Field, ReqID, Vm, Val},
+                                              {fsm, undefined, self()},
+                                              ?MASTER)).
+
+?S(set_service).
+?S(set_backup).
+?S(set_snapshot).
+?S(set_config).
+?S(set_info).
+?S(set_metadata).
+
+add_grouping(Preflist, ReqID, Vm, Grouping) ->
+    riak_core_vnode_master:command(Preflist,
+                                   {add_grouping, ReqID, Vm, Grouping},
+                                   {fsm, undefined, self()},
+                                   ?MASTER).
+
+remove_grouping(Preflist, ReqID, Vm, Grouping) ->
+    riak_core_vnode_master:command(Preflist,
+                                   {remove_grouping, ReqID, Vm, Grouping},
+                                   {fsm, undefined, self()},
+                                   ?MASTER).
+?S(state).
+?S(alias).
+?S(owner).
+?S(dataset).
+?S(package).
+?S(hypervisor).
+
 
 -spec set(any(), any(), fifo:uuid(), [{Key::binary(), V::fifo:value()}]) -> ok.
 
@@ -138,8 +208,7 @@ set(Preflist, ReqID, Vm, Data) ->
 %%%===================================================================
 
 init([Part]) ->
-    sniffle_vnode:init(Part, <<"vm">>, ?SERVICE, ?MODULE,
-                       sniffle_vm_state).
+    sniffle_vnode:init(Part, <<"vm">>, ?SERVICE, ?MODULE, ft_vm).
 
 -type vm_command() ::
         ping |
@@ -161,33 +230,31 @@ init([Part]) ->
 %%% Node Specific
 %%%===================================================================
 
-handle_command({register, {ReqID, Coordinator}, Vm, Hypervisor}, _Sender, State) ->
+handle_command({register, {ReqID, Coordinator}=ID, Vm, Hypervisor}, _Sender, State) ->
     HObject = case fifo_db:get(State#vstate.db, <<"vm">>, Vm) of
                   not_found ->
-                      H0 = statebox:new(fun sniffle_vm_state:new/0),
-                      H1 = statebox:modify({fun sniffle_vm_state:uuid/2, [Vm]}, H0),
-                      H2 = statebox:modify({fun sniffle_vm_state:hypervisor/2, [Hypervisor]}, H1),
-                      VC0 = vclock:fresh(),
-                      VC = vclock:increment(Coordinator, VC0),
-                      #sniffle_obj{val=H2, vclock=VC};
-                  {ok, #sniffle_obj{val=H0} = O} ->
-                      H1 = statebox:modify({fun sniffle_vm_state:load/2,[dummy]}, H0),
-                      H2 = statebox:modify({fun sniffle_vm_state:hypervisor/2, [Hypervisor]}, H1),
-                      H3 = statebox:expire(?STATEBOX_EXPIRE, H2),
-                      sniffle_obj:update(H3, Coordinator, O)
+                      H0 = ft_vm:new(ID),
+                      H1 = ft_vm:uuid(ID, Vm, H0),
+                      H2 = ft_vm:hypervisor(ID, Hypervisor, H1),
+                      ft_obj:new(H2, Coordinator);
+                  {ok, O} ->
+                      H0 = ft_obj:val(O),
+                      H1 = ft_vm:load(ID, H0),
+                      H2 = ft_vm:hypervisor(ID, Hypervisor, H1),
+                      ft_obj:update(H2, Coordinator, O)
               end,
     sniffle_vnode:put(Vm, HObject, State),
     {reply, {ok, ReqID}, State};
 
 handle_command({log,
-                {ReqID, Coordinator}, Vm,
+                {ReqID, Coordinator}=ID, Vm,
                 {Time, Log}}, _Sender, State) ->
     case fifo_db:get(State#vstate.db, <<"vm">>, Vm) of
-        {ok, #sniffle_obj{val=H0} = O} ->
-            H1 = statebox:modify({fun sniffle_vm_state:load/2,[dummy]}, H0),
-            H2 = statebox:modify({fun sniffle_vm_state:log/3, [Time, Log]}, H1),
-            H3 = statebox:expire(?STATEBOX_EXPIRE, H2),
-            Obj = sniffle_obj:update(H3, Coordinator, O),
+        {ok, O} ->
+            H0 = ft_obj:val(O),
+            H1 = ft_vm:load(ID, H0),
+            H2 = ft_vm:log(ID, Time, Log, H1),
+            Obj = ft_obj:update(H2, Coordinator, O),
             sniffle_vnode:put(Vm, Obj, State),
             {reply, {ok, ReqID}, State};
         R ->

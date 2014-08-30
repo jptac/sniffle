@@ -5,6 +5,7 @@
 -include_lib("riak_core/include/riak_core_vnode.hrl").
 -include("bitcask.hrl").
 
+
 -export([
          repair/4,
          get/3,
@@ -145,12 +146,16 @@ handle_command({repair, {Img, Idx}, VClock, Obj}, _Sender, State) ->
     lager:warning("Repair of img: ~s~p", [Img, Idx]),
     ImgAndIdx = <<Img/binary, Idx:32>>,
     case get(State#vstate.db, ImgAndIdx) of
-        {ok, #sniffle_obj{vclock = VC1}} when VC1 =:= VClock ->
-            put(State, ImgAndIdx, Obj);
+        {ok, Obj} ->
+            VC1 = ft_obj:vclock(Obj),
+            if
+                VC1 =:= VClock ->
+                    put(State, ImgAndIdx, Obj);
+                true ->
+                    lager:error("[imgs] Read repair failed, data was updated too recent.")
+            end;
         not_found ->
-            put(State, ImgAndIdx, Obj);
-        _ ->
-            lager:error("[imgs] Read repair failed, data was updated too recent.")
+            put(State, ImgAndIdx, Obj)
     end,
     {noreply, State};
 
@@ -200,14 +205,14 @@ handle_command(?FOLD_REQ{foldfun=Fun, acc0=Acc0}, _Sender, State) ->
 
 handle_command({get, ReqID, ImgAndIdx}, _Sender, State) ->
     Res = case get(State#vstate.db, ImgAndIdx) of
-              {ok, R = #sniffle_obj{val=V}} ->
-                  case statebox:is_statebox(V) of
-                      true ->
-                          R1 = R#sniffle_obj{val=statebox:value(V)},
+              {ok, In} ->
+                  case ft_obj:needs_update(In) of
+                      true  ->
+                          R1 = ft_obj:update(In),
                           put(State#vstate.db, ImgAndIdx, R1),
                           R1;
-                      false  ->
-                          R
+                      false ->
+                          In
                   end;
               not_found ->
                   not_found
@@ -217,9 +222,7 @@ handle_command({get, ReqID, ImgAndIdx}, _Sender, State) ->
 
 handle_command({create, {ReqID, Coordinator}, {Img, Idx}, Data},
                _Sender, State) ->
-    VC0 = vclock:fresh(),
-    VC = vclock:increment(Coordinator, VC0),
-    HObject = #sniffle_obj{val=Data, vclock=VC},
+    HObject = ft_obj:new(Data, Coordinator),
     put(State, <<Img/binary, Idx:32>>, HObject),
     {reply, {ok, ReqID}, State};
 

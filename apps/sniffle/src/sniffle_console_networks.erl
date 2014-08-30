@@ -2,6 +2,7 @@
 -module(sniffle_console_networks).
 -export([command/2, help/0]).
 
+-define(T, ft_network).
 -define(F(Hs, Vs), sniffle_console:fields(Hs,Vs)).
 -define(H(Hs), sniffle_console:hdr(Hs)).
 -define(Hdr, [{"UUID", 18}, {"Name", 10}, {"IPRanges", 10}]).
@@ -25,7 +26,7 @@ command(text, ["delete", UUID]) ->
 command(json, ["get", ID]) ->
     case sniffle_network:get(list_to_binary(ID)) of
         {ok, N} ->
-            sniffle_console:pp_json(N),
+            sniffle_console:pp_json(?T:to_json(N)),
             ok;
         _ ->
             error
@@ -58,7 +59,7 @@ command(json, ["list"]) ->
         {ok, Hs} ->
             lists:map(fun (ID) ->
                               {ok, N} = sniffle_network:get(ID),
-                              sniffle_console:pp_json(N)
+                              sniffle_console:pp_json(?T:to_json(N))
                       end, Hs);
         _ ->
             []
@@ -71,6 +72,6 @@ command(_, C) ->
 
 
 print(N) ->
-    ?F(?Hdr, [jsxd:get(<<"uuid">>, <<"-">>, N),
-              jsxd:get(<<"name">>, <<"-">>, N),
-              length(jsxd:get(<<"ipranges">>, [], N))]).
+    ?F(?Hdr, [?T:uuid(N),
+              ?T:name(N),
+              length(?T:ipranges(N))]).

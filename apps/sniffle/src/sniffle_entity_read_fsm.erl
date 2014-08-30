@@ -73,7 +73,7 @@ start(VNodeInfo, Op, User) ->
 -spec start(VNodeInfo::term(), Op::atom(), Entity::term() | undefined, Val::term() | undefined) ->
                    ok | not_found | {ok, Res::term()} | {error, timeout}.
 start(VNodeInfo, Op, Entity, Val) ->
-    ReqID = mk_reqid(),
+    ReqID = sniffle_vnode:mk_reqid(),
     sniffle_entity_read_fsm_sup:start_read_fsm(
       [ReqID, VNodeInfo, Op, self(), Entity, Val]
      ),
@@ -161,7 +161,7 @@ waiting({ok, ReqID, IdxNode, Obj},
                 not_found ->
                     From ! {ReqID, not_found};
                 Merged ->
-                    Reply = sniffle_obj:val(Merged),
+                    Reply = ft_obj:val(Merged),
                     case statebox:is_statebox(Reply) of
                         true ->
                             From ! {ReqID, ok, statebox:value(Reply)};
@@ -230,38 +230,22 @@ terminate(_Reason, _SN, _SD) ->
 %% @pure
 %%
 %% @doc Given a list of `Replies' return the merged value.
--spec merge([vnode_reply()]) -> sniffle_obj() | not_found.
+-spec merge([vnode_reply()]) -> fifo:obj() | not_found.
 merge(Replies) ->
     Objs = [Obj || {_,Obj} <- Replies],
-    sniffle_obj:merge(sniffle_entity_read_fsm, Objs).
+    ft_obj:merge(sniffle_entity_read_fsm, Objs).
 
 %% @pure
 %%
 %% @doc Reconcile conflicts among conflicting values.
 -spec reconcile([A :: statebox:statebox()]) -> A :: statebox:statebox().
 
-reconcile([V = #?HYPERVISOR{} | Vs]) ->
-    reconcile_hypervisor(Vs, V);
+reconcile([V | Vs]) ->
+    reconcile(fifo_dt:type(V), Vs, V).
 
-reconcile([V = #?GROUPING{} | Vs]) ->
-    reconcile_grouping(Vs, V);
-
-reconcile([V0 | _ ] = Vals) ->
-    case statebox:is_statebox(V0) of
-        true ->
-            statebox:merge(Vals);
-        false ->
-            V0
-    end.
-
-reconcile_hypervisor([H | R], Acc) ->
-    reconcile_hypervisor(R, sniffle_hypervisor_state:merge(Acc, H));
-reconcile_hypervisor(_, Acc) ->
-    Acc.
-
-reconcile_grouping([H | R], Acc) ->
-    reconcile_grouping(R, sniffle_grouping_state:merge(Acc, H));
-reconcile_grouping(_, Acc) ->
+reconcile(M, [H | R], Acc) when M /= undefined ->
+    reconcile(M, R, M:merge(Acc, H));
+reconcile(_M, _, Acc) ->
     Acc.
 
 %% @pure
@@ -274,16 +258,16 @@ needs_repair(MObj, Replies) ->
     lists:any(different(MObj), Objs).
 
 %% @pure
-different(A) -> fun(B) -> not sniffle_obj:equal(A,B) end.
+different(A) -> fun(B) -> not ft_obj:equal(A,B) end.
 
 %% @impure
 %%
 %% @doc Repair any vnodes that do not have the correct object.
--spec repair(atom(), string(), sniffle_obj(), [vnode_reply()]) -> io.
+-spec repair(atom(), string(), fifo:obj(), [vnode_reply()]) -> io.
 repair(_, _, _, []) -> io;
 
 repair(VNode, StatName, MObj, [{IdxNode,Obj}|T]) ->
-    case sniffle_obj:equal(MObj, Obj) of
+    case ft_obj:equal(MObj, Obj) of
         true ->
             repair(VNode, StatName, MObj, T);
         false ->
@@ -291,7 +275,7 @@ repair(VNode, StatName, MObj, [{IdxNode,Obj}|T]) ->
                 not_found ->
                     VNode:repair(IdxNode, StatName, not_found, MObj);
                 _ ->
-                    VNode:repair(IdxNode, StatName, Obj#sniffle_obj.vclock, MObj)
+                    VNode:repair(IdxNode, StatName, ft_obj:vclock(Obj), MObj)
             end,
             repair(VNode, StatName, MObj, T)
     end.
@@ -302,9 +286,6 @@ repair(VNode, StatName, MObj, [{IdxNode,Obj}|T]) ->
 -spec unique([A::any()]) -> [A::any()].
 unique(L) ->
     sets:to_list(sets:from_list(L)).
-
-mk_reqid() ->
-    erlang:phash2(erlang:now()).
 
 %%stat_name(sniffle_dtrace_vnode) ->
 %%    "dtrace";
