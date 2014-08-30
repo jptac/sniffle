@@ -24,7 +24,6 @@
                   snmp,
                   mnesia,
                   eplugin,
-                  fifo_s3,
                   lager
                  ]},
   {mod, {sniffle_app, []}},
