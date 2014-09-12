@@ -63,7 +63,7 @@
           package,
           package_uuid,
           dataset,
-          dataset_name,
+          dataset_uuid,
           config,
           resulting_networks = [],
           owner,
@@ -143,7 +143,7 @@ init([UUID, Package, Dataset, Config, Pid]) ->
     {ok, generate_grouping_rules, #state{
                                      uuid = UUID,
                                      package_uuid = Package,
-                                     dataset_name = Dataset,
+                                     dataset_uuid = Dataset,
                                      config = Config1,
                                      delay = Delay,
                                      max_retries = MaxRetries,
@@ -232,7 +232,8 @@ create_permissions(_Event, State = #state{test_pid = {_,_},
 
 create_permissions(_Event, State = #state{
                                       uuid = UUID,
-                                      package_uuid = Package, 
+                                      package_uuid = Package,
+                                      dataset_uuid = Dataset,
                                       config = Config}) ->
     {ok, Creator} = jsxd:get([<<"owner">>], Config),
     ls_user:grant(Creator, [<<"vms">>, UUID, <<"...">>]),
@@ -249,7 +250,8 @@ create_permissions(_Event, State = #state{
                     sniffle_vm:owner(UUID, Org),
                     ls_org:resource_action(Org, UUID, sniffle_vm:timestamp(),
                                            create, [{user, Creator},
-                                                    {package, Package}]),
+                                                    {package, Package},
+                                                    {dataset, Dataset}]),
                     ls_org:execute_trigger(Org, vm_create, UUID),
                     Org
             end,
@@ -276,7 +278,7 @@ get_package(_Event, State = #state{
 
 get_dataset(_Event, State = #state{
                                uuid = UUID,
-                               dataset_name = DatasetName
+                               dataset_uuid = DatasetName
                               }) ->
     lager:info("[create] Fetching Dataset: ~p", [DatasetName]),
     vm_log(State, info, <<"Fetching dataset ", DatasetName/binary>>),

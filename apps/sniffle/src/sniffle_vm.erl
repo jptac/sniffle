@@ -13,13 +13,19 @@
 
 
 -export([
+         create/3,
+         delete/1, delete/2,
+         restore/4,
+         store/2,
+         update/4
+        ]).
+
+-export([
          timestamp/0,
          add_nic/2,
          children/2,
          commit_snapshot_rollback/2,
-         create/3,
          create_backup/4,
-         delete/1,
          delete_backup/2,
          delete_snapshot/2,
          get/1,
@@ -34,7 +40,6 @@
          register/2,
          remove_backup/2,
          remove_nic/2,
-         restore/3,
          restore_backup/2,
          rollback_snapshot/2,
          service_clear/2,
@@ -45,9 +50,7 @@
          start/1,
          stop/1,
          stop/2,
-         store/1,
          unregister/1,
-         update/3,
          wipe/1,
          sync_repair/2,
          list_/0,
@@ -107,7 +110,7 @@ list_() ->
     Res1 = [R || {_, R} <- Res],
     {ok,  Res1}.
 
-store(Vm) ->
+store(User, Vm) ->
     case sniffle_vm:get(Vm) of
         {ok, V} ->
             Bs = ?S:backups(V),
@@ -122,7 +125,7 @@ store(Vm) ->
                     set_snapshot(Vm, S1),
                     hypervisor(Vm, <<>>),
                     {Host, Port} = get_hypervisor(V),
-                    resource_action(V, store, []),
+                    resource_action(V, store, User, []),
                     libchunter:delete_machine(Host, Port, Vm);
                 false ->
                     {error, no_backup}
@@ -141,7 +144,7 @@ has_xml([{_, B} | Bs]) ->
             has_xml(Bs)
     end.
 
-restore(Vm, BID, Hypervisor) ->
+restore(User, Vm, BID, Hypervisor) ->
     case sniffle_vm:get(Vm) of
         {ok, V} ->
             case ?S:hypervisor(V) of
@@ -153,7 +156,7 @@ restore(Vm, BID, Hypervisor) ->
                                 error ->
                                     {error, not_supported};
                                 {ok, {S3Host, S3Port, AKey, SKey, Bucket}} ->
-                                    resource_action(V, restore, []),
+                                    resource_action(V, restore, User, []),
                                     libchunter:restore_backup(Server, Port, Vm,
                                                               BID, S3Host,
                                                               S3Port, Bucket,
@@ -452,7 +455,7 @@ remove_nic(Vm, Mac) ->
                             IP = ft_iprange:parse_bin(IpStr),
                             Ms = ?S:network_map(V),
                             ok = libchunter:update_machine(Server, Port, Vm,
-                                                          undefined, UR),
+                                                           undefined, UR),
                             remove_network_map(Vm, IP),
                             [{IP, Network}] = [ {IP1, Network} || {IP1, Network} <- Ms, IP1 =:= IP],
                             sniffle_iprange:release_ip(Network, IP);
@@ -470,18 +473,16 @@ primary_nic(Vm, Mac) ->
     case sniffle_vm:get(Vm) of
         {ok, V} ->
             NicMap = make_nic_map(V),
-            case jsxd:get(Mac, NicMap) of
-                {ok, _Idx}  ->
+            case {?S:state(V), jsxd:get(Mac, NicMap)} of
+                {<<"stopped">>, {ok, _Idx}}  ->
                     {Server, Port} = get_hypervisor(V),
                     libchunter:ping(Server, Port),
-                    case ?S:state(V) of
-                        <<"stopped">> ->
-                            UR = [{<<"update_nics">>, [[{<<"mac">>, Mac}, {<<"primary">>, true}]]}],
-                            libchunter:update_machine(Server, Port, Vm,
-                                                     undefined, UR);
-                        _ ->
-                            {error, not_stopped}
-                    end;
+                    UR = [{<<"update_nics">>, [[{<<"mac">>, Mac},
+                                                {<<"primary">>, true}]]}],
+                    libchunter:update_machine(Server, Port, Vm,
+                                              undefined, UR);
+                {_, {ok, _}} ->
+                    {error, not_stopped};
                 _ ->
                     {error, not_found}
             end;
@@ -494,40 +495,50 @@ primary_nic(Vm, Mac) ->
 %%   object.
 %% @end
 %%--------------------------------------------------------------------
--spec update(Vm::fifo:uuid(), Package::fifo:package_id(), Config::fifo:config()) ->
+-spec update(User::fifo:user_id() | undefined, Vm::fifo:vm_id(),
+             Package::fifo:package_id(), Config::fifo:config()) ->
                     not_found | {error, timeout} | ok.
-update(Vm, Package, Config) ->
+
+update(User, Vm, Package, Config) ->
     case sniffle_vm:get(Vm) of
         {ok, V} ->
             Hypervisor = ?S:hypervisor(V),
             {ok, H} = sniffle_hypervisor:get(Hypervisor),
             {Host, Port} = get_hypervisor(H),
-            {ok, OrigRam} = jsxd:get([<<"ram">>], ?S:config(V)),
             OrigPkg = ?S:package(V),
-            case Package of
-                undefined ->
+            {ok, OrigRam} = jsxd:get([<<"ram">>], ?S:config(V)),
+            case test_pkg(Package, OrigRam, H) of
+                no_pkg_change ->
                     libchunter:update_machine(Host, Port, Vm,
                                               undefined, Config);
+                {ok, P} ->
+                    package(Vm, Package),
+                    log(Vm, <<"Updating VM from package '",
+                              OrigPkg/binary, "' to '",
+                              Package/binary, "'.">>),
+                    resource_action(V, update, User, [{package, Package}]),
+                    libchunter:update_machine(Host, Port, Vm, P, Config);
+                E2 ->
+                    E2
+            end;
+        E ->
+            E
+    end.
+
+test_pkg(undefined, _, _) ->
+    no_pkg_change;
+
+test_pkg(Package, OrigRam, H) ->
+    case sniffle_package:get(Package) of
+        {ok, P} ->
+            NewRam = ft_package:ram(P),
+            case jsxd:get([<<"free-memory">>],
+                          ft_hypervisor:resources(H)) of
+                {ok, Ram} when
+                      Ram > (NewRam - OrigRam) ->
+                    {ok, P};
                 _ ->
-                    case sniffle_package:get(Package) of
-                        {ok, P} ->
-                            NewRam = ft_package:ram(P),
-                            case jsxd:get([<<"free-memory">>],
-                                          ft_hypervisor:resources(H)) of
-                                {ok, Ram} when
-                                      Ram > (NewRam - OrigRam) ->
-                                    package(Vm, Package),
-                                    log(Vm, <<"Updating VM from package '",
-                                              OrigPkg/binary, "' to '",
-                                              Package/binary, "'.">>),
-                                    libchunter:update_machine(Host, Port, Vm,
-                                                              P, Config);
-                                _ ->
-                                    {error, not_enough_resources}
-                            end;
-                        E2 ->
-                            E2
-                    end
+                    {error, not_enough_resources}
             end;
         E ->
             E
@@ -674,9 +685,14 @@ list(Requirements, false) ->
 %%   site.
 %% @end
 %%--------------------------------------------------------------------
+
+
 -spec delete(Vm::fifo:uuid()) ->
                     {error, timeout} | not_found | ok.
 delete(Vm) ->
+    delete(undefined, Vm).
+
+delete(User, Vm) ->
     case sniffle_vm:get(Vm) of
         {ok, V} ->
             case {?S:hypervisor(V), ?S:state(V)} of
@@ -703,7 +719,7 @@ delete(Vm) ->
                 {H, _} ->
                     state(Vm, <<"deleting">>),
                     {Host, Port} = get_hypervisor(H),
-                    resource_action(V, destroy, []),
+                    resource_action(V, destroy, User, []),
                     libchunter:delete_machine(Host, Port, Vm)
             end;
         E ->
@@ -1042,14 +1058,24 @@ do_delete_backup(UUID, VM, BID) ->
 backend() ->
     sniffle_opt:get(storage, general, backend, large_data_backend, internal).
 
+resource_action(UUID, Action, Opts) ->
+    resource_action(UUID, Action, undefined, Opts).
 
-resource_action(UUID, Action, Opts) when is_binary(UUID) ->
-    resource_action(sniffle_vm:get(UUID), Action, Opts);
+resource_action(UUID, Action, User, Opts) when is_binary(UUID) ->
+    resource_action(sniffle_vm:get(UUID), Action, User, Opts);
 
-resource_action(VM, Action, Opts) ->
+resource_action(VM, Action, User, Opts) ->
     case ft_vm:owner(VM) of
         <<>> ->
             ok;
         Org ->
-            ls_org:resource_action(Org, ft_vm:uuid(VM), timestamp(), Action, Opts)
+            Opts1 = case User of
+                        undefined ->
+                            Opts;
+                        _ ->
+                            [{user, User} | Opts]
+                    end,
+            UUID = ft_vm:uuid(VM),
+            T = timestamp(),
+            ls_org:resource_action(Org, UUID, T, Action, Opts1)
     end.
