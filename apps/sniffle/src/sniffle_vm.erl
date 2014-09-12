@@ -1078,7 +1078,8 @@ resource_action(UUID, Action, Opts) ->
     resource_action(UUID, Action, undefined, Opts).
 
 resource_action(UUID, Action, User, Opts) when is_binary(UUID) ->
-    resource_action(sniffle_vm:get(UUID), Action, User, Opts);
+    {ok, V} = sniffle_vm:get(UUID),
+    resource_action(V, Action, User, Opts);
 
 resource_action(VM, Action, User, Opts) ->
     case ft_vm:owner(VM) of
