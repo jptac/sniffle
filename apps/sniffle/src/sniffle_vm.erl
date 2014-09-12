@@ -13,6 +13,7 @@
 
 
 -export([
+         timestamp/0,
          add_nic/2,
          children/2,
          commit_snapshot_rollback/2,
@@ -121,6 +122,7 @@ store(Vm) ->
                     set_snapshot(Vm, S1),
                     hypervisor(Vm, <<>>),
                     {Host, Port} = get_hypervisor(V),
+                    resource_action(V, store, []),
                     libchunter:delete_machine(Host, Port, Vm);
                 false ->
                     {error, no_backup}
@@ -151,6 +153,7 @@ restore(Vm, BID, Hypervisor) ->
                                 error ->
                                     {error, not_supported};
                                 {ok, {S3Host, S3Port, AKey, SKey, Bucket}} ->
+                                    resource_action(V, restore, []),
                                     libchunter:restore_backup(Server, Port, Vm,
                                                               BID, S3Host,
                                                               S3Port, Bucket,
@@ -700,6 +703,7 @@ delete(Vm) ->
                 {H, _} ->
                     state(Vm, <<"deleting">>),
                     {Host, Port} = get_hypervisor(H),
+                    resource_action(V, destroy, []),
                     libchunter:delete_machine(Host, Port, Vm)
             end;
         E ->
@@ -710,6 +714,7 @@ finish_delete(Vm) ->
     {ok, V} = ?MODULE:get(Vm),
     [do_delete_backup(Vm, V, BID) || {BID, _} <- ?S:backups(V)],
     sniffle_vm:unregister(Vm),
+    resource_action(V, confirm_destroy, []),
     libhowl:send(Vm, [{<<"event">>, <<"delete">>}]),
     libhowl:send(<<"command">>,
                  [{<<"event">>, <<"vm-delete">>},
@@ -1036,3 +1041,15 @@ do_delete_backup(UUID, VM, BID) ->
 
 backend() ->
     sniffle_opt:get(storage, general, backend, large_data_backend, internal).
+
+
+resource_action(UUID, Action, Opts) when is_binary(UUID) ->
+    resource_action(sniffle_vm:get(UUID), Action, Opts);
+
+resource_action(VM, Action, Opts) ->
+    case ft_vm:owner(VM) of
+        <<>> ->
+            ok;
+        Org ->
+            ls_org:resource_action(Org, ft_vm:uuid(VM), timestamp(), Action, Opts)
+    end.

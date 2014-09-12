@@ -61,7 +61,7 @@
           test_pid,
           uuid,
           package,
-          package_name,
+          package_uuid,
           dataset,
           dataset_name,
           config,
@@ -142,7 +142,7 @@ init([UUID, Package, Dataset, Config, Pid]) ->
                  end,
     {ok, generate_grouping_rules, #state{
                                      uuid = UUID,
-                                     package_name = Package,
+                                     package_uuid = Package,
                                      dataset_name = Dataset,
                                      config = Config1,
                                      delay = Delay,
@@ -209,7 +209,8 @@ generate_grouping_rules(_Event, State = #state{
 %%                   {stop, Reason, NewState}
 %% @end
 %%--------------------------------------------------------------------
-create_permissions(_Event, State = #state{test_pid = {_,_}, config = Config}) ->
+create_permissions(_Event, State = #state{test_pid = {_,_},
+                                          config = Config}) ->
     {ok, Creator} = jsxd:get([<<"owner">>], Config),
     Owner = case ls_user:active_org(Creator) of
                 {ok, <<"">>} ->
@@ -231,6 +232,7 @@ create_permissions(_Event, State = #state{test_pid = {_,_}, config = Config}) ->
 
 create_permissions(_Event, State = #state{
                                       uuid = UUID,
+                                      package_uuid = Package, 
                                       config = Config}) ->
     {ok, Creator} = jsxd:get([<<"owner">>], Config),
     ls_user:grant(Creator, [<<"vms">>, UUID, <<"...">>]),
@@ -245,6 +247,9 @@ create_permissions(_Event, State = #state{
                     lager:info("[create] User ~p has active org: ~p.",
                                [Creator, Org]),
                     sniffle_vm:owner(UUID, Org),
+                    ls_org:resource_action(Org, UUID, sniffle_vm:timestamp(),
+                                           create, [{user, Creator},
+                                                    {package, Package}]),
                     ls_org:execute_trigger(Org, vm_create, UUID),
                     Org
             end,
@@ -260,7 +265,7 @@ create_permissions(_Event, State = #state{
 
 get_package(_Event, State = #state{
                                uuid = UUID,
-                               package_name = PackageName
+                               package_uuid = PackageName
                               }) ->
     lager:info("[create] Fetching package: ~p", [PackageName]),
     vm_log(State, info, <<"Fetching package ", PackageName/binary>>),
