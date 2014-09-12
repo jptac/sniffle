@@ -832,12 +832,12 @@ set_owner(User, Vm, Owner) ->
                     ok;
                 Old ->
                     resource_action(Old, destroy, User, []),
-                    resource_action(Old, confirm_destroy, User, []),
-                    Opts = [{package, ft_vm:package(V)},
-                            {dataset, ft_vm:dataset(V)}],
-                    resource_action(Owner, create, User, Opts),
-                    owner(Vm, Owner)
-            end;
+                    resource_action(Old, confirm_destroy, User, [])
+            end,
+            Opts = [{package, ft_vm:package(V)},
+                    {dataset, ft_vm:dataset(V)}],
+            resource_action(Owner, create, User, Opts),
+            owner(Vm, Owner);
         E ->
             E
     end.
