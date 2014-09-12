@@ -436,10 +436,10 @@ message({vm, reboot, force, Vm}, State) when
      sniffle_vm:reboot(Vm, [force]),
      State};
 
-message({vm, owner, Vm, Owner}, State) when
+message({vm, owner, User, Vm, Owner}, State) when
       is_binary(Vm) ->
     {reply,
-     sniffle_vm:set_owner(Vm, Owner),
+     sniffle_vm:set_owner(User, Vm, Owner),
      State};
 
 ?VM(set_service);

@@ -45,7 +45,7 @@
          service_clear/2,
          service_disable/2,
          service_enable/2,
-         set_owner/2,
+         set_owner/3,
          snapshot/2,
          start/1,
          stop/1,
@@ -817,14 +817,30 @@ logs(Vm) ->
 %% @doc Sets the owner of a VM.
 %% @end
 %%--------------------------------------------------------------------
--spec set_owner(Vm::fifo:uuid(), Owner::fifo:uuid()) ->
+-spec set_owner(User::fifo:user_id() | undefined, Vm::fifo:uuid(),
+                Owner::fifo:uuid()) ->
                        not_found | {error, timeout} | [fifo:log()].
-set_owner(Vm, Owner) ->
+set_owner(User, Vm, Owner) ->
     ls_org:execute_trigger(Owner, vm_create, Vm),
     libhowl:send(Vm, [{<<"event">>, <<"update">>},
                       {<<"data">>,
                        [{<<"owner">>, Owner}]}]),
-    owner(Vm, Owner).
+    case sniffle_vm:get(Vm) of
+        {ok, V} ->
+            case ft_vm:owner(V) of
+                <<>> ->
+                    ok;
+                Old ->
+                    resource_action(Old, destroy, User, []),
+                    resource_action(Old, confirm_destroy, User, []),
+                    Opts = [{package, ft_vm:package(V)},
+                            {dataset, ft_vm:dataset(V)}],
+                    resource_action(Owner, create, User, Opts),
+                    owner(Vm, Owner)
+            end;
+        E ->
+            E
+    end.
 
 %%--------------------------------------------------------------------
 %% @doc Adds a new log to the VM and timestamps it.
