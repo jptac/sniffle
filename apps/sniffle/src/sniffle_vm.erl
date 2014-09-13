@@ -827,17 +827,23 @@ set_owner(User, Vm, Owner) ->
                        [{<<"owner">>, Owner}]}]),
     case sniffle_vm:get(Vm) of
         {ok, V} ->
-            case ft_vm:owner(V) of
-                <<>> ->
+            %% We can use the Vm object we got to end the accouting period
+            %% for the old org
+            resource_action(V, destroy, User, []),
+            resource_action(V, confirm_destroy, User, []),
+            case owner(Vm, Owner) of
+                ok ->
+                    %% After a successful changed the owner we refetch the vm
+                    %% to add accounting to the new org.
+                    Opts = [{package, ft_vm:package(V)},
+                            {dataset, ft_vm:dataset(V)}],
+                    {ok, V1} = sniffle_vm:get(Vm),
+                    resource_action(V1, create, User, Opts),
+                    resource_action(V1, confirm_create, User, Opts),
                     ok;
-                Old ->
-                    resource_action(Old, destroy, User, []),
-                    resource_action(Old, confirm_destroy, User, [])
-            end,
-            Opts = [{package, ft_vm:package(V)},
-                    {dataset, ft_vm:dataset(V)}],
-            resource_action(Owner, create, User, Opts),
-            owner(Vm, Owner);
+                E1 ->
+                    E1
+            end;
         E ->
             E
     end.
