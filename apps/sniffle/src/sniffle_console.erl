@@ -9,6 +9,7 @@
 -endif.
 
 -export([
+         init_leo/1,
          db_keys/1,
          db_get/1,
          db_delete/1,
@@ -46,6 +47,7 @@
         ]).
 
 -ignore_xref([
+              init_leo/1,
               db_keys/1,
               db_get/1,
               db_delete/1,
@@ -69,6 +71,41 @@
               vms/1,
               db_update/1
              ]).
+
+init_leo([H]) ->
+    P = 10020,
+    User = "fifo",
+    OK = {ok,[{<<"result">>,<<"OK">>}]},
+
+    %% Create the user and store access and secret key
+    {ok,[{<<"access_key_id">>,AKey}, {<<"secret_access_key">>, SKey}]} =
+        libleofs:create_user(H, P, User),
+    sniffle_opt:set(["storage", "s3", "access_key"], AKey),
+    sniffle_opt:set(["storage", "s3", "secret_key"], SKey),
+
+    %% Create the general bucket
+    GenBucket = "fifo",
+    OK = libleofs:add_bucket(H, P, GenBucket, AKey),
+    sniffle_opt:set(["storage", "s3", "general_bucket"], GenBucket),
+
+    %% Create the image bucket
+    ImgBucket = "fifo-images",
+    OK = libleofs:add_bucket(H, P, ImgBucket, AKey),
+    sniffle_opt:set(["storage", "s3", "image_bucket"], ImgBucket),
+
+    %% Create the backup bucket
+    SnapBucket = "fifo-backups",
+    OK = libleofs:add_bucket(H, P, SnapBucket, AKey),
+    sniffle_opt:set(["storage", "s3", "snapshot_bucket"], SnapBucket),
+
+    %% Add the enpoint
+    OK = libleofs:add_endpoint(H, P, H),
+    sniffle_opt:set(["storage", "s3", "host"], H),
+    ok = sniffle_opt:set(["storage", "s3", "port"], 443),
+
+    %% Set s3 as storage system
+    sniffle_opt:set(["storage", "general", "backend"], s3).
+
 
 db_update([]) ->
     [db_update([E]) || E <- ["vms", "datasets", "dtraces", "hypervisors",
