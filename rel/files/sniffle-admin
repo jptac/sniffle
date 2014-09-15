@@ -256,7 +256,7 @@ case "$1" in
 
     init-leofs)
         shift
-        run sniffle_console ringready init_leo $@
+        run sniffle_console init_leo $@
         ;;
     ringready)
         shift
