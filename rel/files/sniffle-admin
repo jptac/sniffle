@@ -254,6 +254,10 @@ case "$1" in
         done
         ;;
 
+    init-leofs)
+        shift
+        run sniffle_console init_leo $@
+        ;;
     ringready)
         shift
         run sniffle_console ringready $@
@@ -262,9 +266,10 @@ case "$1" in
     *)
         echo "Usage: $SCRIPT { join | leave | reip | ringready | remove |"
         echo "                 services | wait-for-service | member-status |"
-        echo "                 ring-status | aae-status | vms | hypervisors |"
-        echo "                 packages | datasets | networks | config }"
+        echo "                 ring-status | aae-status | vms | hyperv[isors |"
+        echo "                 packages | datasets | networks | config | init-leofs }"
         echo "               ring                               - shows the ring."
+        echo "               init-leofs <hostname>              - initialized the leofs storage system."
         echo "               db update [<entity>]               - update db entries."
         echo "               db list [-p <prefix>]              - lists db entries."
         echo "               db list <hash> [<prefix>]          - lists db entries for a hash."
