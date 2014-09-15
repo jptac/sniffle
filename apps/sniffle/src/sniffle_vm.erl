@@ -839,7 +839,7 @@ set_owner(User, Vm, Owner) ->
                             {dataset, ft_vm:dataset(V)}],
                     {ok, V1} = sniffle_vm:get(Vm),
                     resource_action(V1, create, User, Opts),
-                    resource_action(V1, confirm_create, User, Opts),
+                    resource_action(V1, confirm_create, User, []),
                     ok;
                 E1 ->
                     E1
