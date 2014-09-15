@@ -82,29 +82,39 @@ init_leo([H]) ->
         libleofs:create_user(H, P, User),
     sniffle_opt:set(["storage", "s3", "access_key"], AKey),
     sniffle_opt:set(["storage", "s3", "secret_key"], SKey),
+    io:format("Created user ~s:~n"
+              "Access Key: ~s~n"
+              "Secret Key: ~s~n",
+              [User, AKey, SKey]),
 
     %% Create the general bucket
     GenBucket = "fifo",
     OK = libleofs:add_bucket(H, P, GenBucket, AKey),
     sniffle_opt:set(["storage", "s3", "general_bucket"], GenBucket),
+    io:format("Created bucket general bucket: ~s~n", [GenBucket]),
 
     %% Create the image bucket
     ImgBucket = "fifo-images",
     OK = libleofs:add_bucket(H, P, ImgBucket, AKey),
     sniffle_opt:set(["storage", "s3", "image_bucket"], ImgBucket),
+    io:format("Created bucket image bucket: ~s~n", [ImgBucket]),
 
     %% Create the backup bucket
     SnapBucket = "fifo-backups",
     OK = libleofs:add_bucket(H, P, SnapBucket, AKey),
     sniffle_opt:set(["storage", "s3", "snapshot_bucket"], SnapBucket),
+    io:format("Created bucket snapshot bucket: ~s~n", [SnapBucket]),
 
     %% Add the enpoint
     OK = libleofs:add_endpoint(H, P, H),
     sniffle_opt:set(["storage", "s3", "host"], H),
     ok = sniffle_opt:set(["storage", "s3", "port"], 443),
-
+    io:format("Configuring endpoint as: https://~s:~p", [H, P]),
     %% Set s3 as storage system
-    sniffle_opt:set(["storage", "general", "backend"], s3).
+    ok = sniffle_opt:set(["storage", "general", "backend"], s3),
+    io:format("Setting storage backend to s3, please reastart sniffle for this "
+              "to take full effect!"),
+    ok.
 
 
 db_update([]) ->
