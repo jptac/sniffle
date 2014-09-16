@@ -3,8 +3,8 @@
 -export([command/2, help/0]).
 
 -define(T, ft_hypervisor).
--define(F(Hs, Vs), sniffle_console:fields(Hs,Vs)).
--define(H(Hs), sniffle_console:hdr(Hs)).
+-define(F(Hs, Vs), fifo_console:fields(Hs,Vs)).
+-define(H(Hs), fifo_console:hdr(Hs)).
 -define(Hdr, [{"Hypervisor", 18}, {"UUID", 36}, {"IP", 16},
               {"Memory", 18}, {"State", -8}, {"Version", n}]).
 help() ->

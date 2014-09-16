@@ -3,8 +3,8 @@
 -export([command/2, help/0]).
 
 -define(T, ft_network).
--define(F(Hs, Vs), sniffle_console:fields(Hs,Vs)).
--define(H(Hs), sniffle_console:hdr(Hs)).
+-define(F(Hs, Vs), fifo_console:fields(Hs,Vs)).
+-define(H(Hs), fifo_console:hdr(Hs)).
 -define(Hdr, [{"UUID", 18}, {"Name", 10}, {"IPRanges", 10}]).
 
 help() ->

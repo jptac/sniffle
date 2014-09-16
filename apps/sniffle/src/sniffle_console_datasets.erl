@@ -7,8 +7,8 @@
 -include("sniffle_version.hrl").
 
 -define(T, ft_dataset).
--define(F(Hs, Vs), sniffle_console:fields(Hs,Vs)).
--define(H(Hs), sniffle_console:hdr(Hs)).
+-define(F(Hs, Vs), fifo_console:fields(Hs, Vs)).
+-define(H(Hs), fifo_console:hdr(Hs)).
 -define(Hdr, [{"UUID", 36}, {"OS", 7}, {"Name", 15}, {"Version", 8},
               {"Imported", 7}, {"Desc", n}]).
 

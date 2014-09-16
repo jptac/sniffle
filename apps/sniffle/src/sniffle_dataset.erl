@@ -290,19 +290,9 @@ fail_import(UUID, Reason, Idx, Ref, Backend) ->
     end.
 
 http_opts() ->
-    case os:getenv("https_proxy") of
-        false ->
-            case os:getenv("HTTPS_PROXY") of
-                false ->
-                    case os:getenv("http_proxy") of
-                        false ->
-                            case os:getenv("HTTP_PROXY") of
-                                false -> [];
-                                P     -> [{proxy, P}]
-                                end;
-                        P -> [{proxy, P}]
-                    end;
-                P -> [{proxy, P}]
-            end;
-        P -> [{proxy, P}]
+    case sniffle_opt:get(network, http, proxy, http_proxy, undefined) of
+        undefined ->
+            [];
+        P ->
+            [{proxy, P}]
     end.

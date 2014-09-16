@@ -62,7 +62,7 @@ start(_StartType, _StartArgs) ->
             end,
             ?SRV_WITH_AAE(sniffle_network_vnode, sniffle_network),
             ?SRV_WITH_AAE(sniffle_dtrace_vnode, sniffle_dtrace),
-
+            timer:apply_after(2000, snarl_opt, update, []),
             sniffle_snmp_handler:start(),
             {ok, Pid};
         {error, Reason} ->

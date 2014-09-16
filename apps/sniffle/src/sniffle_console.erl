@@ -41,9 +41,7 @@
         ]).
 
 -export([
-         pp_json/1,
-         hdr/1,
-         fields/2
+         pp_json/1
         ]).
 
 -ignore_xref([
@@ -397,10 +395,13 @@ networks([C, "-j" | R]) ->
 networks(R) ->
     sniffle_console_networks:command(text, R).
 
-config(["show"]) ->    io:format("Storage~n  General Section~n"),
-    print_config(storage, general),
+config(["show"]) ->
+    io:format("Storage~n  General Section~n"),
+    fifo_console:print_config(<<"storage">>, <<"general">>),
     io:format("  S3 Section~n"),
-    print_config(storage, s3),
+    fifo_console:print_config(<<"storage">>, <<"s3">>),
+    io:format("Network~n  HTTP~n"),
+    fifo_console:print_config(<<"network">>, <<"http">>),
     ok;
 
 config(["set", Ks, V]) ->
@@ -420,7 +421,16 @@ config(["set" | R]) ->
         _ ->
             io:format("Setting changed~n", []),
             ok
-    end.
+    end;
+
+config(["unset", Ks]) ->
+    Ks1 = [binary_to_list(K) || K <- re:split(Ks, "\\.")],
+    config(["unset" | Ks1]);
+
+config(["unset" | Ks]) ->
+    sniffle_opt:unset(Ks),
+    io:format("Setting changed~n", []),
+    ok.
 
 %%compied from riak_kv
 
@@ -567,69 +577,6 @@ ringready([]) ->
 pp_json(Obj) ->
     io:format("~s~n", [jsx:prettify(jsx:encode(Obj))]).
 
-hdr(F) ->
-    hdr_lines(lists:reverse(F), {"~n", [], "~n", []}).
-
-
-hdr_lines([{N, n} | R], {Fmt, Vars, FmtLs, VarLs}) ->
-    hdr_lines(R, {
-                "~20s " ++ Fmt,
-                [N | Vars],
-                "~20c " ++ FmtLs,
-                [$- | VarLs]});
-
-hdr_lines([{N, S}|R], {Fmt, Vars, FmtLs, VarLs}) ->
-    %% there is a space that matters here ---------v
-    hdr_lines(R, {
-                [$~ | integer_to_list(S) ++ [$s, $\  | Fmt]],
-                [N | Vars],
-                [$~ | integer_to_list(S) ++ [$c, $\  | FmtLs]],
-                [$- | VarLs]});
-
-hdr_lines([], {Fmt, Vars, FmtL, VarLs}) ->
-    io:format(Fmt, Vars),
-    io:format(FmtL, VarLs).
-
-
-fields(F, Vs) ->
-    fields(lists:reverse(F),
-           lists:reverse(Vs),
-           {"~n", []}).
-
-fields([{_, n}|R], [V | Vs], {Fmt, Vars}) when is_list(V)
-                                     orelse is_binary(V) ->
-    fields(R, Vs, {"~s " ++ Fmt, [V | Vars]});
-
-fields([{_, n}|R], [V | Vs], {Fmt, Vars}) ->
-    fields(R, Vs, {"~p " ++ Fmt, [V | Vars]});
-
-fields([{_, S}|R], [V | Vs], {Fmt, Vars}) when is_list(V)
-                                     orelse is_binary(V) ->
-    %% there is a space that matters here ------------v
-    fields(R, Vs, {[$~ | integer_to_list(S) ++ [$s, $\  | Fmt]], [V | Vars]});
-
-
-fields([{_, S}|R], [V | Vs], {Fmt, Vars}) when is_integer(V) ->
-    %% there is a space that matters here ------------v
-    fields(R, Vs, {[$~ | integer_to_list(S) ++ [$b, $\  | Fmt]], [V | Vars]});
-
-fields([{_, S}|R], [V | Vs], {Fmt, Vars}) ->
-    %% there is a space that matters here ------------v
-    fields(R, Vs, {[$~ | integer_to_list(S) ++ [$p, $\  | Fmt]], [V | Vars]});
-
-fields([], [], {Fmt, Vars}) ->
-    io:format(Fmt, Vars).
-
-print_config(Prefix, SubPrefix) ->
-    Fmt = [{"Key", 20}, {"Value", 50}],
-    hdr(Fmt),
-    PrintFn = fun({K, [V|_]}, _) ->
-                      fields(Fmt, [key(Prefix, SubPrefix, K), V])
-              end,
-    riak_core_metadata:fold(PrintFn, ok, {Prefix, SubPrefix}).
-
-key(Prefix, SubPrefix, Key) ->
-    io_lib:format("~p.~p.~p", [Prefix, SubPrefix, Key]).
 
 aae_exchange_status(ExchangeInfo) ->
     io:format("~s~n", [string:centre(" Exchanges ", 79, $=)]),
@@ -652,10 +599,11 @@ aae_repair_status(ExchangeInfo) ->
                                       string:centre("Max", 8)]),
     io:format("~79..-s~n", [""]),
     [begin
-         io:format("~-49b  ~s  ~s  ~s~n", [Index,
-                                           string:centre(integer_to_list(Last), 8),
-                                           string:centre(integer_to_list(Mean), 8),
-                                           string:centre(integer_to_list(Max), 8)]),
+         io:format("~-49b  ~s  ~s  ~s~n",
+                   [Index,
+                    string:centre(integer_to_list(Last), 8),
+                    string:centre(integer_to_list(Mean), 8),
+                    string:centre(integer_to_list(Max), 8)]),
          ok
      end || {Index, _, _, {Last,_Min,Max,Mean}} <- ExchangeInfo],
     ok.
@@ -726,19 +674,3 @@ update_img(Img) ->
     io:format(" Updating image '~s' (~p parts)", [Img, length(Parts)]),
     [update_part(Img, Part) || Part <- lists:sort(Parts)],
     io:format(" done.~n").
-
-%%%===================================================================
-%%% Tests
-%%%===================================================================
-
--ifdef(TEST).
-
-named_test() ->
-    ?assertEqual(
-       ok, sniffle_console:fields(
-             [{"Desc", n}, {"Imported",7}, {"Version",8},
-              {"Name",15}, {"OS",7}, {"UUID",36}],
-             [<<"Base template to build other templates on">>,
-              100,<<"1.6.1">>,<<"smartos64">>, <<"smartos">>,
-              <<"f4c23828-7981-11e1-912f-8b6d67c68076">>])).
--endif.
