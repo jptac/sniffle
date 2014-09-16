@@ -580,6 +580,7 @@ message({dataset, import, URL}, State) ->
 
 ?DSM(imported);
 ?DSM(status);
+?DSM(sha1);
 ?DSM(description);
 ?DSM(disk_driver);
 ?DSM(homepage);
