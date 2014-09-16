@@ -70,7 +70,9 @@ get_type([K|R], Os) ->
     end.
 
 opts() ->
-    [{"storage",
+    [{"network",
+      [{"http", [{"proxy", string}]}]},
+     {"storage",
       [{"general", [{"backend", {enum, ["internal", "s3"]}}]},
        {"s3", [{"image_bucket", string}, {"snapshot_bucket", string},
                {"general_bucket", string}, {"access_key", string},
