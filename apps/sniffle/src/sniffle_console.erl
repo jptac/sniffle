@@ -593,9 +593,9 @@ hdr_lines([{N, n} | R], {Fmt, Vars, FmtLs, VarLs}) ->
 hdr_lines([{N, S}|R], {Fmt, Vars, FmtLs, VarLs}) ->
     %% there is a space that matters here ---------v
     hdr_lines(R, {
-                [$~ | integer_to_list(S) ++ [$s, $\  | Fmt]],
+                [$~ | integer_to_list(S) ++ [$s, $\s | Fmt]],
                 [N | Vars],
-                [$~ | integer_to_list(S) ++ [$c, $\  | FmtLs]],
+                [$~ | integer_to_list(S) ++ [$c, $\s | FmtLs]],
                 [$- | VarLs]});
 
 hdr_lines([], {Fmt, Vars, FmtL, VarLs}) ->
@@ -618,16 +618,16 @@ fields([{_, n}|R], [V | Vs], {Fmt, Vars}) ->
 fields([{_, S}|R], [V | Vs], {Fmt, Vars}) when is_list(V)
                                      orelse is_binary(V) ->
     %% there is a space that matters here ------------v
-    fields(R, Vs, {[$~ | integer_to_list(S) ++ [$s, $\  | Fmt]], [V | Vars]});
+    fields(R, Vs, {[$~ | integer_to_list(S) ++ [$s, $\s | Fmt]], [V | Vars]});
 
 
 fields([{_, S}|R], [V | Vs], {Fmt, Vars}) when is_integer(V) ->
     %% there is a space that matters here ------------v
-    fields(R, Vs, {[$~ | integer_to_list(S) ++ [$b, $\  | Fmt]], [V | Vars]});
+    fields(R, Vs, {[$~ | integer_to_list(S) ++ [$b, $\s | Fmt]], [V | Vars]});
 
 fields([{_, S}|R], [V | Vs], {Fmt, Vars}) ->
     %% there is a space that matters here ------------v
-    fields(R, Vs, {[$~ | integer_to_list(S) ++ [$p, $\  | Fmt]], [V | Vars]});
+    fields(R, Vs, {[$~ | integer_to_list(S) ++ [$p, $\s | Fmt]], [V | Vars]});
 
 fields([], [], {Fmt, Vars}) ->
     io:format(Fmt, Vars).
@@ -641,7 +641,7 @@ print_config(Prefix, SubPrefix) ->
     riak_core_metadata:fold(PrintFn, ok, {Prefix, SubPrefix}).
 
 key(Prefix, SubPrefix, Key) ->
-    io_lib:format("~p.~p.~p", [Prefix, SubPrefix, Key]).
+    io_lib:format("~s.~s.~s", [Prefix, SubPrefix, Key]).
 
 aae_exchange_status(ExchangeInfo) ->
     io:format("~s~n", [string:centre(" Exchanges ", 79, $=)]),
@@ -664,10 +664,11 @@ aae_repair_status(ExchangeInfo) ->
                                       string:centre("Max", 8)]),
     io:format("~79..-s~n", [""]),
     [begin
-         io:format("~-49b  ~s  ~s  ~s~n", [Index,
-                                           string:centre(integer_to_list(Last), 8),
-                                           string:centre(integer_to_list(Mean), 8),
-                                           string:centre(integer_to_list(Max), 8)]),
+         io:format("~-49b  ~s  ~s  ~s~n",
+                   [Index,
+                    string:centre(integer_to_list(Last), 8),
+                    string:centre(integer_to_list(Mean), 8),
+                    string:centre(integer_to_list(Max), 8)]),
          ok
      end || {Index, _, _, {Last,_Min,Max,Mean}} <- ExchangeInfo],
     ok.
