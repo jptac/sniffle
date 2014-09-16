@@ -399,11 +399,11 @@ networks(R) ->
 
 config(["show"]) ->
     io:format("Storage~n  General Section~n"),
-    print_config(storage, general),
+    print_config(<<"storage">>, <<"general">>),
     io:format("  S3 Section~n"),
-    print_config(storage, s3),
+    print_config(<<"storage">>, <<"s3">>),
     io:format("Network~n  HTTP~n"),
-    print_config(network, http),
+    print_config(<<"network">>, <<"http">>),
     ok;
 
 config(["set", Ks, V]) ->
