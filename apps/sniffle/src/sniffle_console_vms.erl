@@ -3,8 +3,8 @@
 -export([command/2, help/0]).
 
 -define(T, ft_vm).
--define(F(Hs, Vs), sniffle_console:fields(Hs,Vs)).
--define(H(Hs), sniffle_console:hdr(Hs)).
+-define(F(Hs, Vs), fifo_console:fields(Hs,Vs)).
+-define(H(Hs), fifo_console:hdr(Hs)).
 
 help() ->
     fmt("Usage~n"
