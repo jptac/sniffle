@@ -12,7 +12,7 @@
          list/0,
          list/2,
          import/1,
-         read_image/8,
+         read_image/9,
          wipe/1,
          sync_repair/2,
          list_/0
@@ -112,6 +112,7 @@ import(URL) ->
             {ok, UUID} = jsxd:get([<<"uuid">>], JSON),
             {ok, ImgURL} = jsxd:get([<<"files">>, 0, <<"url">>], JSON),
             {ok, TotalSize} = jsxd:get([<<"files">>, 0, <<"size">>], JSON),
+            {ok, SHA1} = jsxd:get([<<"files">>, 0, <<"sha1">>], JSON),
             sniffle_dataset:create(UUID),
             import_manifest(UUID, JSON),
             imported(UUID, 0),
@@ -123,11 +124,11 @@ import(URL) ->
                                                     5*1024*1024),
                     {ok, U} = fifo_s3_upload:new(AKey, SKey, Host, Port, Bucket,
                                                  UUID),
-                    spawn(?MODULE, read_image, [UUID, TotalSize, ImgURL, <<>>,
-                                                0, U, ChunkSize, s3]);
+                    spawn(?MODULE, read_image, [UUID, SHA1, TotalSize, ImgURL,
+                                                <<>>, 0, U, ChunkSize, s3]);
                 internal ->
-                    spawn(?MODULE, read_image, [UUID, TotalSize, ImgURL, <<>>,
-                                                0, undefined, 1024*1024,
+                    spawn(?MODULE, read_image, [UUID, SHA1, TotalSize, ImgURL,
+                                                <<>>, 0, undefined, 1024*1024,
                                                 internal])
             end,
             {ok, UUID};
@@ -217,14 +218,14 @@ do_write(Dataset, Op, Val) ->
     sniffle_entity_write_fsm:write({?VNODE, ?SERVICE}, Dataset, Op, Val).
 
 %% If more then one MB is in the accumulator read store it in 1MB chunks
-read_image(UUID, TotalSize, Url, Acc, Idx, Ref, ChunkSize, Backend)
+read_image(UUID, Hash, TotalSize, Url, Acc, Idx, Ref, ChunkSize, Backend)
   when is_binary(Url) ->
     case hackney:request(get, Url, [], <<>>, http_opts()) of
         {ok, 200, _, Client} ->
             status(UUID, <<"importing">>),
             SHA1 = crypto:hash_init(sha),
-            read_image(UUID, TotalSize, Client, Acc, Idx, Ref, ChunkSize, SHA1,
-                       Backend);
+            read_image(UUID, Hash, TotalSize, Client, Acc, Idx, Ref, ChunkSize,
+                       SHA1, Backend);
         {ok, Reason, _, _} ->
             fail_import(UUID, Reason, 0)
     end.
@@ -232,7 +233,7 @@ read_image(UUID, TotalSize, Url, Acc, Idx, Ref, ChunkSize, Backend)
 %% If we're done (and less then one MB is left, store the rest)
 
 
-read_image(UUID, TotalSize, Client, All, Idx, Ref, ChunkSize, SHA1, Backend)
+read_image(UUID, Hash, TotalSize, Client, All, Idx, Ref, ChunkSize, SHA1, Backend)
   when byte_size(All) >= ChunkSize ->
     <<MB:ChunkSize/binary, Acc/binary>> = All,
     {ok, Ref1} = case Backend of
@@ -253,35 +254,43 @@ read_image(UUID, TotalSize, Client, All, Idx, Ref, ChunkSize, SHA1, Backend)
     libhowl:send(UUID,
                  [{<<"event">>, <<"progress">>},
                   {<<"data">>, [{<<"imported">>, Done}]}]),
-    read_image(UUID, TotalSize, Client, binary:copy(Acc), Idx1, Ref1, ChunkSize,
+    read_image(UUID, Hash, TotalSize, Client, binary:copy(Acc), Idx1, Ref1,
+               ChunkSize,
                SHA1, Backend);
 
-read_image(UUID, _TotalSize, done, Acc, Idx, Ref, _, SHA1, Backend) ->
+read_image(UUID, Hash, _TotalSize, done, Acc, Idx, Ref, _, SHA1, Backend) ->
     libhowl:send(UUID,
                  [{<<"event">>, <<"progress">>},
                   {<<"data">>, [{<<"imported">>, 1}]}]),
     status(UUID, <<"imported">>),
-    Digest = base16:encode(crypto:hash_final(SHA1)),
-    sha1(UUID, Digest),
-    imported(UUID, 1),
-    case Backend of
-        internal ->
-            {ok, Ref1} = sniffle_img:create(UUID, Idx, Acc, Ref),
-            sniffle_img:create(UUID, done, <<>>, Ref1);
-        s3 ->
-            fifo_s3_upload:part(Ref, binary:copy(Acc)),
-            fifo_s3_upload:done(Ref)
+    case base16:encode(crypto:hash_final(SHA1)) of
+        Digest when Digest == Hash ->
+            sha1(UUID, Digest),
+            imported(UUID, 1),
+            case Backend of
+                internal ->
+                    {ok, Ref1} = sniffle_img:create(UUID, Idx, Acc, Ref),
+                    sniffle_img:create(UUID, done, <<>>, Ref1);
+                s3 ->
+                    fifo_s3_upload:part(Ref, binary:copy(Acc)),
+                    fifo_s3_upload:done(Ref)
+            end;
+        Digest ->
+            lager:error("[dataset] import failed. Sha1 as ~p but expected ~p",
+                        [Digest, Hash]),
+            fail_import(UUID, {sha1, Digest, Hash}, Idx, Ref, Backend)
     end;
 
-read_image(UUID, TotalSize, Client, Acc, Idx, Ref, ChunkSize, SHA1, Backend) ->
+
+read_image(UUID, Hash, TotalSize, Client, Acc, Idx, Ref, ChunkSize, SHA1, Backend) ->
     case hackney:stream_body(Client) of
         {ok, Data, Client1} ->
             SHA11 = crypto:hash_update(SHA1, Data),
-            read_image(UUID, TotalSize, Client1, <<Acc/binary, Data/binary>>,
+            read_image(UUID, Hash, TotalSize, Client1, <<Acc/binary, Data/binary>>,
                        Idx, Ref, ChunkSize, SHA11, Backend);
         {done, Client2} ->
             hackney:close(Client2),
-            read_image(UUID, TotalSize, done, Acc, Idx, Ref, ChunkSize, SHA1,
+            read_image(UUID, Hash, TotalSize, done, Acc, Idx, Ref, ChunkSize, SHA1,
                        Backend);
         {error, Reason} ->
             fail_import(UUID, Reason, Idx, Ref, Backend)
