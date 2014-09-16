@@ -397,10 +397,13 @@ networks([C, "-j" | R]) ->
 networks(R) ->
     sniffle_console_networks:command(text, R).
 
-config(["show"]) ->    io:format("Storage~n  General Section~n"),
+config(["show"]) ->
+    io:format("Storage~n  General Section~n"),
     print_config(storage, general),
     io:format("  S3 Section~n"),
     print_config(storage, s3),
+    io:format("Network~n  HTTP~n"),
+    print_config(network, http),
     ok;
 
 config(["set", Ks, V]) ->
@@ -420,7 +423,16 @@ config(["set" | R]) ->
         _ ->
             io:format("Setting changed~n", []),
             ok
-    end.
+    end;
+
+config(["unset", Ks]) ->
+    Ks1 = [binary_to_list(K) || K <- re:split(Ks, "\\.")],
+    config(["unset" | Ks1]);
+
+config(["unset" | Ks]) ->
+    sniffle_opt:unset(Ks),
+    io:format("Setting changed~n", []),
+    ok.
 
 %%compied from riak_kv
 
