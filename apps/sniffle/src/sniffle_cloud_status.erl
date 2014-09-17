@@ -114,7 +114,7 @@ merge_numbers([R | Rr], Acc) ->
                       end, R, Acc),
     merge_numbers(Rr, Acc1).
 
-ping_test(Hs, Warnings) when length(Hs) >= ?PING_CONCURENCY ->
+ping_test(Hs, Warnings) when length(Hs) =< ?PING_CONCURENCY ->
     T2 = [ping(H) || H <- Hs],
     T3 = [read_ping(H) || H <- T2],
     lists:foldl(fun (ok, WAcc) ->
