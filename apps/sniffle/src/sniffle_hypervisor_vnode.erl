@@ -228,37 +228,25 @@ delete(State) ->
 
 handle_coverage(status, _KeySpaces, Sender, State) ->
     ID = sniffle_vnode:mkid(list),
-    FoldFn = fun(K, O, {Res, Warnings}) ->
+    FoldFn = fun(K, O, {Res, W, Hs}) ->
                      S0 = ft_obj:val(O),
                      S1 = ft_hypervisor:load(ID, S0),
                      {Host, Port} = ft_hypervisor:endpoint(S1),
-                     W1 =
-                         case libchunter:ping(Host, Port) of
-                             pong ->
-                                 Warnings;
-                             _ ->
-                                 [jsxd:from_list(
-                                    [{<<"category">>, <<"chunter">>},
-                                     {<<"element">>, K},
-                                     {<<"type">>, <<"critical">>},
-                                     {<<"message">>,
-                                      bin_fmt("Chunter server ~s down.",
-                                              [ft_hypervisor:alias(S0)])}]) |
-                                  Warnings]
-                         end,
+                     Hs1 = [{K, Host, Port, ft_hypervisor:alias(S0)} | Hs],
+                     %% W1 =
                      {Res1, W2} =
                          case ft_hypervisor:pools(S1) of
                              [] ->
-                                 {ft_hypervisor:resources(S1), W1};
+                                 {ft_hypervisor:resources(S1), W};
                              Pools ->
                                  jsxd:fold(
                                    fun status_fold/3,
-                                   {ft_hypervisor:resources(S1), W1},
+                                   {ft_hypervisor:resources(S1), W},
                                    Pools)
                          end,
-                     {[{K, Res1} | Res], W2}
+                     {[{K, Res1} | Res], W2, Hs1}
              end,
-    sniffle_vnode:fold(FoldFn, {[], []}, Sender, State);
+    sniffle_vnode:fold(FoldFn, {[], [], []}, Sender, State);
 
 handle_coverage(Req, KeySpaces, Sender, State) ->
     sniffle_vnode:handle_coverage(Req, KeySpaces, Sender, State).
