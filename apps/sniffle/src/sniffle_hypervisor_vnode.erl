@@ -244,7 +244,7 @@ handle_coverage(status, _KeySpaces, Sender, State) ->
                                    {ft_hypervisor:resources(S1), W},
                                    Pools)
                          end,
-                     {[{K, Res1, Hs} | Res], W2, Hs1}
+                     {[{K, Res1} | Res], W2, Hs1}
              end,
     sniffle_vnode:fold(FoldFn, {[], [], []}, Sender, State);
 
