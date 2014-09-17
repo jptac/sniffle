@@ -11,7 +11,9 @@
          start/0
         ]).
 
--record(state, {resources, r, reqid, from, warnings = []}).
+-record(state, {resources, r, reqid, from, warnings = [], hypervisors=dict:new()}).
+
+-define(PING_CONCURENCY, 5).
 
 start() ->
     ReqID = sniffle_coverage:mk_reqid(),
@@ -41,13 +43,18 @@ init({From, ReqID, _}, {VNodeMaster, NodeCheckService, Request}) ->
     {Request, VNodeSelector, NVal, PrimaryVNodeCoverage,
      NodeCheckService, VNodeMaster, Timeout, State}.
 
-process_results({ok, _ReqID, _IdxNode, {Res, Warnings}},
+process_results({ok, _ReqID, _IdxNode, {Res, Warnings, Hs}},
                 State = #state{resources = Resources,
-                               warnings = Warnings0}) ->
+                               warnings = Warnings0,
+                               hypervisors = Hs0}) ->
     Resources1 = lists:foldl(fun({H, ResIn}, Acc) ->
                                      orddict:append(H, ResIn, Acc)
                              end, Resources, Res),
+    Hs1 = lists:foldl(fun(H, HsAcc) ->
+                             dict:update_counter(H, 1, HsAcc)
+                     end, Hs0, Hs),
     {done, State#state{resources = Resources1,
+                       hypervisors = Hs1,
                        warnings = ordsets:union(Warnings0, Warnings)}};
 
 process_results(Result, State) ->
@@ -56,6 +63,7 @@ process_results(Result, State) ->
 
 finish(clean, State = #state{resources = Resources,
                              warnings = Warnings,
+                             hypervisors = Hs0,
                              r = R,
                              from = From}) ->
     Resources1 =
@@ -78,7 +86,10 @@ finish(clean, State = #state{resources = Resources,
               (_,_, Acc) ->
                   Acc
           end, [], Resources),
-    From ! {ok, {Resources1, Warnings}},
+    Hs1 = dict:to_list(Hs0),
+    Hs2 = [H || {H, Cnt} <- Hs1, Cnt >= R],
+    Warnings1 = ping_test(Hs2, Warnings),
+    From ! {ok, {Resources1, Warnings1}},
     {stop, normal, State};
 
 finish(How, State) ->
@@ -102,3 +113,54 @@ merge_numbers([R | Rr], Acc) ->
                               V2
                       end, R, Acc),
     merge_numbers(Rr, Acc1).
+
+ping_test(Hs, Warnings) when length(Hs) >= ?PING_CONCURENCY ->
+    T2 = [ping(H) || H <- Hs],
+    T3 = [read_ping(H) || H <- T2],
+    lists:foldl(fun (ok, WAcc) ->
+                        WAcc;
+                    (W, WAcc) ->
+                        [W | WAcc]
+                end, Warnings, T3);
+
+ping_test(Hs, Warnings) ->
+    {T1, Hs1} = lists:split(?PING_CONCURENCY, Hs),
+    T2 = [ping(H) || H <- T1],
+    T3 = [read_ping(H) || H <- T2],
+    Warnings1 = lists:foldl(fun (ok, WAcc) ->
+                                    WAcc;
+                                (W, WAcc) ->
+                                    [W | WAcc]
+                            end, Warnings, T3),
+    ping_test(Hs1, Warnings1).
+
+ping({UUID, Host, Port, Alias}) ->
+    Ref = make_ref(),
+    Self = self(),
+    Msg = <<"Chunter server ", Alias/binary, "(", UUID/binary, ") is down!">>,
+    E = [
+         {<<"category">>, <<"chunter">>},
+         {<<"element">>, UUID},
+         {<<"message">>, Msg},
+         {<<"type">>, <<"critical">>}
+        ],
+    spawn(fun() ->
+                  case libchunter:ping(Host, Port) of
+                      pong ->
+                          Self ! {Ref, ok};
+                      _ ->
+                          Self ! {Ref, fail}
+                  end
+          end),
+    {Ref, E}.
+
+read_ping({Ref, E}) ->
+    receive
+        {Ref, ok} ->
+            ok;
+        {Ref, fail} ->
+            E
+    after
+        500 ->
+            E
+    end.
