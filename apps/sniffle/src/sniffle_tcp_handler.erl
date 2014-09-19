@@ -175,7 +175,7 @@ message({grouping, config, set, ID, Attributes}, State) when
       is_binary(ID),
       is_list(Attributes) ->
     {reply,
-     sniffle_grouping:config_set(ID, Attributes),
+     sniffle_grouping:set_config(ID, Attributes),
      State};
 
 %%%===================================================================
