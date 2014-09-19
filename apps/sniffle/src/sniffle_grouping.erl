@@ -19,7 +19,8 @@
          add_grouping/2,
          remove_grouping/2,
          list_/0,
-         metadata_set/2
+         metadata_set/2,
+         set_config/2
         ]).
 
 -ignore_xref([
@@ -215,6 +216,13 @@ list_() ->
                  ok.
 metadata_set(Grouping, Attributes) ->
     do_write(Grouping, metadata_set, Attributes).
+
+-spec set_config(Grouping::fifo:uuid(), Attirbutes::fifo:attr_list()) ->
+                 not_found |
+                 {error, timeout} |
+                 ok.
+set_config(Grouping, Attributes) ->
+    do_write(Grouping, set_config, Attributes).
 
 %%--------------------------------------------------------------------
 %% @doc Lists all vm's and fiters by a given matcher set.
