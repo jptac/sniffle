@@ -232,7 +232,7 @@ handle_coverage(status, _KeySpaces, Sender, State) ->
                      S0 = ft_obj:val(O),
                      S1 = ft_hypervisor:load(ID, S0),
                      {Host, Port} = ft_hypervisor:endpoint(S1),
-                     Hs1 = [{K, Host, Port, ft_hypervisor:alias(S0)} | Hs],
+                     Hs1 = [{K, Host, Port, ft_hypervisor:alias(S1)} | Hs],
                      %% W1 =
                      {Res1, W2} =
                          case ft_hypervisor:pools(S1) of
