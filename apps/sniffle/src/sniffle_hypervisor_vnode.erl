@@ -232,7 +232,7 @@ handle_coverage(status, _KeySpaces, Sender, State) ->
                      S0 = ft_obj:val(O),
                      S1 = ft_hypervisor:load(ID, S0),
                      {Host, Port} = ft_hypervisor:endpoint(S1),
-                     Hs1 = [{K, Host, Port, ft_hypervisor:alias(S0)} | Hs],
+                     Hs1 = [{K, Host, Port, ft_hypervisor:alias(S1)} | Hs],
                      %% W1 =
                      {Res1, W2} =
                          case ft_hypervisor:pools(S1) of
@@ -240,7 +240,7 @@ handle_coverage(status, _KeySpaces, Sender, State) ->
                                  {ft_hypervisor:resources(S1), W};
                              Pools ->
                                  jsxd:fold(
-                                   fun status_fold/3,
+                                   status_fold_fn(K),
                                    {ft_hypervisor:resources(S1), W},
                                    Pools)
                          end,
@@ -271,7 +271,12 @@ handle_info(Msg, State) ->
 bin_fmt(F, L) ->
     list_to_binary(io_lib:format(F, L)).
 
-status_fold(Name, Pool, {ResAcc, WarningsAcc}) ->
+status_fold_fn(Hypervisor) ->
+    fun (Name, Pool, Acc) ->
+            status_fold(Hypervisor, Name, Pool, Acc)
+    end.
+
+status_fold(Hypervisor, Name, Pool, {ResAcc, WarningsAcc}) ->
     Size = jsxd:get(<<"size">>, 0, Pool),
     Used = jsxd:get(<<"used">>, 0, Pool),
     ResAcc1 =
@@ -291,7 +296,7 @@ status_fold(Name, Pool, {ResAcc, WarningsAcc}) ->
             {ResAcc1,
              [jsxd:from_list(
                 [{<<"category">>, <<"chunter">>},
-                 {<<"element">>, Name},
+                 {<<"element">>, Hypervisor},
                  {<<"type">>, <<"critical">>},
                  {<<"message">>,
                   bin_fmt("Zpool ~s in state ~s.", [Name, PoolState])}])|
