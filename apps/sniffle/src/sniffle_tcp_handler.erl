@@ -597,9 +597,14 @@ message({dataset, import, URL}, State) ->
 ?DSM(nic_driver);
 ?DSM(os);
 ?DSM(type);
+?DSM(zone_type);
 ?DSM(users);
 ?DSM(version);
+?DSM(kernel_version);
 ?DSM(set_metadata);
+?DSM(remove_requirement);
+?DSM(add_requirement);
+
 
 %%%===================================================================
 %%%  Img Functions

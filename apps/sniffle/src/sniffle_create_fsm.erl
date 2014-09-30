@@ -343,13 +343,13 @@ get_server(_Event, State = #state{
            end,
     case ls_user:cache(Creator) of
         {ok, Permissions} ->
-            Conditions0 = ft_package:requirements(Package)
-                ++ ft_dataset:requirements(Dataset)
-                ++ jsxd:get(<<"requirements">>, [], Config),
             Conditions1 = [{must, 'allowed', Permission, Permissions},
                            {must, 'element', <<"virtualisation">>, Type},
-                           {must, '>=', <<"resources.free-memory">>, Ram}] ++
-                lists:map(fun(C) -> make_condition(C, Permissions) end, Conditions0),
+                           {must, '>=', <<"resources.free-memory">>, Ram}]
+                ++ ft_package:requirements(Package)
+                ++ ft_dataset:requirements(Dataset)
+                ++ lists:map(fun(C) -> make_condition(C, Permissions) end,
+                             jsxd:get(<<"requirements">>, [], Config)),
             Conditions2 = Conditions1 ++ GroupingRules,
             {UUID, Config, Conditions} = eplugin:fold('create:conditions', {UUID, Config, Conditions2}),
             lager:debug("[create] Finding hypervisor: ~p", [Conditions]),

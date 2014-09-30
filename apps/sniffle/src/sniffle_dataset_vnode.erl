@@ -49,41 +49,49 @@
              ]).
 
 -export([
-         set_metadata/4,
+         add_requirement/4,
          dataset/4,
          description/4,
          disk_driver/4,
          homepage/4,
          image_size/4,
+         imported/4,
+         kernel_version/4,
          name/4,
-         type/4,
          networks/4,
          nic_driver/4,
          os/4,
-         users/4,
+         remove_requirement/4,
+         set_metadata/4,
          sha1/4,
          status/4,
-         imported/4,
-         version/4
+         type/4,
+         users/4,
+         version/4,
+         zone_type/4
         ]).
 
 -ignore_xref([
-              set_metadata/4,
+              add_requirement/4,
               dataset/4,
               description/4,
               disk_driver/4,
               homepage/4,
               image_size/4,
+              imported/4,
+              kernel_version/4,
               name/4,
               networks/4,
               nic_driver/4,
               os/4,
-              users/4,
-              type/4,
+              remove_requirement/4,
+              set_metadata/4,
               sha1/4,
               status/4,
-              imported/4,
-              version/4
+              type/4,
+              users/4,
+              version/4,
+              zone_type/4
              ]).
 
 -define(SERVICE, sniffle_dataset).
@@ -164,11 +172,15 @@ set(Preflist, ReqID, Dataset, Data) ->
 ?VSET(nic_driver).
 ?VSET(os).
 ?VSET(type).
+?VSET(zone_type).
 ?VSET(users).
 ?VSET(version).
+?VSET(kernel_version).
 ?VSET(sha1).
 ?VSET(status).
 ?VSET(imported).
+?VSET(remove_requirement).
+?VSET(add_requirement).
 
 
 %%%===================================================================
