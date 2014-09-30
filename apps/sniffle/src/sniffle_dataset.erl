@@ -217,7 +217,7 @@ import_manifest(UUID, D1) ->
             type(UUID, <<"zone">>);
         {ok, OS} ->
             case jsxd:get(<<"type">>, D1) of
-                {ok, "lx-dataset"} ->
+                {ok, <<"lx-dataset">>} ->
                     os(UUID, OS),
                     type(UUID, <<"zone">>),
                     zone_type(UUID, <<"lx">>);
