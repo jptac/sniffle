@@ -206,7 +206,7 @@ import_manifest(UUID, D1) ->
         {ok, Min} ->
             Min1 = [V || {_, V} <- Min],
             [M | _] = lists:sort(Min1),
-            R = {must, <<"sysinfo.Live Image">>, '>=', M},
+            R = {must, '>=', <<"sysinfo.Live Image">>, M},
             add_requirement(UUID, R);
         _ ->
             ok
