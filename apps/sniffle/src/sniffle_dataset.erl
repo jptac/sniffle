@@ -15,7 +15,9 @@
          read_image/9,
          wipe/1,
          sync_repair/2,
-         list_/0
+         list_/0,
+         remove_requirement/2,
+         add_requirement/2
         ]).
 
 -ignore_xref([
@@ -32,6 +34,7 @@
          image_size/2,
          name/2,
          type/2,
+         zone_type/2,
          networks/2,
          nic_driver/2,
          os/2,
@@ -39,9 +42,9 @@
          users/2,
          status/2,
          imported/2,
-         version/2
+         version/2,
+         kernel_version/2
         ]).
-
 
 wipe(UUID) ->
     sniffle_coverage:start(?MASTER, ?SERVICE, {wipe, UUID}).
@@ -146,11 +149,15 @@ import(URL) ->
 ?SET(nic_driver).
 ?SET(os).
 ?SET(type).
+?SET(zone_type).
 ?SET(users).
 ?SET(version).
+?SET(kernel_version).
 ?SET(sha1).
 ?SET(status).
 ?SET(imported).
+?SET(remove_requirement).
+?SET(add_requirement).
 
 %%%===================================================================
 %%% Internal Functions
@@ -160,7 +167,7 @@ do_import([], _UUID, _O) ->
     ok;
 
 do_import([{K, F} | R], UUID, O) ->
-    case jsxd:get([K], O) of
+    case jsxd:get(K, O) of
         {ok, V}  ->
             F(UUID, V);
         _ ->
@@ -177,16 +184,16 @@ import_manifest(UUID, D1) ->
        {<<"description">>, fun description/2},
        {<<"disk_driver">>, fun disk_driver/2},
        {<<"nic_driver">>, fun nic_driver/2},
-       {<<"users">>, fun users/2}
+       {<<"users">>, fun users/2},
+       {[<<"tags">>, <<"kernel_version">>], fun kernel_version/2}
       ], UUID, D1),
     image_size(
       UUID,
       ensure_integer(
         jsxd:get(<<"image_size">>,
                  jsxd:get([<<"files">>, 0, <<"size">>], 0, D1), D1))),
-    networks(
-      UUID,
-      jsxd:get([<<"requirements">>, <<"networks">>], [], D1)),
+    RS = jsxd:get(<<"requirements">>, [], D1),
+    networks(UUID, jsxd:get(<<"networks">>, [], RS)),
     case jsxd:get(<<"homepage">>, D1) of
         {ok, HomePage} ->
             set_metadata(
@@ -195,13 +202,29 @@ import_manifest(UUID, D1) ->
         _ ->
             ok
     end,
+    case jsxd:get(<<"min_platform">>, RS) of
+        {ok, Min} ->
+            Min1 = [V || {_, V} <- Min],
+            [M | _] = lists:sort(Min1),
+            R = {must, <<"sysinfo.Live Image">>, '>=', M},
+            add_requirement(UUID, R);
+        _ ->
+            ok
+    end,
     case jsxd:get(<<"os">>, D1) of
         {ok, <<"smartos">>} ->
             os(UUID, <<"smartos">>),
             type(UUID, <<"zone">>);
         {ok, OS} ->
-            os(UUID, OS),
-            type(UUID, <<"kvm">>)
+            case jsxd:get(<<"type">>, D1) of
+                {ok, "lx-dataset"} ->
+                    os(UUID, OS),
+                    type(UUID, <<"zone">>),
+                    zone_type(UUID, <<"lx">>);
+                _ ->
+                    os(UUID, OS),
+                    type(UUID, <<"kvm">>)
+            end
     end.
 
 ensure_integer(I) when is_integer(I) ->
