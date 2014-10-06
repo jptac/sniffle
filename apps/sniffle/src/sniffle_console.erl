@@ -86,10 +86,12 @@ update_metadata(Name, LS, FT) ->
 update_meta_element(LS, FT, ID) ->
     {ok, E} = LS:get(ID),
     M = FT:metadata(E),
-    [move_mkey(LS, ID, K, V) || {K, V} <- M, K /= <<"public">>].
-
-move_mkey(LS, ID, K, V) ->
-    LS:set_metadata(ID, [{K, delete}, {[<<"public">>, K], V}]),
+    MChanges = lists:foldl(fun({<<"public">>, _V}, Cs) ->
+                                   Cs;
+                              ({K, V}, Cs) ->
+                                   [{K, delete}, {[<<"public">>, K], V} | Cs]
+                           end, [], M),
+    LS:set_metadata(ID, MChanges),
     io:format(".").
 
 init_leo([H]) ->
