@@ -15,7 +15,8 @@
          db_delete/1,
          get_ring/1,
          connections/1,
-         db_update/1
+         db_update/1,
+         update_snarl_meta/1
         ]).
 
 -export([
@@ -67,8 +68,29 @@
               ringready/1,
               staged_join/1,
               vms/1,
-              db_update/1
+              db_update/1,
+              update_snarl_meta/1
              ]).
+
+update_snarl_meta([]) ->
+    update_metadata("Organisation", ls_org, ft_org),
+    update_metadata("User", ls_user, ft_user),
+    update_metadata("Role", ls_role, ft_role).
+
+update_metadata(Name, LS, FT) ->
+    {ok, Es} = LS:list(),
+    io:format("[~s] Updating ~p elements: ", [Name, length(Es)]),
+    [update_meta_element(LS, FT, E) || E <- Es],
+    io:format(" done.~n").
+
+update_meta_element(LS, FT, ID) ->
+    {ok, E} = LS:get(ID),
+    M = FT:metadata(E),
+    [move_mkey(LS, ID, K, V) || {K, V} <- M, K /= <<"public">>].
+
+move_mkey(LS, ID, K, V) ->
+    LS:set_metadata(ID, [{K, delete}, {[<<"public">>, K], V}]),
+    io:format(".").
 
 init_leo([H]) ->
     P = 10020,
@@ -674,3 +696,4 @@ update_img(Img) ->
     io:format(" Updating image '~s' (~p parts)", [Img, length(Parts)]),
     [update_part(Img, Part) || Part <- lists:sort(Parts)],
     io:format(" done.~n").
+
