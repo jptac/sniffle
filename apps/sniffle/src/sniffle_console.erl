@@ -81,7 +81,7 @@ update_metadata(Name, LS, FT) ->
     {ok, Es} = LS:list(),
     io:format("[~s] Updating ~p elements: ", [Name, length(Es)]),
     [update_meta_element(LS, FT, E) || E <- Es],
-    io:format(" done.~n").
+    io:format("done.~n").
 
 update_meta_element(LS, FT, ID) ->
     {ok, E} = LS:get(ID),
