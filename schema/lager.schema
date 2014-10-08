@@ -40,11 +40,20 @@
   {datatype, {enum, [on, off]}}
 ]}.
 
-
 %% @doc the log level of the watchdog log
 {mapping, "log.watchdog.level", "lager.handlers", [
   {default, error},
   {datatype, {enum, [debug, info, warning, error]}}]}.
+
+%% @doc the log level of the watchdog log
+{mapping, "log.watchdog.cluster", "lager.handlers", [
+  {default, "fifo"},
+  {datatype, string}]}.
+
+%% @doc the log level of the watchdog log
+{mapping, "log.watchdog.service", "lager.handlers", [
+  {default, "sniffle"},
+  {datatype, string}]}.
 
 %% @doc The ip of the watchdog server
 {mapping, "log.watchdog.host", "lager.handlers",
@@ -71,7 +80,9 @@
       undefined -> [];
       WatchdogLogServer ->
         WatchdogLogLevel = cuttlefish:conf_get("log.watchdog.level", Conf),
-        [{lager_watchdog, [cluster_id, snarl, WatchdogLogLevel, WatchdogLogServer]}]
+        WDCluster = cuttlefish:conf_get("log.watchdog.cluster", Conf),
+        WDService = cuttlefish:conf_get("log.watchdog.service", Conf),
+        [{lager_watchdog, [WDCluster, WDService, WatchdogLogLevel, WatchdogLogServer]}]
     end,
 
     ConsoleLogLevel = cuttlefish:conf_get("log.console.level", Conf),
