@@ -24,7 +24,8 @@
                   snmp,
                   mnesia,
                   eplugin,
-                  lager
+                  lager,
+                  lager_watchdog
                  ]},
   {mod, {sniffle_app, []}},
   {env, [{backend, "hanoidb"}]}
