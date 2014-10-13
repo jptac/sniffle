@@ -223,7 +223,10 @@ case "$1" in
                 ;;
         esac
         ;;
-
+    metadata-update)
+        shift
+        run -t infinity sniffle_console update_snarl_meta $@
+        ;;
     wait-for-service)
         SVC=$2
         TARGETNODE=$3
@@ -268,6 +271,7 @@ case "$1" in
         echo "                 services | wait-for-service | member-status |"
         echo "                 ring-status | aae-status | vms | hyperv[isors |"
         echo "                 packages | datasets | networks | config | init-leofs }"
+        echo "               metadata-update                    - updates snarl metadata to seperate public and private."
         echo "               ring                               - shows the ring."
         echo "               init-leofs <hostname>              - initialized the leofs storage system."
         echo "               db update [<entity>]               - update db entries."
