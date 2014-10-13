@@ -56,7 +56,7 @@
   {datatype, string}]}.
 
 %% @doc The ip of the watchdog server
-{mapping, "log.watchdog.host", "lager.handlers",
+{mapping, "log.watchdog.host.$name", "lager.handlers",
  [{commented, {"127.0.0.1", 4444 }},
   {datatype, ip}]}.
 
@@ -76,13 +76,15 @@
                                               {count, 5}]}]
     end,
 
-    WatchdogHandler = case cuttlefish:conf_get("log.watchdog.host", Conf) of
+    WatchdogHandler = case cuttlefish_util:filter_by_variable_starts_with("log.watchdog.host", Conf) of
       undefined -> [];
-      WatchdogLogServer ->
+      [] -> [];
+      WatchdogLogServers ->
+        Servers1 = [S || {_Name, S} <- WatchdogLogServers],
         WatchdogLogLevel = cuttlefish:conf_get("log.watchdog.level", Conf),
         WDCluster = cuttlefish:conf_get("log.watchdog.cluster", Conf),
         WDService = cuttlefish:conf_get("log.watchdog.service", Conf),
-        [{lager_watchdog, [WDCluster, WDService, WatchdogLogLevel, WatchdogLogServer]}]
+        [{lager_watchdog, [WDCluster, WDService, WatchdogLogLevel, Servers1]}]
     end,
 
     ConsoleLogLevel = cuttlefish:conf_get("log.console.level", Conf),

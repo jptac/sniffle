@@ -2,6 +2,8 @@
 
 -behaviour(application).
 
+-include("sniffle_version.hrl").
+
 %% Application callbacks
 -export([start/2, stop/1]).
 
@@ -45,6 +47,7 @@ start(_StartType, _StartArgs) ->
     end,
     case sniffle_sup:start_link() of
         {ok, Pid} ->
+            lager_watchdog_srv:set_version(?VERSION),
             ok = riak_core_ring_events:add_guarded_handler(sniffle_ring_event_handler, []),
             ok = riak_core_node_watcher_events:add_guarded_handler(sniffle_node_event_handler, []),
 
@@ -60,6 +63,7 @@ start(_StartType, _StartArgs) ->
                 O ->
                     lager:info("[img] VNode disabled since images are handed by ~p", [O])
             end,
+
             ?SRV_WITH_AAE(sniffle_network_vnode, sniffle_network),
             ?SRV_WITH_AAE(sniffle_dtrace_vnode, sniffle_dtrace),
             timer:apply_after(2000, sniffle_opt, update, []),
