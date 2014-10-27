@@ -152,9 +152,9 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 
 run_check(State = #state{count = 0}) ->
-    HVs = sniffle_hypervisor:list([], true),
+    {ok, HVs} = sniffle_hypervisor:list([], true),
     HVs1 = [{ft_hypervisor:uuid(H), ft_hypervisor:alias(H),
-             ft_hypervisor:endpoint(H)} || H <- HVs],
+             ft_hypervisor:endpoint(H)} || {_, H} <- HVs],
     run_check(State#state{count = ?NODE_LIST_TIME, hypervisors = HVs1});
 
 run_check(State = #state{alerts = Alerts, hypervisors = HVs}) ->
