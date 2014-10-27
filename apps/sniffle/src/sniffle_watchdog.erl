@@ -171,14 +171,14 @@ run_check(State = #state{count = 0}) ->
              ft_hypervisor:endpoint(H)} || {_, H} <- HVs],
     run_check(State#state{count = ?NODE_LIST_TIME, hypervisors = HVs1});
 
-run_check(State = #state{alerts = Alerts, hypervisors = HVs}) ->
+run_check(State = #state{alerts = Alerts, hypervisors = HVs, count = Cnt}) ->
     Alerts1 = check_riak_core(),
     Alerts2 = ping_test(HVs, Alerts1, State#state.ping_concurrency),
     Raised = sets:subtract(Alerts2, Alerts),
     Cleared = sets:subtract(Alerts, Alerts2),
     clear(Cleared),
     raise(Raised),
-    State#state{alerts = Alerts2}.
+    State#state{alerts = Alerts2, count = Cnt - 1}.
 
 check_riak_core() ->
     {Down, Handoffs} = riak_core_status:transfers(),
