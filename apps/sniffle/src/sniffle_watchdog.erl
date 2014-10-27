@@ -172,7 +172,7 @@ run_check(State = #state{count = 0}) ->
     run_check(State#state{count = ?NODE_LIST_TIME, hypervisors = HVs1});
 
 run_check(State = #state{alerts = Alerts, hypervisors = HVs}) ->
-    Alerts1 = check_riak_core([]),
+    Alerts1 = check_riak_core(),
     Alerts2 = ping_test(HVs, Alerts1, State#state.ping_concurrency),
     Raised = sets:subtract(Alerts2, Alerts),
     Cleared = sets:subtract(Alerts, Alerts2),
@@ -180,14 +180,14 @@ run_check(State = #state{alerts = Alerts, hypervisors = HVs}) ->
     raise(Raised),
     State#state{alerts = Alerts2}.
 
-check_riak_core(Alerts) ->
+check_riak_core() ->
     {Down, Handoffs} = riak_core_status:transfers(),
     Alerts1 = lists:foldl(
                 fun({waiting_to_handoff, Node, _}, As) ->
                         sets:add_element({handoff, Node}, As);
                    ({stopped, Node, _}, As) ->
                         sets:add_element({stopped, Node}, As)
-                end, Alerts, Handoffs),
+                end, sets:new(), Handoffs),
     Down1 = sets:from_list([{down, N} || N <- Down]),
     sets:union(Alerts1, Down1).
 
