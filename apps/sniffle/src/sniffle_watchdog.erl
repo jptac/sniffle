@@ -236,7 +236,6 @@ read_ping({Ref, E}) ->
             E
     end.
 
-
 clear(Cleared) ->
     [libwatchdog:clear(T, A) ||
         {T, A, _S} <- [to_msg(E) || E <- sets:to_list(Cleared)]].
@@ -246,17 +245,17 @@ raise(Raised) ->
         {T, A, S} <- [to_msg(E) || E <- sets:to_list(Raised)]].
 
 to_msg({handoff, Node}) ->
-    {<<"sniffle-handoff">>, <<"Pending handoff: ", (a2b(Node))/binary>>, 1};
+    {sniffle_handoff, <<"Pending handoff: ", (a2b(Node))/binary>>, 1};
 
 to_msg({stopped, Node}) ->
-    {<<"sniffle-stopped">>, <<"Stopped node: ", (a2b(Node))/binary>>, 5};
+    {sniffle_stopped, <<"Stopped node: ", (a2b(Node))/binary>>, 5};
 
 to_msg({down, Node}) ->
-    {<<"sniffle-down">>, <<"Node down: ", (a2b(Node))/binary>>, 10};
+    {sniffle_down, <<"Node down: ", (a2b(Node))/binary>>, 10};
 
 to_msg({chunter_down, UUID, Alias}) ->
-    {<<"chunter-down">>, <<"Chunter node ", Alias/binary,
-                           "(", UUID/binary, ") down.">>, 10}.
+    {chunter_down, <<"Chunter node ", Alias/binary,
+                     "(", UUID/binary, ") down.">>, 10}.
 
 a2b(A) ->
     list_to_binary(atom_to_list(A)).
