@@ -172,7 +172,7 @@ run_check(State = #state{count = 0}) ->
     run_check(State#state{count = ?NODE_LIST_TIME, hypervisors = HVs1});
 
 run_check(State = #state{alerts = Alerts, hypervisors = HVs}) ->
-    Alerts1 = check_riak_core(Alerts),
+    Alerts1 = check_riak_core([]),
     Alerts2 = ping_test(HVs, Alerts1, State#state.ping_concurrency),
     Raised = sets:subtract(Alerts2, Alerts),
     Cleared = sets:subtract(Alerts, Alerts2),
