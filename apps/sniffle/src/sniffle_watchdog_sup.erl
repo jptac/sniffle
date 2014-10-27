@@ -65,7 +65,7 @@ init([]) ->
               Restart, Shutdown, Type, ['sniffle_watchdog']},
 
     %% We need to make sure the ensemble is active.
-    ok =riak_ensemble_manager:enable(),
+    %%ok = riak_ensemble_manager:enable(),
 
     {ok, {SupFlags, [AChild]}}.
 
