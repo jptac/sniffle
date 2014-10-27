@@ -61,6 +61,7 @@ init(_Args) ->
                   lager:info("[img] VNode disabled since images are handed by ~p", [O]),
                   []
           end,
+
     VDTrace = {
       sniffle_dtrace_vnode_master,
       { riak_core_vnode_master, start_link, [sniffle_dtrace_vnode]},
@@ -89,7 +90,7 @@ init(_Args) ->
       permanent, infinity, supervisor, [sniffle_entity_read_fsm_sup]},
 
     %% ===================================================================
-    %% VNodes
+    %% General
     %% ===================================================================
     CreateFSMs = {
       sniffle_create_fsm_sup,
@@ -100,6 +101,11 @@ init(_Args) ->
       sniffle_dtrace_sup,
       {sniffle_dtrace_sup, start_link, []},
       permanent, infinity, supervisor, [sniffle_dtrace_sup]},
+
+    Watchdog = {
+      sniffle_watchdog_sup,
+      {sniffle_watchdog_sup, start_link, []},
+      permanent, infinity, supervisor, [sniffle_watchdog_sup]},
 
     %% ===================================================================
     %% AAE
@@ -159,7 +165,7 @@ init(_Args) ->
        %% General FSM's
        CoverageFSMs, WriteFSMs, ReadFSMs,
        %% Logic
-       CreateFSMs, DTrace,
+       CreateFSMs, DTrace, Watchdog,
        %% VNodes
        VHypervisor, VVM, VIprange, VDataset, VPackage, VDTrace, VNetwork,
        VGrouping,

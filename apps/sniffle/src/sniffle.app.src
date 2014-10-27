@@ -8,6 +8,7 @@
                   kernel,
                   stdlib,
                   riak_core,
+                  riak_ensemble,
                   uuid,
                   mdns_server_lib,
                   libchunter,

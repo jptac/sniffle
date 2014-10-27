@@ -93,6 +93,13 @@
 }.
 
 {translation,
+ "riak_ensemble.data_root",
+ fun(Conf) ->
+         cuttlefish:conf_get("platform_data_dir", Conf)
+ end
+}.
+
+{translation,
  "leveldb.data_root",
  fun(Conf) ->
          cuttlefish:conf_get("platform_data_dir", Conf)
