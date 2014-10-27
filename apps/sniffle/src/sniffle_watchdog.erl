@@ -11,8 +11,8 @@
 -behaviour(gen_server).
 
 %% API
--export([start_link/0]).
--ignore_xref([start_link/0]).
+-export([start_link/0, alerts/0]).
+-ignore_xref([start_link/0, alerts/0]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -49,6 +49,9 @@
 start_link() ->
     gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
 
+alerts() ->
+    gen_server:call(?SERVER, alerts).
+
 %%%===================================================================
 %%% gen_server callbacks
 %%%===================================================================
@@ -82,6 +85,16 @@ init([]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_call(alerts, _From,
+            State = #state{ensemble = Ensemble, alerts = Alerts}) ->
+    case riak_ensemble_manager:get_leader(Ensemble) of
+        {_Ensamble, Leader} when Leader == node() ->
+            Reply = sets:to_list(Alerts),
+            {reply, {ok, Reply}, State};
+        _ ->
+            {reply, {error, wrong_node}, State}
+    end;
+
 handle_call(_Request, _From, State) ->
     Reply = ok,
     {reply, Reply, State}.
