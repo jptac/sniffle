@@ -8,7 +8,6 @@
                   kernel,
                   stdlib,
                   riak_core,
-                  riak_ensemble,
                   uuid,
                   mdns_server_lib,
                   libchunter,
@@ -26,8 +25,9 @@
                   mnesia,
                   eplugin,
                   lager,
+                  riak_ensemble,
                   lager_watchdog
                  ]},
   {mod, {sniffle_app, []}},
-  {env, [{backend, "hanoidb"}]}
+  {env, []}
  ]}.
