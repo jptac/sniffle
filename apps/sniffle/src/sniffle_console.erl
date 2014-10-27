@@ -471,6 +471,8 @@ join(NodeStr, JoinFn, SuccessFmt, SuccessArgs) ->
     try
         case JoinFn(NodeStr) of
             ok ->
+                Node = list_to_atom(NodeStr),
+                riak_ensemble_manager:join(node(), Node),
                 io:format(SuccessFmt, SuccessArgs),
                 ok;
             {error, not_reachable} ->

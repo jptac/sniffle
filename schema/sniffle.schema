@@ -93,6 +93,13 @@
 }.
 
 {translation,
+ "riak_ensemble.data_root",
+ fun(Conf) ->
+         cuttlefish:conf_get("platform_data_dir", Conf)
+ end
+}.
+
+{translation,
  "leveldb.data_root",
  fun(Conf) ->
          cuttlefish:conf_get("platform_data_dir", Conf)
@@ -655,3 +662,17 @@
 {mapping, "leveldb.mmap_size", "eleveldb.mmap_size",
  [{datatype, bytesize},
   {default, "1MB"}]}.
+
+{mapping, "consensus", "riak_core.enable_consensus",
+ [{datatype, {enum, [on, off]}},
+  {default, on}]}.
+
+{translation,
+  "riak_core.enable_consensus",
+  fun(Conf) ->
+          case cuttlefish:conf_get("consensus", Conf) of
+              on -> true;
+              _ -> false
+          end
+  end
+}.

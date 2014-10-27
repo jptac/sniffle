@@ -28,5 +28,5 @@
                   lager_watchdog
                  ]},
   {mod, {sniffle_app, []}},
-  {env, [{backend, "hanoidb"}]}
+  {env, []}
  ]}.
