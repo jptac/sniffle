@@ -109,7 +109,8 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info(tick, State = #state{ensemble = Ensemble}) ->
+handle_info(tick, State = #state{ensemble = Ensemble, tick = Tick}) ->
+    erlang:send_after(Tick, self(), tick),
     case riak_ensemble_manager:get_leader(Ensemble) of
         {_Ensamble, Leader} when Leader == node() ->
             State1 = run_check(State),
