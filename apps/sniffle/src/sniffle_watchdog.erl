@@ -224,10 +224,12 @@ read_ping({Ref, E}) ->
 
 
 clear(Cleared) ->
-    [libwatchdog:clear(T, A) || {T, A, _S} <- [to_msg(E) || E <- Cleared]].
+    [libwatchdog:clear(T, A) ||
+        {T, A, _S} <- [to_msg(E) || E <- sets:to_list(Cleared)]].
 
 raise(Raised) ->
-    [libwatchdog:raise(T, A, S) || {T, A, S} <- [to_msg(E) || E <- Raised]].
+    [libwatchdog:raise(T, A, S) ||
+        {T, A, S} <- [to_msg(E) || E <- sets:to_list(Raised)]].
 
 to_msg({handoff, Node}) ->
     {<<"sniffle-handoff">>, <<"Pending handoff: ", (a2b(Node))/binary>>, 1};
