@@ -173,14 +173,23 @@ run_check(State = #state{count = 0}) ->
     HVs1 = [{ft_hypervisor:uuid(H), ft_hypervisor:alias(H),
              ft_hypervisor:endpoint(H), ft_hypervisor:pools(H), 0}
             || {_, H} <- HVs],
-    run_check(State#state{count = ?NODE_LIST_TIME, hypervisors = HVs1});
+    run_check(State#state{count = ?NODE_LIST_TIME, hypervisors = HVs1, 
+                          size = 0, used = 0});
 
 run_check(State = #state{alerts = Alerts, hypervisors = HVs, count = Cnt,
                          ping_threshold = Threshold}) ->
     Alerts1 = check_riak_core(),
     HVs1 = ping_test(HVs, [], State#state.ping_concurrency),
     Alerts2 = ping_to_alerts(HVs1, Alerts1, Threshold),
-    {Size, Used, Alerts3} = check_pools(HVs1, Alerts2),
+
+    %% We only grab pool stats when we run a new check so we don't need
+    %% to rerun that when we already claculated it once.
+    {Size, Used, Alerts3} = case {State#state.size, State#state.used} of
+                                {0, 0} ->
+                                    check_pools(HVs1, Alerts2);
+                                {S, U} ->
+                                    {S, U, Alerts2}
+                            end,
     Raised = sets:subtract(Alerts3, Alerts),
     Cleared = sets:subtract(Alerts, Alerts3),
     clear(Cleared),
