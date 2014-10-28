@@ -24,7 +24,7 @@
 -define(FIRST_TICK, (60*1000)).
 -define(NODE_LIST_TIME, 120).
 -define(PING_CONCURRENCY, 5).
-
+-define(PING_THRESHOLD, 5).
 
 -record(state, {
           ensemble = root,
@@ -32,7 +32,9 @@
           count = 0,
           hypervisors = [],
           alerts = sets:new(),
-          ping_concurrency = ?PING_CONCURRENCY
+          ping_concurrency = ?PING_CONCURRENCY,
+          ping_threshold = ?PING_THRESHOLD
+
          }).
 
 %%%===================================================================
@@ -168,17 +170,27 @@ code_change(_OldVsn, State, _Extra) ->
 run_check(State = #state{count = 0}) ->
     {ok, HVs} = sniffle_hypervisor:list([], true),
     HVs1 = [{ft_hypervisor:uuid(H), ft_hypervisor:alias(H),
-             ft_hypervisor:endpoint(H)} || {_, H} <- HVs],
+             ft_hypervisor:endpoint(H), 0} || {_, H} <- HVs],
     run_check(State#state{count = ?NODE_LIST_TIME, hypervisors = HVs1});
 
-run_check(State = #state{alerts = Alerts, hypervisors = HVs, count = Cnt}) ->
+run_check(State = #state{alerts = Alerts, hypervisors = HVs, count = Cnt,
+                         ping_threshold = Threshold}) ->
     Alerts1 = check_riak_core(),
-    Alerts2 = ping_test(HVs, Alerts1, State#state.ping_concurrency),
+    HVs1 = ping_test(HVs, [], State#state.ping_concurrency),
+    Alerts2 = ping_to_alerts(HVs1, Alerts1, Threshold),
     Raised = sets:subtract(Alerts2, Alerts),
     Cleared = sets:subtract(Alerts, Alerts2),
     clear(Cleared),
     raise(Raised),
-    State#state{alerts = Alerts2, count = Cnt - 1}.
+    State#state{alerts = Alerts2, count = Cnt - 1, hypervisors = HVs1}.
+
+ping_to_alerts(HVs, Alerts, Threshold) ->
+    lists:foldl(fun({UUID, Alias, _, _N}, Acc) when _N >= Threshold ->
+                        E = {chunter_down, UUID, Alias},
+                        sets:add_element(E, Acc);
+                   (_, Acc) ->
+                        Acc
+                end, Alerts, HVs).
 
 check_riak_core() ->
     {Down, Handoffs} = riak_core_status:transfers(),
@@ -191,30 +203,23 @@ check_riak_core() ->
     Down1 = sets:from_list([{down, N} || N <- Down]),
     sets:union(Alerts1, Down1).
 
-ping_test(Hs, Alerts, Concurrency) when length(Hs) =< Concurrency ->
-    T2 = [ping(H) || H <- Hs],
-    T3 = [read_ping(H) || H <- T2],
-    lists:foldl(fun (ok, As) ->
-                        As;
-                    (W, As) ->
-                        sets:add_element(W, As)
-                end, Alerts, T3);
+ping_test(Hs, HIn, Concurrency) when length(Hs) =< Concurrency ->
+    Hs1 = [ping(H) || H <- Hs],
+    lists:foldl(fun (H, HSAcc) ->
+                        [read_ping(H) | HSAcc]
+                end, HIn, Hs1);
 
-ping_test(Hs, Alerts, Concurrency) ->
-    {T1, Hs1} = lists:split(Concurrency, Hs),
-    T2 = [ping(H) || H <- T1],
-    T3 = [read_ping(H) || H <- T2],
-    Alerts1 = lists:foldl(fun (ok, As) ->
-                                  As;
-                              (W, As) ->
-                                  sets:add_element(W, As)
-                          end, Alerts, T3),
-    ping_test(Hs1, Alerts1, Concurrency).
+ping_test(Hs, HIn, Concurrency) ->
+    {T1, HsRest} = lists:split(Concurrency, Hs),
+    Hs1 = [ping(H) || H <- T1],
+    Hs2 = lists:foldl(fun (H, HSAcc) ->
+                              [read_ping(H) | HSAcc]
+                      end, HIn, Hs1),
+    ping_test(HsRest, Hs2, Concurrency).
 
-ping({UUID, Alias, {Host, Port}}) ->
+ping({UUID, Alias, {Host, Port}, N}) ->
     Ref = make_ref(),
     Self = self(),
-    E = {chunter_down, UUID, Alias},
     spawn(fun() ->
                   case libchunter:ping(Host, Port) of
                       pong ->
@@ -223,17 +228,17 @@ ping({UUID, Alias, {Host, Port}}) ->
                           Self ! {Ref, fail}
                   end
           end),
-    {Ref, E}.
+    {Ref, {UUID, Alias, {Host, Port}, N}}.
 
-read_ping({Ref, E}) ->
+read_ping({Ref, {UUID, Alias, {Host, Port}, N}}) ->
     receive
         {Ref, ok} ->
-            ok;
+            {UUID, Alias, {Host, Port}, 0};
         {Ref, fail} ->
-            E
+            {UUID, Alias, {Host, Port}, N+1}
     after
         500 ->
-            E
+            {UUID, Alias, {Host, Port}, N+1}
     end.
 
 clear(Cleared) ->
