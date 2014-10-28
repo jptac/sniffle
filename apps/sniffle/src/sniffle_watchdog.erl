@@ -190,7 +190,7 @@ ping_to_alerts(HVs, Alerts, Threshold) ->
                         sets:add_element(E, Acc);
                    (_, Acc) ->
                         Acc
-                end, HVs, Alerts).
+                end, Alerts, HVs).
 
 check_riak_core() ->
     {Down, Handoffs} = riak_core_status:transfers(),
