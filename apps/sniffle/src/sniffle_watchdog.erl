@@ -33,8 +33,9 @@
           hypervisors = [],
           alerts = sets:new(),
           ping_concurrency = ?PING_CONCURRENCY,
-          ping_threshold = ?PING_THRESHOLD
-
+          ping_threshold = ?PING_THRESHOLD,
+          used = 0,
+          size = 0
          }).
 
 %%%===================================================================
@@ -170,22 +171,65 @@ code_change(_OldVsn, State, _Extra) ->
 run_check(State = #state{count = 0}) ->
     {ok, HVs} = sniffle_hypervisor:list([], true),
     HVs1 = [{ft_hypervisor:uuid(H), ft_hypervisor:alias(H),
-             ft_hypervisor:endpoint(H), 0} || {_, H} <- HVs],
-    run_check(State#state{count = ?NODE_LIST_TIME, hypervisors = HVs1});
+             ft_hypervisor:endpoint(H), ft_hypervisor:pools(H), 0}
+            || {_, H} <- HVs],
+    run_check(State#state{count = ?NODE_LIST_TIME, hypervisors = HVs1, 
+                          size = 0, used = 0});
 
 run_check(State = #state{alerts = Alerts, hypervisors = HVs, count = Cnt,
                          ping_threshold = Threshold}) ->
     Alerts1 = check_riak_core(),
     HVs1 = ping_test(HVs, [], State#state.ping_concurrency),
     Alerts2 = ping_to_alerts(HVs1, Alerts1, Threshold),
-    Raised = sets:subtract(Alerts2, Alerts),
-    Cleared = sets:subtract(Alerts, Alerts2),
+
+    %% We only grab pool stats when we run a new check so we don't need
+    %% to rerun that when we already claculated it once.
+    {Size, Used, Alerts3} = case {State#state.size, State#state.used} of
+                                {0, 0} ->
+                                    check_pools(HVs1, Alerts2);
+                                {S, U} ->
+                                    {S, U, Alerts2}
+                            end,
+    Raised = sets:subtract(Alerts3, Alerts),
+    Cleared = sets:subtract(Alerts, Alerts3),
     clear(Cleared),
     raise(Raised),
-    State#state{alerts = Alerts2, count = Cnt - 1, hypervisors = HVs1}.
+    State#state{alerts = Alerts3, count = Cnt - 1, hypervisors = HVs1,
+                used = Used, size = Size}.
+
+
+check_pool(UUID, Alias, Name = <<"zones">>, Pool, Used, Size, Acc) ->
+    Size1 = Size + jsxd:get(<<"size">>, 0, Pool),
+    Used1 = Used + jsxd:get(<<"used">>, 0, Pool),
+    Acc1 = pool_state(UUID, Alias, Name, Pool, Acc),
+    {Size1, Used1, Acc1};
+
+check_pool(UUID, Alias, Name, Pool, Used, Size, Acc) ->
+    Acc1 = pool_state(UUID, Alias, Name, Pool, Acc),
+    {Size, Used, Acc1}.
+
+pool_state(UUID, Alias, Name, Pool, Acc) ->
+    case jsxd:get(<<"health">>, <<"ONLINE">>, Pool) of
+        <<"ONLINE">> ->
+            Acc;
+        State ->
+            sets:add_element({pool_error, UUID, Alias, Name, State}, Acc)
+    end.
+
+check_pools(HVs, Alerts) ->
+    lists:foldl(fun({UUID, Alias, _, Pools, _N}, Acc) ->
+                        CheckFn =
+                            fun (Name, Pool, {Size, Used, PAcc}) ->
+                                    check_pool(UUID, Alias, Name, Pool, Used,
+                                               Size, PAcc)
+                            end,
+                        jsxd:fold(CheckFn, Acc, Pools);
+                   (_, Acc) ->
+                        Acc
+                end, {0, 0, Alerts}, HVs).
 
 ping_to_alerts(HVs, Alerts, Threshold) ->
-    lists:foldl(fun({UUID, Alias, _, _N}, Acc) when _N >= Threshold ->
+    lists:foldl(fun({UUID, Alias, _, _, _N}, Acc) when _N >= Threshold ->
                         E = {chunter_down, UUID, Alias},
                         sets:add_element(E, Acc);
                    (_, Acc) ->
@@ -217,7 +261,7 @@ ping_test(Hs, HIn, Concurrency) ->
                       end, HIn, Hs1),
     ping_test(HsRest, Hs2, Concurrency).
 
-ping({UUID, Alias, {Host, Port}, N}) ->
+ping({UUID, Alias, {Host, Port}, Pools, N}) ->
     Ref = make_ref(),
     Self = self(),
     spawn(fun() ->
@@ -228,17 +272,17 @@ ping({UUID, Alias, {Host, Port}, N}) ->
                           Self ! {Ref, fail}
                   end
           end),
-    {Ref, {UUID, Alias, {Host, Port}, N}}.
+    {Ref, {UUID, Alias, {Host, Port}, Pools, N}}.
 
-read_ping({Ref, {UUID, Alias, {Host, Port}, N}}) ->
+read_ping({Ref, {UUID, Alias, {Host, Port}, Pools, N}}) ->
     receive
         {Ref, ok} ->
-            {UUID, Alias, {Host, Port}, 0};
+            {UUID, Alias, {Host, Port}, Pools, 0};
         {Ref, fail} ->
-            {UUID, Alias, {Host, Port}, N+1}
+            {UUID, Alias, {Host, Port}, Pools, N+1}
     after
         500 ->
-            {UUID, Alias, {Host, Port}, N+1}
+            {UUID, Alias, {Host, Port}, Pools, N+1}
     end.
 
 clear(Cleared) ->
