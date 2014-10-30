@@ -31,8 +31,7 @@
           ensemble = root,
           tick = ?TICK,
           count = 0,
-          hypervisors = [],
-          resources = {[], []},
+          hypervisors = {[], []},
           alerts = sets:new(),
           ping_concurrency = ?PING_CONCURRENCY,
           ping_threshold = ?PING_THRESHOLD
@@ -148,8 +147,8 @@ handle_info(tick, State = #state{ensemble = Ensemble, tick = Tick}) ->
             {noreply, State1};
         _ ->
             %% We only want to run this on the leader.
-            {noreply, State#state{count = 0, hypervisors = [],
-                                  alerts = sets:new(), resources = {[], []}}}
+            {noreply, State#state{count = 0, hypervisors = {[], []},
+                                  alerts = sets:new()}}
     end;
 
 handle_info(_Info, State) ->

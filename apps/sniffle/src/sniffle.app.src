@@ -25,6 +25,7 @@
                   mnesia,
                   eplugin,
                   lager,
+                  recon,
                   lager_watchdog
                  ]},
   {mod, {sniffle_app, []}},
