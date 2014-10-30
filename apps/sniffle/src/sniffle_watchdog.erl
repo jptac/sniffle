@@ -268,7 +268,7 @@ check_pools(HVs, Alerts) ->
                         check_pools(UUID, Alias, Pools, Acc);
                    (_, Acc) ->
                         Acc
-                end, {0, 0, Alerts}, HVs).
+                end, Alerts, HVs).
 
 ping_to_alerts(HVs, Alerts, Threshold) ->
     lists:foldl(fun({UUID, Alias, _, _, _N}, Acc) when _N >= Threshold ->
