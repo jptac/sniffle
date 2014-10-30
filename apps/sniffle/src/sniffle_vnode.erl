@@ -7,7 +7,6 @@
          is_empty/1,
          delete/1,
          put/3,
-         fold/4,
          change/5,
          handle_command/3,
          handle_coverage/4,

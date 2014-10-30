@@ -8,14 +8,13 @@
          init/2,
          process_results/2,
          finish/2,
-         start/3,
-         mk_reqid/0
+         start/3
         ]).
 
 -record(state, {replies, r, reqid, from}).
 
 start(VNodeMaster, NodeCheckService, Request) ->
-    ReqID = mk_reqid(),
+    ReqID = sniffle_vnode:mk_reqid(),
     sniffle_coverage_sup:start_coverage(
       ?MODULE, {self(), ReqID, something_else},
       {VNodeMaster, NodeCheckService, Request}),
@@ -72,7 +71,3 @@ finish(How, State) ->
 %%%===================================================================
 %%% Internal Functions
 %%%===================================================================
-
-mk_reqid() ->
-    {MegaSecs,Secs,MicroSecs} = erlang:now(),
-	(MegaSecs*1000000 + Secs)*1000000 + MicroSecs.
