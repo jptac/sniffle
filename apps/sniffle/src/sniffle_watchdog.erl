@@ -89,11 +89,17 @@ init([]) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_call(status, _From,
-            State = #state{ensemble = Ensemble, alerts = Alerts}) ->
+            State = #state{ensemble = Ensemble, alerts = Alerts,
+                           hypervisors = {HVfs, HVts}}) ->
     case riak_ensemble_manager:get_leader(Ensemble) of
         {_Ensamble, Leader} when Leader == node() ->
             Reply = sets:to_list(Alerts),
-            {reply, {ok, {Reply, resources}}, State};
+            Res1 = jsxd:merge(fun merge_res/3, [],
+                              [R || {_, _, _, R, _, 0} <- HVfs]),
+            Res2 = jsxd:merge(fun merge_res/3, Res1,
+                              [R || {_, _, _, R, _, 0} <- HVts]),
+            {reply, {ok, {Reply, Res2}}, State};
+
         _ ->
             {reply, {error, wrong_node}, State}
     end;
@@ -101,6 +107,15 @@ handle_call(status, _From,
 handle_call(_Request, _From, State) ->
     Reply = ok,
     {reply, Reply, State}.
+
+merge_res(_K, V1, V2) when
+      is_list(V1),
+      is_list(V2) ->
+    V1 ++ V2;
+merge_res(_K, V1, V2) when
+      is_number(V1),
+      is_number(V2) ->
+    V1 + V2.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -234,8 +249,6 @@ update_hvs([{UUID, _, _, _} | T], R, Alerts) ->
         end,
     update_hvs(T, R1, Alerts2).
 
-
-
 pool_state(UUID, Alias, Name, Pool, Acc) ->
     case jsxd:get(<<"health">>, <<"ONLINE">>, Pool) of
         <<"ONLINE">> ->
@@ -339,7 +352,6 @@ to_msg({pool_error, UUID, Alias, Name, State}) ->
     {pool_error, <<"Pool ", Name/binary, " on node ", Alias/binary,
                      "(", UUID/binary, ") is in state ", State/binary, ".">>,
      10}.
-
 
 a2b(A) ->
     list_to_binary(atom_to_list(A)).

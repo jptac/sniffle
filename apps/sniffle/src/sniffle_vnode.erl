@@ -7,16 +7,12 @@
          is_empty/1,
          delete/1,
          put/3,
-         change/5,
          handle_command/3,
          handle_coverage/4,
          handle_info/2,
          hash_object/2,
          mkid/0,
-         mkid/1,
          mk_reqid/0]).
-
--ignore_xref([mkid/0, mkid/1, change/5]).
 
 hash_object(Key, Obj) ->
     term_to_binary(erlang:phash2({Key, Obj})).
