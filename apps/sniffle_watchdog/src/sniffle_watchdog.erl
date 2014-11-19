@@ -277,8 +277,8 @@ check_pools(HVs, Alerts) ->
 ping_to_alerts(HVs, Alerts, Threshold) ->
     lists:foldl(fun(E = #entry{uuid=UUID, alias=Alias}, Acc)
                       when E#entry.failures >= Threshold ->
-                        E = {chunter_down, UUID, Alias},
-                        sets:add_element(E, Acc);
+                        Err = {chunter_down, UUID, Alias},
+                        sets:add_element(Err, Acc);
                    (_, Acc) ->
                         Acc
                 end, Alerts, HVs).
