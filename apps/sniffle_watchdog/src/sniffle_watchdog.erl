@@ -102,12 +102,11 @@ handle_call(status, _From,
     case riak_ensemble_manager:get_leader(Ensemble) of
         {_Ensamble, Leader} when Leader == node() ->
             Reply = sets:to_list(Alerts),
-            Res1 = jsxd:merge(fun merge_res/3, [],
-                              [H#entry.resources || H <- HVfs]),
-            Res2 = jsxd:merge(fun merge_res/3, Res1,
-                              [H#entry.resources || H <- HVts]),
+            Res1 = lists:foldl(fun merge_fn/2, [],
+                               [H#entry.resources || H <- HVfs]),
+            Res2 = lists:foldl(fun merge_fn/2, Res1,
+                               [H#entry.resources || H <- HVts]),
             {reply, {ok, {Reply, Res2}}, State};
-
         _ ->
             {reply, {error, wrong_node}, State}
     end;
@@ -115,6 +114,9 @@ handle_call(status, _From,
 handle_call(_Request, _From, State) ->
     Reply = ok,
     {reply, Reply, State}.
+
+merge_fn(R, Acc) ->
+    jsxd:merge(fun merge_res/3, Acc, R).
 
 merge_res(_K, V1, V2) when
       is_list(V1),
