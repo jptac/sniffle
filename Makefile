@@ -23,6 +23,7 @@ deps:
 clean:
 	$(REBAR) clean
 	make -C rel/pkg clean
+	rm -r apps/*/ebin
 
 distclean: clean devclean relclean
 	$(REBAR) delete-deps
