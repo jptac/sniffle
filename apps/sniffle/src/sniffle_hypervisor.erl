@@ -96,15 +96,10 @@ status() ->
                   s3 ->
                       <<"s3">>
               end,
-    {ok, {Warnings, {DiskSize, DiskUsed}}} = sniffle_watchdog:status(),
-    Resources = [
-                 {<<"storage">>, Storage},
-                 {<<"size">>, DiskSize},
-                 {<<"used">>, DiskUsed}
-                ],
+    {ok, {Warnings, Resources}} = sniffle_watchdog:status(),
+    Resources1 = [{<<"storage">>, Storage} | Resources],
     Warnings1 = [to_msg(W) || W <- Warnings],
-    {ok,  {lists:sort(Resources), lists:sort(Warnings1)}}.
-
+    {ok,  {lists:sort(Resources1), lists:sort(Warnings1)}}.
 
 to_msg({handoff, Node}) ->
     [
