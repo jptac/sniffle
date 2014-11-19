@@ -37,6 +37,15 @@
           ping_threshold = ?PING_THRESHOLD
          }).
 
+-record(entry, {
+          uuid,
+          alias,
+          pools,
+          resources,
+          endpoint,
+          failures
+         }).
+
 %%%===================================================================
 %%% API
 %%%===================================================================
@@ -94,9 +103,9 @@ handle_call(status, _From,
         {_Ensamble, Leader} when Leader == node() ->
             Reply = sets:to_list(Alerts),
             Res1 = jsxd:merge(fun merge_res/3, [],
-                              [R || {_, _, _, R, _, 0} <- HVfs]),
+                              [H#entry.resources || H <- HVfs]),
             Res2 = jsxd:merge(fun merge_res/3, Res1,
-                              [R || {_, _, _, R, _, 0} <- HVts]),
+                              [H#entry.resources || H <- HVts]),
             {reply, {ok, {Reply, Res2}}, State};
 
         _ ->
@@ -185,9 +194,7 @@ code_change(_OldVsn, State, _Extra) ->
 
 run_check(State = #state{count = 0, alerts = Alerts}) ->
     {ok, HVs} = sniffle_hypervisor:list([], true),
-    HVs1 = [{ft_hypervisor:uuid(H), ft_hypervisor:alias(H),
-             ft_hypervisor:pools(H), ft_hypervisor:resources(H),
-             ft_hypervisor:endpoint(H), 0} || {_, H} <- HVs],
+    HVs1 = [hv_to_entry(H, 0) || {_, H} <- HVs],
     Alerts1 = check_pools(HVs1, Alerts),
     Raised = sets:subtract(Alerts1, Alerts),
     Cleared = sets:subtract(Alerts, Alerts1),
@@ -232,16 +239,13 @@ check_resources({F, R}, Alerts) ->
 update_hvs([], R, Alerts) ->
     {R, Alerts};
 
-update_hvs([{UUID, _, _, _} | T], R, Alerts) ->
+update_hvs([#entry{uuid=UUID, failures=Failures} | T], R, Alerts) ->
     {R1, Alerts2} =
         case sniffle_hypervisor:get(UUID) of
             {ok, H} ->
-                Pools = ft_hypervisor:pools(H),
-                UUID = ft_hypervisor:uuid(H),
-                Alias = ft_hypervisor:alias(H),
-                Alerts1 = check_pools(UUID, Alias, Pools, Alerts),
-                E = {UUID, Alias, Pools,
-                     ft_hypervisor:resources(H), ft_hypervisor:endpoint(H), 0},
+                E = hv_to_entry(H, Failures),
+                Alerts1 = check_pools(UUID, E#entry.alias, E#entry.pools,
+                                      Alerts),
                 {[E | R], Alerts1};
             _ ->
                 {R, Alerts}
@@ -264,14 +268,15 @@ check_pools(UUID, Alias, Pools, Alerts) ->
     jsxd:fold(CheckFn, Alerts, Pools).
 
 check_pools(HVs, Alerts) ->
-    lists:foldl(fun({UUID, Alias, Pools, _R, _E, _N}, Acc) ->
+    lists:foldl(fun(#entry{uuid=UUID, alias=Alias, pools=Pools}, Acc) ->
                         check_pools(UUID, Alias, Pools, Acc);
                    (_, Acc) ->
                         Acc
                 end, Alerts, HVs).
 
 ping_to_alerts(HVs, Alerts, Threshold) ->
-    lists:foldl(fun({UUID, Alias, _, _, _N}, Acc) when _N >= Threshold ->
+    lists:foldl(fun(E = #entry{uuid=UUID, alias=Alias}, Acc)
+                      when E#entry.failures >= Threshold ->
                         E = {chunter_down, UUID, Alias},
                         sets:add_element(E, Acc);
                    (_, Acc) ->
@@ -303,7 +308,7 @@ ping_test(Hs, HIn, Concurrency) ->
                       end, HIn, Hs1),
     ping_test(HsRest, Hs2, Concurrency).
 
-ping({UUID, Alias, {Host, Port}, Pools, N}) ->
+ping(E = #entry{endpoint={Host, Port}}) ->
     Ref = make_ref(),
     Self = self(),
     spawn(fun() ->
@@ -314,17 +319,17 @@ ping({UUID, Alias, {Host, Port}, Pools, N}) ->
                           Self ! {Ref, fail}
                   end
           end),
-    {Ref, {UUID, Alias, {Host, Port}, Pools, N}}.
+    {Ref, E}.
 
-read_ping({Ref, {UUID, Alias, {Host, Port}, Pools, N}}) ->
+read_ping({Ref, E = #entry{failures = N}}) ->
     receive
         {Ref, ok} ->
-            {UUID, Alias, {Host, Port}, Pools, 0};
+            E#entry{failures = N};
         {Ref, fail} ->
-            {UUID, Alias, {Host, Port}, Pools, N+1}
+            E#entry{failures = N + 1}
     after
         500 ->
-            {UUID, Alias, {Host, Port}, Pools, N+1}
+            E#entry{failures = N + 1}
     end.
 
 clear(Cleared) ->
@@ -354,3 +359,14 @@ to_msg({pool_error, UUID, Alias, Name, State}) ->
 
 a2b(A) ->
     list_to_binary(atom_to_list(A)).
+
+
+hv_to_entry(H, Failures) ->
+    #entry{
+       uuid = ft_hypervisor:uuid(H),
+       alias = ft_hypervisor:alias(H),
+       pools = ft_hypervisor:pools(H),
+       resources = ft_hypervisor:resources(H),
+       endpoint = ft_hypervisor:endpoint(H),
+       failures = Failures
+      }.

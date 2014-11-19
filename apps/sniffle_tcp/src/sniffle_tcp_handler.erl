@@ -2,7 +2,7 @@
 
 -export([init/2, message/2, raw/2]).
 
--include("sniffle_version.hrl").
+-include_lib("../sniffle/include/sniffle_version.hrl").
 
 -ignore_xref([init/2, message/2, raw/2]).
 

@@ -2,8 +2,6 @@
 -module(sniffle_entity_read_fsm_sup).
 -behavior(supervisor).
 
--include("sniffle.hrl").
-
 -export([start_read_fsm/1,
          start_link/0]).
 

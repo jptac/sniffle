@@ -1,0 +1,12 @@
+{application, sniffle_read,
+ [
+  {description, ""},
+  {vsn, "1"},
+  {registered, []},
+  {applications, [
+                  kernel,
+                  stdlib
+                 ]},
+  {mod, { sniffle_read_app, []}},
+  {env, []}
+ ]}.

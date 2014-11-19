@@ -1,0 +1,16 @@
+{application, sniffle_watchdog,
+ [
+  {description, ""},
+  {vsn, "1"},
+  {registered, []},
+  {applications, [
+                  kernel,
+                  stdlib,
+                  riak_core,
+                  libchunter,
+                  lager_watchdog,
+                  sniffle
+                 ]},
+  {mod, { sniffle_watchdog_app, []}},
+  {env, []}
+ ]}.

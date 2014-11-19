@@ -72,42 +72,6 @@ init(_Args) ->
       permanent, 5000, worker, [sniffle_package_vnode_master]},
 
     %% ===================================================================
-    %% FSMs
-    %% ===================================================================
-    WriteFSMs = {
-      sniffle_entity_write_fsm_sup,
-      { sniffle_entity_write_fsm_sup, start_link, []},
-      permanent, infinity, supervisor, [sniffle_entity_write_fsm_sup]},
-
-    CoverageFSMs = {
-      sniffle_coverage_sup,
-      { sniffle_coverage_sup, start_link, []},
-      permanent, infinity, supervisor, [sniffle_coverage_sup]},
-
-    ReadFSMs = {
-      sniffle_entity_read_fsm_sup,
-      {sniffle_entity_read_fsm_sup, start_link, []},
-      permanent, infinity, supervisor, [sniffle_entity_read_fsm_sup]},
-
-    %% ===================================================================
-    %% General
-    %% ===================================================================
-    CreateFSMs = {
-      sniffle_create_fsm_sup,
-      {sniffle_create_fsm_sup, start_link, []},
-      permanent, infinity, supervisor, [sniffle_create_fsm_sup]},
-
-    DTrace = {
-      sniffle_dtrace_sup,
-      {sniffle_dtrace_sup, start_link, []},
-      permanent, infinity, supervisor, [sniffle_dtrace_sup]},
-
-    Watchdog = {
-      sniffle_watchdog_sup,
-      {sniffle_watchdog_sup, start_link, []},
-      permanent, infinity, supervisor, [sniffle_watchdog_sup]},
-
-    %% ===================================================================
     %% AAE
     %% ===================================================================
     EntropyManagerHypervisor =
@@ -160,12 +124,7 @@ init(_Args) ->
 
     {ok,
      {{one_for_one, 5, 10},
-      [{sniffle_create_pool, {sniffle_create_pool, start_link, []},
-        permanent, 5000, worker, [sniffle_create_pool]},
-       %% General FSM's
-       CoverageFSMs, WriteFSMs, ReadFSMs,
-       %% Logic
-       CreateFSMs, DTrace, Watchdog,
+      [
        %% VNodes
        VHypervisor, VVM, VIprange, VDataset, VPackage, VDTrace, VNetwork,
        VGrouping,

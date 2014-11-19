@@ -3,7 +3,6 @@
 %% https://github.com/basho/riak_kv/blob/develop/src/riak_kv_console.erl
 -module(sniffle_console).
 
--include_lib("sniffle.hrl").
 -ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").
 -endif.

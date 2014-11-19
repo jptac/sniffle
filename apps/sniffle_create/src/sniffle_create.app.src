@@ -1,0 +1,18 @@
+{application, sniffle_create,
+ [
+  {description, "Sniffle VM creation logic"},
+  {vsn, "0.1.0"},
+  {registered, []},
+  {applications, [
+                  kernel,
+                  stdlib,
+                  lager,
+                  libsnarl,
+                  eplugin,
+                  libchunter,
+                  uuid,
+                  sniffle
+                 ]},
+  {mod, { sniffle_create_app, []}},
+  {env, []}
+ ]}.

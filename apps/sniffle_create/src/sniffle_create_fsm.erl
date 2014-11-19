@@ -10,8 +10,6 @@
 
 -behaviour(gen_fsm).
 
--include("sniffle.hrl").
-
 %% API
 -export([create/5,
          create/4,
