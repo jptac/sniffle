@@ -1,6 +1,6 @@
 -module(sniffle_full_coverage).
 
--include("sniffle.hrl").
+-include_lib("sniffle/include/sniffle.hrl").
 
 -behaviour(riak_core_coverage_fsm).
 

@@ -96,39 +96,50 @@ status() ->
                   s3 ->
                       <<"s3">>
               end,
-    case sniffle_cloud_status:start() of
-        {ok, {Resources0, Warnings}} ->
-            Resources = [{<<"storage">>, Storage} | Resources0],
-            Warnings1 = case riak_core_status:transfers() of
-                            {[], []} ->
-                                Warnings;
-                            {[], L} ->
-                                W = jsxd:from_list(
-                                      [{<<"category">>, <<"sniffle">>},
-                                       {<<"element">>, <<"handoff">>},
-                                       {<<"type">>, <<"info">>},
-                                       {<<"message">>, bin_fmt("~b handofs pending.",
-                                                               [length(L)])}]),
-                                [W | Warnings];
-                            {S, []} ->
-                                Warnings ++ server_errors(S);
-                            {S, L} ->
-                                W = jsxd:from_list(
-                                      [{<<"category">>, <<"sniffle">>},
-                                       {<<"element">>, <<"handoff">>},
-                                       {<<"type">>, <<"info">>},
-                                       {<<"message">>, bin_fmt("~b handofs pending.",
-                                                               [length(L)])}]),
-                                [W | Warnings ++ server_errors(S)]
-                        end,
-            {ok, {ordsets:from_list(Resources), ordsets:from_list(Warnings1)}};
-        E ->
-            {ok, {[{<<"storage">>, Storage}],
-                  [[{<<"category">>, <<"sniffle">>},
-                    {<<"element">>, <<"general">>},
-                    {<<"type">>, <<"error">>},
-                    {<<"message">>, bin_fmt("Failed with ~p.", [E])}]]}}
-    end.
+    {ok, {Warnings, Resources}} = sniffle_watchdog:status(),
+    Resources1 = [{<<"storage">>, Storage} | Resources],
+    Warnings1 = [to_msg(W) || W <- Warnings],
+    {ok,  {lists:sort(Resources1), lists:sort(Warnings1)}}.
+
+to_msg({handoff, Node}) ->
+    [
+     {<<"category">>, <<"sniffle">>},
+     {<<"element">>, <<"handoff">>},
+     {<<"message">>, bin_fmt("Handoff pending on node ~s.", [Node])},
+     {<<"type">>, <<"info">>}
+    ];
+
+to_msg({stopped, Node}) ->
+    [
+     {<<"category">>, <<"sniffle">>},
+     {<<"element">>, <<"handoff">>},
+     {<<"message">>, bin_fmt("Node ~s stopped.", [Node])},
+     {<<"type">>, <<"warning">>}
+    ];
+
+to_msg({down, Node}) ->
+    [{<<"category">>, <<"sniffle">>},
+     {<<"element">>, <<"handoff">>},
+     {<<"type">>, <<"error">>},
+     {<<"message">>, bin_fmt("Node ~s DOWN.", [Node])}];
+
+to_msg({chunter_down, UUID, Alias}) ->
+    [
+     {<<"category">>, <<"chunter">>},
+     {<<"element">>, UUID},
+     {<<"message">>, bin_fmt("Chunter node ~s(~s) down.", [Alias, UUID])},
+     {<<"type">>, <<"critical">>}
+    ];
+
+to_msg({pool_error, UUID, Alias, Name, State}) ->
+    [
+     {<<"category">>, <<"chunter">>},
+     {<<"element">>, UUID},
+     {<<"message">>, bin_fmt("Zpool ~s on node ~s(~s) in state ~s.",
+                             [Name, Alias, UUID, State])},
+     {<<"type">>, <<"critical">>}
+    ].
+
 
 -spec list() ->
                   {ok, [IPR::fifo:hypervisor_id()]} | {error, timeout}.
@@ -209,15 +220,6 @@ do_write(User, Op, Val) ->
 
 bin_fmt(F, L) ->
     list_to_binary(io_lib:format(F, L)).
-
-server_errors(Servers) ->
-    lists:map(fun (Server) ->
-                      jsxd:from_list(
-                        [{<<"category">>, <<"sniffle">>},
-                         {<<"element">>, list_to_binary(atom_to_list(Server))},
-                         {<<"type">>, <<"critical">>},
-                         {<<"message">>, bin_fmt("Sniffle server ~s down.", [Server])}])
-              end, Servers).
 
 backend() ->
     sniffle_opt:get(storage, general, backend, large_data_backend, internal).

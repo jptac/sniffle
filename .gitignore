@@ -4,7 +4,6 @@ apps/sniffle/priv/mibs/SNIFFLE-MIB.bin
 .bin
 apps/sniffle/include/SNIFFLE-MIB.hrl
 *.version
-apps/sniffle/src/sniffle_version.hrl
 rel/pkg/packlist
 rel/pkg/*.tgz
 rel/pkg/build-info
@@ -21,3 +20,5 @@ sniffle_template.xml
 .rebar
 .eqc-info
 current_counterexample.eqc
+apps/sniffle/include/sniffle_version.hrl
+ebin

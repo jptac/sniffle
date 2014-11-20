@@ -12,7 +12,7 @@ version:
 	@echo "$(shell git symbolic-ref HEAD 2> /dev/null | cut -b 12-)-$(shell git log --pretty=format:'%h, %ad' -1)" > sniffle.version
 
 version_header: version
-	@echo "-define(VERSION, <<\"$(shell cat sniffle.version)\">>)." > apps/sniffle/src/sniffle_version.hrl
+	@echo "-define(VERSION, <<\"$(shell cat sniffle.version)\">>)." > apps/sniffle/include/sniffle_version.hrl
 
 compile: version_header
 	$(REBAR) compile
@@ -25,6 +25,7 @@ clean:
 	-rm -rf apps/sniffle/.eunit
 	-rm -rf apps/sniffle/ebin/
 	make -C rel/pkg clean
+	rm -r apps/*/ebin
 
 distclean: clean devclean relclean
 	$(REBAR) delete-deps

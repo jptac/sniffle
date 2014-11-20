@@ -1,9 +1,7 @@
-%% @doc Supervise the rts_write FSM.
+%% @doc Supervise the coverage supervisor.
 -module(sniffle_coverage_sup).
 
 -behavior(supervisor).
-
--include("sniffle.hrl").
 
 -export([start_coverage/2,
          start_coverage/3,

@@ -1,0 +1,12 @@
+{application, sniffle_write,
+ [
+  {description, ""},
+  {vsn, "1"},
+  {registered, []},
+  {applications, [
+                  kernel,
+                  stdlib
+                 ]},
+  {mod, { sniffle_write_app, []}},
+  {env, []}
+ ]}.

@@ -2,7 +2,7 @@
 
 -behaviour(riak_core_coverage_fsm).
 
--include("sniffle.hrl").
+-include_lib("sniffle/include/sniffle.hrl").
 
 -export([
          init/2,
@@ -76,3 +76,4 @@ finish(How, State) ->
 mk_reqid() ->
     {MegaSecs,Secs,MicroSecs} = erlang:now(),
 	(MegaSecs*1000000 + Secs)*1000000 + MicroSecs.
+
