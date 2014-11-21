@@ -26,9 +26,9 @@
 -define(PING_CONCURRENCY, 5).
 -define(PING_THRESHOLD, 5).
 -define(HV_UPDATE_BUCKETS, 10).
+-define(ENSEMBLE, root).
 
 -record(state, {
-          ensemble = root,
           tick = ?TICK,
           count = 0,
           hypervisors = {[], []},
@@ -61,7 +61,8 @@ start_link() ->
     gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
 
 status() ->
-    gen_server:call(?SERVER, status).
+    {?ENSEMBLE, Leader} = riak_ensemble_manager:get_leader(?ENSEMBLE),
+    gen_server:call({?SERVER, Leader}, status).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -97,9 +98,8 @@ init([]) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_call(status, _From,
-            State = #state{ensemble = Ensemble, alerts = Alerts,
-                           hypervisors = {HVfs, HVts}}) ->
-    case riak_ensemble_manager:get_leader(Ensemble) of
+            State = #state{alerts = Alerts, hypervisors = {HVfs, HVts}}) ->
+    case riak_ensemble_manager:get_leader(?ENSEMBLE) of
         {_Ensamble, Leader} when Leader == node() ->
             Reply = sets:to_list(Alerts),
             Res1 = lists:foldl(fun merge_fn/2, [],
@@ -107,8 +107,8 @@ handle_call(status, _From,
             Res2 = lists:foldl(fun merge_fn/2, Res1,
                                [H#entry.resources || H <- HVts]),
             {reply, {ok, {Reply, Res2}}, State};
-        {_Ensamble, Leader} ->
-            {reply, rpc:call(Leader, ?MODULE, status,  []), State}
+        _ ->
+            {reply, {error, wrong_node}, State}
     end;
 
 handle_call(_Request, _From, State) ->
@@ -150,10 +150,10 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info(tick, State = #state{ensemble = Ensemble, tick = Tick}) ->
+handle_info(tick, State = #state{tick = Tick}) ->
     erlang:send_after(Tick, self(), tick),
-    case riak_ensemble_manager:get_leader(Ensemble) of
-        {_Ensamble, Leader} when Leader == node() ->
+    case riak_ensemble_manager:get_leader(?ENSEMBLE) of
+        {_Ensamble, _Leader} when _Leader == node() ->
             State1 = run_check(State),
             {noreply, State1};
         _ ->
