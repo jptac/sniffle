@@ -64,9 +64,6 @@ init([]) ->
     AChild = {'sniffle_watchdog', {'sniffle_watchdog', start_link, []},
               Restart, Shutdown, Type, ['sniffle_watchdog']},
 
-    %% We need to make sure the ensemble is active.
-    riak_ensemble_manager:enable(),
-
     {ok, {SupFlags, [AChild]}}.
 
 %%%===================================================================
