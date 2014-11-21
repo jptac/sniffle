@@ -107,8 +107,8 @@ handle_call(status, _From,
             Res2 = lists:foldl(fun merge_fn/2, Res1,
                                [H#entry.resources || H <- HVts]),
             {reply, {ok, {Reply, Res2}}, State};
-        _ ->
-            {reply, {error, wrong_node}, State}
+        {_Ensamble, Leader} ->
+            {reply, rpc:call(Leader, ?MODULE, status,  []), State}
     end;
 
 handle_call(_Request, _From, State) ->
