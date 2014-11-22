@@ -61,7 +61,7 @@ start_link() ->
     gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
 
 status() ->
-    {?ENSEMBLE, Leader} = riak_ensemble_manager:get_leader(?ENSEMBLE),
+    {_, Leader} = riak_ensemble_manager:get_leader(?ENSEMBLE),
     gen_server:call({?SERVER, Leader}, status).
 
 %%%===================================================================
