@@ -697,6 +697,8 @@ delete(User, Vm) ->
             case {?S:hypervisor(V), ?S:state(V)} of
                 {undefined, _} ->
                     finish_delete(Vm);
+                {<<>>, _} ->
+                    finish_delete(Vm);
                 {<<"pooled">>, _} ->
                     finish_delete(Vm);
                 {<<"pending">>, _} ->
