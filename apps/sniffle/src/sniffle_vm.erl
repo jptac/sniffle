@@ -1026,13 +1026,17 @@ do_delete_backup(UUID, VM, BID) ->
         _ ->
             ok
     end,
-    H = ?S:hypervisor(VM),
-    {Server, Port} = get_hypervisor(H),
-    libchunter:delete_snapshot(Server, Port, UUID, BID),
-    set_backup(UUID, [{[BID], delete}]),
-    libhowl:send(UUID, [{<<"event">>, <<"backup">>},
-                        {<<"data">>, [{<<"action">>, <<"deleted">>},
-                                      {<<"uuid">>, BID}]}]).
+    case ?S:hypervisor(VM) of
+        <<>> ->
+            ok;
+        H ->
+            {Server, Port} = get_hypervisor(H),
+            libchunter:delete_snapshot(Server, Port, UUID, BID),
+            set_backup(UUID, [{[BID], delete}]),
+            libhowl:send(UUID, [{<<"event">>, <<"backup">>},
+                                {<<"data">>, [{<<"action">>, <<"deleted">>},
+                                              {<<"uuid">>, BID}]}])
+    end.
 
 backend() ->
     sniffle_opt:get(storage, general, backend, large_data_backend, internal).
