@@ -11,7 +11,6 @@
 -define(SERVICE, sniffle_vm).
 -define(S, ft_vm).
 
-
 -export([
          create/3,
          delete/1, delete/2,
