@@ -11,7 +11,6 @@
 -define(SERVICE, sniffle_vm).
 -define(S, ft_vm).
 
-
 -export([
          create/3,
          delete/1, delete/2,
@@ -698,6 +697,8 @@ delete(User, Vm) ->
             case {?S:hypervisor(V), ?S:state(V)} of
                 {undefined, _} ->
                     finish_delete(Vm);
+                {<<>>, _} ->
+                    finish_delete(Vm);
                 {<<"pooled">>, _} ->
                     finish_delete(Vm);
                 {<<"pending">>, _} ->
@@ -1069,13 +1070,17 @@ do_delete_backup(UUID, VM, BID) ->
         _ ->
             ok
     end,
-    H = ?S:hypervisor(VM),
-    {Server, Port} = get_hypervisor(H),
-    libchunter:delete_snapshot(Server, Port, UUID, BID),
-    set_backup(UUID, [{[BID], delete}]),
-    libhowl:send(UUID, [{<<"event">>, <<"backup">>},
-                        {<<"data">>, [{<<"action">>, <<"deleted">>},
-                                      {<<"uuid">>, BID}]}]).
+    case ?S:hypervisor(VM) of
+        <<>> ->
+            ok;
+        H ->
+            {Server, Port} = get_hypervisor(H),
+            libchunter:delete_snapshot(Server, Port, UUID, BID),
+            set_backup(UUID, [{[BID], delete}]),
+            libhowl:send(UUID, [{<<"event">>, <<"backup">>},
+                                {<<"data">>, [{<<"action">>, <<"deleted">>},
+                                              {<<"uuid">>, BID}]}])
+    end.
 
 backend() ->
     sniffle_opt:get(storage, general, backend, large_data_backend, internal).
