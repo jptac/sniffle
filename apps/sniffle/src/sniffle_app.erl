@@ -47,7 +47,6 @@ start(_StartType, _StartArgs) ->
     end,
     case sniffle_sup:start_link() of
         {ok, Pid} ->
-            lager_watchdog_srv:set_version(?VERSION),
             ok = riak_core_ring_events:add_guarded_handler(sniffle_ring_event_handler, []),
             ok = riak_core_node_watcher_events:add_guarded_handler(sniffle_node_event_handler, []),
 
