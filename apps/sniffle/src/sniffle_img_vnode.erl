@@ -259,9 +259,7 @@ handoff_finished(_TargetNode, State) ->
     {ok, State}.
 
 handle_handoff_data(Data, State) ->
-    {Img, HObject} = binary_to_term(Data),
-    put(State, Img, HObject),
-    {reply, ok, State}.
+    sniffle_vnode:repair(Data, State).
 
 encode_handoff_item(Img, Data) ->
     term_to_binary({Img, Data}).

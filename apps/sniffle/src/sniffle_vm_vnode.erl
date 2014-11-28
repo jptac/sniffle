@@ -295,9 +295,7 @@ handoff_finished(_TargetNode, State) ->
     {ok, State}.
 
 handle_handoff_data(Data, State) ->
-    {Vm, HObject} = binary_to_term(Data),
-    sniffle_vnode:put(Vm, HObject, State),
-    {reply, ok, State}.
+    sniffle_vnode:repair(Data, State).
 
 encode_handoff_item(Vm, Data) ->
     term_to_binary({Vm, Data}).
