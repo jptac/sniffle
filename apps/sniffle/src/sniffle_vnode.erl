@@ -12,6 +12,7 @@
          handle_info/2,
          hash_object/2,
          mkid/0,
+         repair/2,
          mk_reqid/0]).
 
 hash_object(Key, Obj) ->
@@ -182,14 +183,15 @@ handle_command(ping, _Sender, State) ->
 
 handle_command({repair, UUID, _VClock, Obj}, _Sender,
                State=#vstate{state=Mod}) ->
+    ID = mkid(),
+    Obj1 = load_obj(ID, Mod, Obj),
     case get(UUID, State) of
         {ok, Old} ->
-            ID = mkid(),
             Old1 = load_obj(ID, Mod, Old),
-            Merged = ft_obj:merge(sniffle_entity_read_fsm, [Old1, Obj]),
+            Merged = ft_obj:merge(sniffle_entity_read_fsm, [Old1, Obj1]),
             sniffle_vnode:put(UUID, Merged, State);
         not_found ->
-            sniffle_vnode:put(UUID, Obj, State);
+            sniffle_vnode:put(UUID, Obj1, State);
         _ ->
             lager:error("[~s] Read repair failed, data was updated too recent.",
                         [State#vstate.bucket])
@@ -345,3 +347,9 @@ load_obj({T, ID}, Mod, Obj) ->
 
 vc_bin(VClock) ->
     term_to_binary(lists:sort(VClock)).
+
+repair(Data, State) ->
+    {UUID, Obj} = binary_to_term(Data),
+    {noreply, State1} = handle_command({repair, UUID, undefined, Obj},
+                                       undefined, State),
+    {reply, ok, State1}.
