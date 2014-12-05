@@ -695,6 +695,14 @@ delete(User, Vm) ->
     case sniffle_vm:get(Vm) of
         {ok, V} ->
             case {?S:hypervisor(V), ?S:state(V)} of
+                {_, <<"storing">>} ->
+                    libhowl:send(<<"command">>,
+                                 [{<<"event">>, <<"vm-stored">>},
+                                  {<<"uuid">>, uuid:uuid4s()},
+                                  {<<"data">>,
+                                   [{<<"uuid">>, Vm}]}]),
+                    state(Vm, <<"stored">>),
+                    hypervisor(Vm, <<>>);
                 {undefined, _} ->
                     finish_delete(Vm);
                 {<<>>, _} ->
@@ -709,14 +717,6 @@ delete(User, Vm) ->
                     finish_delete(Vm);
                 {_, <<"failed-", _/binary>>} ->
                     finish_delete(Vm);
-                {_, <<"storing">>} ->
-                    libhowl:send(<<"command">>,
-                                 [{<<"event">>, <<"vm-stored">>},
-                                  {<<"uuid">>, uuid:uuid4s()},
-                                  {<<"data">>,
-                                   [{<<"uuid">>, Vm}]}]),
-                    state(Vm, <<"stored">>),
-                    hypervisor(Vm, <<>>);
                 {H, _} ->
                     state(Vm, <<"deleting">>),
                     {Host, Port} = get_hypervisor(H),
