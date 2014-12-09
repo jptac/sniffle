@@ -94,6 +94,16 @@ init_folsom() ->
         [set_resource, set_characteristic, set_metadata, set_pool, set_service,
          alias, etherstubs, host, networks, path, port, sysinfo, uuid, version,
          virtualisation, register, unregister],
+    IPRs = Basic ++
+        [create, delete, lookup, name, uuid, network, netmask, gateway,
+         set_metadata, tag, vlan, release_ip, claim_ip],
+    Nets = Basic ++
+        [create, detete, name, set_metadata, uuid, add_ipragen, remove_iprange,
+         set],
+    Pkgs = Basic ++
+        [create, delete, set_metadata, blocksize, compression, cpu_cap,
+         cpu_shares, max_swap, name, quota, ram, uuid, zfs_io_priority,
+         remove_requirement, add_requirement],
     VMs = Basic ++
         [register, unregister, log, set_network_map, remove_grouping,
          add_grouping, set_metadata, set_info, set_config, set_backup,
@@ -106,7 +116,9 @@ init_folsom() ->
             [{sniffle, dtrace, M} || M <- Dtraces] ++
             [{sniffle, grouping, M} || M <- Groupings] ++
             [{sniffle, hypervisor, M} || M <- HVs] ++
+            [{sniffle, iprange, M} || M <- IPRs] ++
+            [{sniffle, network, M} || M <- Nets] ++
+            [{sniffle, package, M} || M <- Pkgs] ++
             [{sniffle, vm, M} || M <- VMs] ++
-
             []
     ].
