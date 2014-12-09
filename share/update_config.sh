@@ -22,10 +22,10 @@ do
                 key=$(echo "${line}" | sed 's/\s*=.*//')
                 if val=$(get ${old} ${key})
                 then
-                        echo "+ ${key} = ${val}"
+                        echo "${key} = ${val}"
 
                 else
-                        echo "- ${line}"
+                        echo "${line}"
                 fi
         else
                 echo "${line}"
