@@ -10,6 +10,10 @@
 -define(VNODE, sniffle_vm_vnode).
 -define(SERVICE, sniffle_vm).
 -define(S, ft_vm).
+-define(FM(Met, Mod, Fun, Args),
+        folsom_metrics:histogram_timed_update(
+          {sniffle, vm, Met},
+          Mod, Fun, Args)).
 
 -export([
          create/3,
@@ -98,14 +102,14 @@
 -spec wipe(fifo:vm_id()) -> ok.
 
 wipe(UUID) ->
-    sniffle_coverage:start(?MASTER, ?SERVICE, {wipe, UUID}).
+    ?FM(wipe, sniffle_coverage, start, [?MASTER, ?SERVICE, {wipe, UUID}]).
 
 -spec sync_repair(fifo:vm_id(), ft_obj:obj()) -> ok.
 sync_repair(UUID, Obj) ->
     do_write(UUID, sync_repair, Obj).
 
 list_() ->
-    {ok, Res} = sniffle_full_coverage:raw(?MASTER, ?SERVICE, []),
+    {ok, Res} = ?FM(list_all, sniffle_full_coverage, raw, [?MASTER, ?SERVICE, []]),
     Res1 = [R || {_, R} <- Res],
     {ok,  Res1}.
 
@@ -649,7 +653,7 @@ dry_run(Package, Dataset, Config) ->
 -spec get(Vm::fifo:uuid()) ->
                  not_found | {error, timeout} | fifo:vm().
 get(Vm) ->
-    sniffle_entity_read_fsm:start({?VNODE, ?SERVICE}, get, Vm).
+    ?FM(get, sniffle_entity_read_fsm, start, [{?VNODE, ?SERVICE}, get, Vm]).
 
 
 %%--------------------------------------------------------------------
@@ -659,7 +663,7 @@ get(Vm) ->
 -spec list() ->
                   {error, timeout} | [fifo:uuid()].
 list() ->
-    sniffle_coverage:start(?MASTER, ?SERVICE, list).
+    ?FM(list, sniffle_coverage, start, [?MASTER, ?SERVICE, list]).
 
 %%--------------------------------------------------------------------
 %% @doc Lists all vm's and fiters by a given matcher set.
@@ -668,13 +672,14 @@ list() ->
 -spec list([fifo:matcher()], boolean()) -> {error, timeout} | {ok, [fifo:uuid()]}.
 
 list(Requirements, true) ->
-    {ok, Res} = sniffle_full_coverage:list(?MASTER, ?SERVICE, Requirements),
+    {ok, Res} = ?FM(list_all, sniffle_full_coverage, list,
+                    [?MASTER, ?SERVICE, Requirements]),
     Res1 = lists:sort(rankmatcher:apply_scales(Res)),
     {ok,  Res1};
 
 list(Requirements, false) ->
-    {ok, Res} = sniffle_coverage:start(
-                  ?MASTER, ?SERVICE, {list, Requirements}),
+    {ok, Res} = ?FM(list_all, sniffle_coverage, start,
+                    [?MASTER, ?SERVICE, {list, Requirements}]),
     Res1 = rankmatcher:apply_scales(Res),
     {ok,  lists:sort(Res1)}.
 
@@ -996,12 +1001,13 @@ remove_network_map(UUID, IP) ->
 -spec do_write(VM::fifo:uuid(), Op::atom()) -> fifo:write_fsm_reply().
 
 do_write(VM, Op) ->
-    sniffle_entity_write_fsm:write({?VNODE, ?SERVICE}, VM, Op).
+    ?FM(Op, sniffle_entity_write_fsm, write, [{?VNODE, ?SERVICE}, VM, Op]).
 
--spec do_write(VM::fifo:uuid(), Op::atom(), Val::term()) -> fifo:write_fsm_reply().
+-spec do_write(VM::fifo:uuid(), Op::atom(), Val::term()) ->
+                      fifo:write_fsm_reply().
 
 do_write(VM, Op, Val) ->
-    sniffle_entity_write_fsm:write({?VNODE, ?SERVICE}, VM, Op, Val).
+    ?FM(Op, sniffle_entity_write_fsm, write, [{?VNODE, ?SERVICE}, VM, Op, Val]).
 
 get_hypervisor(V) ->
     get_hypervisor(fifo_dt:type(V), V).
