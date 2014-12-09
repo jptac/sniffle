@@ -5,6 +5,11 @@
 -define(VNODE, sniffle_hypervisor_vnode).
 -define(SERVICE, sniffle_hypervisor).
 
+-define(FM(Met, Mod, Fun, Args),
+        folsom_metrics:histogram_timed_update(
+          {sniffle, hypervisor, Met},
+          Mod, Fun, Args)).
+
 -export(
    [
     register/3,
@@ -46,13 +51,14 @@
              ]).
 
 wipe(UUID) ->
-    sniffle_coverage:start(?MASTER, ?SERVICE, {wipe, UUID}).
+    ?FM(wipe, sniffle_coverage, start, [?MASTER, ?SERVICE, {wipe, UUID}]).
 
 sync_repair(UUID, Obj) ->
     do_write(UUID, sync_repair, Obj).
 
 list_() ->
-    {ok, Res} = sniffle_full_coverage:raw(?MASTER, ?SERVICE, []),
+    {ok, Res} = ?FM(list_all, sniffle_full_coverage, raw,
+                    [?MASTER, ?SERVICE, []]),
     Res1 = [R || {_, R} <- Res],
     {ok,  Res1}.
 
@@ -84,7 +90,8 @@ unregister(Hypervisor) ->
 -spec get(Hypervisor::fifo:hypervisor_id()) ->
                  not_found | {ok, HV::fifo:hypervisor()} | {error, timeout}.
 get(Hypervisor) ->
-    sniffle_entity_read_fsm:start({?VNODE, ?SERVICE}, get, Hypervisor).
+    ?FM(get, sniffle_entity_read_fsm, start,
+        [{?VNODE, ?SERVICE}, get, Hypervisor]).
 
 -spec status() -> {error, timeout} |
                   {ok, {Resources::fifo:object(),
@@ -195,7 +202,8 @@ update() ->
 %% @doc Lists all vm's and fiters by a given matcher set.
 %% @end
 %%--------------------------------------------------------------------
--spec list([fifo:matcher()], boolean()) -> {error, timeout} | {ok, [fifo:uuid()]}.
+-spec list([fifo:matcher()], boolean()) ->
+                  {error, timeout} | {ok, [fifo:uuid()]}.
 
 list(Requirements, true) ->
     {ok, Res} = sniffle_full_coverage:list(?MASTER, ?SERVICE, Requirements),
@@ -213,10 +221,11 @@ list(Requirements, false) ->
 %%%===================================================================
 
 do_write(User, Op) ->
-    sniffle_entity_write_fsm:write({?VNODE, ?SERVICE}, User, Op).
+    ?FM(Op, sniffle_entity_write_fsm, write, [{?VNODE, ?SERVICE}, User, Op]).
 
 do_write(User, Op, Val) ->
-    sniffle_entity_write_fsm:write({?VNODE, ?SERVICE}, User, Op, Val).
+    ?FM(Op, sniffle_entity_write_fsm, write,
+        [{?VNODE, ?SERVICE}, User, Op, Val]).
 
 bin_fmt(F, L) ->
     list_to_binary(io_lib:format(F, L)).

@@ -5,6 +5,11 @@
 -define(VNODE, sniffle_dataset_vnode).
 -define(SERVICE, sniffle_dataset).
 
+-define(FM(Met, Mod, Fun, Args),
+        folsom_metrics:histogram_timed_update(
+          {sniffle, dataset, Met},
+          Mod, Fun, Args)).
+
 -export([
          create/1,
          delete/1,
@@ -47,14 +52,14 @@
         ]).
 
 wipe(UUID) ->
-    sniffle_coverage:start(?MASTER, ?SERVICE, {wipe, UUID}).
+    ?FM(wipe, sniffle_coverage, start, [?MASTER, ?SERVICE, {wipe, UUID}]).
 
 sync_repair(UUID, Obj) ->
     do_write(UUID, sync_repair, Obj).
 
 list_() ->
-    {ok, Res} = sniffle_full_coverage:raw(
-                  ?MASTER, ?SERVICE, []),
+    {ok, Res} = ?FM(list_all,sniffle_full_coverage, raw,
+                    [?MASTER, ?SERVICE, []]),
     Res1 = [R || {_, R} <- Res],
     {ok,  Res1}.
 
@@ -81,28 +86,29 @@ delete(UUID) ->
 -spec get(UUID::fifo:dtrace_id()) ->
                  not_found | {ok, Dataset::fifo:dataset()} | {error, timeout}.
 get(UUID) ->
-    sniffle_entity_read_fsm:start({?VNODE, ?SERVICE}, get, UUID).
+    ?FM(get, sniffle_entity_read_fsm, start, [{?VNODE, ?SERVICE}, get, UUID]).
 
 -spec list() ->
                   {ok, [UUID::fifo:dataset_id()]} | {error, timeout}.
 list() ->
-    sniffle_coverage:start(?MASTER, ?SERVICE, list).
+    ?FM(list, sniffle_coverage, start, [?MASTER, ?SERVICE, list]).
 
 %%--------------------------------------------------------------------
 %% @doc Lists all vm's and fiters by a given matcher set.
 %% @end
 %%--------------------------------------------------------------------
--spec list([fifo:matcher()], boolean()) -> {error, timeout} | {ok, [fifo:uuid()]}.
+-spec list([fifo:matcher()], boolean()) ->
+                  {error, timeout} | {ok, [fifo:uuid()]}.
 
 list(Requirements, true) ->
-    {ok, Res} = sniffle_full_coverage:list(
-                  ?MASTER, ?SERVICE, Requirements),
+    {ok, Res} = ?FM(list_all, sniffle_full_coverage, list,
+                    [?MASTER, ?SERVICE, Requirements]),
     Res1 = lists:sort(rankmatcher:apply_scales(Res)),
     {ok,  Res1};
 
 list(Requirements, false) ->
-    {ok, Res} = sniffle_coverage:start(
-                  ?MASTER, ?SERVICE, {list, Requirements}),
+    {ok, Res} = ?FM(list_all, sniffle_coverage, start,
+                    [?MASTER, ?SERVICE, {list, Requirements}]),
     Res1 = rankmatcher:apply_scales(Res),
     {ok,  lists:sort(Res1)}.
 
@@ -235,10 +241,11 @@ ensure_integer(B) when is_binary(B) ->
     list_to_integer(binary_to_list(B)).
 
 do_write(Dataset, Op) ->
-    sniffle_entity_write_fsm:write({?VNODE, ?SERVICE}, Dataset, Op).
+    ?FM(Op, sniffle_entity_write_fsm, write, [{?VNODE, ?SERVICE}, Dataset, Op]).
 
 do_write(Dataset, Op, Val) ->
-    sniffle_entity_write_fsm:write({?VNODE, ?SERVICE}, Dataset, Op, Val).
+    ?FM(Op, sniffle_entity_write_fsm, write,
+        [{?VNODE, ?SERVICE}, Dataset, Op, Val]).
 
 %% If more then one MB is in the accumulator read store it in 1MB chunks
 read_image(UUID, Hash, TotalSize, Url, Acc, Idx, Ref, ChunkSize, Backend)

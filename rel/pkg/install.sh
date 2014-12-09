@@ -50,18 +50,10 @@ case $2 in
             cp ${CONFFILE}.example ${CONFFILE}
             sed --in-place -e "s/127.0.0.1/${IP}/g" ${CONFFILE}
             md5sum ${CONFFILE} > ${CONFFILE}.md5
-        elif [ -f ${CONFFILE}.md5 ] && md5sum --quiet --strict -c ${CONFFILE}.md5 2&> /dev/null
-        then
-            echo "The config was not adjusted we'll regenerate it."
-            cp ${CONFFILE}.example ${CONFFILE}
-            sed --in-place -e "s/127.0.0.1/${IP}/g" ${CONFFILE}
-            md5sum ${CONFFILE} > ${CONFFILE}.md5
         else
-            echo "The config file was changed updating old settings."
-            mv ${CONFFILE} ${CONFFILE}.old
-            cat ${CONFFILE}.old \
-                | sed 's/^[ ]*data_dir/platform_data_dir/' \
-                      > ${CONFFILE}
+	        /opt/local/fifo-sniffle/share/update_config.sh ${CONFFILE}.example ${CONFFILE} > ${CONFFILE}.new &&
+                mv ${CONFFILE} ${CONFFILE}.old &&
+                mv ${CONFFILE}.new ${CONFFILE}
         fi
         ;;
 esac

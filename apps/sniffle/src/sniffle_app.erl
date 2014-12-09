@@ -45,6 +45,7 @@ start(_StartType, _StartArgs) ->
         undefined ->
             application:set_env(fifo_db, backend, fifo_db_hanoidb)
     end,
+    init_folsom(),
     case sniffle_sup:start_link() of
         {ok, Pid} ->
             ok = riak_core_ring_events:add_guarded_handler(sniffle_ring_event_handler, []),
@@ -74,3 +75,50 @@ start(_StartType, _StartArgs) ->
 
 stop(_State) ->
     ok.
+
+
+init_folsom() ->
+    DBMs = [fold_keys, fold, get, put, delete, transact],
+    Basic = [wipe, get, list, list_all, sync_repai],
+    Datasets = Basic ++
+        [set_metadata, description, disk_driver, homepage, image_size, name,
+         networks, nic_driver, os, type, zone_type, users, version,
+         kernel_version, sha1, status, imported, remove_requirement,
+         add_requirement, create, delete],
+    Dtraces = Basic ++
+        [create, delete, set, name, uuid, script, set_metadata, set_config],
+    Groupings = Basic ++
+        [create, delete, add_element, add_grouping, remove_element,
+         remove_grouping, set_metadata, set_config],
+    HVs = Basic ++
+        [set_resource, set_characteristic, set_metadata, set_pool, set_service,
+         alias, etherstubs, host, networks, path, port, sysinfo, uuid, version,
+         virtualisation, register, unregister],
+    IPRs = Basic ++
+        [create, delete, lookup, name, uuid, network, netmask, gateway,
+         set_metadata, tag, vlan, release_ip, claim_ip],
+    Nets = Basic ++
+        [create, detete, name, set_metadata, uuid, add_ipragen, remove_iprange,
+         set],
+    Pkgs = Basic ++
+        [create, delete, set_metadata, blocksize, compression, cpu_cap,
+         cpu_shares, max_swap, name, quota, ram, uuid, zfs_io_priority,
+         remove_requirement, add_requirement],
+    VMs = Basic ++
+        [register, unregister, log, set_network_map, remove_grouping,
+         add_grouping, set_metadata, set_info, set_config, set_backup,
+         set_snapshot, set_service, state, alias, owner, dataset, package,
+         hypervisor],
+    [folsom_metrics:new_histogram(Name, slide, 60) ||
+        Name <-
+            [{fifo_db, M} || M <- DBMs] ++
+            [{sniffle, dataset, M} || M <- Datasets] ++
+            [{sniffle, dtrace, M} || M <- Dtraces] ++
+            [{sniffle, grouping, M} || M <- Groupings] ++
+            [{sniffle, hypervisor, M} || M <- HVs] ++
+            [{sniffle, iprange, M} || M <- IPRs] ++
+            [{sniffle, network, M} || M <- Nets] ++
+            [{sniffle, package, M} || M <- Pkgs] ++
+            [{sniffle, vm, M} || M <- VMs] ++
+            []
+    ].

@@ -5,6 +5,11 @@
 -define(VNODE, sniffle_package_vnode).
 -define(SERVICE, sniffle_package).
 
+-define(FM(Met, Mod, Fun, Args),
+        folsom_metrics:histogram_timed_update(
+          {sniffle, package, Met},
+          Mod, Fun, Args)).
+
 -export([
          create/1,
          delete/1,
@@ -40,7 +45,7 @@
 
 -spec wipe(fifo:package_id()) -> ok.
 wipe(UUID) ->
-    sniffle_coverage:start(?MASTER, ?SERVICE, {wipe, UUID}).
+    ?FM(wipe, sniffle_coverage, start, [?MASTER, ?SERVICE, {wipe, UUID}]).
 
 -spec sync_repair(fifo:package_id(), ft_obj:obj()) -> ok.
 sync_repair(UUID, Obj) ->
@@ -48,15 +53,16 @@ sync_repair(UUID, Obj) ->
 
 -spec list_() -> {ok, [ft_obj:obj()]}.
 list_() ->
-    {ok, Res} = sniffle_full_coverage:raw(?MASTER, ?SERVICE, []),
+    {ok, Res} = ?FM(list_all, sniffle_full_coverage, raw,
+                    [?MASTER, ?SERVICE, []]),
     Res1 = [R || {_, R} <- Res],
     {ok,  Res1}.
 
 -spec lookup(Package::binary()) ->
                     not_found | {ok, Pkg::fifo:package()} | {error, timeout}.
 lookup(Package) ->
-    {ok, Res} = sniffle_coverage:start(
-                  ?MASTER, ?SERVICE, {lookup, Package}),
+    {ok, Res} = ?FM(list, sniffle_coverage, start,
+                    [?MASTER, ?SERVICE, {lookup, Package}]),
     lists:foldl(fun (not_found, Acc) ->
                         Acc;
                     (R, _) ->
@@ -85,12 +91,13 @@ delete(Package) ->
 -spec get(Package::fifo:package_id()) ->
                  not_found | {ok, Pkg::fifo:package()} | {error, timeout}.
 get(Package) ->
-    sniffle_entity_read_fsm:start({?VNODE, ?SERVICE}, get, Package).
+    ?FM(get, sniffle_entity_read_fsm, start,
+        [{?VNODE, ?SERVICE}, get, Package]).
 
 -spec list() ->
                   {ok, [Pkg::fifo:package_id()]} | {error, timeout}.
 list() ->
-    sniffle_coverage:start(?MASTER, ?SERVICE, list).
+    ?FM(list, sniffle_coverage, start, [?MASTER, ?SERVICE, list]).
 
 %%--------------------------------------------------------------------
 %% @doc Lists all vm's and fiters by a given matcher set.
@@ -102,13 +109,14 @@ list() ->
                    [{integer(), fifo:package()}]}.
 
 list(Requirements, true) ->
-    {ok, Res} = sniffle_full_coverage:list(?MASTER, ?SERVICE, Requirements),
+    {ok, Res} = ?FM(list_all, sniffle_full_coverage, list,
+                    [?MASTER, ?SERVICE, Requirements]),
     Res1 = lists:sort(rankmatcher:apply_scales(Res)),
     {ok,  Res1};
 
 list(Requirements, false) ->
-    {ok, Res} = sniffle_coverage:start(
-                  ?MASTER, ?SERVICE, {list, Requirements}),
+    {ok, Res} = ?FM(list, sniffle_coverage, start,
+                    [?MASTER, ?SERVICE, {list, Requirements}]),
     Res1 = rankmatcher:apply_scales(Res),
     {ok,  lists:sort(Res1)}.
 
@@ -131,7 +139,9 @@ list(Requirements, false) ->
 %%%===================================================================
 
 do_write(Package, Op) ->
-    sniffle_entity_write_fsm:write({?VNODE, ?SERVICE}, Package, Op).
+    ?FM(Op, sniffle_entity_write_fsm, write,
+        [{?VNODE, ?SERVICE}, Package, Op]).
 
 do_write(Package, Op, Val) ->
-    sniffle_entity_write_fsm:write({?VNODE, ?SERVICE}, Package, Op, Val).
+    ?FM(Op, sniffle_entity_write_fsm, write,
+        [{?VNODE, ?SERVICE}, Package, Op, Val]).
