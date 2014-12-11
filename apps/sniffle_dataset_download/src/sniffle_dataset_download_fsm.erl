@@ -108,6 +108,7 @@ init([URL, From, Ref]) ->
 %%--------------------------------------------------------------------
 get_manifest(_E, State = #state{url = URL, from = From, ref = Ref,
                                 http_opts = HTTPOpts}) ->
+    lager:info("[img:import] Importing: ~s", [URL]),
     {ok, 200, _, Client} = hackney:request(get, URL, [], <<>>, HTTPOpts),
     {ok, Body, Client1} = hackney:body(Client),
     hackney:close(Client1),
@@ -136,7 +137,7 @@ get_manifest(_E, State = #state{url = URL, from = From, ref = Ref,
       }, 0}.
 
 init_download(_E, State = #state{img_url = URL, http_opts = HTTPOpts}) ->
-
+    lager:info("[img:import:~s] Downloading: ~s", [State#state.uuid, URL]),
     {ok, 200, _, Client} = hackney:request(get, URL, [], <<>>, HTTPOpts),
     SHA1 = crypto:hash_init(sha),
     {next_state, download,
@@ -145,10 +146,13 @@ init_download(_E, State = #state{img_url = URL, http_opts = HTTPOpts}) ->
        http_client = Client
       }, 0}.
 
-download(_E, State = #state{acc = Acc, chunk_size = ChunkSize, upload = U})
+download(_E, State = #state{acc = Acc, chunk_size = ChunkSize, upload = U,
+                            uuid = UUID, downloaded = D, total_size = T})
   when byte_size(Acc) >= ChunkSize ->
     <<Chunk:ChunkSize/binary, Acc1/binary>> = Acc,
     ok = fifo_s3_upload:part(U, binary:copy(Chunk)),
+    progress(UUID, D / T),
+    lager:info("[img:import:~s] Progress: ~p of ~p", [UUID, D, T]),
     {next_state, download, State#state{acc = Acc1}, 0};
 
 download(_D, State = #state{done = true}) ->
@@ -160,13 +164,9 @@ download(_, State = #state{http_client = Client, acc = Acc, downloaded = Done,
         {ok, Data, Client1} ->
             SHA11 = crypto:hash_update(SHA1, Data),
             Acc1 = <<Acc/binary, Data/binary>>,
-            Done1 = Done + byte_size(Data),
-            progress(UUID, Done / TotalSize),
-            lager:info("[img:import:~s] Progress: ~p of ~p",
-                        [UUID, Done1, TotalSize]),
             {next_state, download,
-             State#state{acc = Acc1, sha1 = SHA11, downloaded = Done1,
-                         http_client = Client1}, 0};
+             State#state{downloaded = Done + byte_size(Data), acc = Acc1,
+                         sha1 = SHA11,http_client = Client1}, 0};
         {done, Client1} ->
             lager:info("[img:import:~s] Download complete after ~p of ~p byte",
                        [UUID, Done, TotalSize]),
