@@ -194,7 +194,7 @@ verify_size(_E, State = #state{uuid = UUID, downloaded = ActualSize,
 verify_size(_E, State = #state{uuid = UUID, downloaded = ActualSize}) ->
     lager:info("[img:import:~s] Downloaded size matches with ~p.",
                [UUID, ActualSize]),
-    {next_state, calculate_sha, State}.
+    {next_state, calculate_sha, State, 0}.
 
 
 calculate_sha(_E, State = #state{uuid = UUID, sha1 = SHA1}) ->
@@ -206,6 +206,7 @@ verify_sha(_E, State = #state{uuid = UUID, sha1 = SHA1, img_sha1 = SHA1}) ->
     sniffle_dataset:status(UUID, <<"imported">>),
     progress(UUID, 1),
     lager:info("[img:import:~s] Digest verify with: ~s.", [UUID, SHA1]),
+    lager:info("[img:import:~s] Download successful!", [UUID]),
     {stop, normal, State};
 
 verify_sha(_E, State = #state{uuid = UUID, sha1 = ActualSHA1,
