@@ -172,7 +172,6 @@ download(_, State = #state{http_client = Client, acc = Acc, downloaded = Done,
 finalize(_Event, State = #state{acc = <<>>, upload = U, uuid = UUID}) ->
     fifo_s3_upload:done(U),
     sniffle_dataset:status(UUID, <<"verifying">>),
-    progress(UUID, 1),
     {next_state, calculate_sha, State, 0};
 
 finalize(_E, State = #state{acc = Acc, upload = U}) ->
@@ -185,6 +184,7 @@ calculate_sha(_E, State = #state{sha1 = SHA1}) ->
 
 verify(_E, State = #state{uuid = UUID, sha1 = _SHA1, img_sha1 = _SHA1}) ->
     sniffle_dataset:status(UUID, <<"imported">>),
+    progress(UUID, 1),
     {stop, normal, State};
 
 verify(_E, State = #state{uuid = UUID, sha1 = ActualSHA1,
