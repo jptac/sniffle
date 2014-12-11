@@ -159,8 +159,10 @@ download(_, State = #state{http_client = Client, acc = Acc, downloaded = Done,
             Acc1 = <<Acc/binary, Data/binary>>,
             Done1 = Done + byte_size(Data),
             progress(UUID, Done / TotalSize),
+            lager:debug("[img:import:~s] Progress: ~p of ~p",
+                        [UUID, Done1, TotalSize]),
             {next_state, download,
-             State#state{acc = Acc1, sha1 = SHA11, done = Done1,
+             State#state{acc = Acc1, sha1 = SHA11, downloaded = Done1,
                          http_client = Client1}, 0};
         {done, Client1} ->
             hackney:close(Client1),
@@ -171,7 +173,7 @@ finalize(_Event, State = #state{acc = <<>>, upload = U, uuid = UUID}) ->
     fifo_s3_upload:done(U),
     sniffle_dataset:status(UUID, <<"verifying">>),
     progress(UUID, 1),
-    {next_state, calculate_sha, State#state{upload=undefined}, 0};
+    {next_state, calculate_sha, State, 0};
 
 finalize(_E, State = #state{acc = Acc, upload = U}) ->
     ok = fifo_s3_upload:part(U, binary:copy(Acc)),
@@ -187,8 +189,8 @@ verify(_E, State = #state{uuid = UUID, sha1 = _SHA1, img_sha1 = _SHA1}) ->
 
 verify(_E, State = #state{uuid = UUID, sha1 = ActualSHA1,
                           img_sha1 = ExpectedSHA1}) ->
-    lager:error("[img:import:~s] Failed to validate SHA of ~s, got ~s but "
-                "expected ~s.", [UUID, ActualSHA1, ExpectedSHA1]),
+    lager:error("[img:import:~s] SHA validation failed, got ~s instead of ~s.",
+                [UUID, ActualSHA1, ExpectedSHA1]),
     {stop, verify_failed, State}.
 
 %%--------------------------------------------------------------------
@@ -268,6 +270,7 @@ terminate(Reason, _StateName,
                    [{<<"message">>,
                      list_to_binary(atom_to_list(Reason))}]}]),
     sniffle_dataset:status(UUID, <<"failed">>),
+
     hackney:close(Client),
     fifo_s3_upload:abort(U),
     ok.
