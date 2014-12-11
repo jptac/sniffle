@@ -183,23 +183,29 @@ finalize(_E, State = #state{acc = Acc, upload = U}) ->
     ok = fifo_s3_upload:part(U, binary:copy(Acc)),
     {next_state, finalize, State#state{acc = <<>>}, 0}.
 
-verify_size(_E, State = #state{downloaded = _Size, total_size = _Size}) ->
-    {next_state, calculate_sha, State};
 
 verify_size(_E, State = #state{uuid = UUID, downloaded = ActualSize,
-                          total_size = ExpectedSize}) ->
+                               total_size = ExpectedSize}) when
+      ActualSize =/= ExpectedSize ->
     lager:error("[img:import:~s] Incorrect size, expected ~p but git ~p byte.",
                 [UUID, ActualSize, ExpectedSize]),
-    {stop, size_verification_failed, State}.
+    {stop, size_verification_failed, State};
+
+verify_size(_E, State = #state{uuid = UUID, downloaded = ActualSize}) ->
+    lager:info("[img:import:~s] Downloaded size matches with ~p.",
+               [UUID, ActualSize]),
+    {next_state, calculate_sha, State}.
 
 
-calculate_sha(_E, State = #state{sha1 = SHA1}) ->
+calculate_sha(_E, State = #state{uuid = UUID, sha1 = SHA1}) ->
     Digest = base16:encode(crypto:hash_final(SHA1)),
+    lager:info("[img:import:~s] Calculating digest: ~s.", [UUID, Digest]),
     {next_state, verify_sha, State#state{sha1 = Digest}, 0}.
 
-verify_sha(_E, State = #state{uuid = UUID, sha1 = _SHA1, img_sha1 = _SHA1}) ->
+verify_sha(_E, State = #state{uuid = UUID, sha1 = SHA1, img_sha1 = SHA1}) ->
     sniffle_dataset:status(UUID, <<"imported">>),
     progress(UUID, 1),
+    lager:info("[img:import:~s] Digest verify with: ~s.", [UUID, SHA1]),
     {stop, normal, State};
 
 verify_sha(_E, State = #state{uuid = UUID, sha1 = ActualSHA1,
@@ -285,7 +291,6 @@ terminate(Reason, _StateName,
                    [{<<"message">>,
                      list_to_binary(atom_to_list(Reason))}]}]),
     sniffle_dataset:status(UUID, <<"failed">>),
-
     hackney:close(Client),
     fifo_s3_upload:abort(U),
     ok.
