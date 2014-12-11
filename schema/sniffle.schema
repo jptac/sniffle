@@ -106,21 +106,6 @@
  end
 }.
 
-{translation,
- "hanoidb.data_root",
- fun(Conf) ->
-         cuttlefish:conf_get("platform_data_dir", Conf)
- end
-}.
-
-{translation,
- "bitcask.data_root",
- fun(Conf) ->
-         cuttlefish:conf_get("platform_data_dir", Conf)
- end
-}.
-
-
 %% @doc The Backend to store large data objects in, this applies to snapshots
 %% and images. Objects stored in one backend will not be migrated to another if
 %% this is changed.
