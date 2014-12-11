@@ -18,8 +18,10 @@
          init_download/2,
          download/2,
          finalize/2,
+         verify_size/2,
          calculate_sha/2,
-         verify/2]).
+         verify_sha/2
+        ]).
 
 %% gen_fsm callbacks
 -export([init/1, handle_event/3,
@@ -133,7 +135,8 @@ get_manifest(_E, State = #state{url = URL, from = From, ref = Ref,
        upload = U
       }, 0}.
 
-init_download(_E, State = #state{url = URL, http_opts = HTTPOpts}) ->
+init_download(_E, State = #state{img_url = URL, http_opts = HTTPOpts}) ->
+
     {ok, 200, _, Client} = hackney:request(get, URL, [], <<>>, HTTPOpts),
     SHA1 = crypto:hash_init(sha),
     {next_state, download,
@@ -159,12 +162,14 @@ download(_, State = #state{http_client = Client, acc = Acc, downloaded = Done,
             Acc1 = <<Acc/binary, Data/binary>>,
             Done1 = Done + byte_size(Data),
             progress(UUID, Done / TotalSize),
-            lager:debug("[img:import:~s] Progress: ~p of ~p",
+            lager:info("[img:import:~s] Progress: ~p of ~p",
                         [UUID, Done1, TotalSize]),
             {next_state, download,
              State#state{acc = Acc1, sha1 = SHA11, downloaded = Done1,
                          http_client = Client1}, 0};
         {done, Client1} ->
+            lager:info("[img:import:~s] Download complete after ~p of ~p byte",
+                       [UUID, Done, TotalSize]),
             hackney:close(Client1),
             {next_state, download, State#state{done = true}, 0}
     end.
@@ -172,26 +177,36 @@ download(_, State = #state{http_client = Client, acc = Acc, downloaded = Done,
 finalize(_Event, State = #state{acc = <<>>, upload = U, uuid = UUID}) ->
     fifo_s3_upload:done(U),
     sniffle_dataset:status(UUID, <<"verifying">>),
-    {next_state, calculate_sha, State, 0};
+    {next_state, verify_size, State, 0};
 
 finalize(_E, State = #state{acc = Acc, upload = U}) ->
     ok = fifo_s3_upload:part(U, binary:copy(Acc)),
     {next_state, finalize, State#state{acc = <<>>}, 0}.
 
+verify_size(_E, State = #state{downloaded = _Size, total_size = _Size}) ->
+    {next_state, calculate_sha, State};
+
+verify_size(_E, State = #state{uuid = UUID, downloaded = ActualSize,
+                          total_size = ExpectedSize}) ->
+    lager:error("[img:import:~s] Incorrect size, expected ~p but git ~p byte.",
+                [UUID, ActualSize, ExpectedSize]),
+    {stop, size_verification_failed, State}.
+
+
 calculate_sha(_E, State = #state{sha1 = SHA1}) ->
     Digest = base16:encode(crypto:hash_final(SHA1)),
-    {next_state, verify, State#state{sha1 = Digest}, 0}.
+    {next_state, verify_sha, State#state{sha1 = Digest}, 0}.
 
-verify(_E, State = #state{uuid = UUID, sha1 = _SHA1, img_sha1 = _SHA1}) ->
+verify_sha(_E, State = #state{uuid = UUID, sha1 = _SHA1, img_sha1 = _SHA1}) ->
     sniffle_dataset:status(UUID, <<"imported">>),
     progress(UUID, 1),
     {stop, normal, State};
 
-verify(_E, State = #state{uuid = UUID, sha1 = ActualSHA1,
+verify_sha(_E, State = #state{uuid = UUID, sha1 = ActualSHA1,
                           img_sha1 = ExpectedSHA1}) ->
     lager:error("[img:import:~s] SHA validation failed, got ~s instead of ~s.",
                 [UUID, ActualSHA1, ExpectedSHA1]),
-    {stop, verify_failed, State}.
+    {stop, ssh_verification_failed, State}.
 
 %%--------------------------------------------------------------------
 %% @private
