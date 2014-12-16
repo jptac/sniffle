@@ -50,7 +50,7 @@ quick-test:
 	$(REBAR) -DEQC_SHORT_TEST skip_deps=true eunit -r -v
 
 rel: all zabbix
-	-rm -r rel/sniffle/share
+	[ -d rel/sniffle/share ] && rm -r rel/sniffle/share || true
 	$(REBAR) generate
 
 relclean:
