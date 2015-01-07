@@ -27,6 +27,9 @@ delete(Type, Key) ->
 new_stream(Type, Key) ->
     fifo_s3:new_stream(get_bucket(Type), Key, get_config()).
 
+-spec new_upload(Type :: atom(), Key :: binary() | string()) ->
+                        {ok, term()} | {error, term()}.
+
 new_upload(Type, Key) ->
     fifo_s3:new_upload(get_bucket(Type), Key, get_config()).
 
