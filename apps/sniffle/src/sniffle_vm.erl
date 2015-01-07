@@ -651,7 +651,7 @@ dry_run(Package, Dataset, Config) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec get(Vm::fifo:uuid()) ->
-                 not_found | {error, timeout} | fifo:vm().
+                 not_found | {error, timeout} | {ok, fifo:vm()}.
 get(Vm) ->
     ?FM(get, sniffle_entity_read_fsm, start, [{?VNODE, ?SERVICE}, get, Vm]).
 
@@ -661,7 +661,7 @@ get(Vm) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec list() ->
-                  {error, timeout} | [fifo:uuid()].
+                  {error, timeout} | {ok, [fifo:uuid()]}.
 list() ->
     ?FM(list, sniffle_coverage, start, [?MASTER, ?SERVICE, list]).
 
@@ -1093,10 +1093,6 @@ backend() ->
 
 resource_action(UUID, Action, Opts) ->
     resource_action(UUID, Action, undefined, Opts).
-
-resource_action(UUID, Action, User, Opts) when is_binary(UUID) ->
-    {ok, V} = sniffle_vm:get(UUID),
-    resource_action(V, Action, User, Opts);
 
 resource_action(VM, Action, User, Opts) ->
     case ft_vm:owner(VM) of

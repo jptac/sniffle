@@ -117,7 +117,7 @@ list() ->
     case backend() of
         s3 ->
             case sniffle_s3:list(image) of
-                Is when is_list(Is) ->
+                {ok, Is} when is_list(Is) ->
                     {ok, [list_to_binary(I) || I <- Is]};
                 R ->
                     R
