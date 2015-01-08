@@ -364,11 +364,17 @@ a2b(A) ->
 
 
 hv_to_entry(H, Failures) ->
+    Pools = ft_hypervisor:pools(H),
+    Res = ft_hypervisor:resources(H),
+    Size = jsxd:get([<<"zones">>, <<"size">>], 0, Pools),
+    Used = jsxd:get([<<"zones">>, <<"used">>], 0, Pools),
+    Res1 = jsxd:set([<<"disk-size">>], Size, Res),
+    Res2 = jsxd:set([<<"disk-used">>], Used, Res1),
     #entry{
        uuid = ft_hypervisor:uuid(H),
        alias = ft_hypervisor:alias(H),
-       pools = ft_hypervisor:pools(H),
-       resources = ft_hypervisor:resources(H),
+       pools = Pools,
+       resources = Res2,
        endpoint = ft_hypervisor:endpoint(H),
        failures = Failures
       }.
