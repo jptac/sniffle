@@ -62,7 +62,7 @@ start_link() ->
 
 status() ->
     {_, Leader} = riak_ensemble_manager:get_leader(?ENSEMBLE),
-    gen_server:call({?SERVER, Leader}, status).
+    gen_server:call({Leader, ?SERVER}, status).
 
 %%%===================================================================
 %%% gen_server callbacks
