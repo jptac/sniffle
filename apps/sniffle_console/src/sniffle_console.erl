@@ -93,14 +93,14 @@ update_meta_element(LS, FT, ID) ->
     LS:set_metadata(ID, MChanges),
     io:format(".").
 
-init_leo([H]) ->
+init_leo([Host]) ->
     P = 10020,
     User = "fifo",
     OK = {ok,[{<<"result">>,<<"OK">>}]},
 
     %% Create the user and store access and secret key
     {ok,[{<<"access_key_id">>,AKey}, {<<"secret_access_key">>, SKey}]} =
-        libleofs:create_user(H, P, User),
+        libleofs:create_user(Host, P, User),
     sniffle_opt:set(["storage", "s3", "access_key"], AKey),
     sniffle_opt:set(["storage", "s3", "secret_key"], SKey),
     io:format("Created user ~s:~n"
@@ -110,27 +110,27 @@ init_leo([H]) ->
 
     %% Create the general bucket
     GenBucket = "fifo",
-    OK = libleofs:add_bucket(H, P, GenBucket, AKey),
+    OK = libleofs:add_bucket(Host, P, GenBucket, AKey),
     sniffle_opt:set(["storage", "s3", "general_bucket"], GenBucket),
     io:format("Created bucket general bucket: ~s~n", [GenBucket]),
 
     %% Create the image bucket
     ImgBucket = "fifo-images",
-    OK = libleofs:add_bucket(H, P, ImgBucket, AKey),
+    OK = libleofs:add_bucket(Host, P, ImgBucket, AKey),
     sniffle_opt:set(["storage", "s3", "image_bucket"], ImgBucket),
     io:format("Created bucket image bucket: ~s~n", [ImgBucket]),
 
     %% Create the backup bucket
     SnapBucket = "fifo-backups",
-    OK = libleofs:add_bucket(H, P, SnapBucket, AKey),
+    OK = libleofs:add_bucket(Host, P, SnapBucket, AKey),
     sniffle_opt:set(["storage", "s3", "snapshot_bucket"], SnapBucket),
     io:format("Created bucket snapshot bucket: ~s~n", [SnapBucket]),
 
     %% Add the enpoint
-    OK = libleofs:add_endpoint(H, P, H),
-    sniffle_opt:set(["storage", "s3", "host"], H),
+    OK = libleofs:add_endpoint(Host, P, Host),
+    sniffle_opt:set(["storage", "s3", "host"], Host),
     ok = sniffle_opt:set(["storage", "s3", "port"], 443),
-    io:format("Configuring endpoint as: https://~s:~p", [H, P]),
+    io:format("Configuring endpoint as: https://~s:~p", [Host, P]),
     %% Set s3 as storage system
     ok = sniffle_opt:set(["storage", "general", "backend"], s3),
     io:format("Setting storage backend to s3, please reastart sniffle for this "
