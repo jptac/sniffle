@@ -130,11 +130,11 @@ init_leo([Host]) ->
     OK = libleofs:add_endpoint(Host, P, Host),
     sniffle_opt:set(["storage", "s3", "host"], Host),
     ok = sniffle_opt:set(["storage", "s3", "port"], 443),
-    io:format("Configuring endpoint as: https://~s:~p", [Host, P]),
+    io:format("Configuring endpoint as: https://~s:~p~n", [Host, P]),
     %% Set s3 as storage system
     ok = sniffle_opt:set(["storage", "general", "backend"], s3),
     io:format("Setting storage backend to s3, please reastart sniffle for this "
-              "to take full effect!"),
+              "to take full effect!~n"),
     ok.
 
 
