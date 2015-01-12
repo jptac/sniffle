@@ -50,7 +50,7 @@
 %% @end
 %%--------------------------------------------------------------------
 start_link(URL, From, Ref) ->
-    gen_fsm:start_link({local, ?SERVER}, ?MODULE, [URL, From, Ref], []).
+    gen_fsm:start_link(?MODULE, [URL, From, Ref], []).
 
 download(URL) ->
     Ref = make_ref(),
