@@ -5,6 +5,11 @@
 -define(VNODE, sniffle_grouping_vnode).
 -define(SERVICE, sniffle_grouping).
 
+-define(FM(Met, Mod, Fun, Args),
+        folsom_metrics:histogram_timed_update(
+          {sniffle, grouping, Met},
+          Mod, Fun, Args)).
+
 -export([
          create_rules/1,
          create/2,
@@ -19,7 +24,8 @@
          add_grouping/2,
          remove_grouping/2,
          list_/0,
-         metadata_set/2
+         metadata_set/2,
+         set_config/2
         ]).
 
 -ignore_xref([
@@ -30,7 +36,7 @@
               ]).
 
 wipe(UUID) ->
-    sniffle_coverage:start(?MASTER, ?SERVICE, {wipe, UUID}).
+    ?FM(wipe, sniffle_coverage, start, [?MASTER, ?SERVICE, {wipe, UUID}]).
 
 sync_repair(UUID, Obj) ->
     do_write(UUID, sync_repair, Obj).
@@ -49,7 +55,7 @@ create(Name, Type) ->
 -spec sniffle_grouping:get(UUID::fifo:uuid()) ->
                  not_found | {ok, Grouping::fifo:grouping()} | {error, timeout}.
 get(UUID) ->
-    sniffle_entity_read_fsm:start({?VNODE, ?SERVICE}, get, UUID).
+    ?FM(get, sniffle_entity_read_fsm, start, [{?VNODE, ?SERVICE}, get, UUID]).
 
 %% Add a alement and make sure only vm's can be added to clusters
 %% and only cluster groupings can be added to stacks
@@ -202,10 +208,11 @@ delete(UUID) ->
 -spec list() ->
                   {ok, [UUID::fifo:uuid()]} | {error, timeout}.
 list() ->
-    sniffle_coverage:start(?MASTER, ?SERVICE, list).
+    ?FM(list, sniffle_coverage, start, [?MASTER, ?SERVICE, list]).
 
 list_() ->
-    {ok, Res} = sniffle_full_coverage:raw(?MASTER, ?SERVICE, []),
+    {ok, Res} = ?FM(list_all, sniffle_full_coverage, raw,
+                    [?MASTER, ?SERVICE, []]),
     Res1 = [R || {_, R} <- Res],
     {ok,  Res1}.
 
@@ -216,24 +223,34 @@ list_() ->
 metadata_set(Grouping, Attributes) ->
     do_write(Grouping, metadata_set, Attributes).
 
+-spec set_config(Grouping::fifo:uuid(), Attirbutes::fifo:attr_list()) ->
+                 not_found |
+                 {error, timeout} |
+                 ok.
+set_config(Grouping, Attributes) ->
+    do_write(Grouping, set_config, Attributes).
+
 %%--------------------------------------------------------------------
 %% @doc Lists all vm's and fiters by a given matcher set.
 %% @end
 %%--------------------------------------------------------------------
 
 list(Requirements, true) ->
-    {ok, Res} = sniffle_full_coverage:list(?MASTER, ?SERVICE, Requirements),
+    {ok, Res} = ?FM(list_all, sniffle_full_coverage, list,
+                    [?MASTER, ?SERVICE, Requirements]),
     Res1 = lists:sort(rankmatcher:apply_scales(Res)),
     {ok,  Res1};
 
 list(Requirements, false) ->
-    {ok, Res} = sniffle_coverage:start(
-                  ?MASTER, ?SERVICE, {list, Requirements}),
+    {ok, Res} = ?FM(list, sniffle_coverage, start,
+                    [?MASTER, ?SERVICE, {list, Requirements}]),
     Res1 = rankmatcher:apply_scales(Res),
     {ok,  lists:sort(Res1)}.
 
 do_write(Grouping, Op) ->
-    sniffle_entity_write_fsm:write({?VNODE, ?SERVICE}, Grouping, Op).
+    ?FM(Op, sniffle_entity_write_fsm, write,
+        [{?VNODE, ?SERVICE}, Grouping, Op]).
 
 do_write(Grouping, Op, Val) ->
-    sniffle_entity_write_fsm:write({?VNODE, ?SERVICE}, Grouping, Op, Val).
+    ?FM(Op, sniffle_entity_write_fsm, write,
+        [{?VNODE, ?SERVICE}, Grouping, Op, Val]).

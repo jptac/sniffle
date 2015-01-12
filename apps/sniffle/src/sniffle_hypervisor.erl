@@ -5,6 +5,11 @@
 -define(VNODE, sniffle_hypervisor_vnode).
 -define(SERVICE, sniffle_hypervisor).
 
+-define(FM(Met, Mod, Fun, Args),
+        folsom_metrics:histogram_timed_update(
+          {sniffle, hypervisor, Met},
+          Mod, Fun, Args)).
+
 -export(
    [
     register/3,
@@ -46,13 +51,14 @@
              ]).
 
 wipe(UUID) ->
-    sniffle_coverage:start(?MASTER, ?SERVICE, {wipe, UUID}).
+    ?FM(wipe, sniffle_coverage, start, [?MASTER, ?SERVICE, {wipe, UUID}]).
 
 sync_repair(UUID, Obj) ->
     do_write(UUID, sync_repair, Obj).
 
 list_() ->
-    {ok, Res} = sniffle_full_coverage:raw(?MASTER, ?SERVICE, []),
+    {ok, Res} = ?FM(list_all, sniffle_full_coverage, raw,
+                    [?MASTER, ?SERVICE, []]),
     Res1 = [R || {_, R} <- Res],
     {ok,  Res1}.
 
@@ -84,7 +90,8 @@ unregister(Hypervisor) ->
 -spec get(Hypervisor::fifo:hypervisor_id()) ->
                  not_found | {ok, HV::fifo:hypervisor()} | {error, timeout}.
 get(Hypervisor) ->
-    sniffle_entity_read_fsm:start({?VNODE, ?SERVICE}, get, Hypervisor).
+    ?FM(get, sniffle_entity_read_fsm, start,
+        [{?VNODE, ?SERVICE}, get, Hypervisor]).
 
 -spec status() -> {error, timeout} |
                   {ok, {Resources::fifo:object(),
@@ -96,39 +103,49 @@ status() ->
                   s3 ->
                       <<"s3">>
               end,
-    case sniffle_cloud_status:start() of
-        {ok, {Resources0, Warnings}} ->
-            Resources = [{<<"storage">>, Storage} | Resources0],
-            Warnings1 = case riak_core_status:transfers() of
-                            {[], []} ->
-                                Warnings;
-                            {[], L} ->
-                                W = jsxd:from_list(
-                                      [{<<"category">>, <<"sniffle">>},
-                                       {<<"element">>, <<"handoff">>},
-                                       {<<"type">>, <<"info">>},
-                                       {<<"message">>, bin_fmt("~b handofs pending.",
-                                                               [length(L)])}]),
-                                [W | Warnings];
-                            {S, []} ->
-                                Warnings ++ server_errors(S);
-                            {S, L} ->
-                                W = jsxd:from_list(
-                                      [{<<"category">>, <<"sniffle">>},
-                                       {<<"element">>, <<"handoff">>},
-                                       {<<"type">>, <<"info">>},
-                                       {<<"message">>, bin_fmt("~b handofs pending.",
-                                                               [length(L)])}]),
-                                [W | Warnings ++ server_errors(S)]
-                        end,
-            {ok, {ordsets:from_list(Resources), ordsets:from_list(Warnings1)}};
-        E ->
-            {ok, {[{<<"storage">>, Storage}],
-                  [[{<<"category">>, <<"sniffle">>},
-                    {<<"element">>, <<"general">>},
-                    {<<"type">>, <<"error">>},
-                    {<<"message">>, bin_fmt("Failed with ~p.", [E])}]]}}
-    end.
+    {ok, {Warnings, Resources}} = sniffle_watchdog:status(),
+    Resources1 = [{<<"storage">>, Storage} | Resources],
+    Warnings1 = [to_msg(W) || W <- Warnings],
+    {ok,  {lists:sort(Resources1), lists:sort(Warnings1)}}.
+
+to_msg({handoff, Node}) ->
+    [
+     {<<"category">>, <<"sniffle">>},
+     {<<"element">>, <<"handoff">>},
+     {<<"message">>, bin_fmt("Handoff pending on node ~s.", [Node])},
+     {<<"type">>, <<"info">>}
+    ];
+
+to_msg({stopped, Node}) ->
+    [
+     {<<"category">>, <<"sniffle">>},
+     {<<"element">>, <<"handoff">>},
+     {<<"message">>, bin_fmt("Node ~s stopped.", [Node])},
+     {<<"type">>, <<"warning">>}
+    ];
+
+to_msg({down, Node}) ->
+    [{<<"category">>, <<"sniffle">>},
+     {<<"element">>, <<"handoff">>},
+     {<<"type">>, <<"error">>},
+     {<<"message">>, bin_fmt("Node ~s DOWN.", [Node])}];
+
+to_msg({chunter_down, UUID, Alias}) ->
+    [
+     {<<"category">>, <<"chunter">>},
+     {<<"element">>, UUID},
+     {<<"message">>, bin_fmt("Chunter node ~s(~s) down.", [Alias, UUID])},
+     {<<"type">>, <<"critical">>}
+    ];
+
+to_msg({pool_error, UUID, Alias, Name, State}) ->
+    [
+     {<<"category">>, <<"chunter">>},
+     {<<"element">>, UUID},
+     {<<"message">>, bin_fmt("Zpool ~s on node ~s(~s) in state ~s.",
+                             [Name, Alias, UUID, State])},
+     {<<"type">>, <<"critical">>}
+    ].
 
 -spec list() ->
                   {ok, [IPR::fifo:hypervisor_id()]} | {error, timeout}.
@@ -184,7 +201,8 @@ update() ->
 %% @doc Lists all vm's and fiters by a given matcher set.
 %% @end
 %%--------------------------------------------------------------------
--spec list([fifo:matcher()], boolean()) -> {error, timeout} | {ok, [fifo:uuid()]}.
+-spec list([fifo:matcher()], boolean()) ->
+                  {error, timeout} | {ok, [fifo:uuid()]}.
 
 list(Requirements, true) ->
     {ok, Res} = sniffle_full_coverage:list(?MASTER, ?SERVICE, Requirements),
@@ -202,22 +220,14 @@ list(Requirements, false) ->
 %%%===================================================================
 
 do_write(User, Op) ->
-    sniffle_entity_write_fsm:write({?VNODE, ?SERVICE}, User, Op).
+    ?FM(Op, sniffle_entity_write_fsm, write, [{?VNODE, ?SERVICE}, User, Op]).
 
 do_write(User, Op, Val) ->
-    sniffle_entity_write_fsm:write({?VNODE, ?SERVICE}, User, Op, Val).
+    ?FM(Op, sniffle_entity_write_fsm, write,
+        [{?VNODE, ?SERVICE}, User, Op, Val]).
 
 bin_fmt(F, L) ->
     list_to_binary(io_lib:format(F, L)).
-
-server_errors(Servers) ->
-    lists:map(fun (Server) ->
-                      jsxd:from_list(
-                        [{<<"category">>, <<"sniffle">>},
-                         {<<"element">>, list_to_binary(atom_to_list(Server))},
-                         {<<"type">>, <<"critical">>},
-                         {<<"message">>, bin_fmt("Sniffle server ~s down.", [Server])}])
-              end, Servers).
 
 backend() ->
     sniffle_opt:get(storage, general, backend, large_data_backend, internal).

@@ -224,28 +224,6 @@ is_empty(State) ->
 delete(State) ->
     sniffle_vnode:delete(State).
 
-handle_coverage(status, _KeySpaces, Sender, State) ->
-    ID = sniffle_vnode:mkid(list),
-    FoldFn = fun(K, O, {Res, W, Hs}) ->
-                     S0 = ft_obj:val(O),
-                     S1 = ft_hypervisor:load(ID, S0),
-                     {Host, Port} = ft_hypervisor:endpoint(S1),
-                     Hs1 = [{K, Host, Port, ft_hypervisor:alias(S1)} | Hs],
-                     %% W1 =
-                     {Res1, W2} =
-                         case ft_hypervisor:pools(S1) of
-                             [] ->
-                                 {ft_hypervisor:resources(S1), W};
-                             Pools ->
-                                 jsxd:fold(
-                                   status_fold_fn(K),
-                                   {ft_hypervisor:resources(S1), W},
-                                   Pools)
-                         end,
-                     {[{K, Res1} | Res], W2, Hs1}
-             end,
-    sniffle_vnode:fold(FoldFn, {[], [], []}, Sender, State);
-
 handle_coverage(Req, KeySpaces, Sender, State) ->
     sniffle_vnode:handle_coverage(Req, KeySpaces, Sender, State).
 
@@ -265,58 +243,3 @@ handle_info(Msg, State) ->
 %%%===================================================================
 %%% General
 %%%===================================================================
-
-bin_fmt(F, L) ->
-    list_to_binary(io_lib:format(F, L)).
-
-status_fold_fn(Hypervisor) ->
-    fun (Name, Pool, Acc) ->
-            status_fold(Hypervisor, Name, Pool, Acc)
-    end.
-
-status_fold(Hypervisor, Name, Pool, {ResAcc, WarningsAcc}) ->
-    Size = jsxd:get(<<"size">>, 0, Pool),
-    Used = jsxd:get(<<"used">>, 0, Pool),
-    ResAcc1 =
-        jsxd:thread([{update, <<"size">>,
-                      fun(C) ->
-                              C + Size
-                      end, Size},
-                     {update, <<"used">>,
-                      fun(C) ->
-                              C + Used
-                      end, Used}],
-                    ResAcc),
-    case jsxd:get(<<"health">>, <<"ONLINE">>, Pool) of
-        <<"ONLINE">> ->
-            {ResAcc1, WarningsAcc};
-        PoolState ->
-            {ResAcc1,
-             [jsxd:from_list(
-                [{<<"category">>, <<"chunter">>},
-                 {<<"element">>, Hypervisor},
-                 {<<"type">>, <<"critical">>},
-                 {<<"message">>,
-                  bin_fmt("Zpool ~s in state ~s.", [Name, PoolState])}])|
-              WarningsAcc]}
-    end.
-
-%% %% Taken from (and slightly modified):
-%% %% from https://www.cs.umd.edu/class/fall2010/cmsc433/examples/erlang/pmap.erl
-%% %% applies F to each element of L in a separate process.  The results
-%% %% returned may not be in the same order as they appear in L.
-%% pmap(F, L) ->
-%%     S = self(),
-%%     Ref = erlang:make_ref(),
-%%     [spawn(fun() -> do_f1(S, Ref, F, I) end) || I <- L],
-%%     %% gather the results
-%%     gather1(length(L), Ref, []).
-
-%% do_f1(Parent, Ref, F, I) ->
-%%     Parent ! {Ref, (catch F(I))}.
-
-%% gather1(0, _, L) -> L;
-%% gather1(N, Ref, L) ->
-%%     receive
-%%         {Ref, Ret} -> gather1(N-1, Ref, [Ret|L])
-%%     end.

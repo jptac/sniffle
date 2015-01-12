@@ -1,0 +1,12 @@
+{application, sniffle_dataset_download,
+ [
+  {description, "Downloader for datasers"},
+  {vsn, "0.1.0"},
+  {registered, []},
+  {applications, [
+                  kernel,
+                  stdlib
+                 ]},
+  {mod, { sniffle_dataset_download_app, []}},
+  {env, []}
+ ]}.

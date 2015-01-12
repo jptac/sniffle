@@ -33,7 +33,9 @@
          remove_element/4,
          add_grouping/4,
          remove_grouping/4,
-         sync_repair/4
+         sync_repair/4,
+         set_metadata/4,
+         set_config/4
         ]).
 
 -export([
@@ -54,6 +56,8 @@
               set/4,
               start_vnode/1,
               handle_info/2,
+              set_config/4,
+              set_metadata/4,
               sync_repair/4
              ]).
 
@@ -146,6 +150,16 @@ set(Preflist, ReqID, Grouping, Data) ->
                                    {set, ReqID, Grouping, Data},
                                    {fsm, undefined, self()},
                                    ?MASTER).
+
+-define(S(Field),
+        Field(Preflist, ReqID, Vm, Val) ->
+               riak_core_vnode_master:command(Preflist,
+                                              {Field, ReqID, Vm, Val},
+                                              {fsm, undefined, self()},
+                                              ?MASTER)).
+
+?S(set_config).
+?S(set_metadata).
 
 %%%===================================================================
 %%% VNode

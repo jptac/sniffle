@@ -7,18 +7,19 @@
          is_empty/1,
          delete/1,
          put/3,
-         fold/4,
-         change/5,
          handle_command/3,
          handle_coverage/4,
          handle_info/2,
          hash_object/2,
          mkid/0,
-         mkid/1,
          repair/2,
          mk_reqid/0]).
 
--ignore_xref([mkid/0, mkid/1, change/5]).
+-define(FM(Mod, Fun, Args),
+        folsom_metrics:histogram_timed_update(
+          {Mod, Fun},
+          Mod, Fun, Args)).
+
 
 hash_object(Key, Obj) ->
     term_to_binary(erlang:phash2({Key, Obj})).
@@ -64,7 +65,7 @@ list_keys(Sender, State=#vstate{db=DB, bucket=Bucket}) ->
                      [K|L]
              end,
     AsyncWork = fun() ->
-                        fifo_db:fold_keys(DB, Bucket, FoldFn, [])
+                        ?FM(fifo_db, fold_keys, [DB, Bucket, FoldFn, []])
                 end,
     FinishFun = fun(Data) ->
                         reply(Data, Sender, State)
@@ -94,7 +95,7 @@ fold_with_bucket(Fun, Acc0, Sender, State=#vstate{state=StateMod}) ->
 
 fold(Fun, Acc0, Sender, State=#vstate{db=DB, bucket=Bucket}) ->
     AsyncWork = fun() ->
-                        fifo_db:fold(DB, Bucket, Fun, Acc0)
+                        ?FM(fifo_db, fold, [DB, Bucket, Fun, Acc0])
                 end,
     FinishFun = fun(Data) ->
                         reply(Data, Sender, State)
@@ -102,13 +103,13 @@ fold(Fun, Acc0, Sender, State=#vstate{db=DB, bucket=Bucket}) ->
     {async, {fold, AsyncWork, FinishFun}, Sender, State}.
 
 put(Key, Obj, State) ->
-    fifo_db:put(State#vstate.db, State#vstate.bucket, Key, Obj),
+    ?FM(fifo_db, put, [State#vstate.db, State#vstate.bucket, Key, Obj]),
     riak_core_aae_vnode:update_hashtree(
       State#vstate.service_bin, Key, vc_bin(ft_obj:vclock(Obj)), State#vstate.hashtrees).
 
 change(UUID, Action, Vals, {ReqID, Coordinator} = ID,
        State=#vstate{state=Mod}) ->
-    case fifo_db:get(State#vstate.db, State#vstate.bucket, UUID) of
+    case get(UUID, State) of
         {ok, O} ->
             O1 = load_obj(ID, Mod, O),
             H1 = ft_obj:val(O1),
@@ -134,16 +135,16 @@ change(UUID, Action, Vals, {ReqID, Coordinator} = ID,
 
 is_empty(State=#vstate{db=DB, bucket=Bucket}) ->
     FoldFn = fun (_, _) -> {false, State} end,
-    fifo_db:fold_keys(DB, Bucket, FoldFn, {true, State}).
+    ?FM(fifo_db, fold_keys, [DB, Bucket, FoldFn, {true, State}]).
 
 delete(State=#vstate{db=DB, bucket=Bucket}) ->
     FoldFn = fun (K, A) -> [{delete, <<Bucket/binary, K/binary>>} | A] end,
-    Trans = fifo_db:fold_keys(DB, Bucket, FoldFn, []),
-    fifo_db:transact(State#vstate.db, Trans),
+    Trans = ?FM(fifo_db, fold_keys, [DB, Bucket, FoldFn, []]),
+    ?FM(fifo_db, transact, [State#vstate.db, Trans]),
     {ok, State}.
 
 handle_coverage({wipe, UUID}, _KeySpaces, {_, ReqID, _}, State) ->
-    fifo_db:delete(State#vstate.db, State#vstate.bucket, UUID),
+    ?FM(fifo_db, delete, [State#vstate.db, State#vstate.bucket, UUID]),
     {reply, {ok, ReqID}, State};
 
 handle_coverage({lookup, Name}, _KeySpaces, Sender, State=#vstate{state=Mod}) ->
@@ -222,7 +223,7 @@ handle_command({sync_repair, {ReqID, _}, UUID, Obj}, _Sender,
     {reply, {ok, ReqID}, State};
 
 handle_command({get, ReqID, UUID}, _Sender, State) ->
-    Res = case fifo_db:get(State#vstate.db, State#vstate.bucket, UUID) of
+    Res = case get(UUID, State) of
               {ok, R} ->
                   ID = {ReqID, load},
                   %% We want to write a loaded object back to storage
@@ -241,7 +242,7 @@ handle_command({get, ReqID, UUID}, _Sender, State) ->
     {reply, {ok, ReqID, NodeIdx, Res}, State};
 
 handle_command({delete, {ReqID, _Coordinator}, UUID}, _Sender, State) ->
-    fifo_db:delete(State#vstate.db, State#vstate.bucket, UUID),
+    ?FM(fifo_db, delete, [State#vstate.db, State#vstate.bucket, UUID]),
     riak_core_index_hashtree:delete(
       {State#vstate.service_bin, UUID}, State#vstate.hashtrees),
     {reply, {ok, ReqID}, State};
@@ -250,8 +251,8 @@ handle_command({delete, {ReqID, _Coordinator}, UUID}, _Sender, State) ->
 handle_command({set,
                 {ReqID, Coordinator} = ID, UUID,
                 Resources}, _Sender,
-               State = #vstate{db=DB, state=Mod, bucket=Bucket}) ->
-    case fifo_db:get(DB, Bucket, UUID) of
+               State = #vstate{state=Mod, bucket=Bucket}) ->
+    case get(UUID, State) of
         {ok, O} ->
             O1 = load_obj(ID, Mod, O),
             H1 = ft_obj:val(O1),
@@ -319,7 +320,7 @@ reply(Reply, {_, ReqID, _} = Sender, #vstate{node=N, partition=P}) ->
     riak_core_vnode:reply(Sender, {ok, ReqID, {P, N}, Reply}).
 
 get(UUID, State) ->
-    fifo_db:get(State#vstate.db, State#vstate.bucket, UUID).
+    ?FM(fifo_db, get, [State#vstate.db, State#vstate.bucket, UUID]).
 
 handle_info(retry_create_hashtree,
             State=#vstate{service=Srv, hashtrees=undefined, partition=Idx,

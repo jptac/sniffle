@@ -93,26 +93,18 @@
 }.
 
 {translation,
+ "riak_ensemble.data_root",
+ fun(Conf) ->
+         cuttlefish:conf_get("platform_data_dir", Conf)
+ end
+}.
+
+{translation,
  "leveldb.data_root",
  fun(Conf) ->
          cuttlefish:conf_get("platform_data_dir", Conf)
  end
 }.
-
-{translation,
- "hanoidb.data_root",
- fun(Conf) ->
-         cuttlefish:conf_get("platform_data_dir", Conf)
- end
-}.
-
-{translation,
- "bitcask.data_root",
- fun(Conf) ->
-         cuttlefish:conf_get("platform_data_dir", Conf)
- end
-}.
-
 
 %% @doc The Backend to store large data objects in, this applies to snapshots
 %% and images. Objects stored in one backend will not be migrated to another if
@@ -655,3 +647,27 @@
 {mapping, "leveldb.mmap_size", "eleveldb.mmap_size",
  [{datatype, bytesize},
   {default, "1MB"}]}.
+
+{mapping, "consensus", "riak_core.enable_consensus",
+ [{datatype, {enum, [on, off]}},
+  {default, on}]}.
+
+{translation,
+  "riak_core.enable_consensus",
+  fun(Conf) ->
+          case cuttlefish:conf_get("consensus", Conf) of
+              on -> true;
+              _ -> false
+          end
+  end
+}.
+
+{mapping, "folsom_ddb.bucket", "folsom_ddb.bucket", [
+    merge,
+    {default, "fifo"}
+]}.
+
+{mapping, "folsom_ddb.prefix", "folsom_ddb.prefix", [
+    merge,
+    {default, "sniffle"}
+]}.

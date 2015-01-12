@@ -5,6 +5,11 @@
 -define(VNODE, sniffle_iprange_vnode).
 -define(SERVICE, sniffle_iprange).
 
+-define(FM(Met, Mod, Fun, Args),
+        folsom_metrics:histogram_timed_update(
+          {sniffle, iprange, Met},
+          Mod, Fun, Args)).
+
 -export([
          create/8,
          delete/1,
@@ -43,7 +48,7 @@
 -spec wipe(fifo:iprange_id()) -> ok.
 
 wipe(UUID) ->
-    sniffle_coverage:start(?MASTER, ?SERVICE, {wipe, UUID}).
+    ?FM(wipe, sniffle_coverage, start, [?MASTER, ?SERVICE, {wipe, UUID}]).
 
 -spec sync_repair(fifo:iprange_id(), ft_obj:obj()) -> ok.
 
@@ -53,7 +58,8 @@ sync_repair(UUID, Obj) ->
 -spec list_() -> {ok, [ft_obj:obj()]}.
 
 list_() ->
-    {ok, Res} = sniffle_full_coverage:raw(?MASTER, ?SERVICE, []),
+    {ok, Res} = ?FM(list_all, sniffle_full_coverage, raw,
+                    [?MASTER, ?SERVICE, []]),
     Res1 = [R || {_, R} <- Res],
     {ok,  Res1}.
 
@@ -61,8 +67,8 @@ list_() ->
                     not_found | {ok, IPR::fifo:iprange()} | {error, timeout}.
 lookup(Name) when
       is_binary(Name) ->
-    {ok, Res} = sniffle_coverage:start(
-                  ?MASTER, ?SERVICE, {lookup, Name}),
+    {ok, Res} = ?FM(lookup, sniffle_coverage, start,
+                    [?MASTER, ?SERVICE, {lookup, Name}]),
     lists:foldl(fun (not_found, Acc) ->
                         Acc;
                     (R, _) ->
@@ -97,12 +103,13 @@ delete(Iprange) ->
 -spec get(Iprange::fifo:iprange_id()) ->
                  not_found | {ok, IPR::fifo:iprange()} | {error, timeout}.
 get(Iprange) ->
-    sniffle_entity_read_fsm:start({?VNODE, ?SERVICE}, get, Iprange).
+    ?FM(get, sniffle_entity_read_fsm, start,
+        [{?VNODE, ?SERVICE}, get, Iprange]).
 
 -spec list() ->
                   {ok, [IPR::fifo:iprange_id()]} | {error, timeout}.
 list() ->
-    sniffle_coverage:start(?MASTER, ?SERVICE, list).
+    ?FM(list, sniffle_coverage, start, [?MASTER, ?SERVICE, list]).
 
 %%--------------------------------------------------------------------
 %% @doc Lists all vm's and fiters by a given matcher set.
@@ -114,13 +121,14 @@ list() ->
                    [{Rating::integer(), Value::fifo:iprange_id()}]}.
 
 list(Requirements, true) ->
-    {ok, Res} = sniffle_full_coverage:list(?MASTER, ?SERVICE, Requirements),
+    {ok, Res} = ?FM(list_all, sniffle_full_coverage, list,
+                    [?MASTER, ?SERVICE, Requirements]),
     Res1 = lists:sort(rankmatcher:apply_scales(Res)),
     {ok,  Res1};
 
 list(Requirements, false) ->
-    {ok, Res} = sniffle_coverage:start(
-                  ?MASTER, ?SERVICE, {list, Requirements}),
+    {ok, Res} = ?FM(list, sniffle_coverage, start,
+                    [?MASTER, ?SERVICE, {list, Requirements}]),
     Res1 = rankmatcher:apply_scales(Res),
     {ok,  lists:sort(Res1)}.
 
@@ -156,10 +164,11 @@ claim_ip(Iprange) ->
 %%%===================================================================
 
 do_write(Iprange, Op) ->
-    sniffle_entity_write_fsm:write({?VNODE, ?SERVICE}, Iprange, Op).
+    ?FM(Op, sniffle_entity_write_fsm, write, [{?VNODE, ?SERVICE}, Iprange, Op]).
 
 do_write(Iprange, Op, Val) ->
-    sniffle_entity_write_fsm:write({?VNODE, ?SERVICE}, Iprange, Op, Val).
+    ?FM(Op, sniffle_entity_write_fsm, write,
+        [{?VNODE, ?SERVICE}, Iprange, Op, Val]).
 
 claim_ip(_Iprange, ?MAX_TRIES) ->
     {error, failed};

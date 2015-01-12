@@ -1,0 +1,14 @@
+{application, sniffle_api,
+ [
+  {description, ""},
+  {vsn, "0.1.0"},
+  {registered, []},
+  {applications, [
+                  kernel,
+                  sniffle,
+                  mdns_server_lib,
+                  stdlib
+                 ]},
+  {mod, { sniffle_api_app, []}},
+  {env, []}
+ ]}.

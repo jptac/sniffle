@@ -5,6 +5,11 @@
 -define(VNODE, sniffle_network_vnode).
 -define(SERVICE, sniffle_network).
 
+-define(FM(Met, Mod, Fun, Args),
+        folsom_metrics:histogram_timed_update(
+          {sniffle, network, Met},
+          Mod, Fun, Args)).
+
 -export([
          create/1,
          delete/1,
@@ -52,7 +57,7 @@
 -spec wipe(fifo:network_id()) ->
                   ok.
 wipe(UUID) ->
-    sniffle_coverage:start(?MASTER, ?SERVICE, {wipe, UUID}).
+    ?FM(wipe, sniffle_coverage, start, [?MASTER, ?SERVICE, {wipe, UUID}]).
 
 -spec sync_repair(fifo:network_id(), ft_obj:obj()) ->
                          ok.
@@ -61,7 +66,8 @@ sync_repair(UUID, Obj) ->
 
 -spec list_() -> {ok, [fifo:obj()]}.
 list_() ->
-    {ok, Res} = sniffle_full_coverage:raw(?MASTER, ?SERVICE, []),
+    {ok, Res} = ?FM(list_all, sniffle_full_coverage, raw,
+                    [?MASTER, ?SERVICE, []]),
     Res1 = [R || {_, R} <- Res],
     {ok,  Res1}.
 
@@ -69,8 +75,8 @@ list_() ->
                     not_found | {ok, IPR::fifo:network()} | {error, timeout}.
 lookup(Name) when
       is_binary(Name) ->
-    {ok, Res} = sniffle_coverage:start(
-                  ?MASTER, ?SERVICE, {lookup, Name}),
+    {ok, Res} = ?FM(list, sniffle_coverage, start,
+                    [?MASTER, ?SERVICE, {lookup, Name}]),
     lists:foldl(fun (not_found, Acc) ->
                         Acc;
                     (R, _) ->
@@ -98,7 +104,8 @@ delete(Network) ->
 -spec get(Network::fifo:network_id()) ->
                  not_found | {ok, IPR::fifo:network()} | {error, timeout}.
 get(Network) ->
-    sniffle_entity_read_fsm:start({?VNODE, ?SERVICE}, get, Network).
+    ?FM(get, sniffle_entity_read_fsm, start,
+        [{?VNODE, ?SERVICE}, get, Network]).
 
 -spec add_iprange(fifo:network_id(), fifo:iprange_id()) ->
                          ok | not_found | {error, timeout}.
@@ -118,7 +125,7 @@ remove_iprange(Network, IPRange) ->
 -spec list() ->
                   {ok, [IPR::fifo:network_id()]} | {error, timeout}.
 list() ->
-    sniffle_coverage:start(?MASTER, ?SERVICE, list).
+    ?FM(list, sniffle_coverage, start, [?MASTER, ?SERVICE, list]).
 %%--------------------------------------------------------------------
 %% @doc Lists all vm's and fiters by a given matcher set.
 %% @end
@@ -129,13 +136,14 @@ list() ->
                    | [{integer(), fifo:network()}]}.
 
 list(Requirements, true) ->
-    {ok, Res} = sniffle_full_coverage:list(?MASTER, ?SERVICE, Requirements),
+    {ok, Res} = ?FM(list_all, sniffle_full_coverage, list,
+                    [?MASTER, ?SERVICE, Requirements]),
     Res1 = lists:sort(rankmatcher:apply_scales(Res)),
     {ok,  Res1};
 
 list(Requirements, false) ->
-    {ok, Res} = sniffle_coverage:start(
-                  ?MASTER, ?SERVICE, {list, Requirements}),
+    {ok, Res} = ?FM(list, sniffle_coverage, start,
+                    [?MASTER, ?SERVICE, {list, Requirements}]),
     Res1 = rankmatcher:apply_scales(Res),
     {ok,  lists:sort(Res1)}.
 
@@ -184,10 +192,11 @@ claim_ip(UUID, Rules) ->
 %%%===================================================================
 
 do_write(Network, Op) ->
-    sniffle_entity_write_fsm:write({?VNODE, ?SERVICE}, Network, Op).
+    ?FM(Op, sniffle_entity_write_fsm, write, [{?VNODE, ?SERVICE}, Network, Op]).
 
 do_write(Network, Op, Val) ->
-    sniffle_entity_write_fsm:write({?VNODE, ?SERVICE}, Network, Op, Val).
+    ?FM(Op, sniffle_entity_write_fsm, write,
+        [{?VNODE, ?SERVICE}, Network, Op, Val]).
 
 get_ip([N | R], []) ->
     case sniffle_iprange:claim_ip(N) of

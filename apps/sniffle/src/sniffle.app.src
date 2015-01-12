@@ -2,14 +2,14 @@
 {application, sniffle,
  [
   {description, "Project FiFo's central management server."},
-  {vsn, "0.6.0p11"},
+  {vsn, "0.6.1"},
   {registered, []},
   {applications, [
                   kernel,
                   stdlib,
                   riak_core,
+                  folsom_ddb,
                   uuid,
-                  mdns_server_lib,
                   libchunter,
                   libhowl,
                   libsnarl,
@@ -24,8 +24,17 @@
                   snmp,
                   mnesia,
                   eplugin,
-                  lager
+                  lager,
+                  recon,
+                  sniffle_commons,
+                  sniffle_console,
+                  sniffle_dtrace,
+                  sniffle_read,
+                  sniffle_write,
+                  sniffle_coverage,
+                  sniffle_dataset_download,
+                  lager_watchdog
                  ]},
   {mod, {sniffle_app, []}},
-  {env, [{backend, "hanoidb"}]}
+  {env, []}
  ]}.

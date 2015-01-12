@@ -1,3 +1,4 @@
+^recon.erl
 ^fsm_example
 ^gen_leader
 ^jsx_
@@ -58,3 +59,5 @@
 ^sniffle_network_vnode.erl:3: Callback info about the riak_core_aae_vnode behaviour is not available
 ^sniffle_package_vnode.erl:3: Callback info about the riak_core_aae_vnode behaviour is not available
 ^sniffle_vm_vnode.erl:3: Callback info about the riak_core_aae_vnode behaviour is not available
+^fifo_db_leveldb.erl:88:
+^fifo_db_leveldb.erl:109:
