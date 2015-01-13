@@ -13,8 +13,8 @@
 %% ===================================================================
 
 start(_StartType, _StartArgs) ->
-    case riak_ensemble_manager:cluster() of
-        [] ->
+    case riak_ensemble_manager:enabled() of
+        false ->
             ok = riak_ensemble_manager:enable();
         _ ->
             ok
