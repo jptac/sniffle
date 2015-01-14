@@ -222,6 +222,9 @@ run_check(State = #state{alerts = Alerts, hypervisors = HVs, count = Cnt,
     raise(Raised),
     State#state{alerts = Alerts4, count = Cnt - 1, hypervisors = {HVf1, HVt1}}.
 
+check_resources({[], []}, Alerts) ->
+    {{[], []}, Alerts};
+
 check_resources({[], Rs}, Alerts) ->
     check_resources({Rs, []}, Alerts);
 
