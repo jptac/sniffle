@@ -18,6 +18,20 @@ help() ->
         "  reboot <uuid>~n"
         "  delete <uuid>~n").
 
+
+command(text, ["init-cluster", UUIDs, Name]) ->
+    UUID = list_to_binary(UUIDs),
+    {ok, ClusterID} = sniffle_grouping:create(list_to_binary(Name), cluster),
+    case sniffle_grouping:add_element(ClusterID, UUID) of
+        ok ->
+            io:format("VM ~s added to new cluster ~s.~n", [UUID, ClusterID]),
+            ok;
+        E ->
+            io:format("VM ~s could not be added to cluster: ~s (~p).~n",
+                      [UUID, ClusterID, E]),
+            ok
+    end;
+
 command(text, ["start", UUID]) ->
     case sniffle_vm:start(list_to_binary(UUID)) of
         ok ->
