@@ -123,8 +123,8 @@ change(UUID, Action, Vals, {ReqID, Coordinator} = ID,
             sniffle_vnode:put(UUID, Obj, State),
             {reply, {ok, ReqID}, State};
         R ->
-            lager:error("[~s] tried to write to a non existing element: ~p",
-                        [State#vstate.bucket, R]),
+            lager:warning("[~s] tried to write to a non existing element: ~p",
+                          [State#vstate.bucket, R]),
             {reply, {ok, ReqID, not_found}, State}
     end.
 
