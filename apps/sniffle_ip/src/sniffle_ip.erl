@@ -168,6 +168,10 @@ code_change(_OldVsn, State, _Extra) ->
 %%% Internal functions
 %%%===================================================================
 
+%% Creates a filter for lists:filter that checks leaves only IP
+%% addresses that when hashed would end up in the currents node
+%% ring.
+
 make_is_lock() ->
     Node = node(),
     {ok, State} = riak_core_ring_manager:get_my_ring(),
