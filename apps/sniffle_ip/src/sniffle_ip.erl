@@ -39,7 +39,7 @@ start_link() ->
 
 
 claim(IPRange) ->
-    gen_server:call(?SERVER, {claim, IPRange, [node() | nodes()]}).
+    gen_server:call(?SERVER, {claim, IPRange, nodes()}).
 
 claim(_IPRange, From, []) ->
     gen_server:reply(From, {error, no_claim});
@@ -116,8 +116,9 @@ handle_cast({claim, IPRange, From, Nodes}, State) ->
                                      [IPRange, From, Nodes1])
                     end;
                 [First | _] ->
-                    sniffle_iprange:claim_specific_ip(
-                      ft_iprange:uuid(IPRange), First)
+                    Reply = sniffle_iprange:claim_specific_ip(
+                              ft_iprange:uuid(IPRange), First),
+                    gen_server:reply(From, Reply)
             end
     end,
     {noreply, State};
