@@ -1,6 +1,6 @@
 {application,sniffle_dtrace,
-             [{description,[]},
-              {vsn,"1"},
+             [{description,"DTrace aggregator"},
+              {vsn,"0.1.0"},
               {registered,[]},
               {applications,[kernel,libchunter,stdlib]},
               {mod,{sniffle_dtrace_app,[]}},
