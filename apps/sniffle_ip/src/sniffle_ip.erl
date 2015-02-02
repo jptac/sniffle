@@ -11,7 +11,7 @@
 -behaviour(gen_server).
 
 %% API
--export([start_link/0, claim/1, claim/2]).
+-export([start_link/0, claim/1, claim/3]).
 
 -ignore_xref([start_link/0, claim/1, claim/2]).
 
@@ -41,14 +41,15 @@ start_link() ->
 claim(IPRange) ->
     gen_server:call(?SERVER, {claim, IPRange, nodes()}).
 
-claim(_IPRange, []) ->
-    {error, no_claim};
-claim(IPRange, [This | Nodes]) ->
+claim(_IPRange, From, []) ->
+    gen_server:reply(From, {error, no_claim});
+
+claim(IPRange, From, [This | Nodes]) ->
     case node() of
         This ->
-            gen_server:cast(?SERVER, {claim, IPRange, Nodes});
+            gen_server:cast(?SERVER, {claim, IPRange, From, Nodes});
         _ ->
-            {error, wrong_node}
+            gen_server:reply(From, {error, wrong_node})
     end.
 
 %%%===================================================================
@@ -83,6 +84,9 @@ init([]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_call({claim, IPRange, Nodes}, From, State) ->
+    handle_cast({claim, IPRange, From, Nodes}, State);
+
 handle_call(_Request, _From, State) ->
     Reply = ok,
     {reply, Reply, State}.
@@ -97,6 +101,27 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_cast({claim, IPRange, From, Nodes}, State) ->
+    case ft_iprange:free(IPRange) of
+        [] ->
+            gen_server:reply(From, {error, no_claim});
+         Free ->
+            case lists:filter(make_is_lock(), Free) of
+                [] ->
+                    case next_alife_node(Nodes) of
+                        no_nodes ->
+                            gen_server:reply(From, {error, no_claim});
+                        {Next,  Nodes1} ->
+                            rpc:cast(Next, sniffle_ip, claim,
+                                     [IPRange, From, Nodes1])
+                    end;
+                [First | _] ->
+                    sniffle_iprange:claim_specific_ip(
+                      ft_iprange:uuid(IPRange), First)
+            end
+    end,
+    {noreply, State};
+
 handle_cast(_Msg, State) ->
     {noreply, State}.
 
@@ -141,3 +166,25 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+
+make_is_lock() ->
+    Node = node(),
+    {ok, State} = riak_core_ring_manager:get_my_ring(),
+    CHash = riak_core_ring:chash(State),
+    fun (IP) ->
+            <<Hash:160>> = chash:key_of(IP),
+            Idx = chash:next_index(Hash, CHash),
+            riak_core_ring:index_owner(State, Idx) == Node
+    end.
+
+next_alife_node([]) ->
+    no_nodes;
+
+next_alife_node([N | Rest]) ->
+    case net_adm:ping(N) of
+        pong ->
+            {N, Rest};
+        pang ->
+            next_alife_node(Rest)
+    end.
+
