@@ -18,6 +18,7 @@
          list/0,
          list/2,
          claim_ip/1,
+         claim_specific_ip/2,
          full/1,
          release_ip/2,
          wipe/1,
@@ -150,6 +151,9 @@ release_ip(Iprange, IP) ->
 claim_ip(Iprange) ->
     claim_ip(Iprange, 0).
 
+claim_specific_ip(Iprange, IP) ->
+    do_write(Iprange, claim_ip, IP).
+
 ?SET(name).
 ?SET(uuid).
 ?SET(network).
@@ -181,18 +185,7 @@ claim_ip(Iprange, N) ->
         not_found ->
             not_found;
         {ok, Obj} ->
-            case ft_iprange:free(Obj) of
-                [] ->
-                    {error, full};
-                [FoundIP | _] ->
-                    case do_write(Iprange, claim_ip, FoundIP) of
-                        {error, _} ->
-                            timer:sleep(N*50),
-                            claim_ip(Iprange, N + 1);
-                        R ->
-                            R
-                    end
-            end
+            sniffle_ip:claim(Obj)
     end.
 
 full(Iprange) ->
