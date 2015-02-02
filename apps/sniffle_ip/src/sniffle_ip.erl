@@ -39,7 +39,7 @@ start_link() ->
 
 
 claim(IPRange) ->
-    gen_server:call(?SERVER, {claim, IPRange, nodes()}).
+    gen_server:call(?SERVER, {claim, IPRange, [node() | nodes()]}).
 
 claim(_IPRange, From, []) ->
     gen_server:reply(From, {error, no_claim});
