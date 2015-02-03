@@ -37,7 +37,8 @@ start(VNodeMaster, NodeCheckService, Request = {list, Requirements, true, _}) ->
 %% The first is the vnode service used
 init({From, ReqID, Requirements},
      {VNodeMaster, NodeCheckService, {list, Requirements, Full, Raw}}) ->
-    {NVal, R, _W} = ?NRW(NodeCheckService),
+    {ok, N} = application:get_env(sniffle, n),
+    {ok, R} = application:get_env(sniffle, r),
     %% all - full coverage; allup - partial coverage
     VNodeSelector = allup,
     %% Same as R value here, TODO: Make this dynamic
@@ -48,7 +49,7 @@ init({From, ReqID, Requirements},
     State = #state{replies = dict:new(), r = R,
                    from = From, reqid = ReqID,
                    reqs = Requirements, raw = Raw},
-    {Request, VNodeSelector, NVal, PrimaryVNodeCoverage,
+    {Request, VNodeSelector, N, PrimaryVNodeCoverage,
      NodeCheckService, VNodeMaster, Timeout, State}.
 
 process_results({ok, _ReqID, _IdxNode, Obj},
