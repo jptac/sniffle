@@ -83,7 +83,6 @@ raw(_Data, State) ->
         fifo:sniffle_dtrace_message() |
         fifo:sniffle_grouping_message() |
         fifo:sniffle_hypervisor_message() |
-        fifo:sniffle_image_message() |
         fifo:sniffle_iprange_message() |
         fifo:sniffle_network_message() |
         fifo:sniffle_package_message() |
@@ -282,6 +281,20 @@ message({vm, service, clear, Vm, Service}, State) when
       is_binary(Service) ->
     {reply,
      sniffle_vm:service_clear(Vm, Service),
+     State};
+
+message({vm, service, restart, Vm, Service}, State) when
+      is_binary(Vm),
+      is_binary(Service) ->
+    {reply,
+     sniffle_vm:service_restart(Vm, Service),
+     State};
+
+message({vm, service, refresh, Vm, Service}, State) when
+      is_binary(Vm),
+      is_binary(Service) ->
+    {reply,
+     sniffle_vm:service_refresh(Vm, Service),
      State};
 
 message({vm, snapshot, Vm, Comment}, State) when
@@ -513,7 +526,8 @@ message({hypervisor, unregister, Hypervisor}, State) when
 
 message({hypervisor, service, Hypervisor, Action, Service}, State) when
       is_binary(Hypervisor),
-      (Action =:= enable orelse Action =:= disable orelse Action =:= clear) ->
+      (Action =:= enable orelse Action =:= disable orelse Action =:= clear
+       orelse Action =:= refresh orelse Action =:= restart) ->
     {reply,
      sniffle_hypervisor:service(Hypervisor, Action, Service),
      State};
