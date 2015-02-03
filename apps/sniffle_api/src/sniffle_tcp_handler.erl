@@ -88,10 +88,15 @@ raw(_Data, State) ->
         fifo:sniffle_network_message() |
         fifo:sniffle_package_message() |
         fifo:sniffle_vm_message().
+
 -spec message(message(), any()) -> any().
 
 message(version, State) ->
     {reply, {ok, ?VERSION}, State};
+
+message({s3, Type}, State) ->
+    %% {ok,{S3Host, S3Port, AKey, SKey, Bucket}}
+    {reply, sniffle_s3:config(Type), State};
 
 %%%===================================================================
 %%%  Grouping Functions
@@ -605,48 +610,6 @@ message({dataset, import, URL}, State) ->
 ?DSM(remove_requirement);
 ?DSM(add_requirement);
 
-
-%%%===================================================================
-%%%  Img Functions
-%%%===================================================================
-
-message({img, create, Img, Idx, Data}, State) ->
-    message({img, create, Img, Idx, Data, undefined}, State);
-
-message({img, create, Img, Idx, Data, Ref}, State) when
-      is_binary(Img) ->
-    {reply,
-     sniffle_img:create(Img, Idx, Data, Ref),
-     State};
-
-message({img, delete, Img, Idx}, State) when
-      is_binary(Img) ->
-    {reply,
-     sniffle_img:delete(Img, Idx),
-     State};
-
-message({img, delete, Img}, State) when
-      is_binary(Img) ->
-    {reply,
-     sniffle_img:delete(Img),
-     State};
-
-message({img, get, Img, Idx}, State) when
-      is_binary(Img) ->
-    {reply,
-     sniffle_img:get(Img, Idx),
-     State};
-
-message({img, list}, State) ->
-    {reply,
-     sniffle_img:list(),
-     State};
-
-message({img, list, Img}, State) when
-      is_binary(Img) ->
-    {reply,
-     sniffle_img:list(Img),
-     State};
 
 %%%===================================================================
 %%%  Network Functions

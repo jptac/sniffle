@@ -190,8 +190,6 @@ terminate(_Reason, _SN, _SD) ->
 %%    "package";
 %%stat_name(sniffle_dataset_vnode) ->
 %%    "dataset";
-%%stat_name(sniffle_img_vnode) ->
-%%    "img";
 %%stat_name(sniffle_network_vnode) ->
 %%    "network";
 %%stat_name(sniffle_iprange_vnode) ->

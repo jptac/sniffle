@@ -8,17 +8,13 @@
          init/2,
          process_results/2,
          finish/2,
-         list/3, raw/3, raw_img/3
+         list/3, raw/3
         ]).
 
 -record(state, {replies, r, reqid, from, reqs, raw=false}).
 
 -spec raw(atom(), atom(), [fifo:matcher()]) -> {ok, [{integer(), ft_obj:obj()}]}.
 raw(VNodeMaster, NodeCheckService, Requirements) ->
-    start(VNodeMaster, NodeCheckService, {list, Requirements, true, true}).
-
--spec raw_img(atom(), atom(), binary()) -> {ok, [{integer(), ft_obj:obj()}]}.
-raw_img(VNodeMaster, NodeCheckService, Requirements) ->
     start(VNodeMaster, NodeCheckService, {list, Requirements, true, true}).
 
 list(VNodeMaster, NodeCheckService, Requirements) ->
