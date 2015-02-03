@@ -42,7 +42,7 @@ sync_repair(UUID, Obj) ->
     do_write(UUID, sync_repair, Obj).
 
 -spec create(Name::binary(), Type::cluster|stack|none) ->
-                    duplicate | ok | {error, timeout}.
+                    duplicate | {ok, ClusterID :: binary()} | {error, timeout}.
 create(Name, Type) ->
     UUID = uuid:uuid4s(),
     case do_write(UUID, create, [Name, Type]) of

@@ -140,14 +140,8 @@ init_leo([Host]) ->
 
 db_update([]) ->
     [db_update([E]) || E <- ["vms", "datasets", "dtraces", "hypervisors",
-                             "ipranges", "networks", "packages", "img"]],
+                             "ipranges", "networks", "packages"]],
     ok;
-
-db_update(["img"]) ->
-    io:format("Updating images...~n"),
-    {ok, Imgs} = sniffle_img:list(),
-    [update_img(Img) || Img <- Imgs],
-    io:format("Update complete.~n");
 
 db_update(["datasets"]) ->
     io:format("Updating datasets...~n"),
@@ -303,14 +297,7 @@ aae_status([]) ->
                 {sniffle_iprange, "IP Range"}, {sniffle_package, "Package"},
                 {sniffle_dataset, "Dataset"}, {sniffle_network, "Network"},
                 {sniffle_dtrace, "DTrace"}],
-    Services1 = case sniffle_opt:get(storage, general, backend,
-                                     large_data_backend, internal) of
-                    internal ->
-                        [{sniffle_img, "Image"} | Services];
-                    _ ->
-                        Services
-                end,
-    [aae_status(E) || E <- Services1];
+    [aae_status(E) || E <- Services];
 
 aae_status({System, Name}) ->
     ExchangeInfo = riak_core_entropy_info:compute_exchange_info(System),
@@ -678,25 +665,3 @@ do_update(MainMod, StateMod) ->
     io:format(" done.~n"),
     io:format("Update complete.~n"),
     ok.
-
-update_part(Img, Part) ->
-    io:format("."),
-    Key = <<Img:36/binary, Part:32/integer>>,
-    case sniffle_img:list_(Key) of
-        {ok, [D]} ->
-            sniffle_img:wipe(Key),
-            timer:sleep(100),
-            sniffle_img:sync_repair(Key,  D),
-            {ok, _} = sniffle_img:get(Img, Part),
-            erlang:garbage_collect();
-        _ ->
-            io:format("Could not read: ~s/~p~n", [Img, Part]),
-            throw({read_failure, Img, Part})
-    end.
-
-update_img(Img) ->
-    {ok, Parts} = sniffle_img:list(Img),
-    io:format(" Updating image '~s' (~p parts)", [Img, length(Parts)]),
-    [update_part(Img, Part) || Part <- lists:sort(Parts)],
-    io:format(" done.~n").
-

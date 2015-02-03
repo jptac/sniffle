@@ -30,7 +30,8 @@ start(VNodeMaster, NodeCheckService, Request) ->
 
 %% The first is the vnode service used
 init({From, ReqID, _}, {VNodeMaster, NodeCheckService, Request}) ->
-    {NVal, R, _W} = ?NRW(NodeCheckService),
+    {ok, N} = application:get_env(sniffle, n),
+    {ok, R} = application:get_env(sniffle, r),
     %% all - full coverage; allup - partial coverage
     VNodeSelector = allup,
     PrimaryVNodeCoverage = R,
@@ -38,7 +39,7 @@ init({From, ReqID, _}, {VNodeMaster, NodeCheckService, Request}) ->
     Timeout = 5000,
     State = #state{replies = dict:new(), r = R,
                    from = From, reqid = ReqID},
-    {Request, VNodeSelector, NVal, PrimaryVNodeCoverage,
+    {Request, VNodeSelector, N, PrimaryVNodeCoverage,
      NodeCheckService, VNodeMaster, Timeout, State}.
 
 process_results({ok, _ReqID, _IdxNode, Obj},

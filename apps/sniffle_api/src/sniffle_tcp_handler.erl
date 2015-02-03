@@ -83,15 +83,19 @@ raw(_Data, State) ->
         fifo:sniffle_dtrace_message() |
         fifo:sniffle_grouping_message() |
         fifo:sniffle_hypervisor_message() |
-        fifo:sniffle_image_message() |
         fifo:sniffle_iprange_message() |
         fifo:sniffle_network_message() |
         fifo:sniffle_package_message() |
         fifo:sniffle_vm_message().
+
 -spec message(message(), any()) -> any().
 
 message(version, State) ->
     {reply, {ok, ?VERSION}, State};
+
+message({s3, Type}, State) ->
+    %% {ok,{S3Host, S3Port, AKey, SKey, Bucket}}
+    {reply, sniffle_s3:config(Type), State};
 
 %%%===================================================================
 %%%  Grouping Functions
@@ -277,6 +281,20 @@ message({vm, service, clear, Vm, Service}, State) when
       is_binary(Service) ->
     {reply,
      sniffle_vm:service_clear(Vm, Service),
+     State};
+
+message({vm, service, restart, Vm, Service}, State) when
+      is_binary(Vm),
+      is_binary(Service) ->
+    {reply,
+     sniffle_vm:service_restart(Vm, Service),
+     State};
+
+message({vm, service, refresh, Vm, Service}, State) when
+      is_binary(Vm),
+      is_binary(Service) ->
+    {reply,
+     sniffle_vm:service_refresh(Vm, Service),
      State};
 
 message({vm, snapshot, Vm, Comment}, State) when
@@ -508,7 +526,8 @@ message({hypervisor, unregister, Hypervisor}, State) when
 
 message({hypervisor, service, Hypervisor, Action, Service}, State) when
       is_binary(Hypervisor),
-      (Action =:= enable orelse Action =:= disable orelse Action =:= clear) ->
+      (Action =:= enable orelse Action =:= disable orelse Action =:= clear
+       orelse Action =:= refresh orelse Action =:= restart) ->
     {reply,
      sniffle_hypervisor:service(Hypervisor, Action, Service),
      State};
@@ -605,48 +624,6 @@ message({dataset, import, URL}, State) ->
 ?DSM(remove_requirement);
 ?DSM(add_requirement);
 
-
-%%%===================================================================
-%%%  Img Functions
-%%%===================================================================
-
-message({img, create, Img, Idx, Data}, State) ->
-    message({img, create, Img, Idx, Data, undefined}, State);
-
-message({img, create, Img, Idx, Data, Ref}, State) when
-      is_binary(Img) ->
-    {reply,
-     sniffle_img:create(Img, Idx, Data, Ref),
-     State};
-
-message({img, delete, Img, Idx}, State) when
-      is_binary(Img) ->
-    {reply,
-     sniffle_img:delete(Img, Idx),
-     State};
-
-message({img, delete, Img}, State) when
-      is_binary(Img) ->
-    {reply,
-     sniffle_img:delete(Img),
-     State};
-
-message({img, get, Img, Idx}, State) when
-      is_binary(Img) ->
-    {reply,
-     sniffle_img:get(Img, Idx),
-     State};
-
-message({img, list}, State) ->
-    {reply,
-     sniffle_img:list(),
-     State};
-
-message({img, list, Img}, State) when
-      is_binary(Img) ->
-    {reply,
-     sniffle_img:list(Img),
-     State};
 
 %%%===================================================================
 %%%  Network Functions

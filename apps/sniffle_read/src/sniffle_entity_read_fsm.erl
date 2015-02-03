@@ -101,7 +101,8 @@ init([ReqId, {VNode, System}, Op, From, Entity]) ->
     init([ReqId, {VNode, System}, Op, From, Entity, undefined]);
 
 init([ReqId, {VNode, System}, Op, From, Entity, Val]) ->
-    {N, R, _W} = ?NRW(System),
+    {ok, N} = application:get_env(sniffle, n),
+    {ok, R} = application:get_env(sniffle, r),
     SD = #state{
             start = now(),
             req_id=ReqId,
@@ -297,8 +298,6 @@ unique(L) ->
 %%    "package";
 %%stat_name(sniffle_dataset_vnode) ->
 %%    "dataset";
-%%stat_name(sniffle_img_vnode) ->
-%%    "img";
 %%stat_name(sniffle_network_vnode) ->
 %%    "network";
 %%stat_name(sniffle_iprange_vnode) ->

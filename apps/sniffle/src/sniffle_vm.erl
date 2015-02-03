@@ -48,6 +48,8 @@
          service_clear/2,
          service_disable/2,
          service_enable/2,
+         service_refresh/2,
+         service_restart/2,
          set_owner/3,
          snapshot/2,
          start/1,
@@ -283,6 +285,24 @@ service_clear(Vm, Service) ->
         {ok, V} ->
             {Server, Port} = get_hypervisor(V),
             libchunter:service_clear(Server, Port, Vm, Service);
+        _ ->
+            not_found
+    end.
+
+service_refresh(Vm, Service) ->
+    case sniffle_vm:get(Vm) of
+        {ok, V} ->
+            {Server, Port} = get_hypervisor(V),
+            libchunter:service_refresh(Server, Port, Vm, Service);
+        _ ->
+            not_found
+    end.
+
+service_restart(Vm, Service) ->
+    case sniffle_vm:get(Vm) of
+        {ok, V} ->
+            {Server, Port} = get_hypervisor(V),
+            libchunter:service_restart(Server, Port, Vm, Service);
         _ ->
             not_found
     end.

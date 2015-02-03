@@ -78,9 +78,6 @@ keys(get, <<"dataset">>) ->
     {value, length(L)};
 keys(get, <<"package">>) ->
     {ok, L} = sniffle_package:list(),
-    {value, length(L)};
-keys(get, <<"image">>) ->
-    {ok, L} = sniffle_img:list(),
     {value, length(L)}.
 
 p999(get, Prefix) ->

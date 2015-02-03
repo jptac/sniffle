@@ -92,7 +92,9 @@ write({VNode, System}, User, Op, Val) ->
 
 %% @doc Initialize the state data.
 init([{VNode, System}, ReqID, From, Entity, Op, Val]) ->
-    {N, _R, W} = ?NRW(System),
+    {ok, N} = application:get_env(sniffle, n),
+    {ok, W} = application:get_env(sniffle, w),
+
     SD = #state{req_id=ReqID,
                 from=From,
                 w=W,
@@ -190,8 +192,6 @@ terminate(_Reason, _SN, _SD) ->
 %%    "package";
 %%stat_name(sniffle_dataset_vnode) ->
 %%    "dataset";
-%%stat_name(sniffle_img_vnode) ->
-%%    "img";
 %%stat_name(sniffle_network_vnode) ->
 %%    "network";
 %%stat_name(sniffle_iprange_vnode) ->

@@ -74,10 +74,11 @@ create(UUID) ->
 
 -spec delete(UUID::fifo:dataset_id()) ->
                     not_found | {error, timeout} | ok.
+
 delete(UUID) ->
     case do_write(UUID, delete) of
         ok ->
-            sniffle_img:delete(UUID);
+            sniffle_s3:delete(image, binary_to_list(UUID));
         E ->
             E
     end.

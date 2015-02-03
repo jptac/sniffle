@@ -48,20 +48,6 @@ init(_Args) ->
       sniffle_grouping_vnode_master,
       { riak_core_vnode_master, start_link, [sniffle_grouping_vnode]},
       permanent, 5000, worker, [sniffle_grouping_vnode_master]},
-    Img = case sniffle_opt:get(storage, general, backend, large_data_backend, internal) of
-              internal ->
-                  [{sniffle_img_vnode_master,
-                    {riak_core_vnode_master, start_link, [sniffle_img_vnode]},
-                    permanent, 5000, worker, [sniffle_img_vnode_master]},
-                   {sniffle_img_entropy_manager,
-                    {riak_core_entropy_manager, start_link,
-                     [sniffle_img, sniffle_img_vnode]},
-                    permanent, 30000, worker, [riak_core_entropy_manager]}];
-              O ->
-                  lager:info("[img] VNode disabled since images are handed by ~p", [O]),
-                  []
-          end,
-
     VDTrace = {
       sniffle_dtrace_vnode_master,
       { riak_core_vnode_master, start_link, [sniffle_dtrace_vnode]},
@@ -131,4 +117,4 @@ init(_Args) ->
        %% AAE
        EntropyManagerVm, EntropyManagerHypervisor, EntropyManagerIPRange,
        EntropyManagerNetwork, EntropyManagerDataset, EntropyManagerDtrace,
-       EntropyManagerPackage, EntropyManagerGrouping] ++ Img}}.
+       EntropyManagerPackage, EntropyManagerGrouping]}}.
