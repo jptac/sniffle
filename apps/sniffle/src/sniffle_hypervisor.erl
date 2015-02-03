@@ -164,6 +164,12 @@ service(UUID, Action, Service) ->
 
 service(Host, Port, enable, Service) ->
     libchunter:service_enable(Host, Port, Service);
+
+service(Host, Port, refresh, Service) ->
+    libchunter:service_refresh(Host, Port, Service);
+service(Host, Port, restart, Service) ->
+    libchunter:service_restart(Host, Port, Service);
+
 service(Host, Port, disable, Service) ->
     libchunter:service_disable(Host, Port, Service);
 service(Host, Port, clear, Service) ->
