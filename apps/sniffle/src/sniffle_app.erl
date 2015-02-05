@@ -72,7 +72,7 @@ stop(_State) ->
 
 init_folsom() ->
     DBMs = [fold_keys, fold, get, put, delete, transact],
-    Basic = [wipe, get, list, list_all, sync_repai],
+    Basic = [wipe, get, list, list_all, sync_repair],
     Datasets = Basic ++
         [set_metadata, description, disk_driver, homepage, image_size, name,
          networks, nic_driver, os, type, zone_type, users, version,
