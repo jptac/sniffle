@@ -1,4 +1,4 @@
-VERSION=0.6.1p6
+VERSION=0.6.1p7
 COMPONENT_INTERNAL=sniffle
 COMPONENT=fifo-sniffle
 
