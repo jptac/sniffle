@@ -1000,7 +1000,8 @@ remove_network_map(UUID, IP) ->
 
 
 trigger_fw_change(UUID) ->
-    {Host, Port} = get_hypervisor(UUID),
+    {ok, VM} = sniffle_vm:get(UUID),
+    {Host, Port} = get_hypervisor(VM),
     libchunter:update_fw(Host, Port, UUID).
 
 
