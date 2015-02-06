@@ -67,7 +67,7 @@
          set_snapshot/2,
          set_metadata/2,
          add_fw_rule/2,
-         delete_fw_rule/2
+         remove_fw_rule/2
         ]).
 
 
@@ -1010,8 +1010,8 @@ add_fw_rule(UUID, V) ->
     trigger_fw_change(UUID),
     R.
 
-delete_fw_rule(UUID, V) ->
-    R = do_write(UUID, delete_fw_rule, V),
+remove_fw_rule(UUID, V) ->
+    R = do_write(UUID, remove_fw_rule, V),
     trigger_fw_change(UUID),
     R.
 

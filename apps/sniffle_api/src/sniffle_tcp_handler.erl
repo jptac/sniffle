@@ -235,11 +235,11 @@ message(({vm, fw, add, Vm, Rule}), State) when
      sniffle_vm:add_fw_rule(Vm, Rule),
      State};
 
-message(({vm, fw, delete, Vm, Rule}), State) when
+message(({vm, fw, remove, Vm, Rule}), State) when
       is_binary(Vm),
       is_tuple(Rule) ->
     {reply,
-     sniffle_vm:delete_fw_rule(Vm, Rule),
+     sniffle_vm:remove_fw_rule(Vm, Rule),
      State};
 
 message({vm, nic, add, Vm, Network}, State) when

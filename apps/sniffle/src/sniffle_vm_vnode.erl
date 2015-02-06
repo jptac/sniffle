@@ -38,7 +38,7 @@
          add_grouping/4,
          remove_grouping/4,
          add_fw_rule/4,
-         delete_fw_rule/4,
+         remove_fw_rule/4,
          state/4,
          alias/4,
          owner/4,
@@ -65,7 +65,7 @@
               set_info/4,
               remove_grouping/4,
               add_fw_rule/4,
-              delete_fw_rule/4,
+              remove_fw_rule/4,
               state/4,
               alias/4,
               owner/4,
@@ -180,7 +180,7 @@ set_network_map(Preflist, ReqID, Vm, [IP, Net]) ->
 ?S(set_info).
 ?S(set_metadata).
 ?S(add_fw_rule).
-?S(delete_fw_rule).
+?S(remove_fw_rule).
 
 add_grouping(Preflist, ReqID, Vm, Grouping) ->
     riak_core_vnode_master:command(Preflist,
