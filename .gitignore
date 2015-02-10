@@ -22,3 +22,4 @@ sniffle_template.xml
 current_counterexample.eqc
 apps/sniffle/include/sniffle_version.hrl
 ebin
+dev-data
