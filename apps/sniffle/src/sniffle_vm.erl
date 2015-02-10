@@ -65,7 +65,9 @@
          set_info/2,
          set_service/2,
          set_snapshot/2,
-         set_metadata/2
+         set_metadata/2,
+         add_fw_rule/2,
+         remove_fw_rule/2
         ]).
 
 
@@ -994,6 +996,24 @@ add_network_map(UUID, IP, Net) ->
 
 remove_network_map(UUID, IP) ->
     do_write(UUID, set_network_map, [IP, delete]).
+
+
+
+trigger_fw_change(UUID) ->
+    {ok, VM} = sniffle_vm:get(UUID),
+    {Host, Port} = get_hypervisor(VM),
+    libchunter:update_fw(Host, Port, UUID).
+
+
+add_fw_rule(UUID, V) ->
+    R = do_write(UUID, add_fw_rule, V),
+    trigger_fw_change(UUID),
+    R.
+
+remove_fw_rule(UUID, V) ->
+    R = do_write(UUID, remove_fw_rule, V),
+    trigger_fw_change(UUID),
+    R.
 
 -define(S(T),
         T(UUID, V) ->
