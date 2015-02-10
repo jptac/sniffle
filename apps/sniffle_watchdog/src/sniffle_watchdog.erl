@@ -61,8 +61,13 @@ start_link() ->
     gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
 
 status() ->
-    {_, Leader} = riak_ensemble_manager:get_leader(?ENSEMBLE),
-    gen_server:call({?SERVER, Leader}, status).
+    case riak_ensemble_manager:get_leader(?ENSEMBLE) of
+        {_, Leader} ->
+            gen_server:call({?SERVER, Leader}, status);
+        %% TODO: This happens when no cluster could be started aka < 3 nodes
+        undefined ->
+            gen_server:call(?SERVER, status)
+    end.
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -101,6 +106,14 @@ handle_call(status, _From,
             State = #state{alerts = Alerts, hypervisors = {HVfs, HVts}}) ->
     case riak_ensemble_manager:get_leader(?ENSEMBLE) of
         {_Ensamble, Leader} when Leader == node() ->
+            Reply = sets:to_list(Alerts),
+            Res1 = lists:foldl(fun merge_fn/2, [],
+                               [H#entry.resources || H <- HVfs]),
+            Res2 = lists:foldl(fun merge_fn/2, Res1,
+                               [H#entry.resources || H <- HVts]),
+            {reply, {ok, {Reply, Res2}}, State};
+        %% TODO: This happens when no cluster could be started aka < 3 nodes
+        undefined ->
             Reply = sets:to_list(Alerts),
             Res1 = lists:foldl(fun merge_fn/2, [],
                                [H#entry.resources || H <- HVfs]),
@@ -154,6 +167,10 @@ handle_info(tick, State = #state{tick = Tick}) ->
     erlang:send_after(Tick, self(), tick),
     case riak_ensemble_manager:get_leader(?ENSEMBLE) of
         {_Ensamble, _Leader} when _Leader == node() ->
+            State1 = run_check(State),
+            {noreply, State1};
+        %% TODO: This happens when no cluster could be started aka < 3 nodes
+        undefined ->
             State1 = run_check(State),
             {noreply, State1};
         _ ->
