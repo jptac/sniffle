@@ -13,12 +13,6 @@
 %% ===================================================================
 
 start(_StartType, _StartArgs) ->
-    case riak_ensemble_manager:enabled() of
-        false ->
-            ok = riak_ensemble_manager:enable();
-        _ ->
-            ok
-    end,
     R = sniffle_watchdog_sup:start_link(),
     lager_watchdog_srv:set_version(?VERSION),
     R.
