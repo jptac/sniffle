@@ -827,6 +827,14 @@ logs(Vm) ->
                 Owner::fifo:uuid()) ->
                        not_found | {error, timeout} | [fifo:log()].
 set_owner(User, Vm, Owner) ->
+    case fetch_hypervisor(Vm) of
+        {ok, Server, Port} ->
+            UR = [{<<"owner">>, Owner}],
+            ok = libchunter:update_machine(
+                   Server, Port, Vm, undefined, UR);
+        _ ->
+            ok
+    end,
     ls_org:execute_trigger(Owner, vm_create, Vm),
     libhowl:send(Vm, [{<<"event">>, <<"update">>},
                       {<<"data">>,
