@@ -673,7 +673,7 @@ make_random(Weight, C) ->
 
 
 update_nics(UUID, Nics, Config, Nets, State) ->
-    jsxd:fold(
+    lists:foldl(
       fun (_, {error, E, Mps}) ->
               {error, E, Mps};
           ({Name, _Desc}, {NicsF, Mappings}) ->
