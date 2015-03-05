@@ -691,6 +691,7 @@ update_nics(UUID, Nics, Config, Nets, State) ->
                                " tag ", Tag/binary>>),
                       Res = jsxd:from_list([{<<"nic_tag">>, Tag},
                                             {<<"ip">>, IPb},
+                                            {<<"network_uuid">>, NicTag},
                                             {<<"netmask">>, Netb},
                                             {<<"gateway">>, GWb}]),
                       Res1 = case VLAN of
