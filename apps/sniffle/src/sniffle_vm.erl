@@ -426,6 +426,7 @@ add_nic(Vm, Network) ->
                             NicSpec0 =
                                 jsxd:from_list([{<<"ip">>, IPb},
                                                 {<<"gateway">>, GWb},
+                                                {<<"network_uuid">>, IPRange},
                                                 {<<"netmask">>, Netb},
                                                 {<<"nic_tag">>, Tag }]),
                             NicSpec1 =
