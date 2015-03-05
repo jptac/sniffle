@@ -444,8 +444,8 @@ create(_Event, State = #state{
                           mapping = Mapping}) ->
     vm_log(State, <<"Handing off to hypervisor.">>),
     sniffle_vm:state(UUID, <<"creating">>),
-    Dataset1 = ft_dataset:networks(sniffle_vnode:mkid(), Nics, Dataset),
-    case libchunter:create_machine(Host, Port, UUID, Package, Dataset1, Config) of
+    Config1 = jsxd:set(<<"nics">>, Nics, Config),
+    case libchunter:create_machine(Host, Port, UUID, Package, Dataset, Config1) of
         {error, lock} ->
             [sniffle_vm:add_network_map(UUID, IP, Range)
              || {Range, IP} <- Mapping],
@@ -673,11 +673,10 @@ make_random(Weight, C) ->
 
 
 update_nics(UUID, Nics, Config, Nets, State) ->
-    jsxd:fold(
-      fun (_, _, {error, E, Mps}) ->
+    lists:foldl(
+      fun (_, {error, E, Mps}) ->
               {error, E, Mps};
-          (K, Nic, {NicsF, Mappings}) ->
-              {ok, Name} = jsxd:get(<<"name">>, Nic),
+          ({Name, _Desc}, {NicsF, Mappings}) ->
               {ok, NicTag} = jsxd:get(Name, Nets),
               vm_log(State, info, <<"Fetching network ", NicTag/binary, " for NIC ", Name/binary>>),
               case sniffle_iprange:claim_ip(NicTag) of
@@ -692,6 +691,7 @@ update_nics(UUID, Nics, Config, Nets, State) ->
                                " tag ", Tag/binary>>),
                       Res = jsxd:from_list([{<<"nic_tag">>, Tag},
                                             {<<"ip">>, IPb},
+                                            {<<"network_uuid">>, NicTag},
                                             {<<"netmask">>, Netb},
                                             {<<"gateway">>, GWb}]),
                       Res1 = case VLAN of
@@ -706,7 +706,7 @@ update_nics(UUID, Nics, Config, Nets, State) ->
                                        [UUID, Config, Name, Tag, IPb, Netb, GWb, VLAN]),
                                      jsxd:set(<<"vlan_id">>, VLAN, Res)
                              end,
-                      NicsF1 = jsxd:set(K, Res1, NicsF),
+                      NicsF1 = [Res1 | NicsF],
                       Mappings1 = [{NicTag, IP} | Mappings],
                       {NicsF1, Mappings1};
                   E ->

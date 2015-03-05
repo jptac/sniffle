@@ -58,10 +58,11 @@
          imported/4,
          kernel_version/4,
          name/4,
-         networks/4,
          nic_driver/4,
          os/4,
          remove_requirement/4,
+         add_network/4,
+         remove_network/4,
          set_metadata/4,
          sha1/4,
          status/4,
@@ -81,10 +82,12 @@
               imported/4,
               kernel_version/4,
               name/4,
-              networks/4,
+              remove_network/4,
               nic_driver/4,
               os/4,
               remove_requirement/4,
+              add_network/4,
+              remove_network/4,
               set_metadata/4,
               sha1/4,
               status/4,
@@ -168,7 +171,6 @@ set(Preflist, ReqID, Dataset, Data) ->
 ?VSET(homepage).
 ?VSET(image_size).
 ?VSET(name).
-?VSET(networks).
 ?VSET(nic_driver).
 ?VSET(os).
 ?VSET(type).
@@ -181,6 +183,8 @@ set(Preflist, ReqID, Dataset, Data) ->
 ?VSET(imported).
 ?VSET(remove_requirement).
 ?VSET(add_requirement).
+?VSET(remove_network).
+?VSET(add_network).
 
 
 %%%===================================================================

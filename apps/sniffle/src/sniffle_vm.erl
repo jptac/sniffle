@@ -361,10 +361,10 @@ promote_to_image(Vm, SnapID, Config) ->
                     Nets1 =
                         jsxd:map(fun (Idx, E) ->
                                          Name = io_lib:format("net~p", [Idx]),
-                                         [{<<"description">>, jsxd:get(<<"tag">>, <<"undefined">>, E)},
-                                          {<<"name">>, list_to_binary(Name)}]
+                                         {list_to_binary(Name),
+                                          jsxd:get(<<"tag">>, <<"undefined">>, E)}
                                  end, Nets),
-                    sniffle_dataset:networks(UUID, Nets1),
+                    [sniffle_dataset:add_network(UUID, Net) || Net <- Nets1],
                     Type = jsxd:get([<<"type">>], <<"zone">>, C),
                     sniffle_dataset:type(UUID, Type),
                     case Type of
@@ -426,6 +426,7 @@ add_nic(Vm, Network) ->
                             NicSpec0 =
                                 jsxd:from_list([{<<"ip">>, IPb},
                                                 {<<"gateway">>, GWb},
+                                                {<<"network_uuid">>, IPRange},
                                                 {<<"netmask">>, Netb},
                                                 {<<"nic_tag">>, Tag }]),
                             NicSpec1 =

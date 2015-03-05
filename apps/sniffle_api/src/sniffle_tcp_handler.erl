@@ -627,7 +627,6 @@ message({dataset, import, URL}, State) ->
 ?DSM(homepage);
 ?DSM(image_size);
 ?DSM(name);
-?DSM(networks);
 ?DSM(nic_driver);
 ?DSM(os);
 ?DSM(type);
@@ -638,6 +637,8 @@ message({dataset, import, URL}, State) ->
 ?DSM(set_metadata);
 ?DSM(remove_requirement);
 ?DSM(add_requirement);
+?DSM(remove_network);
+?DSM(add_network);
 
 
 %%%===================================================================
