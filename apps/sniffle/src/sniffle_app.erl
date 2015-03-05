@@ -75,8 +75,8 @@ init_folsom() ->
     Basic = [wipe, get, list, list_all, sync_repair],
     Datasets = Basic ++
         [set_metadata, description, disk_driver, homepage, image_size, name,
-         networks, nic_driver, os, type, zone_type, users, version,
-         kernel_version, sha1, status, imported, remove_requirement,
+         add_network, remove_network, nic_driver, os, type, zone_type, users,
+         version, kernel_version, sha1, status, imported, remove_requirement,
          add_requirement, create, delete],
     Dtraces = Basic ++
         [create, delete, set, name, uuid, script, set_metadata, set_config],
