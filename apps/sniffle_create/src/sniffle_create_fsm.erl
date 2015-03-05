@@ -674,10 +674,9 @@ make_random(Weight, C) ->
 
 update_nics(UUID, Nics, Config, Nets, State) ->
     jsxd:fold(
-      fun (_, _, {error, E, Mps}) ->
+      fun (_, {error, E, Mps}) ->
               {error, E, Mps};
-          (K, Nic, {NicsF, Mappings}) ->
-              {ok, Name} = jsxd:get(<<"name">>, Nic),
+          ({Name, _Desc}, {NicsF, Mappings}) ->
               {ok, NicTag} = jsxd:get(Name, Nets),
               vm_log(State, info, <<"Fetching network ", NicTag/binary, " for NIC ", Name/binary>>),
               case sniffle_iprange:claim_ip(NicTag) of
@@ -706,7 +705,7 @@ update_nics(UUID, Nics, Config, Nets, State) ->
                                        [UUID, Config, Name, Tag, IPb, Netb, GWb, VLAN]),
                                      jsxd:set(<<"vlan_id">>, VLAN, Res)
                              end,
-                      NicsF1 = jsxd:set(K, Res1, NicsF),
+                      NicsF1 = [Res1 | NicsF],
                       Mappings1 = [{NicTag, IP} | Mappings],
                       {NicsF1, Mappings1};
                   E ->
