@@ -444,8 +444,8 @@ create(_Event, State = #state{
                           mapping = Mapping}) ->
     vm_log(State, <<"Handing off to hypervisor.">>),
     sniffle_vm:state(UUID, <<"creating">>),
-    Dataset1 = ft_dataset:networks(sniffle_vnode:mkid(), Nics, Dataset),
-    case libchunter:create_machine(Host, Port, UUID, Package, Dataset1, Config) of
+    Config1 = jsxd:set(<<"nics">>, Nics, Config),
+    case libchunter:create_machine(Host, Port, UUID, Package, Dataset, Config1) of
         {error, lock} ->
             [sniffle_vm:add_network_map(UUID, IP, Range)
              || {Range, IP} <- Mapping],
