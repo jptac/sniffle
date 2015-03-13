@@ -270,3 +270,11 @@
  [{default, "./share/schema"},
   {datatype, string}]
 }.
+
+{translation,
+  "riak_core.schema_dirs",
+  fun(Conf) ->
+          D = cuttlefish:conf_get("schema_dir", Conf),
+          [D]
+  end
+}.
