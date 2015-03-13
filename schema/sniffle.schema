@@ -264,3 +264,9 @@
     merge,
     {default, "sniffle"}
 ]}.
+
+%% @doc Schema directory
+{mapping, "schema_dir", "riak_core.schema_dirs",
+ [{commented, "./share/schema"},
+  {datatype, string}]
+}.
