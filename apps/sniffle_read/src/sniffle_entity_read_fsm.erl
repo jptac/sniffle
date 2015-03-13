@@ -163,12 +163,7 @@ waiting({ok, ReqID, IdxNode, Obj},
                     From ! {ReqID, not_found};
                 Merged ->
                     Reply = ft_obj:val(Merged),
-                    case statebox:is_statebox(Reply) of
-                        true ->
-                            From ! {ReqID, ok, statebox:value(Reply)};
-                        false  ->
-                            From ! {ReqID, ok, Reply}
-                    end
+                    From ! {ReqID, ok, Reply}
             end,
             if
                 NumR =:= N ->
@@ -239,7 +234,7 @@ merge(Replies) ->
 %% @pure
 %%
 %% @doc Reconcile conflicts among conflicting values.
--spec reconcile([A :: statebox:statebox()]) -> A :: statebox:statebox().
+-spec reconcile([A]) -> A.
 
 reconcile([V | Vs]) ->
     reconcile(fifo_dt:type(V), Vs, V).
