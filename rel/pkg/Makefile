@@ -5,7 +5,7 @@ DEPS="erlang>=16.1.2"
 
 include ../../deps/fifo_utils/priv/pkg.mk
 
-.PHONY: prepare
+.PHONY: package prepare clean
 
 prepare:
 	-rm -r $(STAGE_DIR)/$(COMPONENT)
