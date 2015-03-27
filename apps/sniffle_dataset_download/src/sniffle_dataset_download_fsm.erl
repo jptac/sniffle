@@ -114,7 +114,10 @@ get_manifest(_E, State = #state{url = URL, from = From, ref = Ref,
     hackney:close(Client1),
     JSON = jsxd:from_list(jsx:decode(Body)),
     {ok, UUID} = jsxd:get([<<"uuid">>], JSON),
-    {ok, ImgURL} = jsxd:get([<<"files">>, 0, <<"url">>], JSON),
+    ImgURL = case jsxd:get([<<"files">>, 0, <<"url">>], JSON) of
+                 {ok, FileImgURL} -> FileImgURL; %% dataset API!
+                 _ -> <<URL/binary, "/file">> %% img API!
+             end,
     {ok, TotalSize} = jsxd:get([<<"files">>, 0, <<"size">>], JSON),
     {ok, SHA1} = jsxd:get([<<"files">>, 0, <<"sha1">>], JSON),
     sniffle_dataset:create(UUID),
