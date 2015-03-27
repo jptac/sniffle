@@ -300,12 +300,12 @@ callbacks(_Event, State = #state{
 
 get_networks(_event, State = #state{retry = R, max_retries = Max})
   when R > Max ->
-    lager:error("[create] Failed after too many retries: ~p > ~p.",
+    lager:error("[create] Failed after too many retries: ~p > ~p",
                 [R, Max]),
     BR = integer_to_binary(R),
     BMax= integer_to_binary(Max),
     vm_log(State, error, <<"Failed after too many retries: ", BR/binary, " > ",
-                           BMax/binary>>),
+                           BMax/binary, ", seriously we doublechecked twice!">>),
     {stop, failed, State};
 
 get_networks(_Event, State = #state{config = Config, retry = Try}) ->
