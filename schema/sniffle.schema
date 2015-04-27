@@ -106,13 +106,6 @@
  end
 }.
 
-%% @doc The Backend to store large data objects in, this applies to snapshots
-%% and images. Objects stored in one backend will not be migrated to another if
-%% this is changed.
-{mapping, "large_data_backend", "sniffle.large_data_backend",
- [{default, internal},
-  {datatype, {enum, [internal, s3]}}]}.
-
 {mapping, "s3.bucket.image", "sniffle.image_bucket",
  [{default, "fifo-images"},
   {datatype, string}]}.
