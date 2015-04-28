@@ -97,14 +97,9 @@ get(Hypervisor) ->
                   {ok, {Resources::fifo:object(),
                         Warnings::fifo:object()}}.
 status() ->
-    Storage = case backend() of
-                  internal ->
-                      <<"internal">>;
-                  s3 ->
-                      <<"s3">>
-              end,
+    %% TODO: We need to remove the storage part here!
     {ok, {Warnings, Resources}} = sniffle_watchdog:status(),
-    Resources1 = [{<<"storage">>, Storage} | Resources],
+    Resources1 = [{<<"storage">>, <<"s3">>} | Resources],
     Warnings1 = [to_msg(W) || W <- Warnings],
     {ok,  {lists:sort(Resources1), lists:sort(Warnings1)}}.
 
@@ -235,6 +230,3 @@ do_write(User, Op, Val) ->
 
 bin_fmt(F, L) ->
     list_to_binary(io_lib:format(F, L)).
-
-backend() ->
-    sniffle_opt:get(storage, general, backend, large_data_backend, internal).

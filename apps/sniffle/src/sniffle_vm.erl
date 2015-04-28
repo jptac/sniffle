@@ -386,15 +386,10 @@ promote_to_image(Vm, SnapID, Config) ->
                             sniffle_dataset:nic_driver(UUID, ND),
                             sniffle_dataset:disk_driver(UUID, DD)
                     end,
-                    case {backend(), sniffle_s3:config(image)} of
-                        {s3, {ok, {S3Host, S3Port, AKey, SKey, Bucket}}} ->
-                            ok = libchunter:store_snapshot(
-                                   Server, Port, Vm, SnapID, UUID, S3Host,
-                                   S3Port, Bucket, AKey, SKey, []);
-                        _ ->
-                            ok = libchunter:store_snapshot(Server, Port, Vm,
-                                                           SnapID, UUID)
-                    end,
+                    {ok, {S3Host, S3Port, AKey, SKey, Bucket}} = sniffle_s3:config(image),
+                    ok = libchunter:store_snapshot(
+                           Server, Port, Vm, SnapID, UUID, S3Host,
+                           S3Port, Bucket, AKey, SKey, []),
                     {ok, UUID};
                 undefined ->
                     not_found
@@ -1136,9 +1131,6 @@ do_delete_backup(UUID, VM, BID) ->
                                 {<<"data">>, [{<<"action">>, <<"deleted">>},
                                               {<<"uuid">>, BID}]}])
     end.
-
-backend() ->
-    sniffle_opt:get(storage, general, backend, large_data_backend, internal).
 
 resource_action(UUID, Action, Opts) ->
     resource_action(UUID, Action, undefined, Opts).
