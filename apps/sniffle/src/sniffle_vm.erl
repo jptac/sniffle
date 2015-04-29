@@ -648,6 +648,10 @@ create(Package, Dataset, Config) ->
                         {<<"data">>,
                          [{<<"config">>, Config2},
                           {<<"package">>, Package}]}]),
+    %% TODO: is this the right place?
+    {ok, Creator} = jsxd:get([<<"owner">>], Config),
+    ls_user:grant(Creator, [<<"vms">>, UUID, <<"...">>]),
+    ls_user:grant(Creator, [<<"channels">>, UUID, <<"join">>]),
     sniffle_create_pool:add(UUID, Package, Dataset, Config),
     {ok, UUID}.
 
