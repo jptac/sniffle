@@ -273,7 +273,7 @@ case "$1" in
         echo "                 packages | datasets | networks | config | init-leofs }"
         echo "               metadata-update                    - updates snarl metadata to seperate public and private."
         echo "               ring                               - shows the ring."
-        echo "               init-leofs <hostname>              - initialized the leofs storage system."
+        echo "               init-leofs [<manager>] <gateway>   - initialized the leofs storage system."
         echo "               db update [<entity>]               - update db entries."
         echo "               db list [-p <prefix>]              - lists db entries."
         echo "               db list <hash> [<prefix>]          - lists db entries for a hash."
