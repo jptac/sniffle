@@ -126,13 +126,13 @@ init([UUID, Package, Dataset, Config, Pid]) ->
     lager:info("[create] Starting FSM for ~s", [UUID]),
     process_flag(trap_exit, true),
     Config1 = jsxd:from_list(Config),
-    Delay = case application:get_env(create_retry_delay) of
+    Delay = case application:get_env(sniffle, create_retry_delay) of
                 {ok, D} ->
                     D;
                 _ ->
                     5000
             end,
-    MaxRetries = case application:get_env(create_max_retries) of
+    MaxRetries = case application:get_env(sniffle, create_max_retries) of
                      {ok, D1} ->
                          D1;
                      _ ->
