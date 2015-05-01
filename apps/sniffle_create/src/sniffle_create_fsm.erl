@@ -446,7 +446,9 @@ create(_Event, State = #state{
     sniffle_vm:state(UUID, <<"creating">>),
     Config1 = jsxd:set(<<"nics">>, Nics, Config),
     case libchunter:create_machine(Host, Port, UUID, Package, Dataset, Config1) of
-        {error, lock} ->
+        {error, _} ->
+            %% TODO is it a good idea to handle all errors like this?
+            %% How can we assure no creation was started?
             [sniffle_vm:add_network_map(UUID, IP, Range)
              || {Range, IP} <- Mapping],
 
