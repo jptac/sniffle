@@ -101,7 +101,7 @@ init_folsom() ->
         [register, unregister, log, set_network_map, remove_grouping,
          add_grouping, set_metadata, set_info, set_config, set_backup,
          set_snapshot, set_service, state, alias, owner, dataset, package,
-         hypervisor, remove_fw_rule, add_fw_rule],
+         hypervisor, remove_fw_rule, add_fw_rule, deleting],
     [folsom_metrics:new_histogram(Name, slide, 60) ||
         Name <-
             [{fifo_db, M} || M <- DBMs] ++
