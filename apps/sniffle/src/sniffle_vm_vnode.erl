@@ -40,6 +40,7 @@
          add_fw_rule/4,
          remove_fw_rule/4,
          state/4,
+         deleting/4,
          alias/4,
          owner/4,
          dataset/4,
@@ -67,6 +68,7 @@
               add_fw_rule/4,
               remove_fw_rule/4,
               state/4,
+              deleting/4,
               alias/4,
               owner/4,
               dataset/4,
@@ -194,6 +196,7 @@ remove_grouping(Preflist, ReqID, Vm, Grouping) ->
                                    {fsm, undefined, self()},
                                    ?MASTER).
 ?S(state).
+?S(deleting).
 ?S(alias).
 ?S(owner).
 ?S(dataset).

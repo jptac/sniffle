@@ -77,6 +77,7 @@
          add_grouping/2,
          remove_grouping/2,
          state/2,
+         %%deleting/2,
          alias/2,
          owner/2,
          dataset/2,
@@ -721,8 +722,10 @@ delete(Vm) ->
 delete(User, Vm) ->
     case sniffle_vm:get(Vm) of
         {ok, V} ->
-            case {?S:hypervisor(V), ?S:state(V)} of
-                {_, <<"storing">>} ->
+            case {?S:hypervisor(V), ?S:deleting(V), ?S:state(V)} of
+                {_, true, _} ->
+                    finish_delete(Vm);
+                {_, _, <<"storing">>} ->
                     libhowl:send(<<"command">>,
                                  [{<<"event">>, <<"vm-stored">>},
                                   {<<"uuid">>, uuid:uuid4s()},
@@ -730,22 +733,21 @@ delete(User, Vm) ->
                                    [{<<"uuid">>, Vm}]}]),
                     state(Vm, <<"stored">>),
                     hypervisor(Vm, <<>>);
-                {undefined, _} ->
+                {undefined, _, _} ->
                     finish_delete(Vm);
-                {<<>>, _} ->
+                {<<>>, _, _} ->
                     finish_delete(Vm);
-                {<<"pooled">>, _} ->
+                {<<"pooled">>, _, _} ->
                     finish_delete(Vm);
-                {<<"pending">>, _} ->
+                {<<"pending">>, _, _} ->
                     finish_delete(Vm);
-                {_, undefined} ->
+                {_, _, undefined} ->
                     finish_delete(Vm);
-                {_, <<"deleting">>} ->
+                {_, _, <<"failed-", _/binary>>} ->
                     finish_delete(Vm);
-                {_, <<"failed-", _/binary>>} ->
-                    finish_delete(Vm);
-                {H, _} ->
+                {H, _, _} ->
                     state(Vm, <<"deleting">>),
+                    deleting(Vm, true),
                     {Host, Port} = get_hypervisor(H),
                     resource_action(V, destroy, User, []),
                     libchunter:delete_machine(Host, Port, Vm)
@@ -1036,6 +1038,10 @@ remove_fw_rule(UUID, V) ->
 ?S(set_service).
 
 ?S(state).
+deleting(UUID, V) 
+  when V =:= true;
+       V =:= false ->
+    do_write(UUID, deleting, V).
 ?S(alias).
 ?S(owner).
 ?S(dataset).
