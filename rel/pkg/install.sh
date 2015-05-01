@@ -1,8 +1,5 @@
 #!/usr/bin/bash
 
-AWK=/usr/bin/awk
-SED=/usr/bin/sed
-
 USER=sniffle
 GROUP=$USER
 
@@ -46,13 +43,13 @@ case $2 in
         echo Importing service ...
         svccfg import /opt/local/fifo-sniffle/share/sniffle.xml
         echo Trying to guess configuration ...
-        IP=`ifconfig net0 | grep inet | $AWK '{print $2}'`
+        IP=$(ifconfig net0 | grep inet | /usr/bin/awk '{print $2}')
         CONFFILE=/opt/local/fifo-sniffle/etc/sniffle.conf
         if [ ! -f "${CONFFILE}" ]
         then
             echo "Creating new configuration from example file."
             cp ${CONFFILE}.example ${CONFFILE}
-            $SED -i bak -e "s/127.0.0.1/${IP}/g" ${CONFFILE}
+            /usr/bin/sed -i bak -e "s/127.0.0.1/${IP}/g" ${CONFFILE}
         else
             echo "Merging old file with new template, the original can be found in ${CONFFILE}.old."
             /opt/local/fifo-sniffle/share/update_config.sh ${CONFFILE}.example ${CONFFILE} > ${CONFFILE}.new &&
