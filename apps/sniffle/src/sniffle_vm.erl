@@ -587,6 +587,7 @@ register(Vm, Hypervisor) ->
 unregister(Vm) ->
     case sniffle_vm:get(Vm) of
         {ok, V} ->
+            do_write(Vm, unregister),
             lists:map(fun({Ip, Net}) ->
                               sniffle_iprange:release_ip(Net, Ip)
                       end, ?S:network_map(V)),
@@ -617,9 +618,8 @@ unregister(Vm) ->
                     [sniffle_grouping:remove_element(G, Vm) || G <- Gs]
             end;
         _ ->
-            ok
-    end,
-    do_write(Vm, unregister).
+            do_write(Vm, unregister)
+    end.
 
 %%--------------------------------------------------------------------
 %% @doc Tries to creat a VM from a Package and dataset uuid. This
