@@ -77,6 +77,7 @@
          add_grouping/2,
          remove_grouping/2,
          state/2,
+         %%deleting/2,
          alias/2,
          owner/2,
          dataset/2,
@@ -586,6 +587,7 @@ register(Vm, Hypervisor) ->
 unregister(Vm) ->
     case sniffle_vm:get(Vm) of
         {ok, V} ->
+            do_write(Vm, unregister),
             lists:map(fun({Ip, Net}) ->
                               sniffle_iprange:release_ip(Net, Ip)
                       end, ?S:network_map(V)),
@@ -616,9 +618,8 @@ unregister(Vm) ->
                     [sniffle_grouping:remove_element(G, Vm) || G <- Gs]
             end;
         _ ->
-            ok
-    end,
-    do_write(Vm, unregister).
+            do_write(Vm, unregister)
+    end.
 
 %%--------------------------------------------------------------------
 %% @doc Tries to creat a VM from a Package and dataset uuid. This
@@ -648,6 +649,10 @@ create(Package, Dataset, Config) ->
                         {<<"data">>,
                          [{<<"config">>, Config2},
                           {<<"package">>, Package}]}]),
+    %% TODO: is this the right place?
+    {ok, Creator} = jsxd:get([<<"owner">>], Config),
+    ls_user:grant(Creator, [<<"vms">>, UUID, <<"...">>]),
+    ls_user:grant(Creator, [<<"channels">>, UUID, <<"join">>]),
     sniffle_create_pool:add(UUID, Package, Dataset, Config),
     {ok, UUID}.
 
@@ -717,8 +722,10 @@ delete(Vm) ->
 delete(User, Vm) ->
     case sniffle_vm:get(Vm) of
         {ok, V} ->
-            case {?S:hypervisor(V), ?S:state(V)} of
-                {_, <<"storing">>} ->
+            case {?S:hypervisor(V), ?S:deleting(V), ?S:state(V)} of
+                {_, true, _} ->
+                    finish_delete(Vm);
+                {_, _, <<"storing">>} ->
                     libhowl:send(<<"command">>,
                                  [{<<"event">>, <<"vm-stored">>},
                                   {<<"uuid">>, uuid:uuid4s()},
@@ -726,22 +733,21 @@ delete(User, Vm) ->
                                    [{<<"uuid">>, Vm}]}]),
                     state(Vm, <<"stored">>),
                     hypervisor(Vm, <<>>);
-                {undefined, _} ->
+                {undefined, _, _} ->
                     finish_delete(Vm);
-                {<<>>, _} ->
+                {<<>>, _, _} ->
                     finish_delete(Vm);
-                {<<"pooled">>, _} ->
+                {<<"pooled">>, _, _} ->
                     finish_delete(Vm);
-                {<<"pending">>, _} ->
+                {<<"pending">>, _, _} ->
                     finish_delete(Vm);
-                {_, undefined} ->
+                {_, _, undefined} ->
                     finish_delete(Vm);
-                {_, <<"deleting">>} ->
+                {_, _, <<"failed-", _/binary>>} ->
                     finish_delete(Vm);
-                {_, <<"failed-", _/binary>>} ->
-                    finish_delete(Vm);
-                {H, _} ->
+                {H, _, _} ->
                     state(Vm, <<"deleting">>),
+                    deleting(Vm, true),
                     {Host, Port} = get_hypervisor(H),
                     resource_action(V, destroy, User, []),
                     libchunter:delete_machine(Host, Port, Vm)
@@ -1032,6 +1038,10 @@ remove_fw_rule(UUID, V) ->
 ?S(set_service).
 
 ?S(state).
+deleting(UUID, V) 
+  when V =:= true;
+       V =:= false ->
+    do_write(UUID, deleting, V).
 ?S(alias).
 ?S(owner).
 ?S(dataset).

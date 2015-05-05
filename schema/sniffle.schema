@@ -255,7 +255,7 @@
 
 {mapping, "folsom_ddb.prefix", "folsom_ddb.prefix", [
     merge,
-    {default, "sniffle"}
+    {default, "sniffle@127.0.0.1"}
 ]}.
 
 %% @doc Schema directory

@@ -126,13 +126,13 @@ init([UUID, Package, Dataset, Config, Pid]) ->
     lager:info("[create] Starting FSM for ~s", [UUID]),
     process_flag(trap_exit, true),
     Config1 = jsxd:from_list(Config),
-    Delay = case application:get_env(create_retry_delay) of
+    Delay = case application:get_env(sniffle, create_retry_delay) of
                 {ok, D} ->
                     D;
                 _ ->
                     5000
             end,
-    MaxRetries = case application:get_env(create_max_retries) of
+    MaxRetries = case application:get_env(sniffle, create_max_retries) of
                      {ok, D1} ->
                          D1;
                      _ ->
@@ -446,7 +446,9 @@ create(_Event, State = #state{
     sniffle_vm:state(UUID, <<"creating">>),
     Config1 = jsxd:set(<<"nics">>, Nics, Config),
     case libchunter:create_machine(Host, Port, UUID, Package, Dataset, Config1) of
-        {error, lock} ->
+        {error, _} ->
+            %% TODO is it a good idea to handle all errors like this?
+            %% How can we assure no creation was started?
             [sniffle_vm:add_network_map(UUID, IP, Range)
              || {Range, IP} <- Mapping],
 

@@ -164,20 +164,20 @@ handle_cast(_Msg, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_info(tick, State = #state{tick = Tick}) ->
+    S1 = case riak_ensemble_manager:get_leader(?ENSEMBLE) of
+             {_Ensamble, _Leader} when _Leader == node() ->
+                 erlang:send_after(Tick, self(), tick),
+                 run_check(State);
+             %% TODO: This happens when no cluster could be started aka < 3 nodes
+             undefined ->
+                 run_check(State);
+             _ ->
+                 %% We only want to run this on the leader.
+                 State#state{count = 0, hypervisors = {[], []},
+                             alerts = sets:new()}
+         end,
     erlang:send_after(Tick, self(), tick),
-    case riak_ensemble_manager:get_leader(?ENSEMBLE) of
-        {_Ensamble, _Leader} when _Leader == node() ->
-            State1 = run_check(State),
-            {noreply, State1};
-        %% TODO: This happens when no cluster could be started aka < 3 nodes
-        undefined ->
-            State1 = run_check(State),
-            {noreply, State1};
-        _ ->
-            %% We only want to run this on the leader.
-            {noreply, State#state{count = 0, hypervisors = {[], []},
-                                  alerts = sets:new()}}
-    end;
+    {noreply, S1};
 
 handle_info(_Info, State) ->
     {noreply, State}.
@@ -376,7 +376,7 @@ to_msg({chunter_down, UUID, Alias}) ->
                      "(", UUID/binary, ") down.">>, 10};
 to_msg({pool_error, UUID, Alias, Name, State}) ->
     {pool_error, <<"Pool ", Name/binary, " on node ", Alias/binary,
-                     "(", UUID/binary, ") is in state ", State/binary, ".">>,
+                   "(", UUID/binary, ") is in state ", State/binary, ".">>,
      10}.
 
 a2b(A) ->
