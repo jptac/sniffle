@@ -724,10 +724,26 @@ delete(Vm) ->
 delete(User, Vm) ->
     case sniffle_vm:get(Vm) of
         {ok, V} ->
-            case {?S:hypervisor(V), ?S:deleting(V), ?S:state(V)} of
-                {_, true, _} ->
+            Creating = case ?S:creating(V) of
+                           false ->
+                               false;
+                           {_State, T0} ->
+                               case timer:now_diff(now(), T0) of
+                                   T when T > 1000000*120 -> %% 2 minutes
+                                       false;
+                                   _ ->
+                                       true
+                               end;
+                           _ ->
+                               true
+                       end,
+            case {Creating, ?S:hypervisor(V),
+                  ?S:deleting(V), ?S:state(V)} of
+                {true, _, _, _} ->
+                    {error, creating};
+                {_, _, true, _} ->
                     finish_delete(Vm);
-                {_, _, <<"storing">>} ->
+                {_, _, _, <<"storing">>} ->
                     libhowl:send(<<"command">>,
                                  [{<<"event">>, <<"vm-stored">>},
                                   {<<"uuid">>, uuid:uuid4s()},
@@ -735,19 +751,19 @@ delete(User, Vm) ->
                                    [{<<"uuid">>, Vm}]}]),
                     state(Vm, <<"stored">>),
                     hypervisor(Vm, <<>>);
-                {undefined, _, _} ->
+                {_, undefined, _, _} ->
                     finish_delete(Vm);
-                {<<>>, _, _} ->
+                {_, <<>>, _, _} ->
                     finish_delete(Vm);
-                {<<"pooled">>, _, _} ->
+                {_, <<"pooled">>, _, _} ->
                     finish_delete(Vm);
-                {<<"pending">>, _, _} ->
+                {_, <<"pending">>, _, _} ->
                     finish_delete(Vm);
-                {_, _, undefined} ->
+                {_, _, _, undefined} ->
                     finish_delete(Vm);
-                {_, _, <<"failed-", _/binary>>} ->
+                {_, _, _, <<"failed-", _/binary>>} ->
                     finish_delete(Vm);
-                {H, _, _} ->
+                {_, H, _, _} ->
                     state(Vm, <<"deleting">>),
                     deleting(Vm, true),
                     {Host, Port} = get_hypervisor(H),
