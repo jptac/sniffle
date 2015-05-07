@@ -122,6 +122,7 @@ create(UUID, Package, Dataset, Config, Pid) ->
 
 init([UUID, Package, Dataset, Config, Pid]) ->
     sniffle_vm:state(UUID, <<"placing">>),
+    sniffle_vm:creating(UUID, {creating, now()}),
     random:seed(now()),
     lager:info("[create] Starting FSM for ~s", [UUID]),
     process_flag(trap_exit, true),
@@ -432,6 +433,7 @@ create(_Event, State = #state{
     [sniffle_iprange:release_ip(Range, IP) ||{Range, IP} <- Mapping],
     libchunter:release(Host, Port, UUID),
     Pid ! {Ref, success},
+    sniffle_vm:creating(UUID, false),
     {stop, normal, State};
 
 create(_Event, State = #state{
@@ -459,6 +461,7 @@ create(_Event, State = #state{
             lager:warning("[create] Could not get log."),
             do_retry(State);
         ok ->
+            sniffle_vm:creating(UUID, {hypervisor, now()}),
             {stop, normal, State}
     end.
 
@@ -538,10 +541,12 @@ terminate(_Reason, StateName, #state{hypervisor = {Host, Port},
                                      test_pid={Pid, Ref}}) ->
     libchunter:release(Host, Port, UUID),
     Pid ! {Ref, {failed, StateName}},
+    sniffle_vm:creating(UUID, false),
     ok;
 
-terminate(_Reason, StateName, #state{test_pid={Pid, Ref}}) ->
+terminate(_Reason, StateName, #state{test_pid={Pid, Ref}, uuid = UUID}) ->
     Pid ! {Ref, {failed, StateName}},
+    sniffle_vm:creating(UUID, false),
     ok;
 
 terminate(Reason, StateName, State = #state{uuid = UUID, log_cache = C}) ->
@@ -552,6 +557,7 @@ terminate(Reason, StateName, State = #state{uuid = UUID, log_cache = C}) ->
          [Reason, StateName]),
     [vm_log(State, Type, Msg) || {Type, Msg} <- lists:reverse(C)],
     sniffle_vm:state(UUID, <<"failed">>),
+    sniffle_vm:creating(UUID, false),
     ok.
 
 %%--------------------------------------------------------------------

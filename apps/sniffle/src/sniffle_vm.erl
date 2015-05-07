@@ -78,6 +78,7 @@
          remove_grouping/2,
          state/2,
          %%deleting/2,
+         creating/2,
          alias/2,
          owner/2,
          dataset/2,
@@ -632,6 +633,7 @@ unregister(Vm) ->
 create(Package, Dataset, Config) ->
     UUID = uuid:uuid4s(),
     do_write(UUID, register, <<"pooled">>), %we've to put pending here since undefined will cause a wrong call!
+    creating(UUID, {started, now()}),
     Config1 = jsxd:from_list(Config),
     Config2 = jsxd:update(<<"networks">>,
                           fun (N) ->
@@ -1038,6 +1040,7 @@ remove_fw_rule(UUID, V) ->
 ?S(set_service).
 
 ?S(state).
+?S(creating).
 deleting(UUID, V) 
   when V =:= true;
        V =:= false ->
