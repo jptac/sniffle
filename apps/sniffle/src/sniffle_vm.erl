@@ -525,8 +525,7 @@ primary_nic(Vm, Mac) ->
 update(User, Vm, Package, Config) ->
     case sniffle_vm:get(Vm) of
         {ok, V} ->
-            Hypervisor = ?S:hypervisor(V),
-            {ok, H} = sniffle_hypervisor:get(Hypervisor),
+            H = ?S:hypervisor(V),
             {Host, Port} = get_hypervisor(H),
             OrigPkg = ?S:package(V),
             {ok, OrigRam} = jsxd:get([<<"ram">>], ?S:config(V)),
@@ -724,20 +723,7 @@ delete(Vm) ->
 delete(User, Vm) ->
     case sniffle_vm:get(Vm) of
         {ok, V} ->
-            Creating = case ?S:creating(V) of
-                           false ->
-                               false;
-                           {_State, T0} ->
-                               case timer:now_diff(now(), T0) of
-                                   T when T > 1000000*120 -> %% 2 minutes
-                                       false;
-                                   _ ->
-                                       true
-                               end;
-                           _ ->
-                               true
-                       end,
-            case {Creating, ?S:hypervisor(V),
+            case {is_creating(V), ?S:hypervisor(V),
                   ?S:deleting(V), ?S:state(V)} of
                 {true, _, _, _} ->
                     {error, creating};
@@ -791,11 +777,17 @@ finish_delete(Vm) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec start(Vm::fifo:uuid()) ->
-                   {error, timeout} | not_found | ok.
+                   {error, timeout|creating} | not_found | ok.
 start(Vm) ->
-    case fetch_hypervisor(Vm) of
-        {ok, Server, Port} ->
-            libchunter:start_machine(Server, Port, Vm);
+    case sniffle_vm:get(Vm) of
+        {ok, V} ->
+            case is_creating(V) of
+                true ->
+                    {error, creating};
+                false ->
+                    {Server, Port} = get_hypervisor(V),
+                    libchunter:start_machine(Server, Port, Vm)
+            end;
         E ->
             E
     end.
@@ -814,11 +806,17 @@ stop(Vm) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec stop(Vm::fifo:uuid(), Options::[atom()|{atom(), term()}]) ->
-                  {error, timeout} | not_found | ok.
+                  {error, timeout|creating} | not_found | ok.
 stop(Vm, Options) ->
-    case fetch_hypervisor(Vm) of
-        {ok, Server, Port} ->
-            libchunter:stop_machine(Server, Port, Vm, Options);
+    case sniffle_vm:get(Vm) of
+        {ok, V} ->
+            case is_creating(V) of
+                true ->
+                    {error, creating};
+                false ->
+                    {Server, Port} = get_hypervisor(V),
+                    libchunter:stop_machine(Server, Port, Vm, Options)
+                end;
         E ->
             E
     end.
@@ -838,11 +836,17 @@ reboot(Vm) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec reboot(Vm::fifo:uuid(), Options::[atom()|{atom(), term()}]) ->
-                    {error, timeout} | not_found | ok.
+                    {error, timeout|creating} | not_found | ok.
 reboot(Vm, Options) ->
-    case fetch_hypervisor(Vm) of
-        {ok, Server, Port} ->
-            libchunter:reboot_machine(Server, Port, Vm, Options);
+    case sniffle_vm:get(Vm) of
+        {ok, V} ->
+            case is_creating(V) of
+                true ->
+                    {error, creating};
+                false ->
+                    {Server, Port} = get_hypervisor(V),
+                    libchunter:reboot_machine(Server, Port, Vm, Options)
+            end;
         E ->
             E
     end.
@@ -1057,7 +1061,7 @@ remove_fw_rule(UUID, V) ->
 
 ?S(state).
 ?S(creating).
-deleting(UUID, V) 
+deleting(UUID, V)
   when V =:= true;
        V =:= false ->
     do_write(UUID, deleting, V).
@@ -1178,4 +1182,19 @@ resource_action(VM, Action, User, Opts) ->
             UUID = ft_vm:uuid(VM),
             T = timestamp(),
             ls_org:resource_action(Org, UUID, T, Action, Opts1)
+    end.
+
+is_creating(V) ->
+    case ?S:creating(V) of
+        false ->
+            false;
+        {_State, T0} ->
+            case timer:now_diff(now(), T0) of
+                T when T > 1000000*120 -> %% 2 minutes
+                    false;
+                _ ->
+                    true
+            end;
+        _ ->
+            true
     end.
