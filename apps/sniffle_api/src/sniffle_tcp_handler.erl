@@ -484,6 +484,7 @@ message({vm, owner, User, Vm, Owner}, State) when
 
 ?VM(set_service);
 ?VM(state);
+?VM(creating);
 ?VM(set_info);
 ?VM(set_backup);
 ?VM(set_snapshot);

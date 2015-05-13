@@ -41,6 +41,7 @@
          remove_fw_rule/4,
          state/4,
          deleting/4,
+         creating/4,
          alias/4,
          owner/4,
          dataset/4,
@@ -69,6 +70,7 @@
               remove_fw_rule/4,
               state/4,
               deleting/4,
+              creating/4,
               alias/4,
               owner/4,
               dataset/4,
@@ -197,6 +199,7 @@ remove_grouping(Preflist, ReqID, Vm, Grouping) ->
                                    ?MASTER).
 ?S(state).
 ?S(deleting).
+?S(creating).
 ?S(alias).
 ?S(owner).
 ?S(dataset).
