@@ -98,7 +98,7 @@ init_folsom() ->
         [create, delete, lookup, name, uuid, network, netmask, gateway,
          set_metadata, tag, vlan, release_ip, claim_ip],
     Nets = Basic ++
-        [create, detete, name, set_metadata, uuid, add_iprange, remove_iprange,
+        [create, delete, name, set_metadata, uuid, add_iprange, remove_iprange,
          set],
     Pkgs = Basic ++
         [create, delete, set_metadata, blocksize, compression, cpu_cap,
