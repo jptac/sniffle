@@ -2,7 +2,7 @@
 {application, sniffle,
  [
   {description, "Project FiFo's central management server."},
-  {vsn, "0.6.1p10"},
+  {vsn, "0.6.1p11"},
   {registered, []},
   {applications, [
                   kernel,
