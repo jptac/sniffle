@@ -338,7 +338,14 @@ get_server(_Event, State = #state{
     Permission = [<<"hypervisors">>, {<<"res">>, <<"uuid">>}, <<"create">>],
     Type = case ft_dataset:type(Dataset) of
                kvm -> <<"kvm">>;
-               zone -> <<"zone">>
+               zone -> case ft_dataset:zone_type(Dataset) of
+                           lipkg ->
+                               <<"ipkg">>;
+                           ipkg ->
+                               <<"ipkg">>;
+                           _ ->
+                               <<"zone">>
+                       end
            end,
     case ls_user:cache(Creator) of
         {ok, Permissions} ->
