@@ -526,10 +526,11 @@ update(User, Vm, Package, Config) ->
     case sniffle_vm:get(Vm) of
         {ok, V} ->
             H = ?S:hypervisor(V),
-            {Host, Port} = get_hypervisor(H),
+            {ok, Hv} = sniffle_hypervisor:get(H),
+            {Host, Port} = ft_hypervisor:endpoint(Hv),
             OrigPkg = ?S:package(V),
             {ok, OrigRam} = jsxd:get([<<"ram">>], ?S:config(V)),
-            case test_pkg(Package, OrigRam, H) of
+            case test_pkg(Package, OrigRam, Hv) of
                 no_pkg_change ->
                     libchunter:update_machine(Host, Port, Vm,
                                               undefined, Config);

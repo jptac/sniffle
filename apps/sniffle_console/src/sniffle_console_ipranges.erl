@@ -56,7 +56,7 @@ command(text, ["claim", ID]) ->
                       "IP:      ~s~n"
                       "Netmask: ~s~n"
                       "Gateway: ~s~n"
-                      "VLAN:    ~s~n",
+                      "VLAN:    ~p~n",
                       [ID, Tag, IP, Netmask, Gateway, VLan]),
             ok;
         _ ->
