@@ -73,7 +73,7 @@ ERTS_VSN=${START_ERL% *}
 APP_VSN=${START_ERL#* }
 
 # Add ERTS bin dir to our path
-ERTS_PATH=$RUNNER_BASE_DIR/$ERTS_VSN/bin
+ERTS_PATH=$RUNNER_BASE_DIR/erts-$ERTS_VSN/bin
 
 # Setup command to control the node
 NODETOOL="$ERTS_PATH/escript $ERTS_PATH/nodetool $NAME_ARG $COOKIE_ARG"

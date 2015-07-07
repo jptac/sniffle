@@ -64,7 +64,7 @@ ERTS_VSN=${START_ERL% *}
 APP_VSN=${START_ERL#* }
 
 # Add ERTS bin dir to our path
-ERTS_PATH=$RUNNER_BASE_DIR/$ERTS_VSN/bin
+ERTS_PATH=$RUNNER_BASE_DIR/erts-$ERTS_VSN/bin
 
 # Setup command to control the node
 NODETOOL="$ERTS_PATH/escript $ERTS_PATH/nodetool $NAME_ARG $COOKIE_ARG"
@@ -151,7 +151,7 @@ case "$1" in
         esac
         # Setup beam-required vars
         ROOTDIR=$RUNNER_BASE_DIR
-        BINDIR=$ROOTDIR/$ERTS_VSN/bin
+        BINDIR=$ROOTDIR/erts-$ERTS_VSN/bin
         EMU=beam
         PROGNAME=`echo $0 | sed 's/.*\\///'`
         if CUTTLEFISH_CONFIG=$($ERTS_PATH/escript $RUNNER_BASE_DIR/bin/cuttlefish -e $RUNNER_ETC_DIR -d {{db_path}}/generated.configs -s $RUNNER_BASE_DIR/share/schema/ -c $RUNNER_ETC_DIR/{{cuttlefish_conf}})

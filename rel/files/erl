@@ -22,7 +22,7 @@ START_ERL=`cat $ROOTDIR/releases/start_erl.data`
 ERTS_VSN=${START_ERL% *}
 APP_VSN=${START_ERL#* }
 
-BINDIR=$ROOTDIR/$ERTS_VSN/bin
+BINDIR=$ROOTDIR/erts-$ERTS_VSN/bin
 EMU=beam
 PROGNAME=`echo $0 | sed 's/.*\\///'`
 CMD="$BINDIR/erlexec"
