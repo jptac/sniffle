@@ -1,1 +1,0 @@
--define(VERSION, <<"rebar3-218535d, Mon Jul 6 15:55:42 2015 +0200">>).
