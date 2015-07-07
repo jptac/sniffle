@@ -1,9 +1,9 @@
-REBAR = $(shell pwd)/rebar
+REBAR = $(shell pwd)/rebar3
 
-.PHONY: deps rel stagedevrel package version all
+.PHONY: rel stagedevrel package version all
 
 
-all: cp-hooks deps compile
+all: cp-hooks compile
 
 cp-hooks:
 	cp hooks/* .git/hooks
@@ -17,8 +17,6 @@ version_header: version
 compile: version_header
 	$(REBAR) compile
 
-deps:
-	$(REBAR) get-deps
 
 clean:
 	$(REBAR) clean
@@ -26,7 +24,6 @@ clean:
 	rm -r apps/*/ebin
 
 distclean: clean devclean relclean
-	$(REBAR) delete-deps
 
 long-test:
 	-rm -r apps/sniffle/.eunit
