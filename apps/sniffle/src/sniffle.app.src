@@ -32,6 +32,7 @@
                   sniffle_write,
                   sniffle_coverage,
                   sniffle_dataset_download,
+                  sniffle_version,
                   lager_watchdog
                  ]},
   {mod, {sniffle_app, []}},

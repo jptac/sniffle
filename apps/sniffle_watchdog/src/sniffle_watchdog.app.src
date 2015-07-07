@@ -9,6 +9,7 @@
                   riak_core,
                   libchunter,
                   lager_watchdog,
+                  sniffle_version,
                   sniffle
                  ]},
   {mod, { sniffle_watchdog_app, []}},

@@ -6,6 +6,7 @@
   {applications, [
                   kernel,
                   sniffle,
+                  sniffle_version,
                   mdns_server_lib,
                   stdlib
                  ]},

@@ -3,7 +3,7 @@
 %% replica and wait until a quorum is met.
 -module(sniffle_entity_read_fsm).
 -behavior(gen_fsm).
--include_lib("sniffle/include/sniffle.hrl").
+-include("sniffle_read.hrl").
 
 %% API
 -export([start_link/6, start/2, start/3, start/4]).

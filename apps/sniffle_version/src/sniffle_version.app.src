@@ -1,15 +1,14 @@
-{application, sniffle_console,
+{application, sniffle_version,
  [
-  {description, "The console interface for sniffle"},
+  {description, "The version for sniffle"},
   {vsn, "0.1.0"},
   {modules, [
-             sniffle_console
+             sniffle_version
             ]},
   {registered, []},
   {applications, [
                   kernel,
                   lager,
-                  sniffle_version,
                   stdlib
                  ]},
   {env, []}

@@ -2,7 +2,7 @@
 
 -behaviour(application).
 
--include_lib("sniffle/include/sniffle_version.hrl").
+-include_lib("sniffle_version/include/sniffle_version.hrl").
 
 
 %% Application callbacks

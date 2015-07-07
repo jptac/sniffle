@@ -1,5 +1,5 @@
 -module(sniffle_snmp_handler).
--include("sniffle_version.hrl").
+-include_lib("sniffle_version/include/sniffle_version.hrl").
 
 %% External exports
 -export([start/0, name/1, reload/0, version/1,

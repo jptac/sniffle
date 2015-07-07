@@ -3,7 +3,7 @@
 %% of the _preflist_.
 -module(sniffle_entity_write_fsm).
 -behavior(gen_fsm).
--include_lib("sniffle/include/sniffle.hrl").
+-include("sniffle_write.hrl").
 
 %% API
 -export([start_link/5, start_link/6, write/3, write/4]).
