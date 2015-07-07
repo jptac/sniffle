@@ -9,7 +9,7 @@ include ../../deps/fifo_utils/priv/pkg.mk
 
 prepare:
 	-rm -r $(STAGE_DIR)/$(COMPONENT)
-	cp -r ../$(COMPONENT_INTERNAL) $(STAGE_DIR)/$(COMPONENT)
+	cp -r ../../_build/default/rel/$(COMPONENT_INTERNAL) $(STAGE_DIR)/$(COMPONENT)
 
 package: prepare $(FILE).tgz
 
