@@ -24,6 +24,7 @@
                   mnesia,
                   eplugin,
                   lager,
+                  rankmatcher,
                   sniffle_commons,
                   sniffle_console,
                   sniffle_dtrace,
