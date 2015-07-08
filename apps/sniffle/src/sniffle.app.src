@@ -24,7 +24,6 @@
                   mnesia,
                   eplugin,
                   lager,
-                  recon,
                   sniffle_commons,
                   sniffle_console,
                   sniffle_dtrace,
