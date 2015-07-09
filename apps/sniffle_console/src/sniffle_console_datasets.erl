@@ -4,7 +4,6 @@
 
 
 -include_lib("kernel/include/file.hrl").
--include_lib("sniffle_version/include/sniffle_version.hrl").
 
 -define(T, ft_dataset).
 -define(F(Hs, Vs), fifo_console:fields(Hs, Vs)).
