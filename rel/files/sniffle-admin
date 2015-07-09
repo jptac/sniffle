@@ -393,16 +393,16 @@ cluster_admin()
             ;;
         status)
             node_up_check
-            $NODETOOL rpc riak_core_console command $SCRIPT cluster $@
+            $NODETOOL rpc riak_core_console command riak-admin cluster $@riak
             ;;
         partitions|partition)
             node_up_check
-            $NODETOOL rpc riak_core_console command $SCRIPT cluster $@
+            $NODETOOL rpc riak_core_console command riak-admin cluster $@
             ;;
         partition[_-]count)
             node_up_check
             shift
-            $NODETOOL rpc riak_core_console command $SCRIPT cluster partition-count $@
+            $NODETOOL rpc riak_core_console command riak-admin cluster partition-count $@
             ;;
         *)
             echo "\
@@ -813,22 +813,22 @@ case "$1" in
     handoff)
         # New pattern for command line. Use nodetool for RPC
         node_up_check
-        exec $NODETOOL rpc riak_core_console command $SCRIPT $@
+        exec $NODETOOL rpc riak_core_console command riak-admin $@
         ;;
     set)
         # New pattern for command line. Use nodetool for RPC
         node_up_check
-        exec $NODETOOL rpc riak_core_console command $SCRIPT $@
+        exec $NODETOOL rpc riak_core_console command riak-admin $@
         ;;
     show)
         # New pattern for command line. Use nodetool for RPC
         node_up_check
-        exec $NODETOOL rpc riak_core_console command $SCRIPT $@
+        exec $NODETOOL rpc riak_core_console command riak-admin $@
         ;;
     describe)
         # New pattern for command line. Use nodetool for RPC
         node_up_check
-        exec $NODETOOL rpc riak_core_console command $SCRIPT $@
+        exec $NODETOOL rpc riak_core_console command riak-admin $@
         ;;
     transfer[_-]limit)
         if [ $# -gt 3 ]; then
