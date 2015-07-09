@@ -15,11 +15,15 @@
          get_ring/1,
          connections/1,
          db_update/1,
-         update_snarl_meta/1
+         update_snarl_meta/1,
+         ensemble_status/1
         ]).
 
 -export([
          aae_status/1,
+         vnode_status/1,
+         status/1,
+         cluster_info/1,
          down/1,
          join/1,
          leave/1,
@@ -52,6 +56,10 @@
               get_ring/1,
               connections/1,
               aae_status/1,
+              vnode_status/1,
+              ensemble_status/1,
+              status/1,
+              cluster_info/1,
               config/1,
               down/1,
               ds/1,
@@ -302,6 +310,15 @@ aae_status([]) ->
                 {sniffle_dtrace, "DTrace"}],
     [aae_status(E) || E <- Services];
 
+%% aae_status([]) ->
+%%     ExchangeInfo = riak_kv_entropy_info:compute_exchange_info(),
+%%     aae_exchange_status(ExchangeInfo),
+%%     io:format("~n"),
+%%     TreeInfo = riak_kv_entropy_info:compute_tree_info(),
+%%     aae_tree_status(TreeInfo),
+%%     io:format("~n"),
+%%     aae_repair_status(ExchangeInfo).
+
 aae_status({System, Name}) ->
     ExchangeInfo = riak_core_entropy_info:compute_exchange_info(System),
     io:format("~s~n~n", [Name]),
@@ -310,33 +327,6 @@ aae_status({System, Name}) ->
     aae_tree_status(System),
     io:format("~n"),
     aae_repair_status(ExchangeInfo).
-
-reip([OldNode, NewNode]) ->
-    try
-        %% reip is called when node is down (so riak_core_ring_manager is not running),
-        %% so it has to use the basic ring operations.
-        %%
-        %% Do *not* convert to use riak_core_ring_manager:ring_trans.
-        %%
-        application:load(riak_core),
-        RingStateDir = app_helper:get_env(riak_core, ring_state_dir),
-        {ok, RingFile} = riak_core_ring_manager:find_latest_ringfile(),
-        BackupFN = filename:join([RingStateDir, filename:basename(RingFile)++".BAK"]),
-        {ok, _} = file:copy(RingFile, BackupFN),
-        io:format("Backed up existing ring file to ~p~n", [BackupFN]),
-        Ring = riak_core_ring_manager:read_ringfile(RingFile),
-        NewRing = riak_core_ring:rename_node(Ring, OldNode, NewNode),
-        riak_core_ring_manager:do_write_ringfile(NewRing),
-        io:format("New ring file written to ~p~n",
-            [element(2, riak_core_ring_manager:find_latest_ringfile())])
-    catch
-        Exception:Reason ->
-            lager:error("Reip failed ~p:~p", [Exception,
-                    Reason]),
-            io:format("Reip failed, see log for details~n"),
-            error
-    end.
-
 
 dtrace([C, "-j" | R]) ->
     sniffle_console_dtrace:command(json, [C | R]);
@@ -445,7 +435,9 @@ config(["unset" | Ks]) ->
     io:format("Setting changed~n", []),
     ok.
 
-%%compied from riak_kv
+%%%===================================================================
+%%% From riak_kv/riak_console
+%%%===================================================================
 
 join([NodeStr]) ->
     join(NodeStr, fun riak_core:join/1,
@@ -460,8 +452,6 @@ join(NodeStr, JoinFn, SuccessFmt, SuccessArgs) ->
     try
         case JoinFn(NodeStr) of
             ok ->
-                Node = list_to_atom(NodeStr),
-                riak_ensemble_manager:join(node(), Node),
                 io:format(SuccessFmt, SuccessArgs),
                 ok;
             {error, not_reachable} ->
@@ -546,6 +536,9 @@ down([Node]) ->
             ok ->
                 io:format("Success: ~p marked as down~n", [Node]),
                 ok;
+            {error, legacy_mode} ->
+                io:format("Cluster is currently in legacy mode~n"),
+                ok;
             {error, is_up} ->
                 io:format("Failed: ~s is up~n", [Node]),
                 error;
@@ -564,30 +557,188 @@ down([Node]) ->
             error
     end.
 
-
--spec(ringready([]) -> ok | error).
-ringready([]) ->
-    try riak_core_status:ringready() of
-        {ok, Nodes} ->
-            io:format("TRUE All nodes agree on the ring ~p\n", [Nodes]);
-        {error, {different_owners, N1, N2}} ->
-            io:format("FALSE Node ~p and ~p list different partition owners\n",
-                      [N1, N2]),
-            error;
-        {error, {nodes_down, Down}} ->
-            io:format("FALSE ~p down.  All nodes need to be up to check.\n",
-                      [Down]),
-            error
+-spec(status([]) -> ok).
+status([]) ->
+    try
+        Stats = riak_kv_status:statistics(),
+	StatString = format_stats(Stats,
+                    ["-------------------------------------------\n",
+		     io_lib:format("1-minute stats for ~p~n",[node()])]),
+	io:format("~s\n", [StatString])
     catch
         Exception:Reason ->
-            lager:error("Ringready failed ~p:~p", [Exception, Reason]),
+            lager:error("Status failed ~p:~p", [Exception,
+                    Reason]),
+            io:format("Status failed, see log for details~n"),
+            error
+    end.
+
+-spec(vnode_status([]) -> ok).
+vnode_status([]) ->
+    try
+        case riak_kv_status:vnode_status() of
+            [] ->
+                io:format("There are no active vnodes.~n");
+            Statuses ->
+                io:format("~s~n-------------------------------------------~n~n",
+                          ["Vnode status information"]),
+                print_vnode_statuses(lists:sort(Statuses))
+        end
+    catch
+        Exception:Reason ->
+            lager:error("Backend status failed ~p:~p", [Exception,
+                    Reason]),
+            io:format("Backend status failed, see log for details~n"),
+            error
+    end.
+
+reip([OldNode, NewNode]) ->
+    try
+        %% reip is called when node is down (so riak_core_ring_manager is not running),
+        %% so it has to use the basic ring operations.
+        %%
+        %% Do *not* convert to use riak_core_ring_manager:ring_trans.
+        %%
+        case application:load(riak_core) of
+            %% a process, such as cuttlefish, may have already loaded riak_core
+            {error,{already_loaded,riak_core}} -> ok;
+            ok -> ok
+        end,
+        RingStateDir = app_helper:get_env(riak_core, ring_state_dir),
+        {ok, RingFile} = riak_core_ring_manager:find_latest_ringfile(),
+        BackupFN = filename:join([RingStateDir, filename:basename(RingFile)++".BAK"]),
+        {ok, _} = file:copy(RingFile, BackupFN),
+        io:format("Backed up existing ring file to ~p~n", [BackupFN]),
+        Ring = riak_core_ring_manager:read_ringfile(RingFile),
+        NewRing = riak_core_ring:rename_node(Ring, OldNode, NewNode),
+        ok = riak_core_ring_manager:do_write_ringfile(NewRing),
+        io:format("New ring file written to ~p~n",
+            [element(2, riak_core_ring_manager:find_latest_ringfile())])
+    catch
+        Exception:Reason ->
+            io:format("Reip failed ~p:~p", [Exception, Reason]),
+            error
+    end.
+
+%% Check if all nodes in the cluster agree on the partition assignment
+-spec(ringready([]) -> ok | error).
+ringready([]) ->
+    try
+        case riak_core_status:ringready() of
+            {ok, Nodes} ->
+                io:format("TRUE All nodes agree on the ring ~p\n", [Nodes]);
+            {error, {different_owners, N1, N2}} ->
+                io:format("FALSE Node ~p and ~p list different partition owners\n", [N1, N2]),
+                error;
+            {error, {nodes_down, Down}} ->
+                io:format("FALSE ~p down.  All nodes need to be up to check.\n", [Down]),
+                error
+        end
+    catch
+        Exception:Reason ->
+            lager:error("Ringready failed ~p:~p", [Exception,
+                    Reason]),
             io:format("Ringready failed, see log for details~n"),
             error
     end.
 
+cluster_info([OutFile|Rest]) ->
+    try
+        case lists:reverse(atomify_nodestrs(Rest)) of
+            [] ->
+                cluster_info:dump_all_connected(OutFile);
+            Nodes ->
+                cluster_info:dump_nodes(Nodes, OutFile)
+        end
+    catch
+        error:{badmatch, {error, eacces}} ->
+            io:format("Cluster_info failed, permission denied writing to ~p~n", [OutFile]);
+        error:{badmatch, {error, enoent}} ->
+            io:format("Cluster_info failed, no such directory ~p~n", [filename:dirname(OutFile)]);
+        error:{badmatch, {error, enotdir}} ->
+            io:format("Cluster_info failed, not a directory ~p~n", [filename:dirname(OutFile)]);
+        Exception:Reason ->
+            lager:error("Cluster_info failed ~p:~p",
+                [Exception, Reason]),
+            io:format("Cluster_info failed, see log for details~n"),
+            error
+    end.
+
+ensemble_status([]) ->
+    sniffle_ensemble_console:ensemble_overview();
+ensemble_status(["root"]) ->
+    sniffle_ensemble_console:ensemble_detail(root);
+ensemble_status([Str]) ->
+    N = parse_int(Str),
+    case N of
+        undefined ->
+            io:format("No such ensemble: ~s~n", [Str]);
+        _ ->
+            sniffle_ensemble_console:ensemble_detail(N)
+    end.
+
+parse_int(IntStr) ->
+    try
+        list_to_integer(IntStr)
+    catch
+        error:badarg ->
+            undefined
+    end.
+
+
+
+format_stats([], Acc) ->
+    lists:reverse(Acc);
+format_stats([{Stat, V}|T], Acc) ->
+    format_stats(T, [io_lib:format("~p : ~p~n", [Stat, V])|Acc]).
+
+atomify_nodestrs(Strs) ->
+    lists:foldl(fun("local", Acc) -> [node()|Acc];
+                   (NodeStr, Acc) -> try
+                                         [list_to_existing_atom(NodeStr)|Acc]
+                                     catch error:badarg ->
+                                         io:format("Bad node: ~s\n", [NodeStr]),
+                                         Acc
+                                     end
+                end, [], Strs).
+
+print_vnode_statuses([]) ->
+    ok;
+print_vnode_statuses([{VNodeIndex, StatusData} | RestStatuses]) ->
+    io:format("VNode: ~p~n", [VNodeIndex]),
+    print_vnode_status(StatusData),
+    io:format("~n"),
+    print_vnode_statuses(RestStatuses).
+
+print_vnode_status([]) ->
+    ok;
+print_vnode_status([{backend_status,
+                     Backend,
+                     StatusItem} | RestStatusItems]) ->
+    if is_binary(StatusItem) ->
+            StatusString = binary_to_list(StatusItem),
+            io:format("Backend: ~p~nStatus: ~n~s~n",
+                      [Backend, string:strip(StatusString)]);
+       true ->
+            io:format("Backend: ~p~nStatus: ~n~p~n",
+                      [Backend, StatusItem])
+    end,
+    print_vnode_status(RestStatusItems);
+print_vnode_status([StatusItem | RestStatusItems]) ->
+    if is_binary(StatusItem) ->
+            StatusString = binary_to_list(StatusItem),
+            io:format("Status: ~n~s~n",
+                      [string:strip(StatusString)]);
+       true ->
+            io:format("Status: ~n~p~n", [StatusItem])
+    end,
+    print_vnode_status(RestStatusItems).
+
 %%%===================================================================
 %%% Private
 %%%===================================================================
+
+
 
 pp_json(Obj) ->
     io:format("~s~n", [jsx:prettify(jsx:encode(Obj))]).
