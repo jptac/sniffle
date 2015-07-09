@@ -35,10 +35,10 @@ eunit:
 	$(REBAR) eunit skip_deps=true -r -v
 
 test: eunit
-	$(REBAR) xref skip_deps=true -r
+	$(REBAR) xref
 
 quick-xref:
-	$(REBAR) xref skip_deps=true -r
+	$(REBAR) xref
 
 quick-test:
 	-rm -r apps/sniffle/.eunit
