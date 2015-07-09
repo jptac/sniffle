@@ -80,32 +80,6 @@ ERTS_PATH=$RUNNER_BASE_DIR/erts-$ERTS_VSN/bin
 # Setup command to control the node
 NODETOOL="$ERTS_PATH/escript $ERTS_PATH/nodetool $NAME_ARG $COOKIE_ARG"
 
-run()
-{
-
-    TIMEOUT=""
-    if [ "$1" == "-t" ]
-    then
-        TIMEOUT="-t $2"
-        shift
-        shift
-    fi
-
-    mod=$1
-    shift
-    cmd=$1
-    shift
-
-    # Make sure the local node IS running
-    RES=`$NODETOOL ping`
-    if [ "$RES" != "pong" ]; then
-        echo "Node is not running!"
-        exit 1
-    fi
-
-    $NODETOOL $TIMEOUT rpc $mod $cmd $@
-}
-
 # Ping node without stealing stdin
 ping_node() {
     $NODETOOL ping < /dev/null
@@ -127,6 +101,28 @@ node_down_check() {
         exit 1
     fi
 }
+
+run()
+{
+
+    TIMEOUT=""
+    if [ "$1" == "-t" ]
+    then
+        TIMEOUT="-t $2"
+        shift
+        shift
+    fi
+
+    mod=$1
+    shift
+    cmd=$1
+    shift
+
+    node_up_check
+
+    $NODETOOL $TIMEOUT rpc $mod $cmd $@
+}
+
 
 usage() {
     echo "Usage: $SCRIPT { cluster | join | leave | backup | restore | test | "
