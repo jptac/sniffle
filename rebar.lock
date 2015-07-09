@@ -224,5 +224,5 @@
   0},
  {<<"clique">>,
   {git,"https://github.com/project-fifo/clique.git",
-       {ref,"ffad3459f7248da70ad5f233697f3c77dad7cf7d"}},
+       {ref,"8067df5680a32c209d781e66e89f57f3a87a3d28"}},
   0}].
