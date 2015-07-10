@@ -223,7 +223,6 @@ terminate(_Reason, _SN, _SD) ->
 %%% Internal Functions
 %%%===================================================================
 
-%% @pure
 %%
 %% @doc Given a list of `Replies' return the merged value.
 -spec merge([vnode_reply()]) -> fifo:obj() | not_found.
@@ -231,7 +230,6 @@ merge(Replies) ->
     Objs = [Obj || {_,Obj} <- Replies],
     ft_obj:merge(sniffle_entity_read_fsm, Objs).
 
-%% @pure
 %%
 %% @doc Reconcile conflicts among conflicting values.
 -spec reconcile([A]) -> A.
@@ -244,7 +242,6 @@ reconcile(M, [H | R], Acc) when M /= undefined ->
 reconcile(_M, _, Acc) ->
     Acc.
 
-%% @pure
 %%
 %% @doc Given the merged object `MObj' and a list of `Replies'
 %% determine if repair is needed.
@@ -253,10 +250,8 @@ needs_repair(MObj, Replies) ->
     Objs = [Obj || {_,Obj} <- Replies],
     lists:any(different(MObj), Objs).
 
-%% @pure
 different(A) -> fun(B) -> not ft_obj:equal(A,B) end.
 
-%% @impure
 %%
 %% @doc Repair any vnodes that do not have the correct object.
 -spec repair(atom(), string(), fifo:obj(), [vnode_reply()]) -> io.
@@ -276,7 +271,6 @@ repair(VNode, StatName, MObj, [{IdxNode,Obj}|T]) ->
             repair(VNode, StatName, MObj, T)
     end.
 
-%% pure
 %%
 %% @doc Given a list return the set of unique values.
 -spec unique([A::any()]) -> [A::any()].

@@ -47,7 +47,7 @@ package:
 ### Docs
 ###
 docs:
-	$(REBAR) doc
+	$(REBAR) edoc
 
 ##
 ## Developer targets
