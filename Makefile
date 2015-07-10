@@ -14,25 +14,17 @@ version:
 version_header: version
 	@echo "-define(VERSION, <<\"$(shell cat sniffle.version)\">>)." > apps/sniffle_version/include/sniffle_version.hrl
 
-compile: version_header
+compile:
 	$(REBAR) compile
-
-
 clean:
 	$(REBAR) clean
 	make -C rel/pkg clean
-	rm -r apps/*/ebin
-
-distclean: clean devclean relclean
 
 long-test:
-	-rm -r apps/sniffle/.eunit
-	$(REBAR) skip_deps=true -DEQC_LONG_TESTS eunit -v -r
-
+	$(REBAR) eunit -DEQC_LONG_TESTS -v
 eunit: 
 	$(REBAR) compile
-	-rm -r apps/sniffle/.eunit
-	$(REBAR) eunit skip_deps=true -r -v
+	$(REBAR) eunit -v
 
 test: eunit
 	$(REBAR) xref
@@ -41,56 +33,28 @@ quick-xref:
 	$(REBAR) xref
 
 quick-test:
-	-rm -r apps/sniffle/.eunit
-	$(REBAR) -DEQC_SHORT_TEST skip_deps=true eunit -r -v
+	$(REBAR) -DEQC_SHORT_TEST eunit -v
 
-rel: all zabbix
-	[ -d rel/sniffle/share ] && rm -r rel/sniffle/share || true
-	$(REBAR) generate
-
-relclean:
-	rm -rf rel/sniffle
-
-devrel: dev1 dev2 dev3 dev4
-
-package: rel
-	make -C rel/pkg package
-
-zabbix:
+rel:
+	$(REBAR) as prod compile
 	sh generate_zabbix_template.sh
+	$(REBAR) release
+
+package:
+	make -C rel/pkg package
 
 ###
 ### Docs
 ###
 docs:
-	$(REBAR) skip_deps=true doc
+	$(REBAR) doc
 
 ##
 ## Developer targets
 ##
 
 xref: all
-	$(REBAR) xref skip_deps=true -r
-
-stage : rel
-	$(foreach dep,$(wildcard deps/* wildcard apps/*), rm -rf rel/sniffle/lib/$(shell basename $(dep))-* && ln -sf $(abspath $(dep)) rel/sniffle/lib;)
-
-
-stagedevrel: dev1 dev2 dev3 dev4
-	mkdir -p dev/dev{1,2,3}/data/{ipranges,datasets,packages,ring}
-	$(foreach dev,$^,\
-	  $(foreach dep,$(wildcard deps/* wildcard apps/*), rm -rf dev/$(dev)/lib/$(shell basename $(dep))-* && ln -sf $(abspath $(dep)) dev/$(dev)/lib;))
-
-devrel: dev1 dev2 dev3 dev4
-
-
-devclean:
-	rm -rf dev
-
-dev1 dev2 dev3 dev4: all
-	mkdir -p dev
-	(cd rel && $(REBAR) generate target_dir=../dev/$@ overlay_vars=vars/$@.config)
-
+	$(REBAR) xref
 
 ##
 ## Dialyzer
