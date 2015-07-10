@@ -39,7 +39,7 @@
                 system,
                 cordinator :: node(),
                 val = undefined :: term() | undefined,
-                preflist :: riak_core_apl:preflist2(),
+                preflist :: riak_core_apl:preflist(),
                 num_w = 0 :: non_neg_integer()}).
 
 -ignore_xref([
