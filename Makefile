@@ -64,23 +64,8 @@ APPS = kernel stdlib sasl erts ssl tools os_mon runtime_tools crypto inets \
 
 # DIALYZER_IGNORE="^\(riak_core\|leexinc.hrl\|pokemon_pb.erl\|meck_cover.erl\|meck.erl\|supervisor_pre_r14b04.erl\|webmachine_resource.erl\|uuid.erl\|gen_server2.erl\|folsom_vm_metrics.erl\|protobuffs_compile.erl\)"
 
-
-
 dialyzer: deps compile
 	$(REBAR) dialyzer -Wno_return | grep -v -f dialyzer.mittigate
 
-dialyzer-gui: deps compile
-	dialyzer --gui -Wno_return --plt $(COMBO_PLT) deps/*/ebin apps/*/ebin
 typer:
-	typer --plt $(COMBO_PLT) deps/*/ebin apps/*/ebin
-
-cleanplt:
-	@echo
-	@echo "Are you sure?  It takes about 1/2 hour to re-build."
-	@echo Deleting $(COMBO_PLT) in 5 seconds.
-	@echo
-	sleep 5
-	rm $(COMBO_PLT)
-
-tags:
-	find . -name "*.[he]rl" -print | etags -
+	typer --plt ./_build/default/rebar3_*_plt _build/default/lib/*/ebin
