@@ -6,6 +6,7 @@
   {applications, [
                   kernel,
                   libchunter,
+                  sgte,
                   stdlib
                  ]},
   {mod, { sniffle_dtrace_app, []}},

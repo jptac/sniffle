@@ -136,7 +136,7 @@
   0},
  {<<"libsnarl">>,
   {git,"https://github.com/project-fifo/libsnarl.git",
-       {ref,"708b26367a1a2141b66a95cf431530cc41ba3527"}},
+       {ref,"e1f0b5d001db7a6fab9454c8f5bfa64c66d5b516"}},
   0},
  {<<"libleofs">>,
   {git,"https://github.com/project-fifo/libleofs.git",
