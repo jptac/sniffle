@@ -188,7 +188,7 @@
   0},
  {<<"fifo_dt">>,
   {git,"https://github.com/project-fifo/fifo_dt.git",
-       {ref,"8a22289688ec657a047f188484c08dd7a0820642"}},
+       {ref,"1ad4c9099c56526f58e74dc7fcce6d3fd99eb2fe"}},
   0},
  {<<"fifo_db">>,
   {git,"https://github.com/project-fifo/fifo-db.git",
