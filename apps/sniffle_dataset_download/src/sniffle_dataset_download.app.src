@@ -5,6 +5,7 @@
   {registered, []},
   {applications, [
                   kernel,
+                  base16,
                   stdlib
                  ]},
   {mod, { sniffle_dataset_download_app, []}},
