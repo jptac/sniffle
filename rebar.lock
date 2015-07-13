@@ -140,7 +140,7 @@
   0},
  {<<"libleofs">>,
   {git,"https://github.com/project-fifo/libleofs.git",
-       {ref,"340c0a9fd69d7a7f6320f2a36195b15aee589f8c"}},
+       {ref,"fea2f76c777f9702a408cd01aff751a5879bddc5"}},
   0},
  {<<"libhowl">>,
   {git,"https://github.com/project-fifo/libhowl.git",
