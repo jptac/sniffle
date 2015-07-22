@@ -11,6 +11,7 @@
                   lager,
                   sniffle_version,
                   libleofs,
+                  cluster_info,
                   stdlib
                  ]},
   {env, []}

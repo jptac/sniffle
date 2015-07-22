@@ -25,3 +25,4 @@ ebin
 dev-data
 _build
 apps/sniffle_version/include/sniffle_version.hrl
+TEST*

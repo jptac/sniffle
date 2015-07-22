@@ -2,7 +2,6 @@ REBAR = $(shell pwd)/rebar3
 
 .PHONY: rel stagedevrel package version all
 
-
 all: cp-hooks compile
 
 cp-hooks:
@@ -16,12 +15,14 @@ version_header: version
 
 compile:
 	$(REBAR) compile
+
 clean:
 	$(REBAR) clean
 	make -C rel/pkg clean
 
 long-test:
-	$(REBAR) eunit -DEQC_LONG_TESTS -v
+	$(REBAR) as eqc,long eunit 
+
 eunit: 
 	$(REBAR) compile
 	$(REBAR) eunit -v
@@ -33,7 +34,7 @@ quick-xref:
 	$(REBAR) xref
 
 quick-test:
-	$(REBAR) -DEQC_SHORT_TEST eunit -v
+	$(REBAR) as eqc,short eunit -v
 
 rel:
 	$(REBAR) as prod compile

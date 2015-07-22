@@ -557,11 +557,12 @@ down([Node]) ->
 -spec(status([]) -> ok).
 status([]) ->
     try
-        Stats = riak_kv_status:statistics(),
-	StatString = format_stats(Stats,
-                    ["-------------------------------------------\n",
-		     io_lib:format("1-minute stats for ~p~n",[node()])]),
-	io:format("~s\n", [StatString])
+        %% Stats = riak_kv_status:statistics(),
+	%% StatString = format_stats(Stats,
+        %%             ["-------------------------------------------\n",
+	%%	     io_lib:format("1-minute stats for ~p~n",[node()])]),
+	%% io:format("~s\n", [StatString])
+        ok
     catch
         Exception:Reason ->
             lager:error("Status failed ~p:~p", [Exception,
@@ -573,14 +574,15 @@ status([]) ->
 -spec(vnode_status([]) -> ok).
 vnode_status([]) ->
     try
-        case riak_kv_status:vnode_status() of
-            [] ->
-                io:format("There are no active vnodes.~n");
-            Statuses ->
-                io:format("~s~n-------------------------------------------~n~n",
-                          ["Vnode status information"]),
-                print_vnode_statuses(lists:sort(Statuses))
-        end
+%%        case riak_kv_status:vnode_status() of
+%%            [] ->
+%%                io:format("There are no active vnodes.~n");
+%%            Statuses ->
+%%                io:format("~s~n-------------------------------------------~n~n",
+%%                          ["Vnode status information"]),
+%%                print_vnode_statuses(lists:sort(Statuses))
+%%        end
+        ok
     catch
         Exception:Reason ->
             lager:error("Backend status failed ~p:~p", [Exception,
@@ -684,10 +686,10 @@ parse_int(IntStr) ->
 
 
 
-format_stats([], Acc) ->
-    lists:reverse(Acc);
-format_stats([{Stat, V}|T], Acc) ->
-    format_stats(T, [io_lib:format("~p : ~p~n", [Stat, V])|Acc]).
+%% format_stats([], Acc) ->
+%%     lists:reverse(Acc);
+%% format_stats([{Stat, V}|T], Acc) ->
+%%     format_stats(T, [io_lib:format("~p : ~p~n", [Stat, V])|Acc]).
 
 atomify_nodestrs(Strs) ->
     lists:foldl(fun("local", Acc) -> [node()|Acc];
@@ -699,37 +701,37 @@ atomify_nodestrs(Strs) ->
                                      end
                 end, [], Strs).
 
-print_vnode_statuses([]) ->
-    ok;
-print_vnode_statuses([{VNodeIndex, StatusData} | RestStatuses]) ->
-    io:format("VNode: ~p~n", [VNodeIndex]),
-    print_vnode_status(StatusData),
-    io:format("~n"),
-    print_vnode_statuses(RestStatuses).
+%% print_vnode_statuses([]) ->
+%%     ok;
+%% print_vnode_statuses([{VNodeIndex, StatusData} | RestStatuses]) ->
+%%     io:format("VNode: ~p~n", [VNodeIndex]),
+%%     print_vnode_status(StatusData),
+%%     io:format("~n"),
+%%     print_vnode_statuses(RestStatuses).
 
-print_vnode_status([]) ->
-    ok;
-print_vnode_status([{backend_status,
-                     Backend,
-                     StatusItem} | RestStatusItems]) ->
-    if is_binary(StatusItem) ->
-            StatusString = binary_to_list(StatusItem),
-            io:format("Backend: ~p~nStatus: ~n~s~n",
-                      [Backend, string:strip(StatusString)]);
-       true ->
-            io:format("Backend: ~p~nStatus: ~n~p~n",
-                      [Backend, StatusItem])
-    end,
-    print_vnode_status(RestStatusItems);
-print_vnode_status([StatusItem | RestStatusItems]) ->
-    if is_binary(StatusItem) ->
-            StatusString = binary_to_list(StatusItem),
-            io:format("Status: ~n~s~n",
-                      [string:strip(StatusString)]);
-       true ->
-            io:format("Status: ~n~p~n", [StatusItem])
-    end,
-    print_vnode_status(RestStatusItems).
+%% print_vnode_status([]) ->
+%%     ok;
+%% print_vnode_status([{backend_status,
+%%                      Backend,
+%%                      StatusItem} | RestStatusItems]) ->
+%%     if is_binary(StatusItem) ->
+%%             StatusString = binary_to_list(StatusItem),
+%%             io:format("Backend: ~p~nStatus: ~n~s~n",
+%%                       [Backend, string:strip(StatusString)]);
+%%        true ->
+%%             io:format("Backend: ~p~nStatus: ~n~p~n",
+%%                       [Backend, StatusItem])
+%%     end,
+%%     print_vnode_status(RestStatusItems);
+%% print_vnode_status([StatusItem | RestStatusItems]) ->
+%%     if is_binary(StatusItem) ->
+%%             StatusString = binary_to_list(StatusItem),
+%%             io:format("Status: ~n~s~n",
+%%                       [string:strip(StatusString)]);
+%%        true ->
+%%             io:format("Status: ~n~p~n", [StatusItem])
+%%     end,
+%%     print_vnode_status(RestStatusItems).
 
 %%%===================================================================
 %%% Private
