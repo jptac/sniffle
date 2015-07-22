@@ -36,7 +36,10 @@ quick-xref:
 quick-test:
 	$(REBAR) as eqc,short eunit -v
 
-rel:
+update:
+	$(REBAR) update
+
+rel: update
 	$(REBAR) as prod compile
 	sh generate_zabbix_template.sh
 	$(REBAR) as prod release
