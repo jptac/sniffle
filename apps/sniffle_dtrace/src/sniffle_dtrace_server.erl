@@ -48,9 +48,10 @@ run(ID, Config, Listener) ->
 %% @doc
 %% Starts the server
 %%
-%% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
 %% @end
 %%--------------------------------------------------------------------
+-spec start_link([binary() | list() | pid()]) ->
+                        {ok, id} | ignore | {error, atom()}.
 start_link([ID, Config, Listener]) ->
     gen_server:start_link(?MODULE, [ID, Config, Listener], []).
 

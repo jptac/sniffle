@@ -46,9 +46,10 @@
 %% initialize. To ensure a synchronized start-up procedure, this
 %% function does not return until Module:init/1 has returned.
 %%
-%% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
 %% @end
 %%--------------------------------------------------------------------
+-spec start_link(URL::binary(), From::pid(), Ref::reference()) ->
+                        {ok, pid()} | ignore | {error, atom()}.
 start_link(URL, From, Ref) ->
     gen_fsm:start_link(?MODULE, [URL, From, Ref], []).
 
@@ -100,10 +101,6 @@ init([URL, From, Ref]) ->
 %% name as the current state name StateName is called to handle
 %% the event. It is also called if a timeout occurs.
 %%
-%% @spec state_name(Event, State) ->
-%%                   {next_state, NextStateName, NextState} |
-%%                   {next_state, NextStateName, NextState, Timeout} |
-%%                   {stop, Reason, NewState}
 %% @end
 %%--------------------------------------------------------------------
 get_manifest(_E, State = #state{url = URL, from = From, ref = Ref,

@@ -2,8 +2,6 @@
 
 -behaviour(riak_core_coverage_fsm).
 
--include_lib("sniffle/include/sniffle.hrl").
-
 -export([
          init/2,
          process_results/2,

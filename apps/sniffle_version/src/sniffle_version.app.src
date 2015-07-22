@@ -1,14 +1,14 @@
-{application, sniffle_commons,
+{application, sniffle_version,
  [
-  {description, "An Erlang sniffle_commons library"},
+  {description, "The version for sniffle"},
   {vsn, "0.1.0"},
   {modules, [
-             sniffle_commons
+             sniffle_version
             ]},
   {registered, []},
   {applications, [
                   kernel,
-                  fifo_utils,
+                  lager,
                   stdlib
                  ]},
   {env, []}

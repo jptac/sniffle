@@ -2,8 +2,6 @@
 
 -export([init/2, message/2, raw/2]).
 
--include_lib("../sniffle/include/sniffle_version.hrl").
-
 -ignore_xref([init/2, message/2, raw/2]).
 
 -define(HM(M),
@@ -91,7 +89,7 @@ raw(_Data, State) ->
 -spec message(message(), any()) -> any().
 
 message(version, State) ->
-    {reply, {ok, ?VERSION}, State};
+    {reply, {ok, sniffle_version:v()}, State};
 
 message({s3, Type}, State) ->
     %% {ok,{S3Host, S3Port, AKey, SKey, Bucket}}
