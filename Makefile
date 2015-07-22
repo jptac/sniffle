@@ -43,7 +43,7 @@ rel:
 	sh generate_zabbix_template.sh
 	$(REBAR) as prod release
 
-package:
+package: rel
 	make -C rel/pkg package
 
 ###
