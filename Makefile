@@ -1,6 +1,6 @@
 REBAR = $(shell pwd)/rebar3
 
-.PHONY: rel stagedevrel package version all
+.PHONY: rel package version all
 
 all: cp-hooks compile
 
@@ -17,7 +17,7 @@ compile:
 	$(REBAR) compile
 
 clean:
-	$(REBAR) clean -r
+	$(REBAR) clean
 	-rm -rf apps/sniffle/.eunit
 	-rm -rf apps/sniffle/ebin/
 	make -C rel/pkg clean
