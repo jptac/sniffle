@@ -69,6 +69,7 @@
           type,
           nets,
           hypervisor,
+          hypervisor_id,
           mapping = [],
           delay = 5000,
           retry = 0,
@@ -370,7 +371,8 @@ get_server(_Event, State = #state{
                     S2 = add_log(S1, info, <<"Deploying on hypervisor ", HypervisorID/binary>>),
                     eplugin:call('create:handoff', UUID, HypervisorID),
                     {next_state, get_ips,
-                     S2#state{hypervisor = H, nets = Nets1}, 0};
+                     S2#state{hypervisor_id = HypervisorID,
+                              hypervisor = H, nets = Nets1}, 0};
                 {[], _} ->
                     S1 = warn(State,
                               "Could not find Hypervisors matching rules.",
@@ -449,9 +451,10 @@ create(_Event, State = #state{
                           uuid = UUID,
                           config = Config,
                           resulting_networks = Nics,
+                          hypervisor_id = HID,
                           hypervisor = {Host, Port},
                           mapping = Mapping}) ->
-    vm_log(State, <<"Handing off to hypervisor.">>),
+    vm_log(State, <<"Handing off to hypervisor ", HID/binary, ".">>),
     sniffle_vm:state(UUID, <<"creating">>),
     Config1 = jsxd:set(<<"nics">>, Nics, Config),
     case libchunter:create_machine(Host, Port, UUID, Package, Dataset, Config1) of
