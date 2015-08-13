@@ -101,7 +101,7 @@ handle_cast({add, UUID, Package, Dataset, Config},
     {ok, Pid} = sniffle_create_fsm:create(UUID, Package, Dataset, Config),
     Ref = erlang:monitor(process, Pid),
     lager:info("[create] Not throttling ~s", [UUID]),
-    sniffle_vm:creating(UUID, {pooled, now()}),
+    sniffle_vm:creating(UUID, {pooled, erlang:system_time(seconds)}),
     {noreply, State#state{workers = [Ref | Ws]}};
 
 handle_cast({add, UUID, Package, Dataset, Config},

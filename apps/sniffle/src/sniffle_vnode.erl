@@ -31,8 +31,7 @@ mkid(Actor) ->
     {mk_reqid(), Actor}.
 
 mk_reqid() ->
-    {MegaSecs,Secs,MicroSecs} = erlang:now(),
-    (MegaSecs*1000000 + Secs)*1000000 + MicroSecs.
+    erlang:unique_integer().
 
 init(Partition, Bucket, Service, VNode, StateMod) ->
     DB = list_to_atom(integer_to_list(Partition)),

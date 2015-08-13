@@ -19,7 +19,6 @@
 
 -record(state,
         {
-          start,
           req_id,
           from,
           entity,
@@ -104,7 +103,6 @@ init([ReqId, {VNode, System}, Op, From, Entity, Val]) ->
     {ok, N} = application:get_env(sniffle, n),
     {ok, R} = application:get_env(sniffle, r),
     SD = #state{
-            start = now(),
             req_id=ReqId,
             r=R,
             n=N,
