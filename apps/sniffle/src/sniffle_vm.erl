@@ -817,7 +817,7 @@ stop(Vm, Options) ->
                 false ->
                     {Server, Port} = get_hypervisor(V),
                     libchunter:stop_machine(Server, Port, Vm, Options)
-                end;
+            end;
         E ->
             E
     end.
@@ -1188,7 +1188,7 @@ resource_action(VM, Action, User, Opts) ->
                     ls_acc:destroy(Org, UUID, T, Opts1);
                 Event ->
                     Event1 = atom_to_binary(Event, utf8),
-                    ls_acc:update(Org, UUID, T, [{event, Event1} | Opts1])
+                    ls_acc:update(Org, UUID, T, [{<<"event">>, Event1} | Opts1])
             end
     end.
 
