@@ -34,6 +34,7 @@
          create/2,
          get_server/2,
          create_permissions/2,
+         resource_claim/2,
          get_ips/2,
          build_key/2
         ]).
@@ -47,6 +48,7 @@
               callbacks/2,
               get_dataset/2,
               get_package/2,
+              resource_claim/2,
               start_link/5,
               get_server/2,
               create_permissions/2,
@@ -123,8 +125,10 @@ create(UUID, Package, Dataset, Config, Pid) ->
 
 init([UUID, Package, Dataset, Config, Pid]) ->
     sniffle_vm:state(UUID, <<"placing">>),
-    sniffle_vm:creating(UUID, {creating, now()}),
-    random:seed(now()),
+    sniffle_vm:creating(UUID, {creating, erlang:system_time(seconds)}),
+    random:seed(erlang:phash2([node()]),
+                erlang:monotonic_time(),
+                erlang:unique_integer()),
     lager:info("[create] Starting FSM for ~s", [UUID]),
     process_flag(trap_exit, true),
     Config1 = jsxd:from_list(Config),
@@ -232,8 +236,6 @@ create_permissions(_Event, State = #state{test_pid = {_,_},
 
 create_permissions(_Event, State = #state{
                                       uuid = UUID,
-                                      package_uuid = Package,
-                                      dataset_uuid = Dataset,
                                       config = Config}) ->
     {ok, Creator} = jsxd:get([<<"owner">>], Config),
     ls_user:grant(Creator, [<<"vms">>, UUID, <<"...">>]),
@@ -248,22 +250,32 @@ create_permissions(_Event, State = #state{
                     lager:info("[create] User ~p has active org: ~p.",
                                [Creator, Org]),
                     sniffle_vm:owner(UUID, Org),
-                    ls_org:resource_action(Org, UUID, sniffle_vm:timestamp(),
-                                           create, [{user, Creator},
-                                                    {package, Package},
-                                                    {dataset, Dataset}]),
                     ls_org:execute_trigger(Org, vm_create, UUID),
                     Org
             end,
     libhowl:send(UUID, [{<<"event">>, <<"update">>},
                         {<<"data">>, [{<<"owner">>, Owner}]}]),
     Config1 = jsxd:set([<<"owner">>], Owner, Config),
-    {next_state, get_package,
+    {next_state, resource_claim,
      State#state{
        config = Config1,
        creator = Creator,
        owner = Owner
       }, 0}.
+
+resource_claim(_Event, State = #state{
+                                 uuid = UUID,
+                                 package_uuid = Package,
+                                 dataset_uuid = Dataset,
+                                 creator = Creator,
+                                 owner = Org
+                                }) ->
+    ls_acc:create(Org, UUID, sniffle_vm:timestamp(),
+                  [{user, Creator},
+                   {package, Package},
+                   {dataset, Dataset}]),
+    {next_state, get_package, State, 0}.
+
 
 get_package(_Event, State = #state{
                                uuid = UUID,
@@ -471,7 +483,7 @@ create(_Event, State = #state{
             lager:warning("[create] Could not get log."),
             do_retry(State);
         ok ->
-            sniffle_vm:creating(UUID, {hypervisor, now()}),
+            sniffle_vm:creating(UUID, {hypervisor, erlang:system_time(seconds)}),
             {stop, normal, State}
     end.
 

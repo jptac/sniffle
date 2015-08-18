@@ -633,7 +633,7 @@ unregister(Vm) ->
 create(Package, Dataset, Config) ->
     UUID = uuid:uuid4s(),
     do_write(UUID, register, <<"pooled">>), %we've to put pending here since undefined will cause a wrong call!
-    creating(UUID, {started, now()}),
+    creating(UUID, {started, erlang:system_time(seconds)}),
     Config1 = jsxd:from_list(Config),
     Config2 = jsxd:update(<<"networks">>,
                           fun (N) ->
@@ -817,7 +817,7 @@ stop(Vm, Options) ->
                 false ->
                     {Server, Port} = get_hypervisor(V),
                     libchunter:stop_machine(Server, Port, Vm, Options)
-                end;
+            end;
         E ->
             E
     end.
@@ -1123,8 +1123,7 @@ make_nic_map(V) ->
              end, jsxd:get([<<"networks">>], [], ?S:config(V))).
 
 timestamp() ->
-    {Mega,Sec,Micro} = erlang:now(),
-    (Mega*1000000+Sec)*1000000+Micro.
+    erlang:system_time(micro_seconds).
 
 children(Backups, Parent) ->
     children(Backups, Parent, false).
@@ -1182,16 +1181,32 @@ resource_action(VM, Action, User, Opts) ->
                     end,
             UUID = ft_vm:uuid(VM),
             T = timestamp(),
-            ls_org:resource_action(Org, UUID, T, Action, Opts1)
+            case Action of
+                create ->
+                    ls_acc:create(Org, UUID, T, Opts1);
+                confirm_destroy ->
+                    ls_acc:destroy(Org, UUID, T, Opts1);
+                Event ->
+                    Event1 = atom_to_binary(Event, utf8),
+                    ls_acc:update(Org, UUID, T, [{<<"event">>, Event1} | Opts1])
+            end
     end.
 
 is_creating(V) ->
     case ?S:creating(V) of
         false ->
             false;
+        {_State, {MegaSecs, Secs, _MicroSecs}} ->
+            T0 = MegaSecs*1000000 + Secs,
+            case erlang:system_time(seconds) - T0 of
+                T when T > 120 -> %% 2 minutes
+                    false;
+                _ ->
+                    true
+            end;
         {_State, T0} ->
-            case timer:now_diff(now(), T0) of
-                T when T > 1000000*120 -> %% 2 minutes
+            case erlang:system_time(seconds) -  T0 of
+                T when T > 120 -> %% 2 minutes
                     false;
                 _ ->
                     true
