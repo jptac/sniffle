@@ -1,0 +1,57 @@
+[0m|- clique-0.0.0+build.140.ref8067df5
+|- cluster_info-0.0.0+build.88.ref76c73fc
+|- cuttlefish-0.0.0+build.479.reff5f6fdc
+|  |- getopt-0.4.3
+|  |- neotoma-0.0.0+build.125.ref760928e
+|- edown-0.2.4+build.98.refb7c8eb0
+|- eper-0.90.0
+|- eplugin-0.1.4
+|- erlcloud-0.8.6
+|- fifo_db-0.1.7
+|  |- eleveldb-0.0.0+build.494.refa36dbd6
+|- fifo_dt-0.1.51
+|  |- riak_dt-0.0.0+build.307.reff7981d4
+|- fifo_s3-0.1.10
+|  |- base16-0.0.0+build.9.ref1e9dd28
+|- fifo_spec-0.1.19
+|- fifo_utils-0.1.12
+|- folsom_ddb-0.1.15
+|  |- ddb_client-0.1.11
+|  |  |- dproto-0.1.9
+|  |  |- mmath-0.1.7
+|- hackney-0.6.1
+|  |- mimetypes-1.0
+|- jsx-1.4.5
+|- jsxd-0.1.10
+|- lager-2.0.3
+|  |- goldrush-0.1.6
+|- lager_watchdog-0.1.10
+|- libchunter-0.1.39
+|- libhowl-0.1.25
+|- libleofs-0.1.2
+|- libsnarl-0.3.23
+|  |- libsnarlmatch-0.1.6
+|  |- mdns_client_lib-0.1.25
+|  |  |- mdns_client-0.1.3
+|  |  |- pooler-1.4.0
+|  |- oauth2-0.6.0
+|- mdns_server_lib-0.1.19
+|  |- mdns_server-0.1.1
+|  |- ranch-1.1.0
+|- meck-0.8.2
+|- rankmatcher-0.1.2
+|- recon-2.2.0
+|- riak_core-0.0.0+build.1758.refaf8cc7b
+|  |- basho_stats-1.0.3
+|  |- chash-0.1.1
+|  |- exometer_core-0.0.0+build.19.refb47a5d6
+|  |  |- folsom-0.0.0+build.292.ref7294452
+|  |  |  |- bear-0.0.0+build.11.refda820a1
+|  |  |- parse_trans-0.0.0+build.106.ref82cc002
+|  |  |- setup-0.0.0+build.79.ref51ee7c9
+|  |- pbkdf2-0.0.0+build.2676.ref7076584
+|  |- poolboy-1.5.1
+|  |- riak_sysmon-2.0.0
+|- riak_ensemble-0.0.0+build.113.refe0652c6
+|- sgte-0.7.1
+|- uuid-0.4.7
