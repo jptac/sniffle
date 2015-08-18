@@ -1,6 +1,6 @@
 REBAR = $(shell pwd)/rebar3
 
-.PHONY: rel stagedevrel package version all
+.PHONY: rel stagedevrel package version all tree
 
 all: cp-hooks compile
 
@@ -73,3 +73,6 @@ dialyzer: deps compile
 
 typer:
 	typer --plt ./_build/default/rebar3_*_plt _build/default/lib/*/ebin
+
+tree:
+	rebar3 tree | grep '|' | sed 's/ (.*//' > tree
