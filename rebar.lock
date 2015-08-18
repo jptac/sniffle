@@ -84,7 +84,7 @@
  {<<"jsxd">>,{pkg,<<"jsxd">>,<<"0.1.10">>},0},
  {<<"lager">>,
   {git,"git://github.com/basho/lager",
-       {ref,"b6b6cebcb27ccff8acc59ae775acebc2f52e4926"}},
+       {ref,"cbf6679c6a693772fd1629c9cdc093e4c6c4ebf8"}},
   0},
  {<<"lager_watchdog">>,{pkg,<<"lager_watchdog">>,<<"0.1.10">>},0},
  {<<"libchunter">>,
