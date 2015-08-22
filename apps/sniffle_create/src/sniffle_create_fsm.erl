@@ -467,7 +467,6 @@ create(_Event, State = #state{
                           hypervisor = {Host, Port},
                           mapping = Mapping}) ->
     vm_log(State, <<"Handing off to hypervisor ", HID/binary, ".">>),
-    sniffle_vm:state(UUID, <<"creating">>),
     Config1 = jsxd:set(<<"nics">>, Nics, Config),
     case libchunter:create_machine(Host, Port, UUID, Package, Dataset, Config1) of
         {error, _} ->
@@ -483,6 +482,7 @@ create(_Event, State = #state{
             lager:warning("[create] Could not get log."),
             do_retry(State);
         ok ->
+            sniffle_vm:hypervisor(UUID, HID),
             sniffle_vm:creating(UUID, {hypervisor, erlang:system_time(seconds)}),
             {stop, normal, State}
     end.
