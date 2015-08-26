@@ -4,7 +4,7 @@
 |  |- getopt-0.4.3
 |  |- neotoma-0.0.0+build.125.ref760928e
 |- edown-0.2.4+build.98.refb7c8eb0
-|- eper-0.90.0
+|- eper-0.93.0
 |- eplugin-0.1.4
 |- erlcloud-0.8.6
 |- fifo_db-0.1.7
@@ -17,8 +17,8 @@
 |  |- poolboy-1.5.1
 |- fifo_spec-0.1.19
 |- fifo_utils-0.1.12
-|- folsom_ddb-0.1.15
-|  |- ddb_client-0.1.11
+|- folsom_ddb-0.1.16
+|  |- ddb_client-0.1.12
 |  |  |- dproto-0.1.9
 |  |  |- mmath-0.1.7
 |- hackney-0.6.1
