@@ -25,8 +25,8 @@
 |  |- mimetypes-1.0
 |- jsx-1.4.5
 |- jsxd-0.1.10
-|- lager-2.0.3
-|  |- goldrush-0.1.6
+|- lager-3.0.1
+|  |- goldrush-0.1.7
 |- lager_watchdog-0.1.10
 |- libchunter-0.1.40
 |- libhowl-0.1.25
