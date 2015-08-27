@@ -7,7 +7,7 @@
 |- cuttlefish-0.0.0+build.479.reff5f6fdc
 |- ddb_client-0.1.12
 |- dproto-0.1.9
-|- edown-git
+|- edown-0.2.4+build.100.ref8d7e7ca
 |- eleveldb-0.0.0+build.494.refa36dbd6
 |- eper-0.93.0
 |- eplugin-0.1.4
@@ -30,7 +30,7 @@
 |- libchunter-0.1.40
 |- libhowl-0.1.25
 |- libleofs-0.1.2
-|- libsnarl-0.3.24
+|- libsnarl-0.3.25
 |- libsnarlmatch-0.1.6
 |- mdns_client-0.1.3
 |- mdns_client_lib-0.1.25
