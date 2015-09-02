@@ -31,7 +31,7 @@ mkid(Actor) ->
     {mk_reqid(), Actor}.
 
 mk_reqid() ->
-    erlang:system_time().
+    erlang:system_time(nano_seconds).
 
 init(Partition, Bucket, Service, VNode, StateMod) ->
     DB = list_to_atom(integer_to_list(Partition)),
