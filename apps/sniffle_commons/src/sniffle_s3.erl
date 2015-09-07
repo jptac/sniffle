@@ -38,30 +38,27 @@ new_upload(Type, Key) ->
 %%%===================================================================
 
 get_bucket(image) ->
-    get_opt(image_bucket, "");
+    get_opt(image_bucket);
 get_bucket(snapshot) ->
-    get_opt(snapshot_bucket, "");
+    get_opt(snapshot_bucket);
 get_bucket(_) ->
-    get_opt(general_bucket, "").
+    get_opt(general_bucket).
 
 get_config() ->
     erlcloud_s3:new(get_access_key(), get_secret_key(),
                     get_host(), get_port()).
 
 get_access_key() ->
-    get_opt(access_key, s3_access_key, "").
+    get_opt(access_key).
 get_secret_key() ->
-    get_opt(secret_key, s3_secret_key, "").
+    get_opt(secret_key).
 get_host() ->
-    get_opt(host, s3_host, "").
+    get_opt(host).
 get_port() ->
-    get_opt(port, s3_port, "").
+    get_opt(port).
 
-get_opt(Key, Dflt) ->
-    sniffle_opt:get(storage, s3, Key, Key, Dflt).
-
-get_opt(Key, EnvKey, Dflt) ->
-    sniffle_opt:get(storage, s3, Key, EnvKey, Dflt).
+get_opt(Key) ->
+    sniffle_opt:get(storage, s3, Key).
 
 config(Type) ->
     R = {get_host(), get_port(), get_access_key(), get_secret_key(),

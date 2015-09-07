@@ -106,46 +106,6 @@
  end
 }.
 
-{mapping, "s3.bucket.image", "sniffle.image_bucket",
- [{default, "fifo-images"},
-  {datatype, string}]}.
-
-{mapping, "s3.bucket.snapshot", "sniffle.snapshot_bucket",
- [{default, "fifo-snapshots"},
-  {datatype, string}]}.
-
-{mapping, "s3.bucket.general", "sniffle.general_bucket",
- [{default, "fifo"},
-  {datatype, string}]}.
-
-{mapping, "s3.access_key", "sniffle.s3_access_key",
- [{commented, "access_key"},
-  {datatype, string}]}.
-
-{mapping, "s3.secret_key", "sniffle.s3_secret_key",
- [{commented, "secret_key"},
-  {datatype, string}]}.
-
-{mapping, "s3.host", "sniffle.s3_host",
- [{default, {"{{sniffle_ip}}", 8443}},
-  {datatype, ip}]}.
-
-{translation,
- "sniffle.s3_host",
- fun(Conf) ->
-         {IP, _Port} = cuttlefish:conf_get("s3.host", Conf),
-         IP
- end
-}.
-
-{translation,
- "sniffle.s3_port",
- fun(Conf) ->
-         {_IP, Port} = cuttlefish:conf_get("s3.host", Conf),
-         Port
- end
-}.
-
 %% @doc The default TCP handler, there is very very very
 %% rarely any reason to change this.
 {mapping, "tcp_callback", "mdns_server_lib.handler",
