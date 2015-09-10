@@ -83,7 +83,7 @@ download(URL) ->
 %%--------------------------------------------------------------------
 init([URL, From, Ref]) ->
     process_flag(trap_exit, true),
-    Opts = case sniffle_opt:get(network, http, proxy, http_proxy, undefined) of
+    Opts = case sniffle_opt:get(network, http, proxy) of
                undefined ->
                    [];
                P ->

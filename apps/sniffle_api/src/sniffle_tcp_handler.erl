@@ -170,7 +170,7 @@ message({grouping, metadata, set, ID, Attributes}, State) when
       is_binary(ID),
       is_list(Attributes) ->
     {reply,
-     sniffle_grouping:metadata_set(ID, Attributes),
+     sniffle_grouping:set_metadata(ID, Attributes),
      State};
 
 message({grouping, config, set, ID, Attributes}, State) when
