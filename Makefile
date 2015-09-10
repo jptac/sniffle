@@ -77,7 +77,7 @@ typer:
 	typer --plt ./_build/default/rebar3_*_plt _build/default/lib/*/ebin
 
 tree:
-	rebar3 tree | grep '|' | sed 's/ (.*//' > tree
+	rebar3 tree | grep -v '=' | sed 's/ (.*//' > tree
 
 tree-diff: tree
 	git diff test -- tree
