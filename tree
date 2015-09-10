@@ -1,0 +1,70 @@
+[0m├─ clique─0.0.0+build.140.ref8067df5
+├─ cluster_info─0.0.0+build.88.ref76c73fc
+├─ cuttlefish─0.0.0+build.479.reff5f6fdc
+│  ├─ getopt─0.4.3
+│  └─ neotoma─0.0.0+build.125.ref760928e
+├─ edown─0.2.4+build.100.ref8d7e7ca
+├─ eper─0.93.0
+├─ eplugin─0.1.4
+├─ erlcloud─0.8.6
+├─ fifo_db─0.1.7
+│  └─ eleveldb─0.0.0+build.494.refa36dbd6
+├─ fifo_dt─0.1.51
+│  ├─ libsnarlmatch─0.1.6
+│  └─ riak_dt─0.0.0+build.307.reff7981d4
+├─ fifo_s3─0.1.11
+│  ├─ base16─0.0.0+build.9.ref1e9dd28
+│  └─ poolboy─1.5.1
+├─ fifo_spec─0.1.19
+├─ fifo_utils─0.1.13
+├─ folsom_ddb─0.1.16
+│  └─ ddb_client─0.1.12
+│     ├─ dproto─0.1.9
+│     └─ mmath─0.1.7
+├─ hackney─0.6.1
+│  └─ mimetypes─1.0
+├─ jsx─1.4.5
+├─ jsxd─0.1.10
+├─ lager─3.0.1
+│  └─ goldrush─0.1.7
+├─ lager_watchdog─0.1.10
+├─ libchunter─0.1.40
+├─ libhowl─0.1.25
+│  └─ mdns_client_lib─0.1.25
+│     ├─ mdns_client─0.1.3
+│     └─ pooler─1.4.0
+├─ libleofs─0.1.2
+├─ libsnarl─0.3.25
+│  └─ oauth2─0.6.0
+├─ mdns_server_lib─0.1.19
+│  ├─ mdns_server─0.1.1
+│  └─ ranch─1.1.0
+├─ meck─0.8.2
+├─ rankmatcher─0.1.2
+├─ recon─2.2.0
+├─ riak_core─git
+│  ├─ basho_stats─1.0.3
+│  ├─ chash─0.1.1
+│  ├─ exometer_core─0.0.0+build.19.refb47a5d6
+│  │  ├─ folsom─0.0.0+build.292.ref7294452
+│  │  │  └─ bear─0.0.0+build.11.refda820a1
+│  │  ├─ parse_trans─0.0.0+build.106.ref82cc002
+│  │  └─ setup─0.0.0+build.79.ref51ee7c9
+│  ├─ pbkdf2─0.0.0+build.2676.ref7076584
+│  └─ riak_sysmon─2.0.0
+├─ riak_ensemble─0.0.0+build.113.refe0652c6
+├─ sgte─0.7.1
+├─ sniffle─0.6.2
+├─ sniffle_api─0.1.0
+├─ sniffle_commons─0.1.0
+├─ sniffle_console─0.1.0
+├─ sniffle_coverage─0.1.0
+├─ sniffle_create─0.1.0
+├─ sniffle_dataset_download─0.1.0
+├─ sniffle_dtrace─0.1.0
+├─ sniffle_ip─1
+├─ sniffle_read─0.1.0
+├─ sniffle_version─0.1.0
+├─ sniffle_watchdog─0.1.0
+├─ sniffle_write─0.1.0
+└─ uuid─0.4.7
