@@ -79,34 +79,34 @@ stop(_State) ->
 
 init_folsom() ->
     DBMs = [fold_keys, fold, get, put, delete, transact],
-    Basic = [wipe, get, list, list_all, sync_repair],
+    Basic = [wipe, get, list, list_all, sync_repair, set_metadata],
     Datasets = Basic ++
-        [set_metadata, description, disk_driver, homepage, image_size, name,
+        [description, disk_driver, homepage, image_size, name,
          networks, nic_driver, os, type, zone_type, users, version,
          kernel_version, sha1, status, imported, remove_requirement,
          add_requirement, create, delete],
     Dtraces = Basic ++
-        [create, delete, set, name, uuid, script, set_metadata, set_config],
+        [create, delete, set, name, uuid, script, set_config],
     Groupings = Basic ++
         [create, delete, add_element, add_grouping, remove_element,
-         remove_grouping, set_metadata, set_config],
+         remove_grouping, set_config],
     HVs = Basic ++
-        [set_resource, set_characteristic, set_metadata, set_pool, set_service,
+        [set_resource, set_characteristic, set_pool, set_service,
          alias, etherstubs, host, networks, path, port, sysinfo, uuid, version,
          virtualisation, register, unregister],
     IPRs = Basic ++
         [create, delete, lookup, name, uuid, network, netmask, gateway,
-         set_metadata, tag, vlan, release_ip, claim_ip],
+         tag, vlan, release_ip, claim_ip],
     Nets = Basic ++
-        [create, delete, name, set_metadata, uuid, add_iprange, remove_iprange,
+        [create, delete, name, uuid, add_iprange, remove_iprange,
          set],
     Pkgs = Basic ++
-        [create, delete, set_metadata, blocksize, compression, cpu_cap,
+        [create, delete, blocksize, compression, cpu_cap,
          cpu_shares, max_swap, name, quota, ram, uuid, zfs_io_priority,
          remove_requirement, add_requirement],
     VMs = Basic ++
         [register, unregister, log, set_network_map, remove_grouping,
-         add_grouping, set_metadata, set_info, set_config, set_backup,
+         add_grouping, set_info, set_config, set_backup,
          set_snapshot, set_service, state, alias, owner, dataset, package,
          hypervisor],
     [folsom_metrics:new_histogram(Name, slide, 60) ||

@@ -221,7 +221,8 @@ list_() ->
                  {error, timeout} |
                  ok.
 metadata_set(Grouping, Attributes) ->
-    do_write(Grouping, metadata_set, Attributes).
+    ?FM(set_metadata, sniffle_entity_write_fsm, write,
+        [{?VNODE, ?SERVICE}, Grouping, metadata_set, Attributes]).
 
 -spec set_config(Grouping::fifo:uuid(), Attirbutes::fifo:attr_list()) ->
                  not_found |
