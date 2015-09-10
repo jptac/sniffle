@@ -42,7 +42,7 @@
 ├─ meck─0.8.2
 ├─ rankmatcher─0.1.2
 ├─ recon─2.2.0
-├─ riak_core─git
+├─ riak_core─0.0.0+build.1790.refe41fba0
 │  ├─ basho_stats─1.0.3
 │  ├─ chash─0.1.1
 │  ├─ exometer_core─0.0.0+build.19.refb47a5d6
