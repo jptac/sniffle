@@ -3,19 +3,19 @@
 ├─ cuttlefish─0.0.0+build.479.reff5f6fdc
 │  ├─ getopt─0.4.3
 │  └─ neotoma─0.0.0+build.125.ref760928e
-├─ edown─0.2.4+build.100.ref8d7e7ca
-├─ eper─0.93.0
+├─ edown─0.7+build.6.refc770057
+├─ eper─0.94.0
 ├─ eplugin─0.1.4
 ├─ erlcloud─0.8.6
 ├─ fifo_db─0.1.7
 │  └─ eleveldb─0.0.0+build.494.refa36dbd6
-├─ fifo_dt─0.1.51
+├─ fifo_dt─0.1.52
 │  ├─ libsnarlmatch─0.1.6
 │  └─ riak_dt─0.0.0+build.307.reff7981d4
 ├─ fifo_s3─0.1.11
 │  ├─ base16─0.0.0+build.9.ref1e9dd28
 │  └─ poolboy─1.5.1
-├─ fifo_spec─0.1.19
+├─ fifo_spec─0.1.20
 ├─ fifo_utils─0.1.13
 ├─ folsom_ddb─0.1.16
 │  └─ ddb_client─0.1.12
@@ -29,19 +29,19 @@
 │  └─ goldrush─0.1.7
 ├─ lager_watchdog─0.1.10
 ├─ libchunter─0.1.40
-├─ libhowl─0.1.25
-│  └─ mdns_client_lib─0.1.25
-│     ├─ mdns_client─0.1.3
+├─ libhowl─0.1.26
+│  └─ mdns_client_lib─0.1.26
+│     ├─ mdns_client─0.1.4
 │     └─ pooler─1.4.0
 ├─ libleofs─0.1.2
-├─ libsnarl─0.3.25
+├─ libsnarl─0.3.28
 │  └─ oauth2─0.6.0
 ├─ mdns_server_lib─0.1.19
 │  ├─ mdns_server─0.1.1
 │  └─ ranch─1.1.0
 ├─ meck─0.8.2
 ├─ rankmatcher─0.1.2
-├─ recon─2.2.0
+├─ recon─2.2.1
 ├─ riak_core─0.0.0+build.1790.refe41fba0
 │  ├─ basho_stats─1.0.3
 │  ├─ chash─0.1.1

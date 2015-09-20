@@ -33,6 +33,7 @@
          callbacks/2,
          create/2,
          get_server/2,
+         get_ower/2,
          create_permissions/2,
          resource_claim/2,
          get_ips/2,
@@ -68,6 +69,7 @@
           resulting_networks = [],
           owner,
           creator,
+          creator_obj,
           type,
           nets,
           hypervisor,
@@ -195,8 +197,29 @@ generate_grouping_rules(_Event, State = #state{
                     {stop, E, State}
             end;
         _ ->
-            {next_state, create_permissions, State, 0}
+            {next_state, get_ower, State, 0}
     end.
+
+get_ower(_Event, State = #state{config = Config}) ->
+    {ok, Creator} = jsxd:get([<<"owner">>], Config),
+    {ok, C} = ls_user:get(Creator),
+    Owner = ft_user:active_org(Creator),
+    case Owner of
+        <<"">> ->
+            lager:warning("[create] User ~p has no active org.",
+                          [Creator]);
+        _ ->
+            lager:info("[create] User ~p has active org: ~p.",
+                       [Creator, Owner])
+        end,
+    Config1 = jsxd:set([<<"owner">>], Owner, Config),
+    {next_state, create_permissions,
+     State#state{
+       config = Config1,
+       creator = Creator,
+       creator_obj = C,
+       owner = Owner
+      }, 0}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -213,55 +236,28 @@ generate_grouping_rules(_Event, State = #state{
 %%                   {stop, Reason, NewState}
 %% @end
 %%--------------------------------------------------------------------
-create_permissions(_Event, State = #state{test_pid = {_,_},
-                                          config = Config}) ->
-    {ok, Creator} = jsxd:get([<<"owner">>], Config),
-    Owner = case ls_user:active_org(Creator) of
-                {ok, <<"">>} ->
-                    lager:warning("[create] User ~p has no active org.",
-                                  [Creator]),
-                    <<"">>;
-                {ok, Org} ->
-                    lager:info("[create] User ~p has active org: ~p.",
-                               [Creator, Org]),
-                    Org
-            end,
-    Config1 = jsxd:set([<<"owner">>], Owner, Config),
-    {next_state, get_package,
-     State#state{
-       config = Config1,
-       creator = Creator,
-       owner = Owner
-      }, 0};
+create_permissions(_Event, State = #state{test_pid = {_,_}}) ->
+    {next_state, get_package, State, 0};
 
 create_permissions(_Event, State = #state{
                                       uuid = UUID,
-                                      config = Config}) ->
-    {ok, Creator} = jsxd:get([<<"owner">>], Config),
+                                      creator = Creator,
+                                      owner = Owner,
+                                      config = Config
+                                     }) ->
     ls_user:grant(Creator, [<<"vms">>, UUID, <<"...">>]),
     ls_user:grant(Creator, [<<"channels">>, UUID, <<"join">>]),
     eplugin:call('create:permissions', UUID, Config, Creator),
-    Owner = case ls_user:active_org(Creator) of
-                {ok, <<>>} ->
-                    lager:warning("[create] User ~p has no active org.",
-                                  [Creator]),
-                    <<"">>;
-                {ok, Org} ->
-                    lager:info("[create] User ~p has active org: ~p.",
-                               [Creator, Org]),
-                    sniffle_vm:owner(UUID, Org),
-                    ls_org:execute_trigger(Org, vm_create, UUID),
-                    Org
-            end,
+    case Owner of
+        <<>> ->
+            ok;
+        _ ->
+            sniffle_vm:owner(UUID, Owner),
+            ls_org:execute_trigger(Owner, vm_create, UUID)
+    end,
     libhowl:send(UUID, [{<<"event">>, <<"update">>},
                         {<<"data">>, [{<<"owner">>, Owner}]}]),
-    Config1 = jsxd:set([<<"owner">>], Owner, Config),
-    {next_state, resource_claim,
-     State#state{
-       config = Config1,
-       creator = Creator,
-       owner = Owner
-      }, 0}.
+    {next_state, resource_claim, State, 0}.
 
 resource_claim(_Event, State = #state{
                                  uuid = UUID,
@@ -430,19 +426,15 @@ get_ips(_Event, State = #state{nets = Nets,
     end.
 
 build_key(_Event, State = #state{
-                             creator = Creator,
-                             config = Config}) ->
-    case ls_user:keys(Creator) of
-        {ok, []} ->
-            {next_state, create, State, 0};
-        {ok, Keys} ->
-            KeysB = iolist_to_binary(merge_keys(Keys)),
-            Config1 = jsxd:update([<<"ssh_keys">>],
-                                  fun (Ks) ->
-                                          <<KeysB/binary, Ks/binary>>
-                                  end, KeysB, Config),
-            {next_state, create, State#state{config = Config1}, 0}
-    end.
+                             config = Config,
+                             creator_obj = User}) ->
+    Keys = ft_user:keys(User),
+    KeysB = iolist_to_binary(merge_keys(Keys)),
+    Config1 = jsxd:update([<<"ssh_keys">>],
+                          fun (Ks) ->
+                                  <<KeysB/binary, Ks/binary>>
+                          end, KeysB, Config),
+    {next_state, create, State#state{config = Config1}, 0}.
 
 
 create(_Event, State = #state{
