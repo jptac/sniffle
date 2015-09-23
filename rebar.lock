@@ -145,7 +145,7 @@
   1},
  {<<"riak_ensemble">>,
   {git,"https://github.com/basho/riak_ensemble.git",
-       {ref,"e0652c64cda9355dc429f4a4c3747c5fdf017722"}},
+       {ref,"a62b0cc33b94c28f89613ddbf2be384620c19501"}},
   0},
  {<<"riak_sysmon">>,
   {git,"git://github.com/basho/riak_sysmon.git",
