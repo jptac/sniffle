@@ -203,7 +203,7 @@ generate_grouping_rules(_Event, State = #state{
 get_ower(_Event, State = #state{config = Config}) ->
     {ok, Creator} = jsxd:get([<<"owner">>], Config),
     {ok, C} = ls_user:get(Creator),
-    Owner = ft_user:active_org(Creator),
+    Owner = ft_user:active_org(C),
     case Owner of
         <<"">> ->
             lager:warning("[create] User ~p has no active org.",
