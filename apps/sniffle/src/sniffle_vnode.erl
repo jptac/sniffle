@@ -319,7 +319,15 @@ reply(Reply, {_, ReqID, _} = Sender, #vstate{node=N, partition=P}) ->
     riak_core_vnode:reply(Sender, {ok, ReqID, {P, N}, Reply}).
 
 get(UUID, State) ->
-    ?FM(fifo_db, get, [State#vstate.db, State#vstate.bucket, UUID]).
+    try
+        ?FM(fifo_db, get, [State#vstate.db, State#vstate.bucket, UUID])
+    catch
+        E1:E2 ->
+            lager:error("[fifo_db] Failed to get object ~s/~s ~p:~p ~w",
+                        [State#vstate.bucket, UUID, E1, E2,
+                         erlang:get_stacktrace()]),
+            not_found
+    end.
 
 handle_info(retry_create_hashtree,
             State=#vstate{service=Srv, hashtrees=undefined, partition=Idx,
