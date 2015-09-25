@@ -221,7 +221,7 @@ get_ring([]) ->
               "----------"
               " ---------------~n", []),
     lists:map(fun({K, H}) ->
-                      io:format("~50b ~-15s~n", [K, H])
+                      io:format("~50b ~-40s~n", [K, H])
               end, CHash),
     ok.
 
