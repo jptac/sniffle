@@ -29,12 +29,12 @@
 │  └─ goldrush─0.1.7
 ├─ lager_watchdog─0.1.10
 ├─ libchunter─0.1.40
-├─ libhowl─0.1.28
-│  └─ mdns_client_lib─0.1.27
-│     ├─ mdns_client─0.1.5
+├─ libhowl─0.1.29
+│  └─ mdns_client_lib─0.1.28
+│     ├─ mdns_client─0.1.7
 │     └─ pooler─1.4.0
 ├─ libleofs─0.1.2
-├─ libsnarl─0.3.31
+├─ libsnarl─0.3.32
 │  └─ oauth2─0.6.0
 ├─ mdns_server_lib─0.1.19
 │  ├─ mdns_server─0.1.1
