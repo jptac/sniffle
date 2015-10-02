@@ -54,7 +54,7 @@
 │  └─ riak_sysmon─2.0.0
 ├─ riak_ensemble─2.0.0
 ├─ sgte─0.7.1
-├─ sniffle─0.6.2
+├─ sniffle─0.7.0
 ├─ sniffle_api─0.1.0
 ├─ sniffle_commons─0.1.0
 ├─ sniffle_console─0.1.0

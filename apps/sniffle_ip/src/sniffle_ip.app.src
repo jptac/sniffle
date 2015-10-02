@@ -1,6 +1,6 @@
 {application, sniffle_ip,
  [
-  {description, ""},
+  {description, "Sniffle IP management"},
   {vsn, "1"},
   {registered, []},
   {applications, [
