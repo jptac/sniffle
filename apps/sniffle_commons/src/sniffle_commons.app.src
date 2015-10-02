@@ -1,6 +1,6 @@
 {application, sniffle_commons,
  [
-  {description, "An Erlang sniffle_commons library"},
+  {description, "Sniffle commons"},
   {vsn, "0.1.0"},
   {modules, [
              sniffle_commons
