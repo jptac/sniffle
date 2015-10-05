@@ -16,11 +16,11 @@
 │  ├─ base16─1.0
 │  └─ poolboy─1.5.1
 ├─ fifo_spec─0.1.21
-├─ fifo_utils─0.1.13
-├─ folsom_ddb─0.1.16
-│  └─ ddb_client─0.1.12
-│     ├─ dproto─0.1.9
-│     └─ mmath─0.1.7
+├─ fifo_utils─0.1.15
+├─ folsom_ddb─0.1.19
+│  └─ ddb_client─0.1.16
+│     ├─ dproto─0.1.12
+│     └─ mmath─0.1.15
 ├─ hackney─0.6.1
 │  └─ mimetypes─1.0
 ├─ jsx─1.4.5
