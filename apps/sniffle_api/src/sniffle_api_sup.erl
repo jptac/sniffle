@@ -40,6 +40,7 @@ delay_mdns_anouncement() ->
     delay_mdns_anouncement(Services).
 delay_mdns_anouncement([]) ->
     riak_core:wait_for_application(sniffle_api),
+    lager:info("[mdns] Enabling mDNS annoucements."),
     mdns_server_fsm:start();
 delay_mdns_anouncement([S | R]) ->
     riak_core:wait_for_service(S),
