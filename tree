@@ -36,8 +36,8 @@
 ├─ libleofs─0.1.2
 ├─ libsnarl─0.3.32
 │  └─ oauth2─0.6.0
-├─ mdns_server_lib─0.1.19
-│  ├─ mdns_server─0.1.1
+├─ mdns_server_lib─0.2.0
+│  ├─ mdns_server─0.2.0
 │  └─ ranch─1.1.0
 ├─ meck─0.8.2
 ├─ rankmatcher─0.1.2
