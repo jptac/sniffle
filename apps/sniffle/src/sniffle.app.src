@@ -25,6 +25,7 @@
                   snmp,
                   mnesia,
                   eplugin,
+                  fifo_lager,
                   lager,
                   jsxd,
                   sniffle_commons,
