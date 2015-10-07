@@ -259,6 +259,10 @@ create_permissions(_Event, State = #state{
                         {<<"data">>, [{<<"owner">>, Owner}]}]),
     {next_state, resource_claim, State, 0}.
 
+%% If there is no owner we don't need to add triggers
+resource_claim(_Event, State = #state{owner = <<>>}) ->
+    {next_state, get_package, State, 0};
+
 resource_claim(_Event, State = #state{
                                  uuid = UUID,
                                  package_uuid = Package,
