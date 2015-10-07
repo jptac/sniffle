@@ -11,10 +11,11 @@
 │  └─ eleveldb─2.1.0.0
 ├─ fifo_dt─0.1.54
 │  ├─ libsnarlmatch─0.1.6
-│  └─ riak_dt─2.1.1
+│  └─ riak_dt─2.1.0
 ├─ fifo_lager─0.1.0
 │  ├─ lager_graylog─1
-│  └─ lager_logstash_backend─0.0.2
+│  ├─ lager_logstash_backend─0.0.2
+│  └─ lager_watchdog─0.1.10
 ├─ fifo_s3─0.1.13
 │  ├─ base16─1.0
 │  └─ poolboy─1.5.1
@@ -28,9 +29,8 @@
 │  └─ mimetypes─1.0
 ├─ jsx─1.4.5
 ├─ jsxd─0.1.10
-├─ lager─3.0.1
-│  └─ goldrush─0.1.7
-├─ lager_watchdog─0.1.10
+├─ lager─2.1.1
+│  └─ goldrush─0.1.6
 ├─ libchunter─0.1.40
 ├─ libhowl─0.1.29
 │  └─ mdns_client_lib─0.1.28
