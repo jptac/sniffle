@@ -120,8 +120,6 @@ init_leo([Manager, Gateway]) ->
     sniffle_opt:set(["storage", "s3", "host"], Gateway),
     ok = sniffle_opt:set(["storage", "s3", "port"], 443),
     io:format("Configuring endpoint as: https://~s:~p~n", [Gateway, P]),
-    %% Set s3 as storage system
-    ok = sniffle_opt:set(["storage", "general", "backend"], s3),
     io:format("Setting storage backend to s3, please reastart sniffle for this "
               "to take full effect!~n"),
     ok.
