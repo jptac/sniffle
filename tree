@@ -12,6 +12,9 @@
 ├─ fifo_dt─0.1.54
 │  ├─ libsnarlmatch─0.1.6
 │  └─ riak_dt─2.1.1
+├─ fifo_lager─0.1.0
+│  ├─ lager_graylog─1
+│  └─ lager_logstash_backend─0.0.2
 ├─ fifo_s3─0.1.13
 │  ├─ base16─1.0
 │  └─ poolboy─1.5.1
