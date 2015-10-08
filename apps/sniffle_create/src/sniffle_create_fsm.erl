@@ -475,7 +475,7 @@ create(_Event, State = #state{
                  sniffle_iprange:release_ip(Range, IP),
                  sniffle_vm:remove_network_map(UUID, IP)
              end || {Range, IP} <- Mapping],
-            lager:warning("[create] Could not get log."),
+            lager:warning("[create] Could not get lock."),
             do_retry(State);
         ok ->
             sniffle_vm:hypervisor(UUID, HID),
