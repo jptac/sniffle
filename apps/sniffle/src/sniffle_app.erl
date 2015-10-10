@@ -72,27 +72,27 @@ init_folsom() ->
          version, kernel_version, sha1, status, imported, remove_requirement,
          add_requirement, create, delete],
     Dtraces = Basic ++
-        [create, delete, set, name, uuid, script, set_config],
+        [create, delete, set, name, uuid, script, set_metadata, set_config],
     Groupings = Basic ++
         [create, delete, add_element, add_grouping, remove_element,
-         remove_grouping, set_config],
+         remove_grouping, set_metadata, set_config],
     HVs = Basic ++
-        [set_resource, set_characteristic, set_pool, set_service,
+        [set_resource, set_characteristic, set_metadata, set_pool, set_service,
          alias, etherstubs, host, networks, path, port, sysinfo, uuid, version,
          virtualisation, register, unregister],
     IPRs = Basic ++
         [create, delete, lookup, name, uuid, network, netmask, gateway,
-         tag, vlan, release_ip, claim_ip],
+         set_metadata, tag, vlan, release_ip, claim_ip],
     Nets = Basic ++
         [create, delete, name, set_metadata, uuid, add_iprange, remove_iprange,
          set],
     Pkgs = Basic ++
-        [create, delete, blocksize, compression, cpu_cap,
+        [create, delete, set_metadata, blocksize, compression, cpu_cap,
          cpu_shares, max_swap, name, quota, ram, uuid, zfs_io_priority,
          remove_requirement, add_requirement],
     VMs = Basic ++
         [register, unregister, log, set_network_map, remove_grouping,
-         add_grouping, set_info, set_config, set_backup,
+         add_grouping, set_metadata, set_info, set_config, set_backup,
          set_snapshot, set_service, state, alias, owner, dataset, package,
          hypervisor, remove_fw_rule, add_fw_rule, deleting, creating],
     [folsom_metrics:new_histogram(Name, slide, 60) ||

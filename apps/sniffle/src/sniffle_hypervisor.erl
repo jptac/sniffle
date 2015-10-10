@@ -142,6 +142,7 @@ to_msg({pool_error, UUID, Alias, Name, State}) ->
      {<<"type">>, <<"critical">>}
     ].
 
+
 -spec list() ->
                   {ok, [IPR::fifo:hypervisor_id()]} | {error, timeout}.
 list() ->
