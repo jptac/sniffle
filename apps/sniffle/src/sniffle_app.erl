@@ -11,14 +11,9 @@
 
 -define(SRV_WITH_AAE(VNode, Srv),
         ?SRV(VNode, Srv),
-        case application:get_env(sniffle, list_to_atom(atom_to_list(Srv) ++ "_aae"), true) of
-            true ->
-                ok = riak_core_capability:register({Srv, anti_entropy},
-                                                   [enabled_v1, disabled],
-                                                   enabled_v1);
-            _ ->
-                ok
-        end).
+        ok = riak_core_capability:register({Srv, anti_entropy},
+                                           [enabled_v1, disabled],
+                                           enabled_v1)).
 
 %% ===================================================================
 %% Application callbacks
