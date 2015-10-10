@@ -33,7 +33,9 @@
          callbacks/2,
          create/2,
          get_server/2,
+         get_ower/2,
          create_permissions/2,
+         resource_claim/2,
          get_ips/2,
          build_key/2
         ]).
@@ -47,6 +49,7 @@
               callbacks/2,
               get_dataset/2,
               get_package/2,
+              resource_claim/2,
               start_link/5,
               get_server/2,
               create_permissions/2,
@@ -66,9 +69,11 @@
           resulting_networks = [],
           owner,
           creator,
+          creator_obj,
           type,
           nets,
           hypervisor,
+          hypervisor_id,
           mapping = [],
           delay = 5000,
           retry = 0,
@@ -122,17 +127,20 @@ create(UUID, Package, Dataset, Config, Pid) ->
 
 init([UUID, Package, Dataset, Config, Pid]) ->
     sniffle_vm:state(UUID, <<"placing">>),
-    random:seed(now()),
+    sniffle_vm:creating(UUID, {creating, erlang:system_time(seconds)}),
+    random:seed(erlang:phash2([node()]),
+                erlang:monotonic_time(),
+                erlang:unique_integer()),
     lager:info("[create] Starting FSM for ~s", [UUID]),
     process_flag(trap_exit, true),
     Config1 = jsxd:from_list(Config),
-    Delay = case application:get_env(create_retry_delay) of
+    Delay = case application:get_env(sniffle, create_retry_delay) of
                 {ok, D} ->
                     D;
                 _ ->
                     5000
             end,
-    MaxRetries = case application:get_env(create_max_retries) of
+    MaxRetries = case application:get_env(sniffle, create_max_retries) of
                      {ok, D1} ->
                          D1;
                      _ ->
@@ -189,8 +197,29 @@ generate_grouping_rules(_Event, State = #state{
                     {stop, E, State}
             end;
         _ ->
-            {next_state, create_permissions, State, 0}
+            {next_state, get_ower, State, 0}
     end.
+
+get_ower(_Event, State = #state{config = Config}) ->
+    {ok, Creator} = jsxd:get([<<"owner">>], Config),
+    {ok, C} = ls_user:get(Creator),
+    Owner = ft_user:active_org(C),
+    case Owner of
+        <<"">> ->
+            lager:warning("[create] User ~p has no active org.",
+                          [Creator]);
+        _ ->
+            lager:info("[create] User ~p has active org: ~p.",
+                       [Creator, Owner])
+        end,
+    Config1 = jsxd:set([<<"owner">>], Owner, Config),
+    {next_state, create_permissions,
+     State#state{
+       config = Config1,
+       creator = Creator,
+       creator_obj = C,
+       owner = Owner
+      }, 0}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -207,61 +236,46 @@ generate_grouping_rules(_Event, State = #state{
 %%                   {stop, Reason, NewState}
 %% @end
 %%--------------------------------------------------------------------
-create_permissions(_Event, State = #state{test_pid = {_,_},
-                                          config = Config}) ->
-    {ok, Creator} = jsxd:get([<<"owner">>], Config),
-    Owner = case ls_user:active_org(Creator) of
-                {ok, <<"">>} ->
-                    lager:warning("[create] User ~p has no active org.",
-                                  [Creator]),
-                    <<"">>;
-                {ok, Org} ->
-                    lager:info("[create] User ~p has active org: ~p.",
-                               [Creator, Org]),
-                    Org
-            end,
-    Config1 = jsxd:set([<<"owner">>], Owner, Config),
-    {next_state, get_package,
-     State#state{
-       config = Config1,
-       creator = Creator,
-       owner = Owner
-      }, 0};
+create_permissions(_Event, State = #state{test_pid = {_,_}}) ->
+    {next_state, get_package, State, 0};
 
 create_permissions(_Event, State = #state{
                                       uuid = UUID,
-                                      package_uuid = Package,
-                                      dataset_uuid = Dataset,
-                                      config = Config}) ->
-    {ok, Creator} = jsxd:get([<<"owner">>], Config),
+                                      creator = Creator,
+                                      owner = Owner,
+                                      config = Config
+                                     }) ->
     ls_user:grant(Creator, [<<"vms">>, UUID, <<"...">>]),
     ls_user:grant(Creator, [<<"channels">>, UUID, <<"join">>]),
     eplugin:call('create:permissions', UUID, Config, Creator),
-    Owner = case ls_user:active_org(Creator) of
-                {ok, <<>>} ->
-                    lager:warning("[create] User ~p has no active org.",
-                                  [Creator]),
-                    <<"">>;
-                {ok, Org} ->
-                    lager:info("[create] User ~p has active org: ~p.",
-                               [Creator, Org]),
-                    sniffle_vm:owner(UUID, Org),
-                    ls_org:resource_action(Org, UUID, sniffle_vm:timestamp(),
-                                           create, [{user, Creator},
-                                                    {package, Package},
-                                                    {dataset, Dataset}]),
-                    ls_org:execute_trigger(Org, vm_create, UUID),
-                    Org
-            end,
+    case Owner of
+        <<>> ->
+            ok;
+        _ ->
+            sniffle_vm:owner(UUID, Owner),
+            ls_org:execute_trigger(Owner, vm_create, UUID)
+    end,
     libhowl:send(UUID, [{<<"event">>, <<"update">>},
                         {<<"data">>, [{<<"owner">>, Owner}]}]),
-    Config1 = jsxd:set([<<"owner">>], Owner, Config),
-    {next_state, get_package,
-     State#state{
-       config = Config1,
-       creator = Creator,
-       owner = Owner
-      }, 0}.
+    {next_state, resource_claim, State, 0}.
+
+%% If there is no owner we don't need to add triggers
+resource_claim(_Event, State = #state{owner = <<>>}) ->
+    {next_state, get_package, State, 0};
+
+resource_claim(_Event, State = #state{
+                                 uuid = UUID,
+                                 package_uuid = Package,
+                                 dataset_uuid = Dataset,
+                                 creator = Creator,
+                                 owner = Org
+                                }) ->
+    ls_acc:create(Org, UUID, sniffle_vm:timestamp(),
+                  [{user, Creator},
+                   {package, Package},
+                   {dataset, Dataset}]),
+    {next_state, get_package, State, 0}.
+
 
 get_package(_Event, State = #state{
                                uuid = UUID,
@@ -300,12 +314,12 @@ callbacks(_Event, State = #state{
 
 get_networks(_event, State = #state{retry = R, max_retries = Max})
   when R > Max ->
-    lager:error("[create] Failed after too many retries: ~p > ~p.",
+    lager:error("[create] Failed after too many retries: ~p > ~p",
                 [R, Max]),
     BR = integer_to_binary(R),
     BMax= integer_to_binary(Max),
     vm_log(State, error, <<"Failed after too many retries: ", BR/binary, " > ",
-                           BMax/binary>>),
+                           BMax/binary, ", seriously we doublechecked twice!">>),
     {stop, failed, State};
 
 get_networks(_Event, State = #state{config = Config, retry = Try}) ->
@@ -337,7 +351,14 @@ get_server(_Event, State = #state{
     Permission = [<<"hypervisors">>, {<<"res">>, <<"uuid">>}, <<"create">>],
     Type = case ft_dataset:type(Dataset) of
                kvm -> <<"kvm">>;
-               zone -> <<"zone">>
+               zone -> case ft_dataset:zone_type(Dataset) of
+                           lipkg ->
+                               <<"ipkg">>;
+                           ipkg ->
+                               <<"ipkg">>;
+                           _ ->
+                               <<"zone">>
+                       end
            end,
     case ls_user:cache(Creator) of
         {ok, Permissions} ->
@@ -362,7 +383,8 @@ get_server(_Event, State = #state{
                     S2 = add_log(S1, info, <<"Deploying on hypervisor ", HypervisorID/binary>>),
                     eplugin:call('create:handoff', UUID, HypervisorID),
                     {next_state, get_ips,
-                     S2#state{hypervisor = H, nets = Nets1}, 0};
+                     S2#state{hypervisor_id = HypervisorID,
+                              hypervisor = H, nets = Nets1}, 0};
                 {[], _} ->
                     S1 = warn(State,
                               "Could not find Hypervisors matching rules.",
@@ -408,19 +430,15 @@ get_ips(_Event, State = #state{nets = Nets,
     end.
 
 build_key(_Event, State = #state{
-                             creator = Creator,
-                             config = Config}) ->
-    case ls_user:keys(Creator) of
-        {ok, []} ->
-            {next_state, create, State, 0};
-        {ok, Keys} ->
-            KeysB = iolist_to_binary(merge_keys(Keys)),
-            Config1 = jsxd:update([<<"ssh_keys">>],
-                                  fun (Ks) ->
-                                          <<KeysB/binary, Ks/binary>>
-                                  end, KeysB, Config),
-            {next_state, create, State#state{config = Config1}, 0}
-    end.
+                             config = Config,
+                             creator_obj = User}) ->
+    Keys = ft_user:keys(User),
+    KeysB = iolist_to_binary(merge_keys(Keys)),
+    Config1 = jsxd:update([<<"ssh_keys">>],
+                          fun (Ks) ->
+                                  <<KeysB/binary, Ks/binary>>
+                          end, KeysB, Config),
+    {next_state, create, State#state{config = Config1}, 0}.
 
 
 create(_Event, State = #state{
@@ -432,6 +450,7 @@ create(_Event, State = #state{
     [sniffle_iprange:release_ip(Range, IP) ||{Range, IP} <- Mapping],
     libchunter:release(Host, Port, UUID),
     Pid ! {Ref, success},
+    sniffle_vm:creating(UUID, false),
     {stop, normal, State};
 
 create(_Event, State = #state{
@@ -440,13 +459,15 @@ create(_Event, State = #state{
                           uuid = UUID,
                           config = Config,
                           resulting_networks = Nics,
+                          hypervisor_id = HID,
                           hypervisor = {Host, Port},
                           mapping = Mapping}) ->
-    vm_log(State, <<"Handing off to hypervisor.">>),
-    sniffle_vm:state(UUID, <<"creating">>),
-    Dataset1 = ft_dataset:networks(sniffle_vnode:mkid(), Nics, Dataset),
-    case libchunter:create_machine(Host, Port, UUID, Package, Dataset1, Config) of
-        {error, lock} ->
+    vm_log(State, <<"Handing off to hypervisor ", HID/binary, ".">>),
+    Config1 = jsxd:set(<<"nics">>, Nics, Config),
+    case libchunter:create_machine(Host, Port, UUID, Package, Dataset, Config1) of
+        {error, _} ->
+            %% TODO is it a good idea to handle all errors like this?
+            %% How can we assure no creation was started?
             [sniffle_vm:add_network_map(UUID, IP, Range)
              || {Range, IP} <- Mapping],
 
@@ -454,9 +475,11 @@ create(_Event, State = #state{
                  sniffle_iprange:release_ip(Range, IP),
                  sniffle_vm:remove_network_map(UUID, IP)
              end || {Range, IP} <- Mapping],
-            lager:warning("[create] Could not get log."),
+            lager:warning("[create] Could not get lock."),
             do_retry(State);
         ok ->
+            sniffle_vm:hypervisor(UUID, HID),
+            sniffle_vm:creating(UUID, {hypervisor, erlang:system_time(seconds)}),
             {stop, normal, State}
     end.
 
@@ -536,10 +559,12 @@ terminate(_Reason, StateName, #state{hypervisor = {Host, Port},
                                      test_pid={Pid, Ref}}) ->
     libchunter:release(Host, Port, UUID),
     Pid ! {Ref, {failed, StateName}},
+    sniffle_vm:creating(UUID, false),
     ok;
 
-terminate(_Reason, StateName, #state{test_pid={Pid, Ref}}) ->
+terminate(_Reason, StateName, #state{test_pid={Pid, Ref}, uuid = UUID}) ->
     Pid ! {Ref, {failed, StateName}},
+    sniffle_vm:creating(UUID, false),
     ok;
 
 terminate(Reason, StateName, State = #state{uuid = UUID, log_cache = C}) ->
@@ -550,6 +575,7 @@ terminate(Reason, StateName, State = #state{uuid = UUID, log_cache = C}) ->
          [Reason, StateName]),
     [vm_log(State, Type, Msg) || {Type, Msg} <- lists:reverse(C)],
     sniffle_vm:state(UUID, <<"failed">>),
+    sniffle_vm:creating(UUID, false),
     ok.
 
 %%--------------------------------------------------------------------
@@ -673,11 +699,10 @@ make_random(Weight, C) ->
 
 
 update_nics(UUID, Nics, Config, Nets, State) ->
-    jsxd:fold(
-      fun (_, _, {error, E, Mps}) ->
+    lists:foldl(
+      fun (_, {error, E, Mps}) ->
               {error, E, Mps};
-          (K, Nic, {NicsF, Mappings}) ->
-              {ok, Name} = jsxd:get(<<"name">>, Nic),
+          ({Name, _Desc}, {NicsF, Mappings}) ->
               {ok, NicTag} = jsxd:get(Name, Nets),
               vm_log(State, info, <<"Fetching network ", NicTag/binary, " for NIC ", Name/binary>>),
               case sniffle_iprange:claim_ip(NicTag) of
@@ -692,6 +717,7 @@ update_nics(UUID, Nics, Config, Nets, State) ->
                                " tag ", Tag/binary>>),
                       Res = jsxd:from_list([{<<"nic_tag">>, Tag},
                                             {<<"ip">>, IPb},
+                                            {<<"network_uuid">>, NicTag},
                                             {<<"netmask">>, Netb},
                                             {<<"gateway">>, GWb}]),
                       Res1 = case VLAN of
@@ -706,7 +732,7 @@ update_nics(UUID, Nics, Config, Nets, State) ->
                                        [UUID, Config, Name, Tag, IPb, Netb, GWb, VLAN]),
                                      jsxd:set(<<"vlan_id">>, VLAN, Res)
                              end,
-                      NicsF1 = jsxd:set(K, Res1, NicsF),
+                      NicsF1 = [Res1 | NicsF],
                       Mappings1 = [{NicTag, IP} | Mappings],
                       {NicsF1, Mappings1};
                   E ->

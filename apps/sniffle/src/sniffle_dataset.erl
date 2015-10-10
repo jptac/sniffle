@@ -21,7 +21,9 @@
          sync_repair/2,
          list_/0,
          remove_requirement/2,
-         add_requirement/2
+         add_requirement/2,
+         remove_network/2,
+         add_network/2
         ]).
 
 -ignore_xref([
@@ -39,7 +41,6 @@
          name/2,
          type/2,
          zone_type/2,
-         networks/2,
          nic_driver/2,
          os/2,
          sha1/2,
@@ -74,10 +75,11 @@ create(UUID) ->
 
 -spec delete(UUID::fifo:dataset_id()) ->
                     not_found | {error, timeout} | ok.
+
 delete(UUID) ->
     case do_write(UUID, delete) of
         ok ->
-            sniffle_img:delete(UUID);
+            sniffle_s3:delete(image, binary_to_list(UUID));
         E ->
             E
     end.
@@ -120,7 +122,6 @@ import(URL) ->
 ?SET(homepage).
 ?SET(image_size).
 ?SET(name).
-?SET(networks).
 ?SET(nic_driver).
 ?SET(os).
 ?SET(type).
@@ -133,6 +134,8 @@ import(URL) ->
 ?SET(imported).
 ?SET(remove_requirement).
 ?SET(add_requirement).
+?SET(remove_network).
+?SET(add_network).
 
 %%%===================================================================
 %%% Internal Functions

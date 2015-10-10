@@ -11,6 +11,7 @@
                   eplugin,
                   libchunter,
                   uuid,
+                  sniffle_ip,
                   sniffle
                  ]},
   {mod, { sniffle_create_app, []}},

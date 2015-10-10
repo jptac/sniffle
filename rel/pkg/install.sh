@@ -5,13 +5,6 @@ GROUP=$USER
 
 case $2 in
     PRE-INSTALL)
-        #if grep '^Image: base64 1[34].[1234].*$' /etc/product
-        #then
-        #    echo "Image version supported"
-        #else
-        #    echo "This image version is not supported please use the base64 13.2.1 image."
-        #    exit 1
-        #fi
         if grep "^$GROUP:" /etc/group > /dev/null 2>&1
         then
             echo "Group already exists, skipping creation."
@@ -43,18 +36,18 @@ case $2 in
         echo Importing service ...
         svccfg import /opt/local/fifo-sniffle/share/sniffle.xml
         echo Trying to guess configuration ...
-        IP=`ifconfig net0 | grep inet | awk -e '{print $2}'`
+        IP=$(ifconfig net0 | grep inet | /usr/bin/awk '{print $2}')
         CONFFILE=/opt/local/fifo-sniffle/etc/sniffle.conf
         if [ ! -f "${CONFFILE}" ]
         then
             echo "Creating new configuration from example file."
             cp ${CONFFILE}.example ${CONFFILE}
-            sed --in-place -e "s/127.0.0.1/${IP}/g" ${CONFFILE}
+            /usr/bin/sed -i bak -e "s/127.0.0.1/${IP}/g" ${CONFFILE}
         else
-            echo "Merging old file with new template, the original can be found in ${CONFFILE}.old."
-            /opt/local/fifo-sniffle/share/update_config.sh ${CONFFILE}.example ${CONFFILE} > ${CONFFILE}.new &&
-                mv ${CONFFILE} ${CONFFILE}.old &&
-                mv ${CONFFILE}.new ${CONFFILE}
+            echo "Please make sure you update your config according to the update manual!"
+            #/opt/local/fifo-sniffle/share/update_config.sh ${CONFFILE}.example ${CONFFILE} > ${CONFFILE}.new &&
+            #    mv ${CONFFILE} ${CONFFILE}.old &&
+            #    mv ${CONFFILE}.new ${CONFFILE}
         fi
         ;;
 esac

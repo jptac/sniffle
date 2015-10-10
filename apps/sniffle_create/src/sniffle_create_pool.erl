@@ -61,7 +61,7 @@ add(UUID, Package, Dataset, Config) ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
-    case application:get_env(create_pool_size) of
+    case application:get_env(sniffle, create_pool_size) of
         {ok, S} ->
             {ok, #state{size=S}};
         _ ->
@@ -101,6 +101,7 @@ handle_cast({add, UUID, Package, Dataset, Config},
     {ok, Pid} = sniffle_create_fsm:create(UUID, Package, Dataset, Config),
     Ref = erlang:monitor(process, Pid),
     lager:info("[create] Not throttling ~s", [UUID]),
+    sniffle_vm:creating(UUID, {pooled, erlang:system_time(seconds)}),
     {noreply, State#state{workers = [Ref | Ws]}};
 
 handle_cast({add, UUID, Package, Dataset, Config},

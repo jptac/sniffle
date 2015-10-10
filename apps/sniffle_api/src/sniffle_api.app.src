@@ -1,11 +1,12 @@
 {application, sniffle_api,
  [
-  {description, ""},
+  {description, "Sniffle API sub system"},
   {vsn, "0.1.0"},
   {registered, []},
   {applications, [
                   kernel,
                   sniffle,
+                  sniffle_version,
                   mdns_server_lib,
                   stdlib
                  ]},

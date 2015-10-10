@@ -46,9 +46,10 @@
 %% initialize. To ensure a synchronized start-up procedure, this
 %% function does not return until Module:init/1 has returned.
 %%
-%% @spec start_link() -> {ok, Pid} | ignore | {error, Error}
 %% @end
 %%--------------------------------------------------------------------
+-spec start_link(URL::binary(), From::pid(), Ref::reference()) ->
+                        {ok, pid()} | ignore | {error, atom()}.
 start_link(URL, From, Ref) ->
     gen_fsm:start_link(?MODULE, [URL, From, Ref], []).
 
@@ -82,7 +83,7 @@ download(URL) ->
 %%--------------------------------------------------------------------
 init([URL, From, Ref]) ->
     process_flag(trap_exit, true),
-    Opts = case sniffle_opt:get(network, http, proxy, http_proxy, undefined) of
+    Opts = case sniffle_opt:get(network, http, proxy) of
                undefined ->
                    [];
                P ->
@@ -100,10 +101,6 @@ init([URL, From, Ref]) ->
 %% name as the current state name StateName is called to handle
 %% the event. It is also called if a timeout occurs.
 %%
-%% @spec state_name(Event, State) ->
-%%                   {next_state, NextStateName, NextState} |
-%%                   {next_state, NextStateName, NextState, Timeout} |
-%%                   {stop, Reason, NewState}
 %% @end
 %%--------------------------------------------------------------------
 get_manifest(_E, State = #state{url = URL, from = From, ref = Ref,
@@ -114,13 +111,15 @@ get_manifest(_E, State = #state{url = URL, from = From, ref = Ref,
     hackney:close(Client1),
     JSON = jsxd:from_list(jsx:decode(Body)),
     {ok, UUID} = jsxd:get([<<"uuid">>], JSON),
-    {ok, ImgURL} = jsxd:get([<<"files">>, 0, <<"url">>], JSON),
+    ImgURL = case jsxd:get([<<"files">>, 0, <<"url">>], JSON) of
+                 {ok, FileImgURL} -> FileImgURL; %% dataset API!
+                 _ -> <<URL/binary, "/file">> %% img API!
+             end,
     {ok, TotalSize} = jsxd:get([<<"files">>, 0, <<"size">>], JSON),
     {ok, SHA1} = jsxd:get([<<"files">>, 0, <<"sha1">>], JSON),
     sniffle_dataset:create(UUID),
     import_manifest(UUID, JSON),
     progress(UUID, 0),
-    s3 = sniffle_img:backend(),
     {ok, {Host, Port, AKey, SKey, Bucket}} = sniffle_s3:config(image),
     ChunkSize = application:get_env(sniffle, image_chunk_size,
                                     5*1024*1024),
@@ -331,7 +330,9 @@ import_manifest(UUID, D1) ->
         jsxd:get(<<"image_size">>,
                  jsxd:get([<<"files">>, 0, <<"size">>], 0, D1), D1))),
     RS = jsxd:get(<<"requirements">>, [], D1),
-    sniffle_dataset:networks(UUID, jsxd:get(<<"networks">>, [], RS)),
+    Networks = jsxd:get(<<"networks">>, [], RS),
+    [sniffle_dataset:add_network(UUID, {NName, NDesc}) ||
+        [{<<"description">>, NDesc}, {<<"name">>, NName}] <- Networks],
     case jsxd:get(<<"homepage">>, D1) of
         {ok, HomePage} ->
             sniffle_dataset:set_metadata(

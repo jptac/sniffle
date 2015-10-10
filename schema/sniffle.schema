@@ -8,7 +8,7 @@
 %% @doc Maximum number of retries before a creation fails. This means a failed
 %% create will hang around at maximum create_max_retries*create_retry_delay.
 {mapping, "create_max_retries", "sniffle.create_max_retries",
- [{default, "5"},
+ [{default, 5},
   {datatype, integer}]}.
 
 %% @doc The Amount of paralell create processes allowed to run at the same time
@@ -106,53 +106,6 @@
  end
 }.
 
-%% @doc The Backend to store large data objects in, this applies to snapshots
-%% and images. Objects stored in one backend will not be migrated to another if
-%% this is changed.
-{mapping, "large_data_backend", "sniffle.large_data_backend",
- [{default, internal},
-  {datatype, {enum, [internal, s3]}}]}.
-
-{mapping, "s3.bucket.image", "sniffle.image_bucket",
- [{default, "fifo-images"},
-  {datatype, string}]}.
-
-{mapping, "s3.bucket.snapshot", "sniffle.snapshot_bucket",
- [{default, "fifo-snapshots"},
-  {datatype, string}]}.
-
-{mapping, "s3.bucket.general", "sniffle.general_bucket",
- [{default, "fifo"},
-  {datatype, string}]}.
-
-{mapping, "s3.access_key", "sniffle.s3_access_key",
- [{commented, "access_key"},
-  {datatype, string}]}.
-
-{mapping, "s3.secret_key", "sniffle.s3_secret_key",
- [{commented, "secret_key"},
-  {datatype, string}]}.
-
-{mapping, "s3.host", "sniffle.s3_host",
- [{default, {"{{sniffle_ip}}", 8443}},
-  {datatype, ip}]}.
-
-{translation,
- "sniffle.s3_host",
- fun(Conf) ->
-         {IP, _Port} = cuttlefish:conf_get("s3.host", Conf),
-         IP
- end
-}.
-
-{translation,
- "sniffle.s3_port",
- fun(Conf) ->
-         {_IP, Port} = cuttlefish:conf_get("s3.host", Conf),
-         Port
- end
-}.
-
 %% @doc The default TCP handler, there is very very very
 %% rarely any reason to change this.
 {mapping, "tcp_callback", "mdns_server_lib.handler",
@@ -182,7 +135,7 @@
 %% the manual at http://bit.ly/1ciKRkS
 {mapping, "ring_size", "riak_core.ring_creation_size",
  [{datatype, integer},
-  {default, 8},
+  {default, 64},
   {commented, 64},
   {validators, ["ring_size"]}
  ]}.
@@ -220,413 +173,6 @@
  [{datatype, integer},
   {default, 3},
   {commented, 3}]}.
-
-{mapping, "dataset.aae", "sniffle.sniffle_dataset_aae",
- [{datatype, {enum, [on, off]}},
-  {default, on}]}.
-
-{translation,
-  "sniffle.sniffle_dataset_aae",
-  fun(Conf) ->
-          case cuttlefish:conf_get("dataset.aae", Conf) of
-              on -> true;
-              _ -> false
-          end
-  end
-}.
-
-%% @doc The number of copies of the data that is keeped.
-%% For good consistency N  < (R + W) should be true.
-{mapping, "dataset.n", "sniffle.sniffle_dataset",
- [{datatype, integer},
-  {level, advanced},
-  {default, 3},
-  {commented, 3}]}.
-
-%% @doc The number of replies requried for a read request to succeed
-%% The lower the value the faster the replies but the more likely stale
-%% data is returend.
-{mapping, "dataset.r", "sniffle.sniffle_dataset",
- [{datatype, integer},
-  {level, advanced},
-  {default, 2},
-  {commented, 2}]}.
-
-
-%% @doc The number of replies requried for a write request to succeed
-%% The lower the value the faster the write but the more likely to only
-%% write partial data.
-{mapping, "dataset.w", "sniffle.sniffle_dataset",
- [{datatype, integer},
-  {level, advanced},
-  {default, 3},
-  {commented, 3}]}.
-
-{ translation,
-  "sniffle.sniffle_dataset",
-  fun(Conf) ->
-          N = cuttlefish:conf_get("dataset.n", Conf),
-          R = cuttlefish:conf_get("dataset.r", Conf),
-          W = cuttlefish:conf_get("dataset.w", Conf),
-          {N, R, W}
-  end
-}.
-
-{mapping, "hypervisor.aae", "sniffle.sniffle_hypervisor_aae",
- [{datatype, {enum, [on, off]}},
-  {default, on}]}.
-{translation,
-  "sniffle.sniffle_hypervisor_aae",
-  fun(Conf) ->
-          case cuttlefish:conf_get("hypervisor.aae", Conf) of
-              on -> true;
-              _ -> false
-          end
-  end
-}.
-
-%% @doc The number of copies of the data that is keeped.
-%% For good consistency N  < (R + W) should be true.
-{mapping, "hypervisor.n", "sniffle.sniffle_hypervisor",
- [{datatype, integer},
-  {level, advanced},
-  {default, 3},
-  {commented, 3}]}.
-
-%% @doc The number of replies requried for a read request to succeed
-%% The lower the value the faster the replies but the more likely stale
-%% data is returend.
-{mapping, "hypervisor.r", "sniffle.sniffle_hypervisor",
- [{datatype, integer},
-  {level, advanced},
-  {default, 2},
-  {commented, 2}]}.
-
-
-%% @doc The number of replies requried for a write request to succeed
-%% The lower the value the faster the write but the more likely to only
-%% write partial data.
-{mapping, "hypervisor.w", "sniffle.sniffle_hypervisor",
- [{datatype, integer},
-  {level, advanced},
-  {default, 3},
-  {commented, 3}]}.
-
-{ translation,
-  "sniffle.sniffle_hypervisor",
-  fun(Conf) ->
-          N = cuttlefish:conf_get("hypervisor.n", Conf),
-          R = cuttlefish:conf_get("hypervisor.r", Conf),
-          W = cuttlefish:conf_get("hypervisor.w", Conf),
-          {N, R, W}
-  end
-}.
-
-{mapping, "vm.aae", "sniffle.sniffle_vm_aae",
- [{datatype, {enum, [on, off]}},
-  {default, on}]}.
-
-{translation,
-  "sniffle.sniffle_vm_aae",
-  fun(Conf) ->
-          case cuttlefish:conf_get("vm.aae", Conf) of
-              on -> true;
-              _ -> false
-          end
-  end
-}.
-
-%% @doc The number of copies of the data that is keeped.
-%% For good consistency N  < (R + W) should be true.
-{mapping, "vm.n", "sniffle.sniffle_vm",
- [{datatype, integer},
-  {level, advanced},
-  {default, 3},
-  {commented, 3}]}.
-
-%% @doc The number of replies requried for a read request to succeed
-%% The lower the value the faster the replies but the more likely stale
-%% data is returend.
-{mapping, "vm.r", "sniffle.sniffle_vm",
- [{datatype, integer},
-  {level, advanced},
-  {default, 2},
-  {commented, 2}]}.
-
-
-%% @doc The number of replies requried for a write request to succeed
-%% The lower the value the faster the write but the more likely to only
-%% write partial data.
-{mapping, "vm.w", "sniffle.sniffle_vm",
- [{datatype, integer},
-  {level, advanced},
-  {default, 3},
-  {commented, 3}]}.
-
-{ translation,
-  "sniffle.sniffle_vm",
-  fun(Conf) ->
-          N = cuttlefish:conf_get("vm.n", Conf),
-          R = cuttlefish:conf_get("vm.r", Conf),
-          W = cuttlefish:conf_get("vm.w", Conf),
-          {N, R, W}
-  end
-}.
-
-{mapping, "iprange.aae", "sniffle.sniffle_iprange_aae",
- [{datatype, {enum, [on, off]}},
-  {default, on}]}.
-
-{translation,
-  "sniffle.sniffle_iprange_aae",
-  fun(Conf) ->
-          case cuttlefish:conf_get("iprange.aae", Conf) of
-              on -> true;
-              _ -> false
-          end
-  end
-}.
-
-%% @doc The number of copies of the data that is keeped.
-%% For good consistency N  < (R + W) should be true.
-{mapping, "iprange.n", "sniffle.sniffle_iprange",
- [{datatype, integer},
-  {level, advanced},
-  {default, 3},
-  {commented, 3}]}.
-
-%% @doc The number of replies requried for a read request to succeed
-%% The lower the value the faster the replies but the more likely stale
-%% data is returend.
-{mapping, "iprange.r", "sniffle.sniffle_iprange",
- [{datatype, integer},
-  {level, advanced},
-  {default, 2},
-  {commented, 2}]}.
-
-
-%% @doc The number of replies requried for a write request to succeed
-%% The lower the value the faster the write but the more likely to only
-%% write partial data.
-{mapping, "iprange.w", "sniffle.sniffle_iprange",
- [{datatype, integer},
-  {level, advanced},
-  {default, 3},
-  {commented, 3}]}.
-
-{ translation,
-  "sniffle.sniffle_iprange",
-  fun(Conf) ->
-          N = cuttlefish:conf_get("iprange.n", Conf),
-          R = cuttlefish:conf_get("iprange.r", Conf),
-          W = cuttlefish:conf_get("iprange.w", Conf),
-          {N, R, W}
-  end
-}.
-
-{mapping, "network.aae", "sniffle.sniffle_network_aae",
- [{datatype, {enum, [on, off]}},
-  {default, on}]}.
-
-{translation,
-  "sniffle.sniffle_network_aae",
-  fun(Conf) ->
-          case cuttlefish:conf_get("network.aae", Conf) of
-              on -> true;
-              _ -> false
-          end
-  end
-}.
-
-%% @doc The number of copies of the data that is keeped.
-%% For good consistency N  < (R + W) should be true.
-{mapping, "network.n", "sniffle.sniffle_network",
- [{datatype, integer},
-  {level, advanced},
-  {default, 3},
-  {commented, 3}]}.
-
-%% @doc The number of replies requried for a read request to succeed
-%% The lower the value the faster the replies but the more likely stale
-%% data is returend.
-{mapping, "network.r", "sniffle.sniffle_network",
- [{datatype, integer},
-  {level, advanced},
-  {default, 2},
-  {commented, 2}]}.
-
-
-%% @doc The number of replies requried for a write request to succeed
-%% The lower the value the faster the write but the more likely to only
-%% write partial data.
-{mapping, "network.w", "sniffle.sniffle_network",
- [{datatype, integer},
-  {level, advanced},
-  {default, 3},
-  {commented, 3}]}.
-
-{ translation,
-  "sniffle.sniffle_network",
-  fun(Conf) ->
-          N = cuttlefish:conf_get("network.n", Conf),
-          R = cuttlefish:conf_get("network.r", Conf),
-          W = cuttlefish:conf_get("network.w", Conf),
-          {N, R, W}
-  end
-}.
-
-{mapping, "img.aae", "sniffle.sniffle_img_aae",
- [{datatype, {enum, [on, off]}},
-  {default, off}]}.
-
-{translation,
-  "sniffle.sniffle_img_aae",
-  fun(Conf) ->
-          case cuttlefish:conf_get("img.aae", Conf) of
-              on -> true;
-              _ -> false
-          end
-  end
-}.
-
-%% @doc The number of copies of the data that is keeped.
-%% For good consistency N  < (R + W) should be true.
-{mapping, "img.n", "sniffle.sniffle_img",
- [{datatype, integer},
-  {level, advanced},
-  {default, 3},
-  {commented, 3}]}.
-
-%% @doc The number of replies requried for a read request to succeed
-%% The lower the value the faster the replies but the more likely stale
-%% data is returend.
-{mapping, "img.r", "sniffle.sniffle_img",
- [{datatype, integer},
-  {level, advanced},
-  {default, 2},
-  {commented, 2}]}.
-
-
-%% @doc The number of replies requried for a write request to succeed
-%% The lower the value the faster the write but the more likely to only
-%% write partial data.
-{mapping, "img.w", "sniffle.sniffle_img",
- [{datatype, integer},
-  {level, advanced},
-  {default, 3},
-  {commented, 3}]}.
-
-{ translation,
-  "sniffle.sniffle_img",
-  fun(Conf) ->
-          N = cuttlefish:conf_get("img.n", Conf),
-          R = cuttlefish:conf_get("img.r", Conf),
-          W = cuttlefish:conf_get("img.w", Conf),
-          {N, R, W}
-  end
-}.
-
-{mapping, "dtrace.aae", "sniffle.sniffle_dtrace_aae",
- [{datatype, {enum, [on, off]}},
-  {default, on}]}.
-
-{translation,
-  "sniffle.sniffle_dtrace_aae",
-  fun(Conf) ->
-          case cuttlefish:conf_get("dtrace.aae", Conf) of
-              on -> true;
-              _ -> false
-          end
-  end
-}.
-
-%% @doc The number of copies of the data that is keeped.
-%% For good consistency N  < (R + W) should be true.
-{mapping, "dtrace.n", "sniffle.sniffle_dtrace",
- [{datatype, integer},
-  {level, advanced},
-  {default, 3},
-  {commented, 3}]}.
-
-%% @doc The number of replies requried for a read request to succeed
-%% The lower the value the faster the replies but the more likely stale
-%% data is returend.
-{mapping, "dtrace.r", "sniffle.sniffle_dtrace",
- [{datatype, integer},
-  {level, advanced},
-  {default, 2},
-  {commented, 2}]}.
-
-
-%% @doc The number of replies requried for a write request to succeed
-%% The lower the value the faster the write but the more likely to only
-%% write partial data.
-{mapping, "dtrace.w", "sniffle.sniffle_dtrace",
- [{datatype, integer},
-  {level, advanced},
-  {default, 3},
-  {commented, 3}]}.
-
-{ translation,
-  "sniffle.sniffle_dtrace",
-  fun(Conf) ->
-          N = cuttlefish:conf_get("dtrace.n", Conf),
-          R = cuttlefish:conf_get("dtrace.r", Conf),
-          W = cuttlefish:conf_get("dtrace.w", Conf),
-          {N, R, W}
-  end
-}.
-
-{mapping, "package.aae", "sniffle.sniffle_package_aae",
- [{datatype, {enum, [on, off]}},
-  {default, on}]}.
-
-{translation,
-  "sniffle.sniffle_package_aae",
-  fun(Conf) ->
-          case cuttlefish:conf_get("package.aae", Conf) of
-              on -> true;
-              _ -> false
-          end
-  end
-}.
-
-%% @doc The number of copies of the data that is keeped.
-%% For good consistency N  < (R + W) should be true.
-{mapping, "package.n", "sniffle.sniffle_package",
- [{datatype, integer},
-  {level, advanced},
-  {default, 3},
-  {commented, 3}]}.
-
-%% @doc The number of replies requried for a read request to succeed
-%% The lower the value the faster the replies but the more likely stale
-%% data is returend.
-{mapping, "package.r", "sniffle.sniffle_package",
- [{datatype, integer},
-  {level, advanced},
-  {default, 2},
-  {commented, 2}]}.
-
-
-%% @doc The number of replies requried for a write request to succeed
-%% The lower the value the faster the write but the more likely to only
-%% write partial data.
-{mapping, "package.w", "sniffle.sniffle_package",
- [{datatype, integer},
-  {level, advanced},
-  {default, 3},
-  {commented, 3}]}.
-
-{translation,
- "sniffle.sniffle_package",
- fun(Conf) ->
-         N = cuttlefish:conf_get("package.n", Conf),
-         R = cuttlefish:conf_get("package.r", Conf),
-         W = cuttlefish:conf_get("package.w", Conf),
-         {N, R, W}
- end
-}.
 
 %% @doc This parameter defines the number of bytes of
 %% server memory to assign to leveldb.  leveldb will dynamically
@@ -669,5 +215,27 @@
 
 {mapping, "folsom_ddb.prefix", "folsom_ddb.prefix", [
     merge,
-    {default, "sniffle"}
+    {default, "sniffle@127.0.0.1"}
+]}.
+
+%% @doc Schema directory
+{mapping, "schema_dir", "riak_core.schema_dirs",
+ [{default, "./share/schema"},
+  {datatype, string}]
+}.
+
+{translation,
+  "riak_core.schema_dirs",
+  fun(Conf) ->
+          D = cuttlefish:conf_get("schema_dir", Conf),
+          [D]
+  end
+}.
+
+%% @doc handoff.ip is the network address that Riak binds to for
+%% intra-cluster data handoff.
+{mapping, "handoff.ip", "riak_core.handoff_ip", [
+  {default, "127.0.0.1" },
+  {datatype, string},
+  {validators, ["valid_ipaddr"]}
 ]}.

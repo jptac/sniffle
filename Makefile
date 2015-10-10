@@ -1,9 +1,8 @@
-REBAR = $(shell pwd)/rebar
+REBAR = $(shell pwd)/rebar3
 
-.PHONY: deps rel stagedevrel package version all
+.PHONY: rel stagedevrel package version all tree
 
-
-all: cp-hooks deps compile
+all: cp-hooks compile
 
 cp-hooks:
 	cp hooks/* .git/hooks
@@ -12,90 +11,56 @@ version:
 	@git describe > sniffle.version
 
 version_header: version
-	@echo "-define(VERSION, <<\"$(shell cat sniffle.version)\">>)." > apps/sniffle/include/sniffle_version.hrl
+	@echo "-define(VERSION, <<\"$(shell cat sniffle.version)\">>)." > apps/sniffle_version/include/sniffle_version.hrl
 
-compile: version_header
+compile:
 	$(REBAR) compile
 
-deps:
-	$(REBAR) get-deps
-
 clean:
-	$(REBAR) clean -r
+	$(REBAR) clean
 	-rm -rf apps/sniffle/.eunit
 	-rm -rf apps/sniffle/ebin/
 	make -C rel/pkg clean
-	rm -r apps/*/ebin
-
-distclean: clean devclean relclean
-	$(REBAR) delete-deps
 
 long-test:
-	-rm -r apps/sniffle/.eunit
-	$(REBAR) skip_deps=true -DEQC_LONG_TESTS eunit -v -r
+	$(REBAR) as eqc,long eunit 
 
 eunit: 
 	$(REBAR) compile
-	-rm -r apps/sniffle/.eunit
-	$(REBAR) eunit skip_deps=true -r -v
+	$(REBAR) eunit -v
 
 test: eunit
-	$(REBAR) xref skip_deps=true -r
+	$(REBAR) xref
 
 quick-xref:
-	$(REBAR) xref skip_deps=true -r
+	$(REBAR) xref
 
 quick-test:
-	-rm -r apps/sniffle/.eunit
-	$(REBAR) -DEQC_SHORT_TEST skip_deps=true eunit -r -v
+	$(REBAR) as eqc,short eunit -v
 
-rel: all zabbix
-	[ -d rel/sniffle/share ] && rm -r rel/sniffle/share || true
-	$(REBAR) generate
+update:
+	$(REBAR) update
 
-relclean:
-	rm -rf rel/sniffle
-
-devrel: dev1 dev2 dev3 dev4
+rel: update
+	$(REBAR) as prod compile
+	sh generate_zabbix_template.sh
+	$(REBAR) as prod release
 
 package: rel
 	make -C rel/pkg package
-
-zabbix:
-	sh generate_zabbix_template.sh
 
 ###
 ### Docs
 ###
 docs:
-	$(REBAR) skip_deps=true doc
+	$(REBAR) edoc
 
 ##
 ## Developer targets
 ##
 
 xref: all
-	$(REBAR) xref skip_deps=true -r
-
-stage : rel
-	$(foreach dep,$(wildcard deps/* wildcard apps/*), rm -rf rel/sniffle/lib/$(shell basename $(dep))-* && ln -sf $(abspath $(dep)) rel/sniffle/lib;)
-
-
-stagedevrel: dev1 dev2 dev3 dev4
-	mkdir -p dev/dev{1,2,3}/data/{ipranges,datasets,packages,ring}
-	$(foreach dev,$^,\
-	  $(foreach dep,$(wildcard deps/* wildcard apps/*), rm -rf dev/$(dev)/lib/$(shell basename $(dep))-* && ln -sf $(abspath $(dep)) dev/$(dev)/lib;))
-
-devrel: dev1 dev2 dev3 dev4
-
-
-devclean:
-	rm -rf dev
-
-dev1 dev2 dev3 dev4: all
-	mkdir -p dev
-	(cd rel && $(REBAR) generate target_dir=../dev/$@ overlay_vars=vars/$@.config)
-
+	$(REBAR) xref
 
 ##
 ## Dialyzer
@@ -103,38 +68,16 @@ dev1 dev2 dev3 dev4: all
 APPS = kernel stdlib sasl erts ssl tools os_mon runtime_tools crypto inets \
        xmerl webtool snmp public_key mnesia eunit syntax_tools compiler edoc
 
-COMBO_PLT = $(HOME)/.sniffle_combo_dialyzer_plt
-
 # DIALYZER_IGNORE="^\(riak_core\|leexinc.hrl\|pokemon_pb.erl\|meck_cover.erl\|meck.erl\|supervisor_pre_r14b04.erl\|webmachine_resource.erl\|uuid.erl\|gen_server2.erl\|folsom_vm_metrics.erl\|protobuffs_compile.erl\)"
 
-check_plt: deps compile
-	dialyzer --check_plt --plt $(COMBO_PLT) --apps $(APPS) \
-		deps/*/ebin apps/*/ebin
-
-build_plt: deps compile
-	dialyzer --build_plt --output_plt $(COMBO_PLT) --apps $(APPS) \
-		deps/*/ebin apps/*/ebin
-
 dialyzer: deps compile
-	@echo
-	@echo Use "'make check_plt'" to check PLT prior to using this target.
-	@echo Use "'make build_plt'" to build PLT prior to using this target.
-	@echo
-	@sleep 1
-	dialyzer -Wno_return --plt $(COMBO_PLT) deps/*/ebin apps/*/ebin | grep -v -f dialyzer.mittigate
+	$(REBAR) dialyzer -Wno_return | grep -v -f dialyzer.mittigate
 
-dialyzer-gui: deps compile
-	dialyzer --gui -Wno_return --plt $(COMBO_PLT) deps/*/ebin apps/*/ebin
 typer:
-	typer --plt $(COMBO_PLT) deps/*/ebin apps/*/ebin
+	typer --plt ./_build/default/rebar3_*_plt _build/default/lib/*/ebin
 
-cleanplt:
-	@echo
-	@echo "Are you sure?  It takes about 1/2 hour to re-build."
-	@echo Deleting $(COMBO_PLT) in 5 seconds.
-	@echo
-	sleep 5
-	rm $(COMBO_PLT)
+tree:
+	rebar3 tree | grep -v '=' | sed 's/ (.*//' > tree
 
-tags:
-	find . -name "*.[he]rl" -print | etags -
+tree-diff: tree
+	git diff test -- tree

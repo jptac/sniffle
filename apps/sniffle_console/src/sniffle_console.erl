@@ -19,14 +19,7 @@
         ]).
 
 -export([
-         aae_status/1,
-         down/1,
-         join/1,
-         leave/1,
-         reip/1,
-         remove/1,
-         ringready/1,
-         staged_join/1
+         aae_status/1
         ]).
 
 -export([
@@ -53,19 +46,12 @@
               connections/1,
               aae_status/1,
               config/1,
-              down/1,
               ds/1,
               dtrace/1,
               hvs/1,
               ips/1,
               networks/1,
-              join/1,
-              leave/1,
               pkgs/1,
-              reip/1,
-              remove/1,
-              ringready/1,
-              staged_join/1,
               vms/1,
               db_update/1,
               update_snarl_meta/1
@@ -94,13 +80,16 @@ update_meta_element(LS, FT, ID) ->
     io:format(".").
 
 init_leo([Host]) ->
+    init_leo([Host, Host]);
+
+init_leo([Manager, Gateway]) ->
     P = 10020,
     User = "fifo",
     OK = {ok,[{<<"result">>,<<"OK">>}]},
 
     %% Create the user and store access and secret key
     {ok,[{<<"access_key_id">>,AKey}, {<<"secret_access_key">>, SKey}]} =
-        libleofs:create_user(Host, P, User),
+        libleofs:create_user(Manager, P, User),
     sniffle_opt:set(["storage", "s3", "access_key"], AKey),
     sniffle_opt:set(["storage", "s3", "secret_key"], SKey),
     io:format("Created user ~s:~n"
@@ -110,29 +99,27 @@ init_leo([Host]) ->
 
     %% Create the general bucket
     GenBucket = "fifo",
-    OK = libleofs:add_bucket(Host, P, GenBucket, AKey),
+    OK = libleofs:add_bucket(Manager, P, GenBucket, AKey),
     sniffle_opt:set(["storage", "s3", "general_bucket"], GenBucket),
     io:format("Created bucket general bucket: ~s~n", [GenBucket]),
 
     %% Create the image bucket
     ImgBucket = "fifo-images",
-    OK = libleofs:add_bucket(Host, P, ImgBucket, AKey),
+    OK = libleofs:add_bucket(Manager, P, ImgBucket, AKey),
     sniffle_opt:set(["storage", "s3", "image_bucket"], ImgBucket),
     io:format("Created bucket image bucket: ~s~n", [ImgBucket]),
 
     %% Create the backup bucket
     SnapBucket = "fifo-backups",
-    OK = libleofs:add_bucket(Host, P, SnapBucket, AKey),
+    OK = libleofs:add_bucket(Manager, P, SnapBucket, AKey),
     sniffle_opt:set(["storage", "s3", "snapshot_bucket"], SnapBucket),
     io:format("Created bucket snapshot bucket: ~s~n", [SnapBucket]),
 
     %% Add the enpoint
-    OK = libleofs:add_endpoint(Host, P, Host),
-    sniffle_opt:set(["storage", "s3", "host"], Host),
+    OK = libleofs:add_endpoint(Manager, P, Gateway),
+    sniffle_opt:set(["storage", "s3", "host"], Gateway),
     ok = sniffle_opt:set(["storage", "s3", "port"], 443),
-    io:format("Configuring endpoint as: https://~s:~p~n", [Host, P]),
-    %% Set s3 as storage system
-    ok = sniffle_opt:set(["storage", "general", "backend"], s3),
+    io:format("Configuring endpoint as: https://~s:~p~n", [Gateway, P]),
     io:format("Setting storage backend to s3, please reastart sniffle for this "
               "to take full effect!~n"),
     ok.
@@ -140,14 +127,8 @@ init_leo([Host]) ->
 
 db_update([]) ->
     [db_update([E]) || E <- ["vms", "datasets", "dtraces", "hypervisors",
-                             "ipranges", "networks", "packages", "img"]],
+                             "ipranges", "networks", "packages"]],
     ok;
-
-db_update(["img"]) ->
-    io:format("Updating images...~n"),
-    {ok, Imgs} = sniffle_img:list(),
-    [update_img(Img) || Img <- Imgs],
-    io:format("Update complete.~n");
 
 db_update(["datasets"]) ->
     io:format("Updating datasets...~n"),
@@ -216,7 +197,7 @@ get_ring([]) ->
               "----------"
               " ---------------~n", []),
     lists:map(fun({K, H}) ->
-                      io:format("~50b ~-15s~n", [K, H])
+                      io:format("~50b ~-40s~n", [K, H])
               end, CHash),
     ok.
 
@@ -303,49 +284,17 @@ aae_status([]) ->
                 {sniffle_iprange, "IP Range"}, {sniffle_package, "Package"},
                 {sniffle_dataset, "Dataset"}, {sniffle_network, "Network"},
                 {sniffle_dtrace, "DTrace"}],
-    Services1 = case sniffle_opt:get(storage, general, backend,
-                                     large_data_backend, internal) of
-                    internal ->
-                        [{sniffle_img, "Image"} | Services];
-                    _ ->
-                        Services
-                end,
-    [aae_status(E) || E <- Services1];
+    [fifo_console:aae_status(E) || E <- Services].
 
-aae_status({System, Name}) ->
-    ExchangeInfo = riak_core_entropy_info:compute_exchange_info(System),
-    io:format("~s~n~n", [Name]),
-    aae_exchange_status(ExchangeInfo),
-    io:format("~n"),
-    aae_tree_status(System),
-    io:format("~n"),
-    aae_repair_status(ExchangeInfo).
+%% aae_status([]) ->
+%%     ExchangeInfo = riak_kv_entropy_info:compute_exchange_info(),
+%%     aae_exchange_status(ExchangeInfo),
+%%     io:format("~n"),
+%%     TreeInfo = riak_kv_entropy_info:compute_tree_info(),
+%%     aae_tree_status(TreeInfo),
+%%     io:format("~n"),
+%%     aae_repair_status(ExchangeInfo).
 
-reip([OldNode, NewNode]) ->
-    try
-        %% reip is called when node is down (so riak_core_ring_manager is not running),
-        %% so it has to use the basic ring operations.
-        %%
-        %% Do *not* convert to use riak_core_ring_manager:ring_trans.
-        %%
-        application:load(riak_core),
-        RingStateDir = app_helper:get_env(riak_core, ring_state_dir),
-        {ok, RingFile} = riak_core_ring_manager:find_latest_ringfile(),
-        BackupFN = filename:join([RingStateDir, filename:basename(RingFile)++".BAK"]),
-        {ok, _} = file:copy(RingFile, BackupFN),
-        io:format("Backed up existing ring file to ~p~n", [BackupFN]),
-        Ring = riak_core_ring_manager:read_ringfile(RingFile),
-        NewRing = riak_core_ring:rename_node(Ring, OldNode, NewNode),
-        riak_core_ring_manager:do_write_ringfile(NewRing),
-        io:format("New ring file written to ~p~n",
-            [element(2, riak_core_ring_manager:find_latest_ringfile())])
-    catch
-        Exception:Reason ->
-            lager:error("Reip failed ~p:~p", [Exception,
-                    Reason]),
-            io:format("Reip failed, see log for details~n"),
-            error
-    end.
 
 
 dtrace([C, "-j" | R]) ->
@@ -455,201 +404,13 @@ config(["unset" | Ks]) ->
     io:format("Setting changed~n", []),
     ok.
 
-%%compied from riak_kv
-
-join([NodeStr]) ->
-    join(NodeStr, fun riak_core:join/1,
-         "Sent join request to ~s~n", [NodeStr]).
-
-staged_join([NodeStr]) ->
-    Node = list_to_atom(NodeStr),
-    join(NodeStr, fun riak_core:staged_join/1,
-         "Success: staged join request for ~p to ~p~n", [node(), Node]).
-
-join(NodeStr, JoinFn, SuccessFmt, SuccessArgs) ->
-    try
-        case JoinFn(NodeStr) of
-            ok ->
-                Node = list_to_atom(NodeStr),
-                riak_ensemble_manager:join(node(), Node),
-                io:format(SuccessFmt, SuccessArgs),
-                ok;
-            {error, not_reachable} ->
-                io:format("Node ~s is not reachable!~n", [NodeStr]),
-                error;
-            {error, different_ring_sizes} ->
-                io:format("Failed: ~s has a different ring_creation_size~n",
-                          [NodeStr]),
-                error;
-            {error, unable_to_get_join_ring} ->
-                io:format("Failed: Unable to get ring from ~s~n", [NodeStr]),
-                error;
-            {error, not_single_node} ->
-                io:format("Failed: This node is already a member of a "
-                          "cluster~n"),
-                error;
-            {error, self_join} ->
-                io:format("Failed: This node cannot join itself in a "
-                          "cluster~n"),
-                error;
-            {error, _} ->
-                io:format("Join failed. Try again in a few moments.~n", []),
-                error
-        end
-    catch
-        Exception:Reason ->
-            lager:error("Join failed ~p:~p", [Exception, Reason]),
-            io:format("Join failed, see log for details~n"),
-            error
-    end.
-
-leave([]) ->
-    try
-        case riak_core:leave() of
-            ok ->
-                io:format("Success: ~p will shutdown after handing off "
-                          "its data~n", [node()]),
-                ok;
-            {error, already_leaving} ->
-                io:format("~p is already in the process of leaving the "
-                          "cluster.~n", [node()]),
-                ok;
-            {error, not_member} ->
-                io:format("Failed: ~p is not a member of the cluster.~n",
-                          [node()]),
-                error;
-            {error, only_member} ->
-                io:format("Failed: ~p is the only member.~n", [node()]),
-                error
-        end
-    catch
-        Exception:Reason ->
-            lager:error("Leave failed ~p:~p", [Exception, Reason]),
-            io:format("Leave failed, see log for details~n"),
-            error
-    end.
-
-remove([Node]) ->
-    try
-        case riak_core:remove(list_to_atom(Node)) of
-            ok ->
-                io:format("Success: ~p removed from the cluster~n", [Node]),
-                ok;
-            {error, not_member} ->
-                io:format("Failed: ~p is not a member of the cluster.~n",
-                          [Node]),
-                error;
-            {error, only_member} ->
-                io:format("Failed: ~p is the only member.~n", [Node]),
-                error
-        end
-    catch
-        Exception:Reason ->
-            lager:error("Remove failed ~p:~p", [Exception, Reason]),
-            io:format("Remove failed, see log for details~n"),
-            error
-    end.
-
-down([Node]) ->
-    try
-        case riak_core:down(list_to_atom(Node)) of
-            ok ->
-                io:format("Success: ~p marked as down~n", [Node]),
-                ok;
-            {error, is_up} ->
-                io:format("Failed: ~s is up~n", [Node]),
-                error;
-            {error, not_member} ->
-                io:format("Failed: ~p is not a member of the cluster.~n",
-                          [Node]),
-                error;
-            {error, only_member} ->
-                io:format("Failed: ~p is the only member.~n", [Node]),
-                error
-        end
-    catch
-        Exception:Reason ->
-            lager:error("Down failed ~p:~p", [Exception, Reason]),
-            io:format("Down failed, see log for details~n"),
-            error
-    end.
-
-
--spec(ringready([]) -> ok | error).
-ringready([]) ->
-    try riak_core_status:ringready() of
-        {ok, Nodes} ->
-            io:format("TRUE All nodes agree on the ring ~p\n", [Nodes]);
-        {error, {different_owners, N1, N2}} ->
-            io:format("FALSE Node ~p and ~p list different partition owners\n",
-                      [N1, N2]),
-            error;
-        {error, {nodes_down, Down}} ->
-            io:format("FALSE ~p down.  All nodes need to be up to check.\n",
-                      [Down]),
-            error
-    catch
-        Exception:Reason ->
-            lager:error("Ringready failed ~p:~p", [Exception, Reason]),
-            io:format("Ringready failed, see log for details~n"),
-            error
-    end.
-
 %%%===================================================================
 %%% Private
 %%%===================================================================
 
+
 pp_json(Obj) ->
     io:format("~s~n", [jsx:prettify(jsx:encode(Obj))]).
-
-
-aae_exchange_status(ExchangeInfo) ->
-    io:format("~s~n", [string:centre(" Exchanges ", 79, $=)]),
-    io:format("~-49s  ~-12s  ~-12s~n", ["Index", "Last (ago)", "All (ago)"]),
-    io:format("~79..-s~n", [""]),
-    [begin
-         Now = os:timestamp(),
-         LastStr = format_timestamp(Now, LastTS),
-         AllStr = format_timestamp(Now, AllTS),
-         io:format("~-49b  ~-12s  ~-12s~n", [Index, LastStr, AllStr]),
-         ok
-     end || {Index, LastTS, AllTS, _Repairs} <- ExchangeInfo],
-    ok.
-
-aae_repair_status(ExchangeInfo) ->
-    io:format("~s~n", [string:centre(" Keys Repaired ", 79, $=)]),
-    io:format("~-49s  ~s  ~s  ~s~n", ["Index",
-                                      string:centre("Last", 8),
-                                      string:centre("Mean", 8),
-                                      string:centre("Max", 8)]),
-    io:format("~79..-s~n", [""]),
-    [begin
-         io:format("~-49b  ~s  ~s  ~s~n",
-                   [Index,
-                    string:centre(integer_to_list(Last), 8),
-                    string:centre(integer_to_list(Mean), 8),
-                    string:centre(integer_to_list(Max), 8)]),
-         ok
-     end || {Index, _, _, {Last,_Min,Max,Mean}} <- ExchangeInfo],
-    ok.
-
-aae_tree_status(System) ->
-    TreeInfo = riak_core_entropy_info:compute_tree_info(System),
-    io:format("~s~n", [string:centre(" Entropy Trees ", 79, $=)]),
-    io:format("~-49s  Built (ago)~n", ["Index"]),
-    io:format("~79..-s~n", [""]),
-    [begin
-         Now = os:timestamp(),
-         BuiltStr = format_timestamp(Now, BuiltTS),
-         io:format("~-49b  ~s~n", [Index, BuiltStr]),
-         ok
-     end || {Index, BuiltTS} <- TreeInfo],
-    ok.
-
-format_timestamp(_Now, undefined) ->
-    "--";
-format_timestamp(Now, TS) ->
-    riak_core_format:human_time_fmt("~.1f", timer:now_diff(Now, TS)).
 
 
 do_update(MainMod, StateMod) ->
@@ -678,25 +439,3 @@ do_update(MainMod, StateMod) ->
     io:format(" done.~n"),
     io:format("Update complete.~n"),
     ok.
-
-update_part(Img, Part) ->
-    io:format("."),
-    Key = <<Img:36/binary, Part:32/integer>>,
-    case sniffle_img:list_(Key) of
-        {ok, [D]} ->
-            sniffle_img:wipe(Key),
-            timer:sleep(100),
-            sniffle_img:sync_repair(Key,  D),
-            {ok, _} = sniffle_img:get(Img, Part),
-            erlang:garbage_collect();
-        _ ->
-            io:format("Could not read: ~s/~p~n", [Img, Part]),
-            throw({read_failure, Img, Part})
-    end.
-
-update_img(Img) ->
-    {ok, Parts} = sniffle_img:list(Img),
-    io:format(" Updating image '~s' (~p parts)", [Img, length(Parts)]),
-    [update_part(Img, Part) || Part <- lists:sort(Parts)],
-    io:format(" done.~n").
-

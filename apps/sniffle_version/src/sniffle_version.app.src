@@ -1,0 +1,15 @@
+{application, sniffle_version,
+ [
+  {description, "The version for sniffle"},
+  {vsn, "0.1.0"},
+  {modules, [
+             sniffle_version
+            ]},
+  {registered, []},
+  {applications, [
+                  kernel,
+                  lager,
+                  stdlib
+                 ]},
+  {env, []}
+ ]}.

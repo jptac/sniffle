@@ -2,8 +2,6 @@
 
 -behaviour(riak_core_coverage_fsm).
 
--include_lib("sniffle/include/sniffle.hrl").
-
 -export([
          init/2,
          process_results/2,
@@ -30,7 +28,8 @@ start(VNodeMaster, NodeCheckService, Request) ->
 
 %% The first is the vnode service used
 init({From, ReqID, _}, {VNodeMaster, NodeCheckService, Request}) ->
-    {NVal, R, _W} = ?NRW(NodeCheckService),
+    {ok, N} = application:get_env(sniffle, n),
+    {ok, R} = application:get_env(sniffle, r),
     %% all - full coverage; allup - partial coverage
     VNodeSelector = allup,
     PrimaryVNodeCoverage = R,
@@ -38,7 +37,7 @@ init({From, ReqID, _}, {VNodeMaster, NodeCheckService, Request}) ->
     Timeout = 5000,
     State = #state{replies = dict:new(), r = R,
                    from = From, reqid = ReqID},
-    {Request, VNodeSelector, NVal, PrimaryVNodeCoverage,
+    {Request, VNodeSelector, N, PrimaryVNodeCoverage,
      NodeCheckService, VNodeMaster, Timeout, State}.
 
 process_results({ok, _ReqID, _IdxNode, Obj},
@@ -74,6 +73,4 @@ finish(How, State) ->
 %%%===================================================================
 
 mk_reqid() ->
-    {MegaSecs,Secs,MicroSecs} = erlang:now(),
-	(MegaSecs*1000000 + Secs)*1000000 + MicroSecs.
-
+    erlang:unique_integer().

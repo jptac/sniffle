@@ -3,7 +3,7 @@
 %% replica and wait until a quorum is met.
 -module(sniffle_entity_read_fsm).
 -behavior(gen_fsm).
--include_lib("sniffle/include/sniffle.hrl").
+-include("sniffle_read.hrl").
 
 %% API
 -export([start_link/6, start/2, start/3, start/4]).
@@ -19,7 +19,6 @@
 
 -record(state,
         {
-          start,
           req_id,
           from,
           entity,
@@ -101,9 +100,9 @@ init([ReqId, {VNode, System}, Op, From, Entity]) ->
     init([ReqId, {VNode, System}, Op, From, Entity, undefined]);
 
 init([ReqId, {VNode, System}, Op, From, Entity, Val]) ->
-    {N, R, _W} = ?NRW(System),
+    {ok, N} = application:get_env(sniffle, n),
+    {ok, R} = application:get_env(sniffle, r),
     SD = #state{
-            start = now(),
             req_id=ReqId,
             r=R,
             n=N,
@@ -162,12 +161,7 @@ waiting({ok, ReqID, IdxNode, Obj},
                     From ! {ReqID, not_found};
                 Merged ->
                     Reply = ft_obj:val(Merged),
-                    case statebox:is_statebox(Reply) of
-                        true ->
-                            From ! {ReqID, ok, statebox:value(Reply)};
-                        false  ->
-                            From ! {ReqID, ok, Reply}
-                    end
+                    From ! {ReqID, ok, Reply}
             end,
             if
                 NumR =:= N ->
@@ -227,7 +221,6 @@ terminate(_Reason, _SN, _SD) ->
 %%% Internal Functions
 %%%===================================================================
 
-%% @pure
 %%
 %% @doc Given a list of `Replies' return the merged value.
 -spec merge([vnode_reply()]) -> fifo:obj() | not_found.
@@ -235,10 +228,9 @@ merge(Replies) ->
     Objs = [Obj || {_,Obj} <- Replies],
     ft_obj:merge(sniffle_entity_read_fsm, Objs).
 
-%% @pure
 %%
 %% @doc Reconcile conflicts among conflicting values.
--spec reconcile([A :: statebox:statebox()]) -> A :: statebox:statebox().
+-spec reconcile([A]) -> A.
 
 reconcile([V | Vs]) ->
     reconcile(fifo_dt:type(V), Vs, V).
@@ -248,7 +240,6 @@ reconcile(M, [H | R], Acc) when M /= undefined ->
 reconcile(_M, _, Acc) ->
     Acc.
 
-%% @pure
 %%
 %% @doc Given the merged object `MObj' and a list of `Replies'
 %% determine if repair is needed.
@@ -257,10 +248,8 @@ needs_repair(MObj, Replies) ->
     Objs = [Obj || {_,Obj} <- Replies],
     lists:any(different(MObj), Objs).
 
-%% @pure
 different(A) -> fun(B) -> not ft_obj:equal(A,B) end.
 
-%% @impure
 %%
 %% @doc Repair any vnodes that do not have the correct object.
 -spec repair(atom(), string(), fifo:obj(), [vnode_reply()]) -> io.
@@ -280,7 +269,6 @@ repair(VNode, StatName, MObj, [{IdxNode,Obj}|T]) ->
             repair(VNode, StatName, MObj, T)
     end.
 
-%% pure
 %%
 %% @doc Given a list return the set of unique values.
 -spec unique([A::any()]) -> [A::any()].
@@ -297,8 +285,6 @@ unique(L) ->
 %%    "package";
 %%stat_name(sniffle_dataset_vnode) ->
 %%    "dataset";
-%%stat_name(sniffle_img_vnode) ->
-%%    "img";
 %%stat_name(sniffle_network_vnode) ->
 %%    "network";
 %%stat_name(sniffle_iprange_vnode) ->

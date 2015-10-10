@@ -1,0 +1,1 @@
+-define(DEFAULT_TIMEOUT, 1000).

@@ -24,7 +24,7 @@
          add_grouping/2,
          remove_grouping/2,
          list_/0,
-         metadata_set/2,
+         set_metadata/2,
          set_config/2
         ]).
 
@@ -42,7 +42,7 @@ sync_repair(UUID, Obj) ->
     do_write(UUID, sync_repair, Obj).
 
 -spec create(Name::binary(), Type::cluster|stack|none) ->
-                    duplicate | ok | {error, timeout}.
+                    duplicate | {ok, ClusterID :: binary()} | {error, timeout}.
 create(Name, Type) ->
     UUID = uuid:uuid4s(),
     case do_write(UUID, create, [Name, Type]) of
@@ -216,13 +216,12 @@ list_() ->
     Res1 = [R || {_, R} <- Res],
     {ok,  Res1}.
 
--spec metadata_set(Grouping::fifo:uuid(), Attirbutes::fifo:attr_list()) ->
+-spec set_metadata(Grouping::fifo:uuid(), Attirbutes::fifo:attr_list()) ->
                  not_found |
                  {error, timeout} |
                  ok.
-metadata_set(Grouping, Attributes) ->
-    ?FM(set_metadata, sniffle_entity_write_fsm, write,
-        [{?VNODE, ?SERVICE}, Grouping, metadata_set, Attributes]).
+set_metadata(Grouping, Attributes) ->
+    do_write(Grouping, set_metadata, Attributes).
 
 -spec set_config(Grouping::fifo:uuid(), Attirbutes::fifo:attr_list()) ->
                  not_found |

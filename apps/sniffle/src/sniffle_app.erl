@@ -2,8 +2,6 @@
 
 -behaviour(application).
 
--include("sniffle_version.hrl").
-
 %% Application callbacks
 -export([start/2, stop/1]).
 
@@ -13,14 +11,9 @@
 
 -define(SRV_WITH_AAE(VNode, Srv),
         ?SRV(VNode, Srv),
-        case application:get_env(sniffle, list_to_atom(atom_to_list(Srv) ++ "_aae"), true) of
-            true ->
-                ok = riak_core_capability:register({Srv, anti_entropy},
-                                                   [enabled_v1, disabled],
-                                                   enabled_v1);
-            _ ->
-                ok
-        end).
+        ok = riak_core_capability:register({Srv, anti_entropy},
+                                           [enabled_v1, disabled],
+                                           enabled_v1)).
 
 %% ===================================================================
 %% Application callbacks
@@ -57,13 +50,6 @@ start(_StartType, _StartArgs) ->
             ?SRV_WITH_AAE(sniffle_package_vnode, sniffle_package),
             ?SRV_WITH_AAE(sniffle_dataset_vnode, sniffle_dataset),
             ?SRV_WITH_AAE(sniffle_grouping_vnode, sniffle_grouping),
-            case sniffle_opt:get(storage, general, backend, large_data_backend, internal) of
-                internal ->
-                    ?SRV_WITH_AAE(sniffle_img_vnode, sniffle_img);
-                O ->
-                    lager:info("[img] VNode disabled since images are handed by ~p", [O])
-            end,
-
             ?SRV_WITH_AAE(sniffle_network_vnode, sniffle_network),
             ?SRV_WITH_AAE(sniffle_dtrace_vnode, sniffle_dtrace),
             timer:apply_after(2000, sniffle_opt, update, []),
@@ -79,11 +65,11 @@ stop(_State) ->
 
 init_folsom() ->
     DBMs = [fold_keys, fold, get, put, delete, transact],
-    Basic = [wipe, get, list, list_all, sync_repair, set_metadata],
+    Basic = [wipe, get, list, list_all, sync_repair],
     Datasets = Basic ++
-        [description, disk_driver, homepage, image_size, name,
-         networks, nic_driver, os, type, zone_type, users, version,
-         kernel_version, sha1, status, imported, remove_requirement,
+        [set_metadata, description, disk_driver, homepage, image_size, name,
+         add_network, remove_network, nic_driver, os, type, zone_type, users,
+         version, kernel_version, sha1, status, imported, remove_requirement,
          add_requirement, create, delete],
     Dtraces = Basic ++
         [create, delete, set, name, uuid, script, set_config],
@@ -98,7 +84,7 @@ init_folsom() ->
         [create, delete, lookup, name, uuid, network, netmask, gateway,
          tag, vlan, release_ip, claim_ip],
     Nets = Basic ++
-        [create, delete, name, uuid, add_iprange, remove_iprange,
+        [create, delete, name, set_metadata, uuid, add_iprange, remove_iprange,
          set],
     Pkgs = Basic ++
         [create, delete, blocksize, compression, cpu_cap,
@@ -108,7 +94,7 @@ init_folsom() ->
         [register, unregister, log, set_network_map, remove_grouping,
          add_grouping, set_info, set_config, set_backup,
          set_snapshot, set_service, state, alias, owner, dataset, package,
-         hypervisor],
+         hypervisor, remove_fw_rule, add_fw_rule, deleting, creating],
     [folsom_metrics:new_histogram(Name, slide, 60) ||
         Name <-
             [{fifo_db, M} || M <- DBMs] ++

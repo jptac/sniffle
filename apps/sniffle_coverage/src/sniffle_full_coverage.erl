@@ -1,24 +1,18 @@
 -module(sniffle_full_coverage).
 
--include_lib("sniffle/include/sniffle.hrl").
-
 -behaviour(riak_core_coverage_fsm).
 
 -export([
          init/2,
          process_results/2,
          finish/2,
-         list/3, raw/3, raw_img/3
+         list/3, raw/3
         ]).
 
 -record(state, {replies, r, reqid, from, reqs, raw=false}).
 
 -spec raw(atom(), atom(), [fifo:matcher()]) -> {ok, [{integer(), ft_obj:obj()}]}.
 raw(VNodeMaster, NodeCheckService, Requirements) ->
-    start(VNodeMaster, NodeCheckService, {list, Requirements, true, true}).
-
--spec raw_img(atom(), atom(), binary()) -> {ok, [{integer(), ft_obj:obj()}]}.
-raw_img(VNodeMaster, NodeCheckService, Requirements) ->
     start(VNodeMaster, NodeCheckService, {list, Requirements, true, true}).
 
 list(VNodeMaster, NodeCheckService, Requirements) ->
@@ -41,7 +35,8 @@ start(VNodeMaster, NodeCheckService, Request = {list, Requirements, true, _}) ->
 %% The first is the vnode service used
 init({From, ReqID, Requirements},
      {VNodeMaster, NodeCheckService, {list, Requirements, Full, Raw}}) ->
-    {NVal, R, _W} = ?NRW(NodeCheckService),
+    {ok, N} = application:get_env(sniffle, n),
+    {ok, R} = application:get_env(sniffle, r),
     %% all - full coverage; allup - partial coverage
     VNodeSelector = allup,
     %% Same as R value here, TODO: Make this dynamic
@@ -52,7 +47,7 @@ init({From, ReqID, Requirements},
     State = #state{replies = dict:new(), r = R,
                    from = From, reqid = ReqID,
                    reqs = Requirements, raw = Raw},
-    {Request, VNodeSelector, NVal, PrimaryVNodeCoverage,
+    {Request, VNodeSelector, N, PrimaryVNodeCoverage,
      NodeCheckService, VNodeMaster, Timeout, State}.
 
 process_results({ok, _ReqID, _IdxNode, Obj},
@@ -94,8 +89,8 @@ finish(How, State) ->
 %%%===================================================================
 
 mk_reqid() ->
-    {MegaSecs,Secs,MicroSecs} = erlang:now(),
-    (MegaSecs*1000000 + Secs)*1000000 + MicroSecs.
+    erlang:unique_integer().
+
 
 raw_merge([{Score, V} | R]) ->
     raw_merge(R, Score, [V]).

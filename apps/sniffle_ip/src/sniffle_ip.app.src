@@ -1,0 +1,13 @@
+{application, sniffle_ip,
+ [
+  {description, "Sniffle IP management"},
+  {vsn, "1"},
+  {registered, []},
+  {applications, [
+                  kernel,
+                  stdlib,
+                  sniffle
+                 ]},
+  {mod, { sniffle_ip_app, []}},
+  {env, []}
+ ]}.

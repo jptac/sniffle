@@ -3,7 +3,7 @@
 %% of the _preflist_.
 -module(sniffle_entity_write_fsm).
 -behavior(gen_fsm).
--include_lib("sniffle/include/sniffle.hrl").
+-include("sniffle_write.hrl").
 
 %% API
 -export([start_link/5, start_link/6, write/3, write/4]).
@@ -34,12 +34,11 @@
                 op :: atom(),
                 n,
                 w,
-                start,
                 vnode,
                 system,
                 cordinator :: node(),
                 val = undefined :: term() | undefined,
-                preflist :: riak_core_apl:preflist2(),
+                preflist :: riak_core_apl:preflist(),
                 num_w = 0 :: non_neg_integer()}).
 
 -ignore_xref([
@@ -92,14 +91,15 @@ write({VNode, System}, User, Op, Val) ->
 
 %% @doc Initialize the state data.
 init([{VNode, System}, ReqID, From, Entity, Op, Val]) ->
-    {N, _R, W} = ?NRW(System),
+    {ok, N} = application:get_env(sniffle, n),
+    {ok, W} = application:get_env(sniffle, w),
+
     SD = #state{req_id=ReqID,
                 from=From,
                 w=W,
                 n=N,
                 entity=Entity,
                 op=Op,
-                start=now(),
                 vnode=VNode,
                 system=System,
                 cordinator=node(),
@@ -190,8 +190,6 @@ terminate(_Reason, _SN, _SD) ->
 %%    "package";
 %%stat_name(sniffle_dataset_vnode) ->
 %%    "dataset";
-%%stat_name(sniffle_img_vnode) ->
-%%    "img";
 %%stat_name(sniffle_network_vnode) ->
 %%    "network";
 %%stat_name(sniffle_iprange_vnode) ->

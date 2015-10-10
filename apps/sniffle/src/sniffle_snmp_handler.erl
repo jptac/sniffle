@@ -1,5 +1,4 @@
 -module(sniffle_snmp_handler).
--include("sniffle_version.hrl").
 
 %% External exports
 -export([start/0, name/1, reload/0, version/1,
@@ -44,7 +43,7 @@ name(get) ->
     {value, "Sniffle"}.
 
 version(get) ->
-    {value, binary_to_list(?VERSION)}.
+    {value, binary_to_list(sniffle_version:v())}.
 
 
 ring_status(get) ->
@@ -78,9 +77,6 @@ keys(get, <<"dataset">>) ->
     {value, length(L)};
 keys(get, <<"package">>) ->
     {ok, L} = sniffle_package:list(),
-    {value, length(L)};
-keys(get, <<"image">>) ->
-    {ok, L} = sniffle_img:list(),
     {value, length(L)}.
 
 p999(get, Prefix) ->

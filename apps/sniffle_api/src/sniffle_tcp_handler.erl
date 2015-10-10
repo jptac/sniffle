@@ -2,8 +2,6 @@
 
 -export([init/2, message/2, raw/2]).
 
--include_lib("../sniffle/include/sniffle_version.hrl").
-
 -ignore_xref([init/2, message/2, raw/2]).
 
 -define(HM(M),
@@ -83,15 +81,19 @@ raw(_Data, State) ->
         fifo:sniffle_dtrace_message() |
         fifo:sniffle_grouping_message() |
         fifo:sniffle_hypervisor_message() |
-        fifo:sniffle_image_message() |
         fifo:sniffle_iprange_message() |
         fifo:sniffle_network_message() |
         fifo:sniffle_package_message() |
         fifo:sniffle_vm_message().
+
 -spec message(message(), any()) -> any().
 
 message(version, State) ->
-    {reply, {ok, ?VERSION}, State};
+    {reply, {ok, sniffle_version:v()}, State};
+
+message({s3, Type}, State) ->
+    %% {ok,{S3Host, S3Port, AKey, SKey, Bucket}}
+    {reply, sniffle_s3:config(Type), State};
 
 %%%===================================================================
 %%%  Grouping Functions
@@ -168,7 +170,7 @@ message({grouping, metadata, set, ID, Attributes}, State) when
       is_binary(ID),
       is_list(Attributes) ->
     {reply,
-     sniffle_grouping:metadata_set(ID, Attributes),
+     sniffle_grouping:set_metadata(ID, Attributes),
      State};
 
 message({grouping, config, set, ID, Attributes}, State) when
@@ -223,6 +225,21 @@ message({dtrace, run, ID, Servers}, State) ->
 %%%===================================================================
 %%%  VM Functions
 %%%===================================================================
+
+message(({vm, fw, add, Vm, Rule}), State) when
+      is_binary(Vm),
+      is_tuple(Rule) ->
+    {reply,
+     sniffle_vm:add_fw_rule(Vm, Rule),
+     State};
+
+message(({vm, fw, remove, Vm, Rule}), State) when
+      is_binary(Vm),
+      is_tuple(Rule) ->
+    {reply,
+     sniffle_vm:remove_fw_rule(Vm, Rule),
+     State};
+
 message({vm, nic, add, Vm, Network}, State) when
       is_binary(Vm),
       is_binary(Network) ->
@@ -277,6 +294,20 @@ message({vm, service, clear, Vm, Service}, State) when
       is_binary(Service) ->
     {reply,
      sniffle_vm:service_clear(Vm, Service),
+     State};
+
+message({vm, service, restart, Vm, Service}, State) when
+      is_binary(Vm),
+      is_binary(Service) ->
+    {reply,
+     sniffle_vm:service_restart(Vm, Service),
+     State};
+
+message({vm, service, refresh, Vm, Service}, State) when
+      is_binary(Vm),
+      is_binary(Service) ->
+    {reply,
+     sniffle_vm:service_refresh(Vm, Service),
      State};
 
 message({vm, snapshot, Vm, Comment}, State) when
@@ -451,6 +482,7 @@ message({vm, owner, User, Vm, Owner}, State) when
 
 ?VM(set_service);
 ?VM(state);
+?VM(creating);
 ?VM(set_info);
 ?VM(set_backup);
 ?VM(set_snapshot);
@@ -508,7 +540,8 @@ message({hypervisor, unregister, Hypervisor}, State) when
 
 message({hypervisor, service, Hypervisor, Action, Service}, State) when
       is_binary(Hypervisor),
-      (Action =:= enable orelse Action =:= disable orelse Action =:= clear) ->
+      (Action =:= enable orelse Action =:= disable orelse Action =:= clear
+       orelse Action =:= refresh orelse Action =:= restart) ->
     {reply,
      sniffle_hypervisor:service(Hypervisor, Action, Service),
      State};
@@ -593,7 +626,6 @@ message({dataset, import, URL}, State) ->
 ?DSM(homepage);
 ?DSM(image_size);
 ?DSM(name);
-?DSM(networks);
 ?DSM(nic_driver);
 ?DSM(os);
 ?DSM(type);
@@ -604,49 +636,9 @@ message({dataset, import, URL}, State) ->
 ?DSM(set_metadata);
 ?DSM(remove_requirement);
 ?DSM(add_requirement);
+?DSM(remove_network);
+?DSM(add_network);
 
-
-%%%===================================================================
-%%%  Img Functions
-%%%===================================================================
-
-message({img, create, Img, Idx, Data}, State) ->
-    message({img, create, Img, Idx, Data, undefined}, State);
-
-message({img, create, Img, Idx, Data, Ref}, State) when
-      is_binary(Img) ->
-    {reply,
-     sniffle_img:create(Img, Idx, Data, Ref),
-     State};
-
-message({img, delete, Img, Idx}, State) when
-      is_binary(Img) ->
-    {reply,
-     sniffle_img:delete(Img, Idx),
-     State};
-
-message({img, delete, Img}, State) when
-      is_binary(Img) ->
-    {reply,
-     sniffle_img:delete(Img),
-     State};
-
-message({img, get, Img, Idx}, State) when
-      is_binary(Img) ->
-    {reply,
-     sniffle_img:get(Img, Idx),
-     State};
-
-message({img, list}, State) ->
-    {reply,
-     sniffle_img:list(),
-     State};
-
-message({img, list, Img}, State) when
-      is_binary(Img) ->
-    {reply,
-     sniffle_img:list(Img),
-     State};
 
 %%%===================================================================
 %%%  Network Functions
