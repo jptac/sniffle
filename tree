@@ -37,7 +37,7 @@
 │     ├─ mdns_client─0.1.7
 │     └─ pooler─1.4.0
 ├─ libleofs─0.1.2
-├─ libsnarl─0.3.32
+├─ libsnarl─0.3.33
 │  └─ oauth2─0.6.0
 ├─ mdns_server_lib─0.2.0
 │  ├─ mdns_server─0.2.0

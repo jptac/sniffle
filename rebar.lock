@@ -113,7 +113,7 @@
   0},
  {<<"libsnarl">>,
   {git,"https://github.com/project-fifo/libsnarl.git",
-       {ref,"ca456c783b869a547bc14f3068f3bfa800102d0f"}},
+       {ref,"5daa756aa95db10d24765953e4318a1a198f924a"}},
   0},
  {<<"libsnarlmatch">>,{pkg,<<"libsnarlmatch">>,<<"0.1.6">>},1},
  {<<"mdns_client">>,{pkg,<<"mdns_client">>,<<"0.1.7">>},2},
