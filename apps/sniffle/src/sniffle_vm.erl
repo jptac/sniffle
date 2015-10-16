@@ -1149,7 +1149,9 @@ do_delete_backup(UUID, VM, BID) ->
                      _ ->
                          Files
                  end,
-            [sniffle_s3:delete(snapshot, F) || F <- Fs];
+            %% We do this for old and new backup formates here
+            [sniffle_s3:delete(snapshot, F) || F <- Fs, is_binary(F)],
+            [sniffle_s3:delete(snapshot, F) || {F, _} <- Fs, is_binary(F)];
         _ ->
             ok
     end,
