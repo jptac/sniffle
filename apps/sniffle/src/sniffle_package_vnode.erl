@@ -41,6 +41,7 @@
               sync_repair/4]).
 
 -export([
+         org_resource_inc/4, org_resource_dec/4, org_resource_remove/4,
          set_metadata/4,
          blocksize/4,
          compression/4,
@@ -57,20 +58,21 @@
         ]).
 
 -ignore_xref([
-         set_metadata/4,
-         blocksize/4,
-         compression/4,
-         cpu_cap/4,
-         cpu_shares/4,
-         max_swap/4,
-         name/4,
-         quota/4,
-         ram/4,
-         uuid/4,
-         zfs_io_priority/4,
-         remove_requirement/4,
-         add_requirement/4
-        ]).
+              org_resource_inc/4, org_resource_dec/4, org_resource_remove/4,
+              set_metadata/4,
+              blocksize/4,
+              compression/4,
+              cpu_cap/4,
+              cpu_shares/4,
+              max_swap/4,
+              name/4,
+              quota/4,
+              ram/4,
+              uuid/4,
+              zfs_io_priority/4,
+              remove_requirement/4,
+              add_requirement/4
+             ]).
 
 -define(SERVICE, sniffle_package).
 
@@ -142,6 +144,26 @@ set(Preflist, ReqID, Vm, Data) ->
                                    {set, ReqID, Vm, Data},
                                    {fsm, undefined, self()},
                                    ?MASTER).
+
+org_resource_inc(Preflist, ReqID, UUID, {Resource, Value}) ->
+    riak_core_vnode_master:command(Preflist,
+                                   {org_resource_inc, ReqID, UUID, Resource, Value},
+                                   {fsm, undefined, self()},
+                                   ?MASTER).
+
+org_resource_dec(Preflist, ReqID, UUID, {Resource, Value}) ->
+    riak_core_vnode_master:command(Preflist,
+                                   {org_resource_dec, ReqID, UUID, Resource, Value},
+                                   {fsm, undefined, self()},
+                                   ?MASTER).
+
+org_resource_remove(Preflist, ReqID, UUID, Resource) ->
+    riak_core_vnode_master:command(Preflist,
+                                   {org_resource_remove, ReqID, UUID, Resource},
+                                   {fsm, undefined, self()},
+                                   ?MASTER).
+
+
 
 ?VSET(set_metadata).
 ?VSET(blocksize).

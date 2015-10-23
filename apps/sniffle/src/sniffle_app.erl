@@ -89,7 +89,9 @@ init_folsom() ->
     Pkgs = Basic ++
         [create, delete, set_metadata, blocksize, compression, cpu_cap,
          cpu_shares, max_swap, name, quota, ram, uuid, zfs_io_priority,
-         remove_requirement, add_requirement],
+         remove_requirement, add_requirement,
+         org_resource_inc, org_resource_dec, org_resource_remove,
+         hv_resource_inc, hv_resource_dec, hv_resource_remove],
     VMs = Basic ++
         [register, unregister, log, set_network_map, remove_grouping,
          add_grouping, set_metadata, set_info, set_config, set_backup,

@@ -29,6 +29,8 @@
 -export([
          generate_grouping_rules/2,
          get_package/2,
+         check_org_resources/2,
+         claim_org_resources/2,
          get_dataset/2,
          callbacks/2,
          create/2,
@@ -44,6 +46,8 @@
 
 -ignore_xref([
               create/5,
+              check_org_resources/2,
+              claim_org_resources/2,
               create/2,
               generate_grouping_rules/2,
               callbacks/2,
@@ -213,13 +217,50 @@ get_ower(_Event, State = #state{config = Config}) ->
                        [Creator, Owner])
         end,
     Config1 = jsxd:set([<<"owner">>], Owner, Config),
-    {next_state, create_permissions,
+    {next_state, get_package,
      State#state{
        config = Config1,
        creator = Creator,
        creator_obj = C,
        owner = Owner
       }, 0}.
+
+
+get_package(_Event, State = #state{
+                               uuid = UUID,
+                               package_uuid = PackageName
+                              }) ->
+    lager:info("[create] Fetching package: ~p", [PackageName]),
+    vm_log(State, info, <<"Fetching package ", PackageName/binary>>),
+    sniffle_vm:state(UUID, <<"fetching_package">>),
+    {ok, Package} = sniffle_package:get(PackageName),
+    sniffle_vm:package(UUID, PackageName),
+    {next_state, create_permissions, State#state{package = Package}, 0}.
+
+check_org_resources(_Event, State = #state{owner = <<>>}) ->
+    {next_state, create_permissions, State, 0};
+
+check_org_resources(_Event, State = #state{owner = OrgID, package = P}) ->
+    case ft_package:org_resources(P) of
+        [] ->
+            {next_state, create_permissions, State, 0};
+        Res ->
+            {ok, Org} = ls_org:get(OrgID),
+            Ok = lists:foldl(fun(_, false) -> false;
+                                ({R, V}, _) ->
+                                     case ft_org:resource(Org, R) of
+                                         V1 when V1 >= V -> true;
+                                         _ -> {R, V}
+                                     end
+                             end, true, Res),
+            case Ok of
+                true ->
+                    {next_state, create_permissions, State, 0};
+                R ->
+                    vm_log(State, error, <<"Org cnat provide resource : ", R/binary, "!">>),
+                    {stop, failed, State}
+            end
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -261,7 +302,7 @@ create_permissions(_Event, State = #state{
 
 %% If there is no owner we don't need to add triggers
 resource_claim(_Event, State = #state{owner = <<>>}) ->
-    {next_state, get_package, State, 0};
+    {next_state, get_dataset, State, 0};
 
 resource_claim(_Event, State = #state{
                                  uuid = UUID,
@@ -274,19 +315,7 @@ resource_claim(_Event, State = #state{
                   [{user, Creator},
                    {package, Package},
                    {dataset, Dataset}]),
-    {next_state, get_package, State, 0}.
-
-
-get_package(_Event, State = #state{
-                               uuid = UUID,
-                               package_uuid = PackageName
-                              }) ->
-    lager:info("[create] Fetching package: ~p", [PackageName]),
-    vm_log(State, info, <<"Fetching package ", PackageName/binary>>),
-    sniffle_vm:state(UUID, <<"fetching_package">>),
-    {ok, Package} = sniffle_package:get(PackageName),
-    sniffle_vm:package(UUID, PackageName),
-    {next_state, get_dataset, State#state{package = Package}, 0}.
+    {next_state, get_dataset, State, 0}.
 
 get_dataset(_Event, State = #state{
                                uuid = UUID,
@@ -480,8 +509,15 @@ create(_Event, State = #state{
         ok ->
             sniffle_vm:hypervisor(UUID, HID),
             sniffle_vm:creating(UUID, {hypervisor, erlang:system_time(seconds)}),
-            {stop, normal, State}
+            {next_state, clainm_org_resources, State, 0}
     end.
+
+claim_org_resources(_Event, State = #state{owner = <<>>}) ->
+    {stop, normal, State};
+claim_org_resources(_Event, State = #state{owner = OrgID, package = P}) ->
+    Res = ft_package:org_resources(P),
+    [ls_org:resource_dec(OrgID, R, V)  || {R, V} <- Res],
+    {stop, normal, State}.
 
 %%--------------------------------------------------------------------
 %% @private
