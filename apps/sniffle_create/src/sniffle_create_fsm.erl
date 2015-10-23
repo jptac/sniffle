@@ -394,7 +394,7 @@ get_server(_Event, State = #state{
                 {Hvs, EH} ->
                     S1 = warn(State,
                               "cloud not lock hypervisor.",
-                              "[create] Cound claim a lock on any of "
+                              "[create] Cound not claim a lock on any of "
                               "the provided hypervisors: ~p -> ~p",
                               [Hvs, EH]),
                     do_retry(S1)

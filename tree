@@ -30,7 +30,7 @@
 ├─ jsx─1.4.5
 ├─ jsxd─0.1.10
 ├─ lager─2.1.1
-│  └─ goldrush─0.1.6
+│  └─ goldrush─0.1.7
 ├─ libchunter─0.1.40
 ├─ libhowl─0.1.29
 │  └─ mdns_client_lib─0.1.28
