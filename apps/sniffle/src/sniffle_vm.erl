@@ -530,7 +530,7 @@ update(User, Vm, Package, Config) ->
             {Host, Port} = ft_hypervisor:endpoint(Hv),
             OrigPkg = ?S:package(V),
             {ok, OrigRam} = jsxd:get([<<"ram">>], ?S:config(V)),
-            case test_pkg(Package, OrigRam, Hv) of
+                 case test_pkg(Package, OrigRam, Hv, V) of
                 no_pkg_change ->
                     libchunter:update_machine(Host, Port, Vm,
                                               undefined, Config);
@@ -548,10 +548,10 @@ update(User, Vm, Package, Config) ->
             E
     end.
 
-test_pkg(undefined, _, _) ->
+test_pkg(undefined, _, _,_) ->
     no_pkg_change;
 
-test_pkg(Package, OrigRam, H) ->
+test_pkg(Package, OrigRam, H, Vm) ->
     case sniffle_package:get(Package) of
         {ok, P} ->
             NewRam = ft_package:ram(P),
@@ -559,13 +559,60 @@ test_pkg(Package, OrigRam, H) ->
                           ft_hypervisor:resources(H)) of
                 {ok, Ram} when
                       Ram > (NewRam - OrigRam) ->
-                    {ok, P};
+                    check_org_res(P, ft_vm:package(Vm), ft_vm:owner(Vm));
                 _ ->
                     {error, not_enough_resources}
             end;
         E ->
             E
     end.
+%% If we have no org we always allow upgrading
+check_org_res(P, _, <<>>) ->
+    {ok, P};
+
+check_org_res(P, OldID, OrgID) ->
+    ResOld = case OldID of
+                 <<>> ->
+                     [];
+                 _ ->
+                     {ok, POld} = sniffle_package:get(OldID),
+                     ft_package:org_resources(POld)
+             end,
+    ResNew = ft_package:org_resources(P),
+    ResNew1 = orddict:from_list(ResNew),
+    ResOld1 = orddict:from_list(ResOld),
+    Res = orddict:fold(
+            fun(K, VOld, AccNew) ->
+                    VNew = case orddict:find(K, AccNew) of
+                               error ->
+                                   0;
+                               {ok, VNewX} ->
+                                   VNewX
+                           end,
+                    orddict:store(K, VNew - VOld, AccNew)
+            end, ResNew1, ResOld1),
+    case check_resources(OrgID, Res) of
+        ok ->
+            [ls_org:resource_dec(OrgID, R, V)  || {R, V} <- Res],
+            {ok, P};
+        {R, V} ->
+            lager:warning("Could not resize VM since the Org missed the "
+                          "resource ~s: ~p", [R, V]),
+            {error, org_resource_missing}
+    end.
+
+check_resources(_Org, []) ->
+    true;
+check_resources(Org, [{_R, V} | Rest]) when V =< 0 ->
+    check_resources(Org, Rest);
+check_resources(Org, [{R, V} | Rest]) ->
+    case ft_org:resource(Org, R) of
+        {ok, V1} when V1 >= V ->
+            check_resources(Org, Rest);
+        _ ->
+            {R, V}
+    end.
+
 
 %%--------------------------------------------------------------------
 %% @doc Registers am existing VM, no checks made here.
@@ -768,14 +815,14 @@ finish_delete(Vm) ->
     sniffle_vm:unregister(Vm),
     resource_action(V, destroy, []),
     libhowl:send(Vm, [{<<"event">>, <<"delete">>}]),
-    free_package_res(V),
+    free_res(V),
     libhowl:send(<<"command">>,
                  [{<<"event">>, <<"vm-delete">>},
                   {<<"uuid">>, uuid:uuid4s()},
                   {<<"data">>,
                    [{<<"uuid">>, Vm}]}]).
 
-free_package_res(V) ->
+free_res(V) ->
     free_package_res(ft_vm:package(V), ft_vm:owner(V)).
 
 free_package_res(<<>>, _) ->
