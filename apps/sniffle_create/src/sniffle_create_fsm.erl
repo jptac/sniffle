@@ -230,7 +230,7 @@ get_package(_Event, State = #state{
                                uuid = UUID,
                                package_uuid = PackageName
                               }) ->
-    lager:info("[create] Fetching package: ~p", [PackageName]),
+    lager:info("[create] Fetching Package: ~p", [PackageName]),
     vm_log(State, info, <<"Fetching package ", PackageName/binary>>),
     sniffle_vm:state(UUID, <<"fetching_package">>),
     {ok, Package} = sniffle_package:get(PackageName),
@@ -238,6 +238,7 @@ get_package(_Event, State = #state{
     {next_state, check_org_resources, State#state{package = Package}, 0}.
 
 check_org_resources(_Event, State = #state{owner = <<>>, package = P}) ->
+    lager:debug("[create] Checking resources (no owner)"),
     case ft_package:org_resources(P) of
         [] ->
             lager:debug("[create] No resources required by package"),
@@ -253,10 +254,11 @@ check_org_resources(_Event, State = #state{owner = OrgID, package = P}) ->
             lager:debug("[create] No resources required by package"),
             {next_state, create_permissions, State, 0};
         Res ->
+            lager:debug("[create] Checking resources: ~p", [Res]),
             {ok, Org} = ls_org:get(OrgID),
             Ok = lists:foldl(fun({R, V}, true) ->
                                      case ft_org:resource(Org, R) of
-                                         V1 when V1 >= V -> true;
+                                         {ok, V1} when V1 >= V -> true;
                                          _ -> {R, V}
                                      end;
                                 (_, R) -> R
@@ -264,7 +266,9 @@ check_org_resources(_Event, State = #state{owner = OrgID, package = P}) ->
             case Ok of
                 true ->
                     {next_state, create_permissions, State, 0};
-                {R, _V} ->
+                {R, V} ->
+                    lager:debug("[create] Resource '~p' insuficient with ~p.", 
+                                [R, V]),
                     vm_log(State, error, <<"Org cant provide resource : ", R/binary, "!">>),
                     {stop, failed, State}
             end
