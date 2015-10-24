@@ -240,6 +240,7 @@ get_package(_Event, State = #state{
 check_org_resources(_Event, State = #state{owner = <<>>, package = P}) ->
     case ft_package:org_resources(P) of
         [] ->
+            lager:debug("[create] No resources required by package"),
             {next_state, create_permissions, State, 0};
         _ ->
             vm_log(State, error, <<"No org selected but package requires resource!">>),
@@ -249,6 +250,7 @@ check_org_resources(_Event, State = #state{owner = <<>>, package = P}) ->
 check_org_resources(_Event, State = #state{owner = OrgID, package = P}) ->
     case ft_package:org_resources(P) of
         [] ->
+            lager:debug("[create] No resources required by package"),
             {next_state, create_permissions, State, 0};
         Res ->
             {ok, Org} = ls_org:get(OrgID),
@@ -262,7 +264,7 @@ check_org_resources(_Event, State = #state{owner = OrgID, package = P}) ->
             case Ok of
                 true ->
                     {next_state, create_permissions, State, 0};
-                R ->
+                {R, _V} ->
                     vm_log(State, error, <<"Org cant provide resource : ", R/binary, "!">>),
                     {stop, failed, State}
             end
