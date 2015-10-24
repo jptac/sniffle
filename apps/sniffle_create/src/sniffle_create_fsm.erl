@@ -509,7 +509,7 @@ create(_Event, State = #state{
         ok ->
             sniffle_vm:hypervisor(UUID, HID),
             sniffle_vm:creating(UUID, {hypervisor, erlang:system_time(seconds)}),
-            {next_state, clainm_org_resources, State, 0}
+            {next_state, claim_org_resources, State, 0}
     end.
 
 claim_org_resources(_Event, State = #state{owner = <<>>}) ->
