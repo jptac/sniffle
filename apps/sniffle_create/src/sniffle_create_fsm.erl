@@ -235,10 +235,16 @@ get_package(_Event, State = #state{
     sniffle_vm:state(UUID, <<"fetching_package">>),
     {ok, Package} = sniffle_package:get(PackageName),
     sniffle_vm:package(UUID, PackageName),
-    {next_state, create_permissions, State#state{package = Package}, 0}.
+    {next_state, check_org_resources, State#state{package = Package}, 0}.
 
-check_org_resources(_Event, State = #state{owner = <<>>}) ->
-    {next_state, create_permissions, State, 0};
+check_org_resources(_Event, State = #state{owner = <<>>, package = P}) ->
+    case ft_package:org_resources(P) of
+        [] ->
+            {next_state, create_permissions, State, 0};
+        _ ->
+            vm_log(State, error, <<"No org selected but package requires resource!">>),
+            {stop, failed, State}
+    end;
 
 check_org_resources(_Event, State = #state{owner = OrgID, package = P}) ->
     case ft_package:org_resources(P) of
@@ -257,7 +263,7 @@ check_org_resources(_Event, State = #state{owner = OrgID, package = P}) ->
                 true ->
                     {next_state, create_permissions, State, 0};
                 R ->
-                    vm_log(State, error, <<"Org cnat provide resource : ", R/binary, "!">>),
+                    vm_log(State, error, <<"Org cant provide resource : ", R/binary, "!">>),
                     {stop, failed, State}
             end
     end.
@@ -584,7 +590,7 @@ handle_info(_Info, StateName, State) ->
 %% @end
 %%--------------------------------------------------------------------
 
-terminate(_, create, _StateData) ->
+terminate(_, claim_org_resources, _StateData) ->
     ok;
 
 terminate(shutdown, _StateName, _StateData) ->
