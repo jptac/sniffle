@@ -591,7 +591,8 @@ check_org_res(P, OldID, OrgID) ->
                            end,
                     orddict:store(K, VNew - VOld, AccNew)
             end, ResNew1, ResOld1),
-    case check_resources(OrgID, Res) of
+    {ok, Org} = ls_org:get(OrgID),
+    case check_resources(Org, Res) of
         ok ->
             [ls_org:resource_dec(OrgID, R, V)  || {R, V} <- Res],
             {ok, P};
