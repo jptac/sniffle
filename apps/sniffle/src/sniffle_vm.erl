@@ -603,7 +603,7 @@ check_org_res(P, OldID, OrgID) ->
     end.
 
 check_resources(_Org, []) ->
-    true;
+    ok;
 check_resources(Org, [{_R, V} | Rest]) when V =< 0 ->
     check_resources(Org, Rest);
 check_resources(Org, [{R, V} | Rest]) ->
