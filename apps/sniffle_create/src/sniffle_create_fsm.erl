@@ -609,7 +609,7 @@ handle_info(_Info, StateName, State) ->
 %% @end
 %%--------------------------------------------------------------------
 
-terminate(_, claim_org_resources, _StateData) ->
+terminate(normal, create, _StateData) ->
     ok;
 
 terminate(shutdown, _StateName, _StateData) ->
