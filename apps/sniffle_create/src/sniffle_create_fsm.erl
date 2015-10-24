@@ -246,12 +246,12 @@ check_org_resources(_Event, State = #state{owner = OrgID, package = P}) ->
             {next_state, create_permissions, State, 0};
         Res ->
             {ok, Org} = ls_org:get(OrgID),
-            Ok = lists:foldl(fun(_, false) -> false;
-                                ({R, V}, _) ->
+            Ok = lists:foldl(fun({R, V}, true) ->
                                      case ft_org:resource(Org, R) of
                                          V1 when V1 >= V -> true;
                                          _ -> {R, V}
-                                     end
+                                     end;
+                                (_, R) -> R
                              end, true, Res),
             case Ok of
                 true ->
