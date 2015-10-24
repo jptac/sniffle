@@ -225,16 +225,20 @@ get_ower(_Event, State = #state{config = Config}) ->
        owner = Owner
       }, 0}.
 
-
+%% We delay setting the package so we can be sure that only when
+%% package resources were claimed a package is actually set.
+%% The reason for that is that when deleting a we want to ensure
+%% that the resoruces were actually claimed when releasing them agian
+%% the easiest way of doing this is to only set the package when claiming
+%% the resources
 get_package(_Event, State = #state{
                                uuid = UUID,
-                               package_uuid = PackageName
+                               package_uuid = PackageUUID
                               }) ->
-    lager:info("[create] Fetching Package: ~p", [PackageName]),
-    vm_log(State, info, <<"Fetching package ", PackageName/binary>>),
+    lager:info("[create] Fetching Package: ~p", [PackageUUID]),
+    vm_log(State, info, <<"Fetching package ", PackageUUID/binary>>),
     sniffle_vm:state(UUID, <<"fetching_package">>),
-    {ok, Package} = sniffle_package:get(PackageName),
-    sniffle_vm:package(UUID, PackageName),
+    {ok, Package} = sniffle_package:get(PackageUUID),
     {next_state, check_org_resources, State#state{package = Package}, 0}.
 
 check_org_resources(_Event, State = #state{owner = <<>>, package = P}) ->
@@ -242,37 +246,53 @@ check_org_resources(_Event, State = #state{owner = <<>>, package = P}) ->
     case ft_package:org_resources(P) of
         [] ->
             lager:debug("[create] No resources required by package"),
-            {next_state, create_permissions, State, 0};
+            {next_state, claim_org_resources, State, 0};
         _ ->
             vm_log(State, error, <<"No org selected but package requires resource!">>),
             {stop, failed, State}
     end;
 
 check_org_resources(_Event, State = #state{owner = OrgID, package = P}) ->
-    case ft_package:org_resources(P) of
-        [] ->
-            lager:debug("[create] No resources required by package"),
-            {next_state, create_permissions, State, 0};
-        Res ->
-            lager:debug("[create] Checking resources: ~p", [Res]),
-            {ok, Org} = ls_org:get(OrgID),
-            Ok = lists:foldl(fun({R, V}, true) ->
-                                     case ft_org:resource(Org, R) of
-                                         {ok, V1} when V1 >= V -> true;
-                                         _ -> {R, V}
-                                     end;
-                                (_, R) -> R
-                             end, true, Res),
-            case Ok of
-                true ->
-                    {next_state, create_permissions, State, 0};
-                {R, V} ->
-                    lager:debug("[create] Resource '~p' insuficient with ~p.", 
-                                [R, V]),
-                    vm_log(State, error, <<"Org cant provide resource : ", R/binary, "!">>),
-                    {stop, failed, State}
-            end
+    Res  = ft_package:org_resources(P),
+    lager:debug("[create] Checking resources: ~p", [Res]),
+    {ok, Org} = ls_org:get(OrgID),
+    Ok = lists:foldl(fun({R, V}, true) ->
+                             case ft_org:resource(Org, R) of
+                                 {ok, V1} when V1 >= V -> true;
+                                 _ -> {R, V}
+                             end;
+                        (_, R) -> R
+                     end, true, Res),
+    case Ok of
+        true ->
+            {next_state, claim_org_resources, State, 0};
+        {R, V} ->
+            lager:debug("[create] Resource '~p' insuficient with ~p.",
+                        [R, V]),
+            vm_log(State, error, <<"Org cant provide resource : ", R/binary, "!">>),
+            {stop, failed, State}
     end.
+
+%% We don't claim resources if there is no owner
+claim_org_resources(_Event, State = #state{uuid = UUID, owner = <<>>,
+                                           package_uuid = PackageUUID}) ->
+    sniffle_vm:package(UUID, PackageUUID),
+    {next_state, create_permissions, State, 0};
+
+%% We don't claim resources if this is a test run
+claim_org_resources(_Event, State = #state{uuid = UUID,test_pid = {_,_},
+                                           package_uuid = PackageUUID}) ->
+    sniffle_vm:package(UUID, PackageUUID),
+    {next_state, create_permissions, State, 0};
+
+%% Now we calim resoruces
+claim_org_resources(_Event, State = #state{uuid = UUID,
+                                           owner = OrgID, package = P,
+                                           package_uuid = PackageUUID}) ->
+    Res = ft_package:org_resources(P),
+    [ls_org:resource_dec(OrgID, R, V)  || {R, V} <- Res],
+    sniffle_vm:package(UUID, PackageUUID),
+    {next_state, create_permissions, State, 0}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -521,15 +541,8 @@ create(_Event, State = #state{
         ok ->
             sniffle_vm:hypervisor(UUID, HID),
             sniffle_vm:creating(UUID, {hypervisor, erlang:system_time(seconds)}),
-            {next_state, claim_org_resources, State, 0}
+            {stop, normal, State}
     end.
-
-claim_org_resources(_Event, State = #state{owner = <<>>}) ->
-    {stop, normal, State};
-claim_org_resources(_Event, State = #state{owner = OrgID, package = P}) ->
-    Res = ft_package:org_resources(P),
-    [ls_org:resource_dec(OrgID, R, V)  || {R, V} <- Res],
-    {stop, normal, State}.
 
 %%--------------------------------------------------------------------
 %% @private

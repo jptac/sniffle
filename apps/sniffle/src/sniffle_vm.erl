@@ -754,7 +754,8 @@ delete(User, Vm) ->
                     state(Vm, <<"deleting">>),
                     deleting(Vm, true),
                     {Host, Port} = get_hypervisor(H),
-                    resource_action(V, destroy, User, []),
+                    resource_action(V, update, User,
+                                    [{<<"request">>, <<"destroy">>}]),
                     libchunter:delete_machine(Host, Port, Vm)
             end;
         E ->
@@ -765,13 +766,27 @@ finish_delete(Vm) ->
     {ok, V} = ?MODULE:get(Vm),
     [do_delete_backup(Vm, V, BID) || {BID, _} <- ?S:backups(V)],
     sniffle_vm:unregister(Vm),
-    resource_action(V, confirm_destroy, []),
+    resource_action(V, destroy, []),
     libhowl:send(Vm, [{<<"event">>, <<"delete">>}]),
+    free_package_res(V),
     libhowl:send(<<"command">>,
                  [{<<"event">>, <<"vm-delete">>},
                   {<<"uuid">>, uuid:uuid4s()},
                   {<<"data">>,
                    [{<<"uuid">>, Vm}]}]).
+
+free_package_res(V) ->
+    free_package_res(ft_vm:package(V), ft_vm:owner(V)).
+
+free_package_res(<<>>, _) ->
+    ok;
+free_package_res(_, <<>>) ->
+    ok;
+free_package_res(PkgID, OrgID) ->
+    {ok, P} = sniffle_package:get(PkgID),
+    Res  = ft_package:org_resources(P),
+    [ls_org:resource_inc(OrgID, R, V)  || {R, V} <- Res],
+    ok.
 
 %%--------------------------------------------------------------------
 %% @doc Triggers the start of a VM on the hypervisor.
