@@ -788,6 +788,18 @@ message({package, list, Requirements, Full}, State) when
      sniffle_package:list(Requirements, Full),
      State};
 
+message({package, resources, org, inc, Package, Resource, V}, State) when
+      is_binary(Package), is_binary(Resource), is_integer(V) ->
+    {reply,
+     sniffle_package:org_resource_inc(Package, Resource, V),
+     State};
+
+message({package, resources, org, dec, Package, Resource, V}, State) when
+      is_binary(Package), is_binary(Resource), is_integer(V) ->
+    {reply,
+     sniffle_package:org_resource_dec(Package, Resource, V),
+     State};
+
 ?PM(set_metadata);
 ?PM(blocksize);
 ?PM(compression);

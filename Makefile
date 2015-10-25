@@ -68,8 +68,8 @@ APPS = kernel stdlib sasl erts ssl tools os_mon runtime_tools crypto inets \
 
 # DIALYZER_IGNORE="^\(riak_core\|leexinc.hrl\|pokemon_pb.erl\|meck_cover.erl\|meck.erl\|supervisor_pre_r14b04.erl\|webmachine_resource.erl\|uuid.erl\|gen_server2.erl\|folsom_vm_metrics.erl\|protobuffs_compile.erl\)"
 
-dialyzer: deps compile
-	$(REBAR) dialyzer -Wno_return | grep -v -f dialyzer.mittigate
+dialyzer: 
+	$(REBAR) dialyzer
 
 typer:
 	typer --plt ./_build/default/rebar3_*_plt _build/default/lib/*/ebin
