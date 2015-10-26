@@ -9,9 +9,9 @@
 ├─ erlcloud─0.8.6
 ├─ fifo_db─0.1.7
 │  └─ eleveldb─2.1.0.0
-├─ fifo_dt─0.1.54
-│  ├─ libsnarlmatch─0.1.6
-│  └─ riak_dt─2.1.0
+├─ fifo_dt─0.1.55
+│  ├─ libsnarlmatch─0.1.7
+│  └─ riak_dt─2.1.1
 ├─ fifo_lager─0.1.0
 │  ├─ lager_graylog─1
 │  ├─ lager_logstash_backend─0.0.2
@@ -30,14 +30,14 @@
 ├─ jsx─1.4.5
 ├─ jsxd─0.1.10
 ├─ lager─2.1.1
-│  └─ goldrush─0.1.6
+│  └─ goldrush─0.1.7
 ├─ libchunter─0.1.40
 ├─ libhowl─0.1.29
 │  └─ mdns_client_lib─0.1.28
 │     ├─ mdns_client─0.1.7
 │     └─ pooler─1.4.0
 ├─ libleofs─0.1.2
-├─ libsnarl─0.3.32
+├─ libsnarl─0.3.33
 │  └─ oauth2─0.6.0
 ├─ mdns_server_lib─0.2.0
 │  ├─ mdns_server─0.2.0
@@ -57,7 +57,7 @@
 │  └─ riak_sysmon─2.0.0
 ├─ riak_ensemble─2.1.0+build.159.refa62b0cc
 ├─ sgte─0.7.1
-├─ sniffle─0.7.0
+├─ sniffle─0.7.1
 ├─ sniffle_api─0.1.0
 ├─ sniffle_commons─0.1.0
 ├─ sniffle_console─0.1.0

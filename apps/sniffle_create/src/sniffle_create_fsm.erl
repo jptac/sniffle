@@ -29,6 +29,8 @@
 -export([
          generate_grouping_rules/2,
          get_package/2,
+         check_org_resources/2,
+         claim_org_resources/2,
          get_dataset/2,
          callbacks/2,
          create/2,
@@ -44,6 +46,8 @@
 
 -ignore_xref([
               create/5,
+              check_org_resources/2,
+              claim_org_resources/2,
               create/2,
               generate_grouping_rules/2,
               callbacks/2,
@@ -213,13 +217,82 @@ get_ower(_Event, State = #state{config = Config}) ->
                        [Creator, Owner])
         end,
     Config1 = jsxd:set([<<"owner">>], Owner, Config),
-    {next_state, create_permissions,
+    {next_state, get_package,
      State#state{
        config = Config1,
        creator = Creator,
        creator_obj = C,
        owner = Owner
       }, 0}.
+
+%% We delay setting the package so we can be sure that only when
+%% package resources were claimed a package is actually set.
+%% The reason for that is that when deleting a we want to ensure
+%% that the resoruces were actually claimed when releasing them agian
+%% the easiest way of doing this is to only set the package when claiming
+%% the resources
+get_package(_Event, State = #state{
+                               uuid = UUID,
+                               package_uuid = PackageUUID
+                              }) ->
+    lager:info("[create] Fetching Package: ~p", [PackageUUID]),
+    vm_log(State, info, <<"Fetching package ", PackageUUID/binary>>),
+    sniffle_vm:state(UUID, <<"fetching_package">>),
+    {ok, Package} = sniffle_package:get(PackageUUID),
+    {next_state, check_org_resources, State#state{package = Package}, 0}.
+
+check_org_resources(_Event, State = #state{owner = <<>>, package = P}) ->
+    lager:debug("[create] Checking resources (no owner)"),
+    case ft_package:org_resources(P) of
+        [] ->
+            lager:debug("[create] No resources required by package"),
+            {next_state, claim_org_resources, State, 0};
+        _ ->
+            vm_log(State, error, <<"No org selected but package requires resource!">>),
+            {stop, failed, State}
+    end;
+
+check_org_resources(_Event, State = #state{owner = OrgID, package = P}) ->
+    Res  = ft_package:org_resources(P),
+    lager:debug("[create] Checking resources: ~p", [Res]),
+    {ok, Org} = ls_org:get(OrgID),
+    Ok = lists:foldl(fun({R, V}, true) ->
+                             case ft_org:resource(Org, R) of
+                                 {ok, V1} when V1 >= V -> true;
+                                 _ -> {R, V}
+                             end;
+                        (_, R) -> R
+                     end, true, Res),
+    case Ok of
+        true ->
+            {next_state, claim_org_resources, State, 0};
+        {R, V} ->
+            lager:debug("[create] Resource '~p' insuficient with ~p.",
+                        [R, V]),
+            vm_log(State, error, <<"Org cant provide resource : ", R/binary, "!">>),
+            {stop, failed, State}
+    end.
+
+%% We don't claim resources if there is no owner
+claim_org_resources(_Event, State = #state{uuid = UUID, owner = <<>>,
+                                           package_uuid = PackageUUID}) ->
+    sniffle_vm:package(UUID, PackageUUID),
+    {next_state, create_permissions, State, 0};
+
+%% We don't claim resources if this is a test run
+claim_org_resources(_Event, State = #state{uuid = UUID,test_pid = {_,_},
+                                           package_uuid = PackageUUID}) ->
+    sniffle_vm:package(UUID, PackageUUID),
+    {next_state, create_permissions, State, 0};
+
+%% Now we calim resoruces
+claim_org_resources(_Event, State = #state{uuid = UUID,
+                                           owner = OrgID, package = P,
+                                           package_uuid = PackageUUID}) ->
+    Res = ft_package:org_resources(P),
+    [ls_org:resource_dec(OrgID, R, V)  || {R, V} <- Res],
+    sniffle_vm:package(UUID, PackageUUID),
+    {next_state, create_permissions, State, 0}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -261,7 +334,7 @@ create_permissions(_Event, State = #state{
 
 %% If there is no owner we don't need to add triggers
 resource_claim(_Event, State = #state{owner = <<>>}) ->
-    {next_state, get_package, State, 0};
+    {next_state, get_dataset, State, 0};
 
 resource_claim(_Event, State = #state{
                                  uuid = UUID,
@@ -274,19 +347,7 @@ resource_claim(_Event, State = #state{
                   [{user, Creator},
                    {package, Package},
                    {dataset, Dataset}]),
-    {next_state, get_package, State, 0}.
-
-
-get_package(_Event, State = #state{
-                               uuid = UUID,
-                               package_uuid = PackageName
-                              }) ->
-    lager:info("[create] Fetching package: ~p", [PackageName]),
-    vm_log(State, info, <<"Fetching package ", PackageName/binary>>),
-    sniffle_vm:state(UUID, <<"fetching_package">>),
-    {ok, Package} = sniffle_package:get(PackageName),
-    sniffle_vm:package(UUID, PackageName),
-    {next_state, get_dataset, State#state{package = Package}, 0}.
+    {next_state, get_dataset, State, 0}.
 
 get_dataset(_Event, State = #state{
                                uuid = UUID,
@@ -394,7 +455,7 @@ get_server(_Event, State = #state{
                 {Hvs, EH} ->
                     S1 = warn(State,
                               "cloud not lock hypervisor.",
-                              "[create] Cound claim a lock on any of "
+                              "[create] Cound not claim a lock on any of "
                               "the provided hypervisors: ~p -> ~p",
                               [Hvs, EH]),
                     do_retry(S1)
@@ -548,7 +609,7 @@ handle_info(_Info, StateName, State) ->
 %% @end
 %%--------------------------------------------------------------------
 
-terminate(_, create, _StateData) ->
+terminate(normal, create, _StateData) ->
     ok;
 
 terminate(shutdown, _StateName, _StateData) ->
