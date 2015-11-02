@@ -175,9 +175,9 @@ generate_grouping_rules(_Event, State = #state{test_pid = {_,_}, config = Config
     case jsxd:get([<<"grouping">>], Config) of
         {ok, Grouping} ->
             Rules = sniffle_grouping:create_rules(Grouping),
-            {next_state, create_permissions, State#state{grouping_rules = Rules}, 0};
+            {next_state, get_ower, State#state{grouping_rules = Rules}, 0};
         _ ->
-            {next_state, create_permissions, State, 0}
+            {next_state, get_ower, State, 0}
     end;
 
 generate_grouping_rules(_Event, State = #state{
@@ -190,7 +190,7 @@ generate_grouping_rules(_Event, State = #state{
             case sniffle_grouping:add_element(Grouping, UUID) of
                 ok ->
                     sniffle_vm:add_grouping(UUID, Grouping),
-                    {next_state, create_permissions,
+                    {next_state, get_ower,
                      State#state{grouping_rules = Rules}, 0};
                 E ->
                     vm_log(State, error, "Failed to create routing rule."),
