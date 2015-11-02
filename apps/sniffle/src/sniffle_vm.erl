@@ -32,6 +32,7 @@
          delete_backup/2,
          delete_snapshot/2,
          get/1,
+         get_docker/1,
          list/0,
          list/2,
          log/2,
@@ -66,6 +67,9 @@
          set_service/2,
          set_snapshot/2,
          set_metadata/2,
+         set_docker/2,
+         vm_type/2,
+         created_at/2,
          add_fw_rule/2,
          remove_fw_rule/2
         ]).
@@ -681,7 +685,9 @@ unregister(Vm) ->
 create(Package, Dataset, Config) ->
     UUID = uuid:uuid4s(),
     do_write(UUID, register, <<"pooled">>), %we've to put pending here since undefined will cause a wrong call!
-    creating(UUID, {started, erlang:system_time(seconds)}),
+    Secs = erlang:system_time(seconds),
+    creating(UUID, {started, Secs}),
+    created_at(UUID, Secs),
     Config1 = jsxd:from_list(Config),
     Config2 = jsxd:update(<<"networks">>,
                           fun (N) ->
@@ -694,7 +700,18 @@ create(Package, Dataset, Config) ->
     set_config(UUID, Config2),
     state(UUID, <<"pooled">>),
     package(UUID, Package),
-    dataset(UUID, Dataset),
+    case Dataset of
+        {docker, DockerImage} ->
+            {ok, Docker} = jsxd:get([<<"docker">>], Config),
+            set_docker(UUID, Docker),
+            {ok, DockerID} = jsxd:get([<<"id">>], Docker),
+            sniffle_2i:add(docker, DockerID, UUID),
+            vm_type(UUID, docker),
+            dataset(UUID, DockerImage);
+        _ ->
+            vm_type(UUID, zone),
+            dataset(UUID, Dataset)
+    end,
     libhowl:send(UUID, [{<<"event">>, <<"update">>},
                         {<<"data">>,
                          [{<<"config">>, Config2},
@@ -727,6 +744,16 @@ dry_run(Package, Dataset, Config) ->
                  not_found | {error, timeout} | {ok, fifo:vm()}.
 get(Vm) ->
     ?FM(get, sniffle_entity_read_fsm, start, [{?VNODE, ?SERVICE}, get, Vm]).
+
+get_docker(DockerID) ->
+    case sniffle_2i:get(docker, DockerID) of
+        {ok, UUID} ->
+            ?MODULE:get(UUID);
+        E ->
+            E
+    end.
+
+
 
 
 %%--------------------------------------------------------------------
@@ -777,7 +804,7 @@ delete(User, Vm) ->
                 {true, _, _, _} ->
                     {error, creating};
                 {_, _, true, _} ->
-                    finish_delete(Vm);
+                    finish_delete(V);
                 {_, _, _, <<"storing">>} ->
                     libhowl:send(<<"command">>,
                                  [{<<"event">>, <<"vm-stored">>},
@@ -810,9 +837,12 @@ delete(User, Vm) ->
             E
     end.
 
-finish_delete(Vm) ->
-    {ok, V} = ?MODULE:get(Vm),
+finish_delete(V) ->
+    Vm = ft_vm:uuid(V),
     [do_delete_backup(Vm, V, BID) || {BID, _} <- ?S:backups(V)],
+    Docker = ft_vm:docker(V),
+    {ok, DockerID} = jsxd:get([<<"id">>], Docker),
+    sniffle_2i:delete(docker, DockerID),
     sniffle_vm:unregister(Vm),
     resource_action(V, destroy, []),
     libhowl:send(Vm, [{<<"event">>, <<"delete">>}]),
@@ -1122,6 +1152,7 @@ remove_fw_rule(UUID, V) ->
 ?S(set_backup).
 ?S(set_snapshot).
 ?S(set_service).
+?S(set_docker).
 
 ?S(state).
 ?S(creating).
@@ -1134,6 +1165,8 @@ deleting(UUID, V)
 ?S(dataset).
 ?S(package).
 ?S(hypervisor).
+?S(vm_type).
+?S(created_at).
 
 %%%===================================================================
 %%% Internal Functions
