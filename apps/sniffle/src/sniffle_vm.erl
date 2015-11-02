@@ -814,17 +814,17 @@ delete(User, Vm) ->
                     state(Vm, <<"stored">>),
                     hypervisor(Vm, <<>>);
                 {_, undefined, _, _} ->
-                    finish_delete(Vm);
+                    finish_delete(V);
                 {_, <<>>, _, _} ->
-                    finish_delete(Vm);
+                    finish_delete(V);
                 {_, <<"pooled">>, _, _} ->
-                    finish_delete(Vm);
+                    finish_delete(V);
                 {_, <<"pending">>, _, _} ->
-                    finish_delete(Vm);
+                    finish_delete(V);
                 {_, _, _, undefined} ->
-                    finish_delete(Vm);
+                    finish_delete(V);
                 {_, _, _, <<"failed-", _/binary>>} ->
-                    finish_delete(Vm);
+                    finish_delete(V);
                 {_, H, _, _} ->
                     state(Vm, <<"deleting">>),
                     deleting(Vm, true),
