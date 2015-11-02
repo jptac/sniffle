@@ -1190,10 +1190,10 @@ do_write(VM, Op, Val) ->
 get_hypervisor(V) ->
     get_hypervisor(fifo_dt:type(V), V).
 
-get_hypervisor(ft_vm, V) ->
+get_hypervisor(vm, V) ->
     get_hypervisor(undefined, ?S:hypervisor(V));
 
-get_hypervisor(ft_hypervisor, H) ->
+get_hypervisor(hypervisor, H) ->
     ft_hypervisor:endpoint(H);
 
 get_hypervisor(undefined, not_found) ->
