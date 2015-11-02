@@ -41,7 +41,7 @@ get(Type, Key) ->
 get(TK) ->
     case ?FM(get, sniffle_entity_read_fsm, start,
              [{sniffle_2i_vnode, sniffle_2i}, get, TK]) of
-        {ok, not_found} ->
+        not_found ->
             not_found;
         {ok, R} ->
             case sniffle_2i_state:target(R) of
@@ -58,7 +58,7 @@ raw(Type, Key) ->
 raw(TK) ->
     case ?FM(get, sniffle_entity_read_fsm, start,
              [{sniffle_2i_vnode, sniffle_2i}, get, TK, undefined, true]) of
-        {ok, not_found} ->
+         not_found ->
             not_found;
         R ->
             R
