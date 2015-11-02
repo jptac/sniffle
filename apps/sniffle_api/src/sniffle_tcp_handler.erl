@@ -426,6 +426,12 @@ message({vm, unregister, Vm}, State) when
      sniffle_vm:unregister(Vm),
      State};
 
+message({vm, get, docker, Vm}, State) when
+      is_binary(Vm) ->
+    {reply,
+     sniffle_vm:get_docker(Vm),
+     State};
+
 message({vm, get, Vm}, State) when
       is_binary(Vm) ->
     {reply,
