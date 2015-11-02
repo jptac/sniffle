@@ -841,8 +841,12 @@ finish_delete(V) ->
     Vm = ft_vm:uuid(V),
     [do_delete_backup(Vm, V, BID) || {BID, _} <- ?S:backups(V)],
     Docker = ft_vm:docker(V),
-    {ok, DockerID} = jsxd:get([<<"id">>], Docker),
-    sniffle_2i:delete(docker, DockerID),
+    case jsxd:get([<<"id">>], Docker) of
+        {ok, DockerID} ->
+            sniffle_2i:delete(docker, DockerID);
+        _ ->
+            ok
+    end,
     sniffle_vm:unregister(Vm),
     resource_action(V, destroy, []),
     libhowl:send(Vm, [{<<"event">>, <<"delete">>}]),
