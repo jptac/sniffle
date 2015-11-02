@@ -349,7 +349,7 @@ get_dataset(_Event, State = #state{
                                dataset_uuid = {docker, DockerImage}
                               }) ->
     lager:info("[create] Oh My this is a docker image: ~p", [DockerImage]),
-    {next_state, callbacks, State#state{dataset = {docker, DockerImage}}, 0};
+    {next_state, get_networks, State#state{dataset = {docker, DockerImage}}, 0};
 
 get_dataset(_Event, State = #state{
                                uuid = UUID,
