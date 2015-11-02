@@ -399,8 +399,7 @@ message({vm, snapshot, promote, Vm, UUID, Config}, State) when
 
 message({vm, create, Package, Dataset, Config}, State) when
       is_binary(Package),
-      is_list(Config),
-      is_binary(Dataset) ->
+      is_list(Config) ->
     {reply,
      sniffle_vm:create(Package, Dataset, Config),
      State};
