@@ -40,7 +40,7 @@ get(Type, Key) ->
                  {ok, Target::fifo:uuid()}.
 get(TK) ->
     case ?FM(get, sniffle_entity_read_fsm, start,
-             [{sniffle_2i_vnode, sniffle_2i}, get, {TK}]) of
+             [{sniffle_2i_vnode, sniffle_2i}, get, TK]) of
         {ok, not_found} ->
             not_found;
         {ok, R} ->
@@ -57,7 +57,7 @@ raw(Type, Key) ->
 
 raw(TK) ->
     case ?FM(get, sniffle_entity_read_fsm, start,
-             [{sniffle_2i_vnode, sniffle_2i}, get, {TK}, undefined, true]) of
+             [{sniffle_2i_vnode, sniffle_2i}, get, TK, undefined, true]) of
         {ok, not_found} ->
             not_found;
         R ->
