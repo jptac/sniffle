@@ -462,8 +462,6 @@ get_server(_Event, State = #state{
     end.
 
 
-
-
 get_ips(_Event, State = #state{nets = Nets,
                                uuid = UUID,
                                dataset = Dataset}) ->
@@ -471,7 +469,7 @@ get_ips(_Event, State = #state{nets = Nets,
     Nics0 = case Dataset of
                 {docker, _} ->
                     lager:warning("[TODO] Need to figure out docker nics"),
-                    [{<<"net0">>, <<"public">>}];
+                    [{K, <<"docker">>} || {K, _} <- Nets];
                 _ ->
                     ft_dataset:networks(Dataset)
             end,
