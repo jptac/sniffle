@@ -27,6 +27,7 @@
                   eplugin,
                   fifo_lager,
                   lager,
+                  bugsnag,
                   jsxd,
                   sniffle_commons,
                   sniffle_console,
