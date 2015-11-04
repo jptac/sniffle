@@ -1,4 +1,5 @@
-[0m├─ clique─0.3.1+build.140.ref8067df5
+[0m├─ bugsnag─0.0.0+build.22.refc07ccb0
+├─ clique─0.3.1+build.140.ref8067df5
 ├─ cluster_info─2.0.3
 ├─ cuttlefish─2.0.0+build.479.reff5f6fdc
 │  ├─ getopt─0.4.3
@@ -19,7 +20,7 @@
 ├─ fifo_s3─0.1.13
 │  ├─ base16─1.0
 │  └─ poolboy─1.5.1
-├─ fifo_spec─0.1.22
+├─ fifo_spec─0.1.23
 ├─ fifo_utils─0.1.16
 ├─ folsom_ddb─0.1.20
 │  └─ ddb_client─0.1.17
@@ -31,7 +32,7 @@
 ├─ jsxd─0.1.10
 ├─ lager─2.1.1
 │  └─ goldrush─0.1.7
-├─ libchunter─0.1.40
+├─ libchunter─0.1.41
 ├─ libhowl─0.1.29
 │  └─ mdns_client_lib─0.1.28
 │     ├─ mdns_client─0.1.7
