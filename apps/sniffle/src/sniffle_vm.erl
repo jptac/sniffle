@@ -875,7 +875,7 @@ free_package_res(PkgID, OrgID) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec start(Vm::fifo:uuid()) ->
-                   {error, timeout|creating} | not_found | ok.
+                   {error, timeout|creating|not_deployed} | not_found | ok.
 start(Vm) ->
     case sniffle_vm:get(Vm) of
         {ok, V} ->
@@ -883,8 +883,13 @@ start(Vm) ->
                 true ->
                     {error, creating};
                 false ->
-                    {Server, Port} = get_hypervisor(V),
-                    libchunter:start_machine(Server, Port, Vm)
+                    case get_hypervisor(V) of
+                        not_found ->
+                            {error, not_deployed};
+                        {Server, Port} when is_list(Server),
+                                            is_integer(Port) ->
+                            libchunter:start_machine(Server, Port, Vm)
+                    end
             end;
         E ->
             E
