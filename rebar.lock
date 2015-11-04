@@ -105,7 +105,7 @@
  {<<"lager_watchdog">>,{pkg,<<"lager_watchdog">>,<<"0.1.10">>},1},
  {<<"libchunter">>,
   {git,"https://github.com/project-fifo/libchunter.git",
-       {ref,"3d8a4e3b2659c4fb8a73d3cb3854672152b14906"}},
+       {ref,"756418e0f5000b7299be6459aaa4ff5e71525ed0"}},
   0},
  {<<"libhowl">>,
   {git,"https://github.com/project-fifo/libhowl.git",
