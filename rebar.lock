@@ -12,7 +12,7 @@
   3},
  {<<"bugsnag">>,
   {git,"https://github.com/project-fifo/bugsnag-erlang.git",
-       {ref,"c07ccb09557f789f03107f8952dab034ac6dce89"}},
+       {ref,"636626c4e3701e04237a8d6a7719b40e5f2e1295"}},
   0},
  {<<"chash">>,
   {git,"https://github.com/Licenser/chash.git",
