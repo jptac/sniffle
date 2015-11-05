@@ -32,7 +32,6 @@
          check_org_resources/2,
          claim_org_resources/2,
          get_dataset/2,
-         callbacks/2,
          create/2,
          get_server/2,
          get_ower/2,
@@ -50,7 +49,6 @@
               claim_org_resources/2,
               create/2,
               generate_grouping_rules/2,
-              callbacks/2,
               get_dataset/2,
               get_package/2,
               resource_claim/2,
@@ -177,9 +175,9 @@ generate_grouping_rules(_Event, State = #state{test_pid = {_,_}, config = Config
     case jsxd:get([<<"grouping">>], Config) of
         {ok, Grouping} ->
             Rules = sniffle_grouping:create_rules(Grouping),
-            {next_state, create_permissions, State#state{grouping_rules = Rules}, 0};
+            {next_state, get_ower, State#state{grouping_rules = Rules}, 0};
         _ ->
-            {next_state, create_permissions, State, 0}
+            {next_state, get_ower, State, 0}
     end;
 
 generate_grouping_rules(_Event, State = #state{
@@ -192,7 +190,7 @@ generate_grouping_rules(_Event, State = #state{
             case sniffle_grouping:add_element(Grouping, UUID) of
                 ok ->
                     sniffle_vm:add_grouping(UUID, Grouping),
-                    {next_state, create_permissions,
+                    {next_state, get_ower,
                      State#state{grouping_rules = Rules}, 0};
                 E ->
                     vm_log(State, error, "Failed to create routing rule."),
@@ -315,12 +313,10 @@ create_permissions(_Event, State = #state{test_pid = {_,_}}) ->
 create_permissions(_Event, State = #state{
                                       uuid = UUID,
                                       creator = Creator,
-                                      owner = Owner,
-                                      config = Config
+                                      owner = Owner
                                      }) ->
     ls_user:grant(Creator, [<<"vms">>, UUID, <<"...">>]),
     ls_user:grant(Creator, [<<"channels">>, UUID, <<"join">>]),
-    eplugin:call('create:permissions', UUID, Config, Creator),
     case Owner of
         <<>> ->
             ok;
@@ -346,8 +342,14 @@ resource_claim(_Event, State = #state{
     ls_acc:create(Org, UUID, sniffle_vm:timestamp(),
                   [{user, Creator},
                    {package, Package},
-                   {dataset, Dataset}]),
+                   {dataset, encode_dataset(Dataset)}]),
     {next_state, get_dataset, State, 0}.
+
+get_dataset(_Event, State = #state{
+                               dataset_uuid = {docker, DockerImage}
+                              }) ->
+    lager:info("[create] Oh My this is a docker image: ~p", [DockerImage]),
+    {next_state, get_networks, State#state{dataset = {docker, DockerImage}}, 0};
 
 get_dataset(_Event, State = #state{
                                uuid = UUID,
@@ -358,20 +360,7 @@ get_dataset(_Event, State = #state{
     sniffle_vm:state(UUID, <<"fetching_dataset">>),
     {ok, Dataset} = sniffle_dataset:get(DatasetName),
     sniffle_vm:dataset(UUID, DatasetName),
-    {next_state, callbacks, State#state{dataset = Dataset}, 0}.
-
-
-callbacks(_Event, State = #state{
-                             uuid = UUID,
-                             dataset = Dataset,
-                             package = Package,
-                             config = Config}) ->
-    {UUID, Package1, Dataset1, Config1} =
-        eplugin:fold('create:update', {UUID, Package, Dataset, Config}),
-    {next_state, get_networks, State#state{
-                                 dataset = Dataset1,
-                                 package = Package1,
-                                 config = Config1}, 0}.
+    {next_state, get_networks, State#state{dataset = Dataset}, 0}.
 
 get_networks(_event, State = #state{retry = R, max_retries = Max})
   when R > Max ->
@@ -410,16 +399,23 @@ get_server(_Event, State = #state{
     Ram = ft_package:ram(Package),
     sniffle_vm:state(UUID, <<"fetching_server">>),
     Permission = [<<"hypervisors">>, {<<"res">>, <<"uuid">>}, <<"create">>],
-    Type = case ft_dataset:type(Dataset) of
-               kvm -> <<"kvm">>;
-               zone -> case ft_dataset:zone_type(Dataset) of
-                           lipkg ->
-                               <<"ipkg">>;
-                           ipkg ->
-                               <<"ipkg">>;
-                           _ ->
-                               <<"zone">>
-                       end
+    {Type, DatasetReqs}
+        = case Dataset of
+              {docker, _} ->
+                  lager:warning("[TODO] We need some dataset requirements for lx"), 
+                  {<<"zone">>, []};
+              _ ->
+                  {case ft_dataset:type(Dataset) of
+                       kvm -> <<"kvm">>;
+                       zone -> case ft_dataset:zone_type(Dataset) of
+                                   lipkg ->
+                                       <<"ipkg">>;
+                                   ipkg ->
+                                       <<"ipkg">>;
+                                   _ ->
+                                      <<"zone">>
+                               end
+                   end, ft_dataset:requirements(Dataset)}
            end,
     case ls_user:cache(Creator) of
         {ok, Permissions} ->
@@ -427,54 +423,57 @@ get_server(_Event, State = #state{
                            {must, 'element', <<"virtualisation">>, Type},
                            {must, '>=', <<"resources.free-memory">>, Ram}]
                 ++ ft_package:requirements(Package)
-                ++ ft_dataset:requirements(Dataset)
+                ++ DatasetReqs
                 ++ lists:map(fun(C) -> make_condition(C, Permissions) end,
                              jsxd:get(<<"requirements">>, [], Config)),
-            Conditions2 = Conditions1 ++ GroupingRules,
-            {UUID, Config, Conditions} = eplugin:fold('create:conditions', {UUID, Config, Conditions2}),
+            Conditions = Conditions1 ++ GroupingRules,
             lager:debug("[create] Finding hypervisor: ~p", [Conditions]),
             {ok, Hypervisors} = sniffle_hypervisor:list(Conditions, false),
-            Hypervisors1 = eplugin:fold('create:hypervisor_select', Hypervisors),
-            Hypervisors2 = lists:reverse(lists:sort(Hypervisors1)),
-            lager:debug("[create] Hypervisors found: ~p", [Hypervisors2]),
-            case {Hypervisors2, test_hypervisors(UUID, Hypervisors2, Nets)} of
+            Hypervisors1 = lists:reverse(lists:sort(Hypervisors)),
+            lager:debug("[create] Hypervisors found: ~p", [Hypervisors1]),
+            case {Hypervisors1, test_hypervisors(UUID, Hypervisors1, Nets)} of
                 {_, {ok, HypervisorID, H, Nets1}} ->
                     RamB = list_to_binary(integer_to_list(Ram)),
                     S1 = add_log(State, info, <<"Assigning memory ", RamB/binary>>),
                     S2 = add_log(S1, info, <<"Deploying on hypervisor ", HypervisorID/binary>>),
-                    eplugin:call('create:handoff', UUID, HypervisorID),
                     {next_state, get_ips,
                      S2#state{hypervisor_id = HypervisorID,
                               hypervisor = H, nets = Nets1}, 0};
                 {[], _} ->
                     S1 = warn(State,
                               "Could not find Hypervisors matching rules.",
-                              "[create] Cound not find hypervisor for "
+                              "[create] Could not find hypervisor for "
                               "rules: ~p.", [Conditions]),
                     do_retry(S1);
                 {Hvs, EH} ->
                     S1 = warn(State,
-                              "cloud not lock hypervisor.",
-                              "[create] Cound not claim a lock on any of "
+                              "could not lock hypervisor.",
+                              "[create] Could not claim a lock on any of "
                               "the provided hypervisors: ~p -> ~p",
                               [Hvs, EH]),
                     do_retry(S1)
             end;
         EC ->
             S1 = warn(State,
-                      "Cound not cache user.",
-                      "[create] Cound lot cache user: ~p -> ~p",
+                      "Could not cache user.",
+                      "[create] Could not cache user: ~p -> ~p",
                       [Creator, EC]),
             do_retry(S1)
     end.
 
+
 get_ips(_Event, State = #state{nets = Nets,
                                uuid = UUID,
-                               config = Config,
                                dataset = Dataset}) ->
     lager:debug("[create] get_ips: ~p", [Nets]),
-    Nics0 = ft_dataset:networks(Dataset),
-    case update_nics(UUID, Nics0, Config, Nets, State) of
+    Nics0 = case Dataset of
+                {docker, _} ->
+                    lager:warning("[TODO] Need to figure out docker nics"),
+                    [{K, <<"docker">>} || {K, _} <- Nets];
+                _ ->
+                    ft_dataset:networks(Dataset)
+            end,
+    case update_nics(Nics0, Nets, State) of
         {error, E, Mapping} ->
             S1 = warn(State,
                       "Could not get IP's.",
@@ -629,7 +628,6 @@ terminate(_Reason, StateName, #state{test_pid={Pid, Ref}, uuid = UUID}) ->
     ok;
 
 terminate(Reason, StateName, State = #state{uuid = UUID, log_cache = C}) ->
-    eplugin:call('create:fail', UUID, StateName),
     warn(State,
          "Creation failed.",
          "Hypervisor creation failed in state ~p for reason ~p",
@@ -758,8 +756,7 @@ make_random(Weight, C) ->
     {ok, High} = jsxd:get(<<"high">>, C),
     {Weight, Low, High}.
 
-
-update_nics(UUID, Nics, Config, Nets, State) ->
+update_nics(Nics, Nets, State) ->
     lists:foldl(
       fun (_, {error, E, Mps}) ->
               {error, E, Mps};
@@ -783,14 +780,8 @@ update_nics(UUID, Nics, Config, Nets, State) ->
                                             {<<"gateway">>, GWb}]),
                       Res1 = case VLAN of
                                  0 ->
-                                     eplugin:apply(
-                                       'vm:ip_assigned',
-                                       [UUID, Config, Name, Tag, IPb, Netb, GWb, none]),
                                      Res;
                                  VLAN ->
-                                     eplugin:apply(
-                                       'vm:ip_assigned',
-                                       [UUID, Config, Name, Tag, IPb, Netb, GWb, VLAN]),
                                      jsxd:set(<<"vlan_id">>, VLAN, Res)
                              end,
                       NicsF1 = [Res1 | NicsF],
@@ -845,3 +836,9 @@ warn(State, Log, S, Fmt) ->
     EID = uuid:uuid4s(),
     lager:warning("[~s] " ++ S, [EID] ++ Fmt),
     add_log(State, error, Log, EID).
+
+encode_dataset({docker, D}) ->
+    <<"docker:", D/binary>>;
+encode_dataset(D) when is_binary(D) ->
+    D.
+

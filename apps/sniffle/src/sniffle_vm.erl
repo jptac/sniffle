@@ -32,6 +32,7 @@
          delete_backup/2,
          delete_snapshot/2,
          get/1,
+         get_docker/1,
          list/0,
          list/2,
          log/2,
@@ -66,6 +67,9 @@
          set_service/2,
          set_snapshot/2,
          set_metadata/2,
+         set_docker/2,
+         vm_type/2,
+         created_at/2,
          add_fw_rule/2,
          remove_fw_rule/2
         ]).
@@ -681,7 +685,9 @@ unregister(Vm) ->
 create(Package, Dataset, Config) ->
     UUID = uuid:uuid4s(),
     do_write(UUID, register, <<"pooled">>), %we've to put pending here since undefined will cause a wrong call!
-    creating(UUID, {started, erlang:system_time(seconds)}),
+    Secs = erlang:system_time(seconds),
+    creating(UUID, {started, Secs}),
+    created_at(UUID, Secs),
     Config1 = jsxd:from_list(Config),
     Config2 = jsxd:update(<<"networks">>,
                           fun (N) ->
@@ -694,7 +700,18 @@ create(Package, Dataset, Config) ->
     set_config(UUID, Config2),
     state(UUID, <<"pooled">>),
     package(UUID, Package),
-    dataset(UUID, Dataset),
+    case Dataset of
+        {docker, DockerImage} ->
+            {ok, Docker} = jsxd:get([<<"docker">>], Config),
+            set_docker(UUID, Docker),
+            {ok, DockerID} = jsxd:get([<<"id">>], Docker),
+            sniffle_2i:add(docker, DockerID, UUID),
+            vm_type(UUID, docker),
+            dataset(UUID, DockerImage);
+        _ ->
+            vm_type(UUID, zone),
+            dataset(UUID, Dataset)
+    end,
     libhowl:send(UUID, [{<<"event">>, <<"update">>},
                         {<<"data">>,
                          [{<<"config">>, Config2},
@@ -727,6 +744,16 @@ dry_run(Package, Dataset, Config) ->
                  not_found | {error, timeout} | {ok, fifo:vm()}.
 get(Vm) ->
     ?FM(get, sniffle_entity_read_fsm, start, [{?VNODE, ?SERVICE}, get, Vm]).
+
+get_docker(DockerID) ->
+    case sniffle_2i:get(docker, DockerID) of
+        {ok, UUID} ->
+            ?MODULE:get(UUID);
+        E ->
+            E
+    end.
+
+
 
 
 %%--------------------------------------------------------------------
@@ -777,7 +804,7 @@ delete(User, Vm) ->
                 {true, _, _, _} ->
                     {error, creating};
                 {_, _, true, _} ->
-                    finish_delete(Vm);
+                    finish_delete(V);
                 {_, _, _, <<"storing">>} ->
                     libhowl:send(<<"command">>,
                                  [{<<"event">>, <<"vm-stored">>},
@@ -787,17 +814,17 @@ delete(User, Vm) ->
                     state(Vm, <<"stored">>),
                     hypervisor(Vm, <<>>);
                 {_, undefined, _, _} ->
-                    finish_delete(Vm);
+                    finish_delete(V);
                 {_, <<>>, _, _} ->
-                    finish_delete(Vm);
+                    finish_delete(V);
                 {_, <<"pooled">>, _, _} ->
-                    finish_delete(Vm);
+                    finish_delete(V);
                 {_, <<"pending">>, _, _} ->
-                    finish_delete(Vm);
+                    finish_delete(V);
                 {_, _, _, undefined} ->
-                    finish_delete(Vm);
+                    finish_delete(V);
                 {_, _, _, <<"failed-", _/binary>>} ->
-                    finish_delete(Vm);
+                    finish_delete(V);
                 {_, H, _, _} ->
                     state(Vm, <<"deleting">>),
                     deleting(Vm, true),
@@ -810,9 +837,16 @@ delete(User, Vm) ->
             E
     end.
 
-finish_delete(Vm) ->
-    {ok, V} = ?MODULE:get(Vm),
+finish_delete(V) ->
+    Vm = ft_vm:uuid(V),
     [do_delete_backup(Vm, V, BID) || {BID, _} <- ?S:backups(V)],
+    Docker = ft_vm:docker(V),
+    case jsxd:get([<<"id">>], Docker) of
+        {ok, DockerID} ->
+            sniffle_2i:delete(docker, DockerID);
+        _ ->
+            ok
+    end,
     sniffle_vm:unregister(Vm),
     resource_action(V, destroy, []),
     libhowl:send(Vm, [{<<"event">>, <<"delete">>}]),
@@ -841,7 +875,7 @@ free_package_res(PkgID, OrgID) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec start(Vm::fifo:uuid()) ->
-                   {error, timeout|creating} | not_found | ok.
+                   {error, timeout|creating|not_deployed} | not_found | ok.
 start(Vm) ->
     case sniffle_vm:get(Vm) of
         {ok, V} ->
@@ -849,8 +883,13 @@ start(Vm) ->
                 true ->
                     {error, creating};
                 false ->
-                    {Server, Port} = get_hypervisor(V),
-                    libchunter:start_machine(Server, Port, Vm)
+                    case get_hypervisor(V) of
+                        not_found ->
+                            {error, not_deployed};
+                        {Server, Port} when is_list(Server),
+                                            is_integer(Port) ->
+                            libchunter:start_machine(Server, Port, Vm)
+                    end
             end;
         E ->
             E
@@ -954,17 +993,15 @@ set_owner(User, Vm, Owner) ->
             %% We can use the Vm object we got to end the accouting period
             %% for the old org
             resource_action(V, destroy, User, []),
-            resource_action(V, confirm_destroy, User, []),
             case owner(Vm, Owner) of
                 ok ->
                     %% After a successful changed the owner we refetch the vm
                     %% to add accounting to the new org.
                     Opts = [{package, ft_vm:package(V)},
-                            {dataset, ft_vm:dataset(V)}],
+                            {dataset, encode_dataset(ft_vm:dataset(V))}],
                     {ok, V1} = sniffle_vm:get(Vm),
                     resource_action(V1, create, User, Opts),
-                    resource_action(V1, confirm_create, User, []),
-                    ok;
+                        ok;
                 E1 ->
                     E1
             end;
@@ -1122,6 +1159,7 @@ remove_fw_rule(UUID, V) ->
 ?S(set_backup).
 ?S(set_snapshot).
 ?S(set_service).
+?S(set_docker).
 
 ?S(state).
 ?S(creating).
@@ -1134,6 +1172,8 @@ deleting(UUID, V)
 ?S(dataset).
 ?S(package).
 ?S(hypervisor).
+?S(vm_type).
+?S(created_at).
 
 %%%===================================================================
 %%% Internal Functions
@@ -1279,3 +1319,8 @@ is_creating(V) ->
         _ ->
             true
     end.
+
+encode_dataset({docker, D}) ->
+    <<"docker:", D/binary>>;
+encode_dataset(D) when is_binary(D) ->
+    D.

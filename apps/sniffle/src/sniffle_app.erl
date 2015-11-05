@@ -52,6 +52,7 @@ start(_StartType, _StartArgs) ->
             ?SRV_WITH_AAE(sniffle_grouping_vnode, sniffle_grouping),
             ?SRV_WITH_AAE(sniffle_network_vnode, sniffle_network),
             ?SRV_WITH_AAE(sniffle_dtrace_vnode, sniffle_dtrace),
+            ?SRV_WITH_AAE(sniffle_2i_vnode, sniffle_2i),
             timer:apply_after(2000, sniffle_opt, update, []),
             sniffle_snmp_handler:start(),
             {ok, Pid};
@@ -95,8 +96,11 @@ init_folsom() ->
     VMs = Basic ++
         [register, unregister, log, set_network_map, remove_grouping,
          add_grouping, set_metadata, set_info, set_config, set_backup,
-         set_snapshot, set_service, state, alias, owner, dataset, package,
-         hypervisor, remove_fw_rule, add_fw_rule, deleting, creating],
+         set_docker, set_snapshot, set_service, state, alias, owner, dataset,
+         package, hypervisor, remove_fw_rule, add_fw_rule, deleting, creating,
+         vm_type, created_at],
+    S2i = [list, get, add, delete, sync_repair],
+
     [folsom_metrics:new_histogram(Name, slide, 60) ||
         Name <-
             [{fifo_db, M} || M <- DBMs] ++
@@ -108,5 +112,6 @@ init_folsom() ->
             [{sniffle, network, M} || M <- Nets] ++
             [{sniffle, package, M} || M <- Pkgs] ++
             [{sniffle, vm, M} || M <- VMs] ++
+            [{sniffle, s2i, M} || M <- S2i] ++
             []
     ].

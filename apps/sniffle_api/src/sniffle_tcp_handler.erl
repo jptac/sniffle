@@ -399,8 +399,7 @@ message({vm, snapshot, promote, Vm, UUID, Config}, State) when
 
 message({vm, create, Package, Dataset, Config}, State) when
       is_binary(Package),
-      is_list(Config),
-      is_binary(Dataset) ->
+      is_list(Config) ->
     {reply,
      sniffle_vm:create(Package, Dataset, Config),
      State};
@@ -424,6 +423,12 @@ message({vm, unregister, Vm}, State) when
       is_binary(Vm) ->
     {reply,
      sniffle_vm:unregister(Vm),
+     State};
+
+message({vm, get, docker, Vm}, State) when
+      is_binary(Vm) ->
+    {reply,
+     sniffle_vm:get_docker(Vm),
      State};
 
 message({vm, get, Vm}, State) when

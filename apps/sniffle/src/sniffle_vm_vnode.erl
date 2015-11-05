@@ -8,8 +8,7 @@
          get/3,
          log/4,
          register/4,
-         unregister/3,
-         set/4
+         unregister/3
         ]).
 
 -export([start_vnode/1,
@@ -35,6 +34,9 @@
          set_config/4,
          set_info/4,
          set_metadata/4,
+         set_docker/4,
+              vm_type/4,
+              created_at/4,
          add_grouping/4,
          remove_grouping/4,
          add_fw_rule/4,
@@ -64,6 +66,9 @@
               set_service/4,
               set_metadata/4,
               add_grouping/4,
+              set_docker/4,
+              vm_type/4,
+              created_at/4,
               set_info/4,
               remove_grouping/4,
               add_fw_rule/4,
@@ -81,7 +86,6 @@
               log/4,
               register/4,
               repair/4,
-              set/4,
               start_vnode/1,
               unregister/3,
               handle_info/2,
@@ -182,6 +186,7 @@ set_network_map(Preflist, ReqID, Vm, [IP, Net]) ->
 ?S(set_snapshot).
 ?S(set_config).
 ?S(set_info).
+?S(set_docker).
 ?S(set_metadata).
 ?S(add_fw_rule).
 ?S(remove_fw_rule).
@@ -204,16 +209,9 @@ remove_grouping(Preflist, ReqID, Vm, Grouping) ->
 ?S(owner).
 ?S(dataset).
 ?S(package).
+?S(created_at).
+?S(vm_type).
 ?S(hypervisor).
-
-
--spec set(any(), any(), fifo:uuid(), [{Key::binary(), V::fifo:value()}]) -> ok.
-
-set(Preflist, ReqID, Vm, Data) ->
-    riak_core_vnode_master:command(Preflist,
-                                   {set, ReqID, Vm, Data},
-                                   {fsm, undefined, self()},
-                                   ?MASTER).
 
 %%%===================================================================
 %%% VNode
