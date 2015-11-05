@@ -442,21 +442,21 @@ get_server(_Event, State = #state{
                 {[], _} ->
                     S1 = warn(State,
                               "Could not find Hypervisors matching rules.",
-                              "[create] Cound not find hypervisor for "
+                              "[create] Could not find hypervisor for "
                               "rules: ~p.", [Conditions]),
                     do_retry(S1);
                 {Hvs, EH} ->
                     S1 = warn(State,
-                              "cloud not lock hypervisor.",
-                              "[create] Cound not claim a lock on any of "
+                              "could not lock hypervisor.",
+                              "[create] Could not claim a lock on any of "
                               "the provided hypervisors: ~p -> ~p",
                               [Hvs, EH]),
                     do_retry(S1)
             end;
         EC ->
             S1 = warn(State,
-                      "Cound not cache user.",
-                      "[create] Cound lot cache user: ~p -> ~p",
+                      "Could not cache user.",
+                      "[create] Could not cache user: ~p -> ~p",
                       [Creator, EC]),
             do_retry(S1)
     end.
