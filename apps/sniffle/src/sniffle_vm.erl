@@ -993,17 +993,15 @@ set_owner(User, Vm, Owner) ->
             %% We can use the Vm object we got to end the accouting period
             %% for the old org
             resource_action(V, destroy, User, []),
-            resource_action(V, confirm_destroy, User, []),
             case owner(Vm, Owner) of
                 ok ->
                     %% After a successful changed the owner we refetch the vm
                     %% to add accounting to the new org.
                     Opts = [{package, ft_vm:package(V)},
-                            {dataset, ft_vm:dataset(V)}],
+                            {dataset, encode_dataset(ft_vm:dataset(V))}],
                     {ok, V1} = sniffle_vm:get(Vm),
                     resource_action(V1, create, User, Opts),
-                    resource_action(V1, confirm_create, User, []),
-                    ok;
+                        ok;
                 E1 ->
                     E1
             end;
@@ -1321,3 +1319,8 @@ is_creating(V) ->
         _ ->
             true
     end.
+
+encode_dataset({docker, D}) ->
+    <<"docker:", D/binary>>;
+encode_dataset(D) when is_binary(D) ->
+    D.

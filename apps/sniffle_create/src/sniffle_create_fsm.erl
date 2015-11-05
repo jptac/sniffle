@@ -342,7 +342,7 @@ resource_claim(_Event, State = #state{
     ls_acc:create(Org, UUID, sniffle_vm:timestamp(),
                   [{user, Creator},
                    {package, Package},
-                   {dataset, Dataset}]),
+                   {dataset, encode_dataset(Dataset)}]),
     {next_state, get_dataset, State, 0}.
 
 get_dataset(_Event, State = #state{
@@ -836,3 +836,9 @@ warn(State, Log, S, Fmt) ->
     EID = uuid:uuid4s(),
     lager:warning("[~s] " ++ S, [EID] ++ Fmt),
     add_log(State, error, Log, EID).
+
+encode_dataset({docker, D}) ->
+    <<"docker:", D/binary>>;
+encode_dataset(D) when is_binary(D) ->
+    D.
+
