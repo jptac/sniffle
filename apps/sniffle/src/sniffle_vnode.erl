@@ -351,11 +351,17 @@ handle_info(_, State) ->
 %% are ensured to overwrite load changes.
 load_obj({T, ID}, Mod, Obj) ->
     V = ft_obj:val(Obj),
-    case Mod:load({T-1, ID}, V) of
-        V1 when V1 /= V ->
-            ft_obj:update(V1, ID, Obj);
-        _ ->
-            ft_obj:update(Obj)
+    try
+        case Mod:load({T-1, ID}, V) of
+            V1 when V1 /= V ->
+                ft_obj:update(V1, ID, Obj);
+            _ ->
+                ft_obj:update(Obj)
+        end
+    catch
+        E1:E2 ->
+            lager:error("[~p:~p] Failed to load ~s : ~p", [E1, E2, Mod, Obj]),
+            ft_obj:new(Mod:new({T, ID}), node())
     end.
 
 vc_bin(VClock) ->
