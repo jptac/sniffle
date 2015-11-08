@@ -21,7 +21,7 @@
 │  ├─ base16─1.0
 │  └─ poolboy─1.5.1
 ├─ fifo_spec─0.1.23
-├─ fifo_utils─0.1.16
+├─ fifo_utils─0.1.17
 ├─ folsom_ddb─0.1.20
 │  └─ ddb_client─0.1.17
 │     ├─ dproto─0.1.12
