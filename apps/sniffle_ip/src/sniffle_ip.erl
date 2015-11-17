@@ -112,8 +112,11 @@ handle_cast({claim, IPRange, From, Nodes}, State) ->
                         no_nodes ->
                             gen_server:reply(From, {error, no_claim});
                         {Next,  Nodes1} ->
+                            %% We need to add the next node
+                            %% back to the list since we check for that
+                            %% on the handover after the RPC
                             rpc:cast(Next, sniffle_ip, claim,
-                                     [IPRange, From, Nodes1])
+                                     [IPRange, From, [Next | Nodes1]])
                     end;
                 [First | _] ->
                     Reply = sniffle_iprange:claim_specific_ip(
@@ -192,4 +195,3 @@ next_alife_node([N | Rest]) ->
         pang ->
             next_alife_node(Rest)
     end.
-
