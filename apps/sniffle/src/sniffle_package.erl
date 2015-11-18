@@ -71,7 +71,9 @@ lookup(Package) ->
                 end, not_found, Res).
 
 -spec create(Package::binary()) ->
-                    duplicate | {error, timeout} | {ok, UUID::fifo:package_id()}.
+                    duplicate |
+                    {error, timeout} |
+                    {ok, UUID::fifo:package_id()}.
 create(Package) ->
     UUID = uuid:uuid4s(),
     case sniffle_package:lookup(Package) of

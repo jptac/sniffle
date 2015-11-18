@@ -64,7 +64,7 @@ list_keys(Sender, State=#vstate{db=DB, bucket=Bucket}) ->
                      [K|L]
              end,
     AsyncWork = fun() ->
-                        ?FM(fifo_db, fold_keys, [DB, Bucket, FoldFn, []])
+                        fold_keys(DB, Bucket, FoldFn, [])
                 end,
     FinishFun = fun(Data) ->
                         reply(Data, Sender, State)
@@ -104,7 +104,8 @@ fold(Fun, Acc0, Sender, State=#vstate{db=DB, bucket=Bucket}) ->
 put(Key, Obj, State) ->
     ?FM(fifo_db, put, [State#vstate.db, State#vstate.bucket, Key, Obj]),
     riak_core_aae_vnode:update_hashtree(
-      State#vstate.service_bin, Key, vc_bin(ft_obj:vclock(Obj)), State#vstate.hashtrees).
+      State#vstate.service_bin, Key, vc_bin(ft_obj:vclock(Obj)),
+      State#vstate.hashtrees).
 
 change(UUID, Action, Vals, {ReqID, Coordinator} = ID,
        State=#vstate{state=Mod}) ->
@@ -134,13 +135,16 @@ change(UUID, Action, Vals, {ReqID, Coordinator} = ID,
 
 is_empty(State=#vstate{db=DB, bucket=Bucket}) ->
     FoldFn = fun (_, _) -> {false, State} end,
-    ?FM(fifo_db, fold_keys, [DB, Bucket, FoldFn, {true, State}]).
+    fold_keys(DB, Bucket, FoldFn, {true, State}).
 
 delete(State=#vstate{db=DB, bucket=Bucket}) ->
     FoldFn = fun (K, A) -> [{delete, <<Bucket/binary, K/binary>>} | A] end,
-    Trans = ?FM(fifo_db, fold_keys, [DB, Bucket, FoldFn, []]),
+    Trans = fold_keys(DB, Bucket, FoldFn, []),
     ?FM(fifo_db, transact, [State#vstate.db, Trans]),
     {ok, State}.
+
+fold_keys(DB, Bucket, FoldFn, Acc0) ->
+    ?FM(fifo_db, fold_keys, [DB, Bucket, FoldFn, Acc0]).
 
 handle_coverage({wipe, UUID}, _KeySpaces, {_, ReqID, _}, State) ->
     ?FM(fifo_db, delete, [State#vstate.db, State#vstate.bucket, UUID]),
@@ -166,8 +170,8 @@ handle_coverage({lookup, Name}, _KeySpaces, Sender, State=#vstate{state=Mod}) ->
 handle_coverage(list, _KeySpaces, Sender, State) ->
     list_keys(Sender, State);
 
-handle_coverage({list, Requirements}, _KeySpaces, Sender, State) ->
-    handle_coverage({list, Requirements, false}, _KeySpaces, Sender, State);
+handle_coverage({list, Requirements}, KeySpaces, Sender, State) ->
+    handle_coverage({list, Requirements, false}, KeySpaces, Sender, State);
 
 handle_coverage({list, Requirements, Full}, _KeySpaces, Sender,
                 State = #vstate{state=Mod}) ->
@@ -263,7 +267,8 @@ handle_command({set,
             sniffle_vnode:put(UUID, Obj, State),
             {reply, {ok, ReqID}, State};
         R ->
-            lager:error("[~s/~p] tried to write to non existing element: ~s -> ~p",
+            lager:error("[~s/~p] tried to write to non existing element: "
+                        "~s -> ~p",
                         [Bucket, State#vstate.partition, UUID, R]),
             {reply, {ok, ReqID, not_found}, State}
     end;

@@ -700,13 +700,15 @@ message({network, list, Requirements, Full}, State) ->
 %%%  IPRange Functions
 %%%===================================================================
 
-message({iprange, create, Iprange, Network, Gateway, Netmask, First, Last, Tag, Vlan}, State) when
+message({iprange, create, Iprange, Network, Gateway, Netmask, First, Last, Tag,
+         Vlan}, State) when
       is_binary(Iprange), is_binary(Tag),
       is_integer(Network), is_integer(Gateway), is_integer(Netmask),
       is_integer(First), is_integer(Last),
       is_integer(Vlan)->
     {reply,
-     sniffle_iprange:create(Iprange, Network, Gateway, Netmask, First, Last, Tag, Vlan),
+     sniffle_iprange:create(Iprange, Network, Gateway, Netmask, First, Last,
+                            Tag, Vlan),
      State};
 
 message({iprange, delete, Iprange}, State) when

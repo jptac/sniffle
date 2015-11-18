@@ -55,7 +55,8 @@ start_link() ->
 %%--------------------------------------------------------------------
 
 init([]) ->
-    {ok, {{simple_one_for_one, 5, 10}, [?CHILD(sniffle_dataset_download_fsm, worker)]}}.
+    {ok, {{simple_one_for_one, 5, 10},
+          [?CHILD(sniffle_dataset_download_fsm, worker)]}}.
 
 %%%===================================================================
 %%% Internal functions

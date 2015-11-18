@@ -135,7 +135,8 @@ handle_info(tick, State = #state{tick = Tick}) ->
              {_Ensamble, _Leader} when _Leader == node() ->
                  erlang:send_after(Tick, self(), tick),
                  run_check(State);
-             %% TODO: This happens when no cluster could be started aka < 3 nodes
+             %% TODO: This happens when no cluster could be started
+             %% aka < 3 nodes
              undefined ->
                  run_check(State);
              _ ->

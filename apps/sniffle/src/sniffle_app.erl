@@ -41,8 +41,10 @@ start(_StartType, _StartArgs) ->
     init_folsom(),
     case sniffle_sup:start_link() of
         {ok, Pid} ->
-            ok = riak_core_ring_events:add_guarded_handler(sniffle_ring_event_handler, []),
-            ok = riak_core_node_watcher_events:add_guarded_handler(sniffle_node_event_handler, []),
+            ok = riak_core_ring_events:add_guarded_handler(
+                   sniffle_ring_event_handler, []),
+            ok = riak_core_node_watcher_events:add_guarded_handler(
+                   sniffle_node_event_handler, []),
 
             ?SRV_WITH_AAE(sniffle_hypervisor_vnode, sniffle_hypervisor),
             ?SRV_WITH_AAE(sniffle_vm_vnode, sniffle_vm),

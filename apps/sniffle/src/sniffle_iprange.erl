@@ -84,13 +84,16 @@ lookup(Name) when
              Last::integer(),
              Tag::binary(),
              Vlan::integer()) ->
-                    duplicate | {error, timeout} | {ok, UUID::fifo:iprange_id()}.
+                    duplicate |
+                    {error, timeout} |
+                    {ok, UUID::fifo:iprange_id()}.
 create(Iprange, Network, Gateway, Netmask, First, Last, Tag, Vlan) when
       is_binary(Iprange) ->
     UUID = list_to_binary(uuid:to_string(uuid:uuid4())),
     case sniffle_iprange:lookup(Iprange) of
         not_found ->
-            ok = do_write(UUID, create, [Iprange, Network, Gateway, Netmask, First, Last, Tag, Vlan]),
+            ok = do_write(UUID, create, [Iprange, Network, Gateway, Netmask,
+                                         First, Last, Tag, Vlan]),
             {ok, UUID};
         {ok, _RangeObj} ->
             duplicate
@@ -147,7 +150,7 @@ release_ip(Iprange, IP) ->
                             Gateway::non_neg_integer(),
                             VLAN::non_neg_integer()}} |
                       {error, failed} |
-                      {'error','no_servers'}.
+                      {'error', 'no_servers'}.
 claim_ip(Iprange) ->
     claim_ip(Iprange, 0).
 

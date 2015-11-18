@@ -147,13 +147,15 @@ set(Preflist, ReqID, Vm, Data) ->
 
 org_resource_inc(Preflist, ReqID, UUID, {Resource, Value}) ->
     riak_core_vnode_master:command(Preflist,
-                                   {org_resource_inc, ReqID, UUID, Resource, Value},
+                                   {org_resource_inc, ReqID, UUID, Resource,
+                                    Value},
                                    {fsm, undefined, self()},
                                    ?MASTER).
 
 org_resource_dec(Preflist, ReqID, UUID, {Resource, Value}) ->
     riak_core_vnode_master:command(Preflist,
-                                   {org_resource_dec, ReqID, UUID, Resource, Value},
+                                   {org_resource_dec, ReqID, UUID, Resource,
+                                    Value},
                                    {fsm, undefined, self()},
                                    ?MASTER).
 

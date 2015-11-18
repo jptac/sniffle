@@ -106,7 +106,8 @@ create(UUID, Package, Dataset, Config) ->
     create(UUID, Package, Dataset, Config, undefined).
 
 create(UUID, Package, Dataset, Config, Pid) ->
-    supervisor:start_child(sniffle_create_fsm_sup, [UUID, Package, Dataset, Config, Pid]).
+    supervisor:start_child(sniffle_create_fsm_sup,
+                           [UUID, Package, Dataset, Config, Pid]).
 
 
 %%%===================================================================
@@ -171,7 +172,8 @@ init([UUID, Package, Dataset, Config, Pid]) ->
 %% @end
 %%--------------------------------------------------------------------
 
-generate_grouping_rules(_Event, State = #state{test_pid = {_,_}, config = Config}) ->
+generate_grouping_rules(_Event, State = #state{test_pid = {_, _},
+                                               config = Config}) ->
     case jsxd:get([<<"grouping">>], Config) of
         {ok, Grouping} ->
             Rules = sniffle_grouping:create_rules(Grouping),
@@ -194,8 +196,8 @@ generate_grouping_rules(_Event, State = #state{
                      State#state{grouping_rules = Rules}, 0};
                 E ->
                     vm_log(State, error, "Failed to create routing rule."),
-                    lager:error("[create] Creation Faild since grouing could not be "
-                                "joined: ~p", [E]),
+                    lager:error("[create] Creation Faild since grouing could "
+                                "not be joined: ~p", [E]),
                     {stop, E, State}
             end;
         _ ->
@@ -246,7 +248,8 @@ check_org_resources(_Event, State = #state{owner = <<>>, package = P}) ->
             lager:debug("[create] No resources required by package"),
             {next_state, claim_org_resources, State, 0};
         _ ->
-            vm_log(State, error, <<"No org selected but package requires resource!">>),
+            vm_log(State, error,
+                   <<"No org selected but package requiresresource!">>),
             {stop, failed, State}
     end;
 
@@ -267,7 +270,8 @@ check_org_resources(_Event, State = #state{owner = OrgID, package = P}) ->
         {R, V} ->
             lager:debug("[create] Resource '~p' insuficient with ~p.",
                         [R, V]),
-            vm_log(State, error, <<"Org cant provide resource : ", R/binary, "!">>),
+            vm_log(State, error,
+                   <<"Org cant provide resource : ", R/binary, "!">>),
             {stop, failed, State}
     end.
 
@@ -278,7 +282,7 @@ claim_org_resources(_Event, State = #state{uuid = UUID, owner = <<>>,
     {next_state, create_permissions, State, 0};
 
 %% We don't claim resources if this is a test run
-claim_org_resources(_Event, State = #state{uuid = UUID,test_pid = {_,_},
+claim_org_resources(_Event, State = #state{uuid = UUID, test_pid = {_, _},
                                            package_uuid = PackageUUID}) ->
     sniffle_vm:package(UUID, PackageUUID),
     {next_state, create_permissions, State, 0};
@@ -307,7 +311,7 @@ claim_org_resources(_Event, State = #state{uuid = UUID,
 %%                   {stop, Reason, NewState}
 %% @end
 %%--------------------------------------------------------------------
-create_permissions(_Event, State = #state{test_pid = {_,_}}) ->
+create_permissions(_Event, State = #state{test_pid = {_, _}}) ->
     {next_state, get_package, State, 0};
 
 create_permissions(_Event, State = #state{
@@ -369,7 +373,8 @@ get_networks(_event, State = #state{retry = R, max_retries = Max})
     BR = integer_to_binary(R),
     BMax= integer_to_binary(Max),
     vm_log(State, error, <<"Failed after too many retries: ", BR/binary, " > ",
-                           BMax/binary, ", seriously we doublechecked twice!">>),
+                           BMax/binary,
+                           ", seriously we doublechecked twice!">>),
     {stop, failed, State};
 
 get_networks(_Event, State = #state{config = Config, retry = Try}) ->
@@ -402,19 +407,19 @@ get_server(_Event, State = #state{
     {Type, DatasetReqs}
         = case Dataset of
               {docker, _} ->
-                  lager:warning("[TODO] We need some dataset requirements for lx"), 
+                  lager:warning("[TODO] We need some dataset reqs for lx"),
                   {<<"zone">>, []};
               _ ->
-                  {case ft_dataset:type(Dataset) of
-                       kvm -> <<"kvm">>;
-                       zone -> case ft_dataset:zone_type(Dataset) of
-                                   lipkg ->
-                                       <<"ipkg">>;
-                                   ipkg ->
-                                       <<"ipkg">>;
-                                   _ ->
-                                      <<"zone">>
-                               end
+                  TZT = {ft_dataset:type(Dataset),
+                         ft_dataset:zone_type(Dataset)},
+                  {case TZT of
+                       {kvm, _} -> <<"kvm">>;
+                       {zone, lipkg} ->
+                           <<"ipkg">>;
+                       {zone, ipkg} ->
+                           <<"ipkg">>;
+                       {zone, _} ->
+                           <<"zone">>
                    end, ft_dataset:requirements(Dataset)}
            end,
     case ls_user:cache(Creator) of
@@ -434,8 +439,10 @@ get_server(_Event, State = #state{
             case {Hypervisors1, test_hypervisors(UUID, Hypervisors1, Nets)} of
                 {_, {ok, HypervisorID, H, Nets1}} ->
                     RamB = list_to_binary(integer_to_list(Ram)),
-                    S1 = add_log(State, info, <<"Assigning memory ", RamB/binary>>),
-                    S2 = add_log(S1, info, <<"Deploying on hypervisor ", HypervisorID/binary>>),
+                    S1 = add_log(State, info,
+                                 <<"Assigning memory ", RamB/binary>>),
+                    S2 =add_log(S1, info, <<"Deploying on hypervisor ",
+                                            HypervisorID/binary>>),
                     {next_state, get_ips,
                      S2#state{hypervisor_id = HypervisorID,
                               hypervisor = H, nets = Nets1}, 0};
@@ -524,7 +531,9 @@ create(_Event, State = #state{
                           mapping = Mapping}) ->
     vm_log(State, <<"Handing off to hypervisor ", HID/binary, ".">>),
     Config1 = jsxd:set(<<"nics">>, Nics, Config),
-    case libchunter:create_machine(Host, Port, UUID, Package, Dataset, Config1) of
+    case
+        libchunter:create_machine(Host, Port, UUID, Package, Dataset, Config1)
+    of
         {error, _} ->
             %% TODO is it a good idea to handle all errors like this?
             %% How can we assure no creation was started?
@@ -539,7 +548,8 @@ create(_Event, State = #state{
             do_retry(State);
         ok ->
             sniffle_vm:hypervisor(UUID, HID),
-            sniffle_vm:creating(UUID, {hypervisor, erlang:system_time(seconds)}),
+            sniffle_vm:creating(UUID,
+                                {hypervisor, erlang:system_time(seconds)}),
             {stop, normal, State}
     end.
 
@@ -762,7 +772,8 @@ update_nics(Nics, Nets, State) ->
               {error, E, Mps};
           ({Name, _Desc}, {NicsF, Mappings}) ->
               {ok, NicTag} = jsxd:get(Name, Nets),
-              vm_log(State, info, <<"Fetching network ", NicTag/binary, " for NIC ", Name/binary>>),
+              vm_log(State, info, <<"Fetching network ", NicTag/binary,
+                                    " for NIC ", Name/binary>>),
               case sniffle_iprange:claim_ip(NicTag) of
                   {ok, {Tag, IP, Net, Gw, VLAN}} ->
                       IPb = ft_iprange:to_bin(IP),
@@ -778,12 +789,7 @@ update_nics(Nics, Nets, State) ->
                                             {<<"network_uuid">>, NicTag},
                                             {<<"netmask">>, Netb},
                                             {<<"gateway">>, GWb}]),
-                      Res1 = case VLAN of
-                                 0 ->
-                                     Res;
-                                 VLAN ->
-                                     jsxd:set(<<"vlan_id">>, VLAN, Res)
-                             end,
+                      Res1 = add_vlan(VLAN, Res),
                       NicsF1 = [Res1 | NicsF],
                       Mappings1 = [{NicTag, IP} | Mappings],
                       {NicsF1, Mappings1};
@@ -792,6 +798,11 @@ update_nics(Nics, Nets, State) ->
               end
       end, {[], []}, Nics).
 
+add_vlan(0, Res) ->
+    Res;
+add_vlan(VLAN, Res) ->
+    jsxd:set(<<"vlan_id">>, VLAN, Res).
+
 do_retry(State = #state{test_pid = undefined,
                         delay = Delay}) ->
     {next_state, get_networks, State, Delay};
@@ -799,13 +810,13 @@ do_retry(State = #state{test_pid = undefined,
 do_retry(State) ->
     {stop, error, State}.
 
-vm_log(#state{test_pid = {_,_}}, _)  ->
+vm_log(#state{test_pid = {_, _}}, _)  ->
     ok;
 
 vm_log(#state{uuid = UUID}, M)  ->
     sniffle_vm:log(UUID, M).
 
-vm_log(#state{test_pid = {_,_}}, _, _)  ->
+vm_log(#state{test_pid = {_, _}}, _, _)  ->
     ok;
 
 vm_log(S, T, M) when is_list(M) ->

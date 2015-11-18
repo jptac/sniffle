@@ -3,7 +3,7 @@
 -export([command/2, help/0]).
 
 -define(T, ft_vm).
--define(F(Hs, Vs), fifo_console:fields(Hs,Vs)).
+-define(F(Hs, Vs), fifo_console:fields(Hs, Vs)).
 -define(H(Hs), fifo_console:hdr(Hs)).
 
 help() ->
@@ -212,7 +212,7 @@ join([ Head | [] ], _Sep) ->
     [Head];
 
 join([ Head | Rest], Sep) ->
-    [Head,Sep | join(Rest,Sep) ].
+    [Head, Sep | join(Rest, Sep)].
 
 fmt(S) ->
     io:format(S).

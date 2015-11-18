@@ -15,14 +15,14 @@
 
 %% Internal exports
 
--define(status_col, 4).
+%%-define(status_col, 4).
 
--define(active, 1).
--define(notInService, 2).
--define(notReady, 3).
--define(createAndGo, 4).   % Action; written, not read
--define(createAndWait, 5). % Action; written, not read
--define(destroy, 6).       % Action; written, not read
+%%-define(active, 1).
+%%-define(notInService, 2).
+%%-define(notReady, 3).
+%%-define(createAndGo, 4).   % Action; written, not read
+%%-define(createAndWait, 5). % Action; written, not read
+%%-define(destroy, 6).       % Action; written, not read
 
 
 %% c("apps/sniffle/src/sniffle_snmp_handler.erl").
@@ -128,19 +128,19 @@ percentile_get(What, Prefix, Grouping) ->
     end.
 
 generate_percentile(_Prefix, _Grouping) ->
-    [{observations,12},
-     {min,15986},
-     {median,17581},
-     {mean,17796.416666666668},
-     {max,19912},
-     {sd,1135.098911055232},
-     {sum,213557},
-     {sum2,3814722299},
-     {p25,16831},
-     {p75,17995},
-     {p95,19912},
-     {p99,19912},
-     {p999,19912}].
+    [{observations, 12},
+     {min, 15986},
+     {median, 17581},
+     {mean, 17796.416666666668},
+     {max, 19912},
+     {sd, 1135.098911055232},
+     {sum, 213557},
+     {sum2, 3814722299},
+     {p25, 16831},
+     {p75, 17995},
+     {p95, 19912},
+     {p99, 19912},
+     {p999, 19912}].
 %% L = byte_size(Prefix),
 %% {ok, Data} = statman_aggregator:get_window(60),
 %% Data1 = [ D || [{key,{

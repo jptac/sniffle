@@ -3,9 +3,9 @@
 -export([command/2, help/0]).
 
 -define(T, ft_iprange).
--define(F(Hs, Vs), fifo_console:fields(Hs,Vs)).
+-define(F(Hs, Vs), fifo_console:fields(Hs, Vs)).
 -define(H(Hs), fifo_console:hdr(Hs)).
--define(Hdr, [{"UUID", 18}, {"Name", 10}, {"Tag", 8}, {"Free", 8}, {"Used", 8},
+-define(HDR, [{"UUID", 18}, {"Name", 10}, {"Tag", 8}, {"Free", 8}, {"Used", 8},
               {"Netmask", 15}, {"Gateway", 15}, {"VLAN", 4}]).
 
 help() ->
@@ -15,6 +15,8 @@ help() ->
               "  claim <uuid>~n"
               "  release <uuid> <ip>~n"
               "  delete <uuid>~n").
+hdr() ->
+    ?H(?HDR).
 
 command(text, ["delete", UUID]) ->
     case sniffle_iprange:delete(list_to_binary(UUID)) of
@@ -27,7 +29,7 @@ command(text, ["delete", UUID]) ->
     end;
 
 command(text, ["get", ID]) ->
-    ?H(?Hdr),
+    hdr(),
     case sniffle_iprange:get(list_to_binary(ID)) of
         {ok, N} ->
             print(N),
@@ -37,7 +39,7 @@ command(text, ["get", ID]) ->
     end;
 
 command(text, ["list"]) ->
-    ?H(?Hdr),
+    hdr(),
     case sniffle_iprange:list() of
         {ok, Hs} ->
             lists:map(fun (ID) ->
@@ -106,7 +108,7 @@ get_ip(ID) ->
     end.
 
 print(N) ->
-    ?F(?Hdr, [?T:uuid(N),
+    ?F(?HDR, [?T:uuid(N),
               ?T:name(N),
               ?T:tag(N),
               length(?T:free(N)),

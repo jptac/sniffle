@@ -11,7 +11,8 @@
 
 -record(state, {replies, r, reqid, from, reqs, raw=false}).
 
--spec raw(atom(), atom(), [fifo:matcher()]) -> {ok, [{integer(), ft_obj:obj()}]}.
+-spec raw(atom(), atom(), [fifo:matcher()]) ->
+                 {ok, [{integer(), ft_obj:obj()}]}.
 raw(VNodeMaster, NodeCheckService, Requirements) ->
     start(VNodeMaster, NodeCheckService, {list, Requirements, true, true}).
 
@@ -64,17 +65,13 @@ process_results(Result, State) ->
 finish(clean, State = #state{replies = Replies,
                              from = From, r = R}) ->
     MergedReplies = dict:fold(fun(_Key, Es, Res)->
-                                      case length(Es) of
-                                          _L when _L < R ->
+                                      case {length(Es), State#state.raw} of
+                                          {_L, _} when _L < R ->
                                               Res;
-                                          _ ->
-                                              Mgd = case State#state.raw of
-                                                        false ->
-                                                            merge(Es);
-                                                        true ->
-                                                            raw_merge(Es)
-                                                    end,
-                                              [Mgd | Res]
+                                          {_, true} ->
+                                              [raw_merge(Es) | Res];
+                                          {_, false} ->
+                                              [merge(Es) | Res]
                                       end
                               end, [], Replies),
     From ! {ok, MergedReplies},

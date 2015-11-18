@@ -172,8 +172,7 @@ handle_command({add_iprange,
             Obj = ft_obj:update(H2, Coordinator, O),
             sniffle_vnode:put(Network, Obj, State),
             {reply, {ok, ReqID}, State};
-        R ->
-            lager:error("[hypervisors] tried to write to a non existing hypervisor: ~p", [R]),
+        _R ->
             {reply, {ok, ReqID, not_found}, State}
     end;
 
@@ -188,8 +187,7 @@ handle_command({remove_iprange,
             Obj = ft_obj:update(H2, Coordinator, O),
             sniffle_vnode:put(Network, Obj, State),
             {reply, {ok, ReqID}, State};
-        R ->
-            lager:error("[hypervisors] tried to write to a non existing hypervisor: ~p", [R]),
+        _R ->
             {reply, {ok, ReqID, not_found}, State}
     end;
 

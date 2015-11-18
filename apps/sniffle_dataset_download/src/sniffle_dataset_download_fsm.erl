@@ -106,7 +106,7 @@ init([URL, From, Ref]) ->
 get_manifest(_E, State = #state{url = URL, from = From, ref = Ref,
                                 http_opts = HTTPOpts}) ->
     lager:info("[img:import] Importing: ~s", [URL]),
-    {ok, 200, _, Client} = hackney:request(get, URL, [], <<>>, HTTPOpts),
+    Client = client(URL, HTTPOpts),
     {ok, Body, Client1} = hackney:body(Client),
     hackney:close(Client1),
     JSON = jsxd:from_list(jsx:decode(Body)),
@@ -137,13 +137,17 @@ get_manifest(_E, State = #state{url = URL, from = From, ref = Ref,
 
 init_download(_E, State = #state{img_url = URL, http_opts = HTTPOpts}) ->
     lager:info("[img:import:~s] Downloading: ~s", [State#state.uuid, URL]),
-    {ok, 200, _, Client} = hackney:request(get, URL, [], <<>>, HTTPOpts),
+    Client = client(URL, HTTPOpts),
     SHA1 = crypto:hash_init(sha),
     {next_state, download,
      State#state{
        sha1 = SHA1,
        http_client = Client
       }, 0}.
+
+client(URL, HTTPOpts) ->
+    {ok, 200, _, Client} = hackney:request(get, URL, [], <<>>, HTTPOpts),
+    Client.
 
 download(_E, State = #state{acc = Acc, chunk_size = ChunkSize, upload = U,
                             uuid = UUID, downloaded = D, total_size = T})
@@ -165,7 +169,7 @@ download(_, State = #state{http_client = Client, acc = Acc, downloaded = Done,
             Acc1 = <<Acc/binary, Data/binary>>,
             {next_state, download,
              State#state{downloaded = Done + byte_size(Data), acc = Acc1,
-                         sha1 = SHA11,http_client = Client1}, 0};
+                         sha1 = SHA11, http_client = Client1}, 0};
         {done, Client1} ->
             lager:info("[img:import:~s] Download complete after ~p of ~p byte",
                        [UUID, Done, TotalSize]),
@@ -283,7 +287,7 @@ terminate(Reason, _StateName,
           #state{uuid = undefined, from = From, ref = Ref}) ->
     From ! {Ref, {error, Reason}},
     ok;
-terminate(Reason, _StateName, 
+terminate(Reason, _StateName,
           #state{uuid = UUID, http_client = Client, upload = U}) ->
     libhowl:send(UUID,
                  [{<<"event">>, <<"error">>},
@@ -322,7 +326,8 @@ import_manifest(UUID, D1) ->
        {<<"disk_driver">>, fun sniffle_dataset:disk_driver/2},
        {<<"nic_driver">>, fun sniffle_dataset:nic_driver/2},
        {<<"users">>, fun sniffle_dataset:users/2},
-       {[<<"tags">>, <<"kernel_version">>], fun sniffle_dataset:kernel_version/2}
+       {[<<"tags">>, <<"kernel_version">>],
+        fun sniffle_dataset:kernel_version/2}
       ], UUID, D1),
     sniffle_dataset:image_size(
       UUID,

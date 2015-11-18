@@ -226,7 +226,8 @@ init([Part]) ->
         {get, ReqID::any(), Vm::fifo:uuid()} |
         {get, ReqID::any(), Vm::fifo:uuid()} |
         {log, ReqID::any(), Vm::fifo:uuid(), Log::fifo:log()} |
-        {register, {ReqID::any(), Coordinator::any()}, Vm::fifo:uuid(), Hypervisor::binary()} |
+        {register, {ReqID::any(), Coordinator::any()}, Vm::fifo:uuid(),
+         Hypervisor::binary()} |
         {delete, {ReqID::any(), _Coordinator::any()}, Vm::fifo:uuid()} |
         {set,
          {ReqID::any(), Coordinator::any()}, Vm::fifo:uuid(),
@@ -240,7 +241,8 @@ init([Part]) ->
 %%% Node Specific
 %%%===================================================================
 
-handle_command({register, {ReqID, Coordinator}=ID, Vm, Hypervisor}, _Sender, State) ->
+handle_command({register, {ReqID, Coordinator}=ID, Vm, Hypervisor},
+               _Sender, State) ->
     HObject = case fifo_db:get(State#vstate.db, <<"vm">>, Vm) of
                   not_found ->
                       H0 = ft_vm:new(ID),
