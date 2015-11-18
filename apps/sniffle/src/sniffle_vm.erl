@@ -1288,7 +1288,7 @@ resource_action(VM, Action, User, Opts) ->
             case Action of
                 create ->
                     ls_acc:create(Org, UUID, T, Opts1);
-                confirm_destroy ->
+                destroy ->
                     ls_acc:destroy(Org, UUID, T, Opts1);
                 Event ->
                     Event1 = atom_to_binary(Event, utf8),
