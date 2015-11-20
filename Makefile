@@ -3,7 +3,7 @@ ELVIS = $(shell pwd)/elvis
 
 .PHONY: rel stagedevrel package version all tree
 
-all: version compile
+all: version_header compile
 
 include fifo.mk
 
