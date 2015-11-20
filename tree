@@ -17,8 +17,7 @@
 │  ├─ lager_graylog─1
 │  └─ lager_logstash_backend─0.0.2
 ├─ fifo_s3─0.1.13
-│  ├─ base16─1.0
-│  └─ poolboy─1.5.1
+│  └─ base16─1.0
 ├─ fifo_spec─0.1.23
 ├─ fifo_utils─0.1.17
 ├─ folsom_ddb─0.1.20
@@ -33,16 +32,17 @@
 │  └─ goldrush─0.1.7
 ├─ libchunter─0.1.41
 ├─ libhowl─0.1.29
-│  └─ mdns_client_lib─0.1.29
+│  └─ mdns_client_lib─0.1.30
 │     ├─ mdns_client─0.1.7
 │     └─ pooler─1.4.0
 ├─ libleofs─0.1.2
 ├─ libsnarl─0.3.34
 │  └─ oauth2─0.6.0
-├─ mdns_server_lib─0.2.1
+├─ mdns_server_lib─0.2.2
 │  ├─ mdns_server─0.2.0
 │  └─ ranch─1.1.0
 ├─ meck─0.8.2
+├─ poolboy─0.8.1p3
 ├─ rankmatcher─0.1.2
 ├─ recon─2.2.1
 ├─ riak_core─fifo-0.4.4+build.1799.ref088de5d
