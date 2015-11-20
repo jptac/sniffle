@@ -33,7 +33,7 @@
 │  └─ goldrush─0.1.7
 ├─ libchunter─0.1.41
 ├─ libhowl─0.1.29
-│  └─ mdns_client_lib─0.1.28
+│  └─ mdns_client_lib─0.1.29
 │     ├─ mdns_client─0.1.7
 │     └─ pooler─1.4.0
 ├─ libleofs─0.1.2
