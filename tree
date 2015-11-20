@@ -4,7 +4,7 @@
 ├─ cuttlefish─2.0.0+build.479.reff5f6fdc
 │  ├─ getopt─0.4.3
 │  └─ neotoma─1.7.2
-├─ edown─0.7+build.149.refb012490
+├─ edown─0.7+build.151.ref2f6d4d4
 ├─ eper─0.94.0
 ├─ eplugin─0.1.4
 ├─ erlcloud─0.8.6
@@ -13,10 +13,9 @@
 ├─ fifo_dt─0.1.57
 │  ├─ libsnarlmatch─0.1.7
 │  └─ riak_dt─2.1.1
-├─ fifo_lager─0.1.0
+├─ fifo_lager─0.1.1
 │  ├─ lager_graylog─1
-│  ├─ lager_logstash_backend─0.0.2
-│  └─ lager_watchdog─0.1.10
+│  └─ lager_logstash_backend─0.0.2
 ├─ fifo_s3─0.1.13
 │  ├─ base16─1.0
 │  └─ poolboy─1.5.1
@@ -40,7 +39,7 @@
 ├─ libleofs─0.1.2
 ├─ libsnarl─0.3.34
 │  └─ oauth2─0.6.0
-├─ mdns_server_lib─0.2.0
+├─ mdns_server_lib─0.2.1
 │  ├─ mdns_server─0.2.0
 │  └─ ranch─1.1.0
 ├─ meck─0.8.2
