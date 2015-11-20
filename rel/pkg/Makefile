@@ -1,4 +1,4 @@
-VERSION=0.7.0p6
+VERSION=0.7.0p7
 COMPONENT_INTERNAL=sniffle
 COMPONENT=fifo-sniffle
 #DEPS="erlang>=16.1.2" "coreutils>=8.22nb1" "sudo>=1.7.10p9"
