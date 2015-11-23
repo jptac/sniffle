@@ -687,6 +687,9 @@ create(Package, Dataset, Config) ->
     created_at(UUID, Secs),
     Config0 = jsxd:from_list(Config),
     Config1 = jsxd:set(<<"uuid">>, UUID, Config0),
+    %% We need to set this for the config to be correct later on
+    %% but we do NOT use config2 as part of the create, we do
+    %% however use Config1
     Config2 = jsxd:update(<<"networks">>,
                           fun (N) ->
                                   jsxd:from_list(
@@ -700,7 +703,7 @@ create(Package, Dataset, Config) ->
     package(UUID, Package),
     case Dataset of
         {docker, DockerImage} ->
-            {ok, Docker} = jsxd:get([<<"docker">>], Config),
+            {ok, Docker} = jsxd:get([<<"docker">>], Config1),
             set_docker(UUID, Docker),
             {ok, DockerID} = jsxd:get([<<"id">>], Docker),
             sniffle_2i:add(docker, DockerID, UUID),
@@ -712,13 +715,13 @@ create(Package, Dataset, Config) ->
     end,
     libhowl:send(UUID, [{<<"event">>, <<"update">>},
                         {<<"data">>,
-                         [{<<"config">>, Config2},
+                         [{<<"config">>, Config1},
                           {<<"package">>, Package}]}]),
     %% TODO: is this the right place?
-    {ok, Creator} = jsxd:get([<<"owner">>], Config),
+    {ok, Creator} = jsxd:get([<<"owner">>], Config1),
     ls_user:grant(Creator, [<<"vms">>, UUID, <<"...">>]),
     ls_user:grant(Creator, [<<"channels">>, UUID, <<"join">>]),
-    sniffle_create_pool:add(UUID, Package, Dataset, Config),
+    sniffle_create_pool:add(UUID, Package, Dataset, Config1),
     {ok, UUID}.
 
 dry_run(Package, Dataset, Config) ->
