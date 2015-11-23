@@ -685,7 +685,8 @@ create(Package, Dataset, Config) ->
     Secs = erlang:system_time(seconds),
     creating(UUID, {started, Secs}),
     created_at(UUID, Secs),
-    Config1 = jsxd:from_list(Config),
+    Config0 = jsxd:from_list(Config),
+    Config1 = jsxd:set(<<"uuid">>, UUID, Config0),
     Config2 = jsxd:update(<<"networks">>,
                           fun (N) ->
                                   jsxd:from_list(
