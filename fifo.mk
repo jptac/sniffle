@@ -30,8 +30,12 @@ upgrade: $(REBAR)
 tree: $(REBAR)
 	$(REBAR) tree | grep -v '=' | sed 's/ (.*//' > tree
 
+tree-diff: tree
+	git diff test -- tree
+
 ###
 ### Docs
 ###
 docs:
 	$(REBAR) edoc
+
