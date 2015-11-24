@@ -1,9 +1,3 @@
-                                     "https://github.com/basho/cluster_info.git",
-                                     {ref,
-                                      "76c73fcac58c32f1603f8a1b98d7c441da92fa91"}})
-                                  "https://github.com/project-fifo/riak_core",
-                                  {ref,
-                                   "088de5d02b68b6d959e3b7e569b7b0d15136538c"}})
 [0m├─ bugsnag─0.0.0+build.23.ref636626c
 ├─ clique─0.3.1+build.140.ref8067df5
 ├─ cluster_info─2.0.3
