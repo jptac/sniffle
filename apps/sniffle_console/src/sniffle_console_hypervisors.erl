@@ -6,7 +6,7 @@
 -define(F(Hs, Vs), fifo_console:fields(Hs, Vs)).
 -define(H(Hs), fifo_console:hdr(Hs)).
 -define(HDR, [{"Hypervisor", 18}, {"UUID", 36}, {"IP", 16},
-              {"Memory", 18}, {"State", -8}, {"Version", n}]).
+              {"Memory", 18}, {"Version", n}]).
 help() ->
     io:format("Usage~n"
               "  list [-j]~n"
@@ -86,16 +86,10 @@ command(_, C) ->
     error.
 
 print(H) ->
-    {Host, Port} = ?T:endpoint(H),
-    State = case libchunter:ping(Host, Port) of
-                pong ->
-                    <<"ok">>;
-                _ ->
-                    <<"disconnected">>
-            end,
+    Host = ?T:host(H),
     R = ?T:resources(H),
     Mem = io_lib:format("~p/~p",
                         [jsxd:get(<<"provisioned-memory">>, 0, R),
                          jsxd:get(<<"total-memory">>, 0, R)]),
     ?F(?HDR,
-       [?T:alias(H), ?T:uuid(H), Host, Mem, State, ?T:version(H)]).
+       [?T:alias(H), ?T:uuid(H), Host, Mem, ?T:version(H)]).
