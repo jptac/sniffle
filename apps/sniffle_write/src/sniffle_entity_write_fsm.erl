@@ -41,6 +41,8 @@
                 preflist :: riak_core_apl:preflist(),
                 num_w = 0 :: non_neg_integer()}).
 
+-type state() :: #state{}.
+
 -ignore_xref([
               code_change/4,
               execute/2,
@@ -63,14 +65,16 @@ start_link({VNode, System}, ReqID, From, Entity, Op) ->
     start_link({VNode, System}, ReqID, From, Entity, Op, undefined).
 
 start_link({VNode, System}, ReqID, From, Entity, Op, Val) ->
-    gen_fsm:start_link(?MODULE, [{VNode, System}, ReqID, From, Entity, Op, Val], []).
+    gen_fsm:start_link(?MODULE,
+                       [{VNode, System}, ReqID, From, Entity, Op, Val], []).
 
 write({VNode, System}, User, Op) ->
     write({VNode, System}, User, Op, undefined).
 
 write({VNode, System}, User, Op, Val) ->
     ReqID = sniffle_vnode:mk_reqid(),
-    sniffle_entity_write_fsm_sup:start_write_fsm([{VNode, System}, ReqID, self(), User, Op, Val]),
+    sniffle_entity_write_fsm_sup:start_write_fsm(
+      [{VNode, System}, ReqID, self(), User, Op, Val]),
     receive
         {ReqID, ok} ->
             ok;
@@ -90,6 +94,7 @@ write({VNode, System}, User, Op, Val) ->
 %%%===================================================================
 
 %% @doc Initialize the state data.
+-spec init(_) -> {ok, prepare, state(), 0}.
 init([{VNode, System}, ReqID, From, Entity, Op, Val]) ->
     {ok, N} = application:get_env(sniffle, n),
     {ok, W} = application:get_env(sniffle, w),
@@ -139,11 +144,11 @@ execute(timeout, SD0=#state{req_id=ReqID,
 waiting({ok, ReqID}, SD0=#state{from=From, num_w=NumW0, req_id=ReqID, w=W}) ->
     NumW = NumW0 + 1,
     SD = SD0#state{num_w=NumW},
-    if
-        NumW =:= W ->
+    case NumW of
+        W ->
             From ! {ReqID, ok},
             {stop, normal, SD};
-        true -> {next_state, waiting, SD}
+        _ -> {next_state, waiting, SD}
     end;
 
 waiting({error, ReqID, Reply},
@@ -152,24 +157,26 @@ waiting({error, ReqID, Reply},
     From ! {ReqID, error, Reply},
     {stop, normal, SD};
 
-waiting({ok, ReqID, Reply}, SD0=#state{from=From, num_w=NumW0, req_id=ReqID, w=W}) ->
+waiting({ok, ReqID, Reply}, SD0=#state{from=From, num_w=NumW0, req_id=ReqID,
+                                       w=W}) ->
     NumW = NumW0 + 1,
     SD = SD0#state{num_w=NumW},
-    if
-        NumW =:= W ->
+    case NumW of
+        W ->
             From ! {ReqID, ok, Reply},
             {stop, normal, SD};
-        true -> {next_state, waiting, SD}
+        _ ->
+            {next_state, waiting, SD}
     end.
 
 handle_info(_Info, _StateName, StateData) ->
-    {stop,badmsg,StateData}.
+    {stop, badmsg, StateData}.
 
 handle_event(_Event, _StateName, StateData) ->
-    {stop,badmsg,StateData}.
+    {stop, badmsg, StateData}.
 
 handle_sync_event(_Event, _From, _StateName, StateData) ->
-    {stop,badmsg,StateData}.
+    {stop, badmsg, StateData}.
 
 code_change(_OldVsn, StateName, State, _Extra) ->
     {ok, StateName, State}.

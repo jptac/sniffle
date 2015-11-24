@@ -11,9 +11,7 @@
 %% ===================================================================
 
 start(_StartType, _StartArgs) ->
-    R = sniffle_watchdog_sup:start_link(),
-    lager_watchdog_srv:set_version(sniffle_version:v()),
-    R.
+    sniffle_watchdog_sup:start_link().
 
 stop(_State) ->
     ok.

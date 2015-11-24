@@ -1,6 +1,8 @@
 %% -------------------------------------------------------------------
 %%
-%% Copied of: https://github.com/basho/riak_kv/blob/36ff08444b08f4006b9e4884ca327cd48b07b018/src/riak_kv_ensemble_console.erl
+%% Copied of: https://github.com/basho/riak_kv/blob/
+%% 36ff08444b08f4006b9e4884ca327cd48b07b018/
+%% src/riak_kv_ensemble_console.erl
 %%
 %% Copyright (c) 2014 Basho Technologies, Inc.  All Rights Reserved.
 %%
@@ -31,7 +33,8 @@
 -endif.
 
 -type ensembles() :: [{ensemble_id(), ensemble_info()}].
--type quorums() :: orddict(ensemble_id(), {leader_id(), boolean(), [peer_id()]}).
+-type quorums() :: orddict(ensemble_id(),
+                           {leader_id(), boolean(), [peer_id()]}).
 -type counts() :: orddict(node(), pos_integer()).
 -type labels() :: [{pos_integer(), peer_id()}].
 -type names() :: [{peer_id(), string()}].
@@ -106,18 +109,19 @@ print_overview(#details{enabled=Enabled,
               "Validation:  ~s~n"
               "Metadata:    ~s~n~n",
               [Enabled, Active, RingReady, ValidationMsg, MetadataMsg]),
-    if Enabled == false ->
+    case Enabled of
+        false ->
             io:format("Note: The consensus subsystem is not enabled.~n~n");
-       (Active == false) and (NumNodes < 3) ->
+        _ when (Active == false) and (NumNodes < 3) ->
             io:format(cluster_warning());
-       true ->
+        _ ->
             ok
     end,
     ok.
 
 cluster_warning() ->
-    ("Note: The consensus subsystem will not be activated until there are more~n"
-     "      than three nodes in this cluster.~n~n").
+    "Note: The consensus subsystem will not be activated until there are more~n"
+        "      than three nodes in this cluster.~n~n".
 
 %%%===================================================================
 
@@ -127,7 +131,7 @@ print_ensembles(#details{ensembles=[]}) ->
 print_ensembles(#details{ensembles=L3, quorums=AllOnline}) ->
     io:format("~s~n", [string:centre(" Ensembles ", 79, $=)]),
     io:format(" Ensemble    ~9s    ~9s    Leader~n",
-              [align(9,"Quorum"), align(9,"Nodes")]),
+              [align(9, "Quorum"), align(9, "Nodes")]),
     io:format("~s~n", [string:chars($-, 79)]),
     print_ensembles(L3, 1, AllOnline).
 
@@ -151,7 +155,7 @@ print_ensemble_view([], _, _, _, _, _) ->
     ok;
 print_ensemble_view([View|T], Label, Leader, Names, Online, First) ->
     LName = orddict:fetch(Leader, Names),
-    Nodes = lists:usort([Node || {_,Node} <- View]),
+    Nodes = lists:usort([Node || {_, Node} <- View]),
     PeersOnline = ordsets:intersection(ordsets:from_list(View),
                                        ordsets:from_list(Online)),
     NodesOnline = ordsets:intersection(ordsets:from_list(Nodes),
@@ -165,14 +169,18 @@ print_ensemble_view([View|T], Label, Leader, Names, Online, First) ->
         true ->
             io:format(" ~8s    ~9s    ~9s    ~s~n",
                       [align(8, Label),
-                       align(9, io_lib:format("~3b / ~-3b *", [NumOnline, NumPeers])),
-                       align(9, io_lib:format("~3b / ~-3b", [NumNodesOn, NumNodes])),
+                       align(9, io_lib:format("~3b / ~-3b *",
+                                              [NumOnline, NumPeers])),
+                       align(9, io_lib:format("~3b / ~-3b",
+                                              [NumNodesOn, NumNodes])),
                        LName]);
         false ->
             io:format(" ~8s    ~9s    ~9s~n",
                       ["",
-                       align(9, io_lib:format("~3b / ~-3b *", [NumOnline, NumPeers])),
-                       align(9, io_lib:format("~3b / ~-3b", [NumNodesOn, NumNodes]))])
+                       align(9, io_lib:format("~3b / ~-3b *",
+                                              [NumOnline, NumPeers])),
+                       align(9, io_lib:format("~3b / ~-3b",
+                                              [NumNodesOn, NumNodes]))])
     end,
     print_ensemble_view(T, Label, Leader, Names, Online, false).
 
@@ -203,7 +211,7 @@ print_detail(N, #details{ensembles=L3, quorums=Quorums, peer_info=PeerInfo}) ->
 print_detail_view([], _) ->
     ok;
 print_detail_view([View|T], Peers) ->
-    io:format("~s~n", [string:chars($-,79)]),
+    io:format("~s~n", [string:chars($-, 79)]),
     [begin
          io:format(" ~4s  ~9s  ~7s  ~20s  ~s~n",
                    [string:centre(integer_to_list(Label), 4),
@@ -288,7 +296,7 @@ all_ensembles() ->
     riak_ensemble_state:ensembles(CS).
 
 get_quorums(Details=#details{ensembles=Ensembles}) ->
-    Quorums = riak_core_util:pmap(fun({Ens,_}) ->
+    Quorums = riak_core_util:pmap(fun({Ens, _}) ->
                                           ping_quorum(Ens)
                                   end, Ensembles),
     Details#details{quorums=lists:sort(Quorums)}.
@@ -297,7 +305,8 @@ get_quorums(Ensemble, Details) ->
     Quorums = [ping_quorum(Ensemble)],
     Details#details{quorums=Quorums}.
 
--spec ping_quorum(ensemble_id()) -> {ensemble_id(), {leader_id(), boolean(), [peer_id()]}}.
+-spec ping_quorum(ensemble_id()) ->
+                         {ensemble_id(), {leader_id(), boolean(), [peer_id()]}}.
 ping_quorum(Ens) ->
     case riak_ensemble_peer:ping_quorum(Ens, 10000) of
         timeout ->
@@ -326,8 +335,7 @@ lookup_ensemble(N, #details{ensembles=Ensembles}) ->
     catch _:_ ->
             undefined
     end.
-
--spec num_peers(#ensemble_info{views :: views()}) -> [non_neg_integer()].
+-spec num_peers(ensemble_info()) -> [non_neg_integer()].
 num_peers(#ensemble_info{views=Views}) ->
     [length(View) || View <- Views].
 
@@ -374,7 +382,8 @@ peer_names(Counts, Labels) ->
                  1 ->
                      {Peer, atom_to_list(Node)};
                  _ ->
-                     Name = lists:flatten(io_lib:format("~s (~b)", [Node, Label])),
+                     Name = lists:flatten(io_lib:format("~s (~b)",
+                                                        [Node, Label])),
                      {Peer, Name}
              end || {Label, Peer={_, Node}} <- Labels],
     orddict:store(undefined, "--", lists:sort(Names)).

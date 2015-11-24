@@ -3,15 +3,17 @@
 -export([command/2, help/0]).
 
 -define(T, ft_network).
--define(F(Hs, Vs), fifo_console:fields(Hs,Vs)).
+-define(F(Hs, Vs), fifo_console:fields(Hs, Vs)).
 -define(H(Hs), fifo_console:hdr(Hs)).
--define(Hdr, [{"UUID", 18}, {"Name", 10}, {"IPRanges", 10}]).
+-define(HDR, [{"UUID", 18}, {"Name", 10}, {"IPRanges", 10}]).
 
 help() ->
     io:format("Usage~n"
               "  list~n"
               "  get <uuid>~n"
               "  delete <uuid>~n").
+hdr() ->
+    ?H(?HDR).
 
 command(text, ["delete", UUID]) ->
     case sniffle_network:delete(list_to_binary(UUID)) of
@@ -33,7 +35,7 @@ command(json, ["get", ID]) ->
     end;
 
 command(text, ["get", ID]) ->
-    ?H(?Hdr),
+    hdr(),
     case sniffle_network:get(list_to_binary(ID)) of
         {ok, N} ->
             print(N),
@@ -43,7 +45,7 @@ command(text, ["get", ID]) ->
     end;
 
 command(text, ["list"]) ->
-    ?H(?Hdr),
+    hdr(),
     case sniffle_network:list() of
         {ok, Hs} ->
             lists:map(fun (ID) ->
@@ -72,6 +74,6 @@ command(_, C) ->
 
 
 print(N) ->
-    ?F(?Hdr, [?T:uuid(N),
+    ?F(?HDR, [?T:uuid(N),
               ?T:name(N),
               length(?T:ipranges(N))]).

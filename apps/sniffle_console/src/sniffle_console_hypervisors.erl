@@ -3,15 +3,17 @@
 -export([command/2, help/0]).
 
 -define(T, ft_hypervisor).
--define(F(Hs, Vs), fifo_console:fields(Hs,Vs)).
+-define(F(Hs, Vs), fifo_console:fields(Hs, Vs)).
 -define(H(Hs), fifo_console:hdr(Hs)).
--define(Hdr, [{"Hypervisor", 18}, {"UUID", 36}, {"IP", 16},
+-define(HDR, [{"Hypervisor", 18}, {"UUID", 36}, {"IP", 16},
               {"Memory", 18}, {"State", -8}, {"Version", n}]).
 help() ->
     io:format("Usage~n"
               "  list [-j]~n"
               "  get [-j] <uuid>~n"
               "  delete <uuid>~n").
+hdr() ->
+    ?H(?HDR).
 
 command(text, ["delete", UUID]) ->
     case sniffle_hypervisor:unregister(list_to_binary(UUID)) of
@@ -34,7 +36,7 @@ command(json, ["get", UUID]) ->
     end;
 
 command(text, ["get", ID]) ->
-    ?H(?Hdr),
+    hdr(),
     case sniffle_hypervisor:get(list_to_binary(ID)) of
         {ok, H} ->
             print(H),
@@ -68,7 +70,7 @@ command(json, ["list"]) ->
     end;
 
 command(text, ["list"]) ->
-    ?H(?Hdr),
+    hdr(),
     case sniffle_hypervisor:list() of
         {ok, Hs} ->
             lists:map(fun (ID) ->
@@ -95,5 +97,5 @@ print(H) ->
     Mem = io_lib:format("~p/~p",
                         [jsxd:get(<<"provisioned-memory">>, 0, R),
                          jsxd:get(<<"total-memory">>, 0, R)]),
-    ?F(?Hdr,
+    ?F(?HDR,
        [?T:alias(H), ?T:uuid(H), Host, Mem, State, ?T:version(H)]).

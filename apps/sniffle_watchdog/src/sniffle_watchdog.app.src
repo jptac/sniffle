@@ -8,7 +8,6 @@
                   stdlib,
                   riak_core,
                   libchunter,
-                  lager_watchdog,
                   sniffle_version,
                   sniffle
                  ]},

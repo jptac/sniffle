@@ -174,7 +174,8 @@ init([Part]) ->
 %%% Node Specific
 %%%===================================================================
 
-handle_command({register, {ReqID, Coordinator} = ID, Hypervisor, [IP, Port]}, _Sender, State) ->
+handle_command({register, {ReqID, Coordinator} = ID, Hypervisor, [IP, Port]},
+               _Sender, State) ->
     H0 = ft_hypervisor:new(ID),
     H1 = ft_hypervisor:port(ID, Port, H0),
     H2 = ft_hypervisor:host(ID, IP, H1),

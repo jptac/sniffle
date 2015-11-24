@@ -28,11 +28,13 @@
           preflist,
           num_r=0,
           size,
-          timeout=?DEFAULT_TIMEOUT,
+          timeout = 10000,
           val,
           vnode,
           system,
           replies=[]}).
+
+-type state() :: #state{}.
 
 -ignore_xref([
               code_change/4,
@@ -61,7 +63,8 @@
 %%%===================================================================
 
 start_link(ReqID, {VNode, System}, Op, From, Entity, Val) ->
-    gen_fsm:start_link(?MODULE, [ReqID, {VNode, System}, Op, From, Entity, Val], []).
+    gen_fsm:start_link(?MODULE,
+                       [ReqID, {VNode, System}, Op, From, Entity, Val], []).
 
 start(VNodeInfo, Op) ->
     start(VNodeInfo, Op, undefined).
@@ -69,7 +72,8 @@ start(VNodeInfo, Op) ->
 start(VNodeInfo, Op, User) ->
     start(VNodeInfo, Op, User, undefined).
 
--spec start(VNodeInfo::term(), Op::atom(), Entity::term() | undefined, Val::term() | undefined) ->
+-spec start(VNodeInfo::term(), Op::atom(), Entity::term() | undefined,
+            Val::term() | undefined) ->
                    ok | not_found | {ok, Res::term()} | {error, timeout}.
 start(VNodeInfo, Op, Entity, Val) ->
     ReqID = sniffle_vnode:mk_reqid(),
@@ -93,6 +97,8 @@ start(VNodeInfo, Op, Entity, Val) ->
 %%%===================================================================
 
 %% Intiailize state data.
+-spec init(_) -> {ok, prepare, state(), 0}.
+
 init([ReqId, {VNode, System}, Op, From]) ->
     init([ReqId, {VNode, System}, Op, From, undefined, undefined]);
 
@@ -153,9 +159,9 @@ waiting({ok, ReqID, IdxNode, Obj},
                    r=R, n=N, timeout=Timeout}) ->
     NumR = NumR0 + 1,
     Replies = [{IdxNode, Obj}|Replies0],
-    SD = SD0#state{num_r=NumR,replies=Replies},
-    if
-        NumR =:= R ->
+    SD = SD0#state{num_r=NumR, replies=Replies},
+    case NumR of
+        R ->
             case merge(Replies) of
                 not_found ->
                     From ! {ReqID, not_found};
@@ -163,13 +169,13 @@ waiting({ok, ReqID, IdxNode, Obj},
                     Reply = ft_obj:val(Merged),
                     From ! {ReqID, ok, Reply}
             end,
-            if
-                NumR =:= N ->
+            case NumR of
+                N ->
                     {next_state, finalize, SD, 0};
-                true ->
+                _ ->
                     {next_state, wait_for_n, SD, Timeout}
             end;
-        true ->
+        _ ->
             {next_state, waiting, SD}
     end.
 
@@ -204,13 +210,13 @@ finalize(timeout, SD=#state{
     end.
 
 handle_info(_Info, _StateName, StateData) ->
-    {stop,badmsg,StateData}.
+    {stop, badmsg, StateData}.
 
 handle_event(_Event, _StateName, StateData) ->
-    {stop,badmsg,StateData}.
+    {stop, badmsg, StateData}.
 
 handle_sync_event(_Event, _From, _StateName, StateData) ->
-    {stop,badmsg,StateData}.
+    {stop, badmsg, StateData}.
 
 code_change(_OldVsn, StateName, State, _Extra) -> {ok, StateName, State}.
 
@@ -225,7 +231,7 @@ terminate(_Reason, _SN, _SD) ->
 %% @doc Given a list of `Replies' return the merged value.
 -spec merge([vnode_reply()]) -> fifo:obj() | not_found.
 merge(Replies) ->
-    Objs = [Obj || {_,Obj} <- Replies],
+    Objs = [Obj || {_, Obj} <- Replies],
     ft_obj:merge(sniffle_entity_read_fsm, Objs).
 
 %%
@@ -245,17 +251,17 @@ reconcile(_M, _, Acc) ->
 %% determine if repair is needed.
 -spec needs_repair(any(), [vnode_reply()]) -> boolean().
 needs_repair(MObj, Replies) ->
-    Objs = [Obj || {_,Obj} <- Replies],
+    Objs = [Obj || {_, Obj} <- Replies],
     lists:any(different(MObj), Objs).
 
-different(A) -> fun(B) -> not ft_obj:equal(A,B) end.
+different(A) -> fun(B) -> not ft_obj:equal(A, B) end.
 
 %%
 %% @doc Repair any vnodes that do not have the correct object.
 -spec repair(atom(), string(), fifo:obj(), [vnode_reply()]) -> io.
 repair(_, _, _, []) -> io;
 
-repair(VNode, StatName, MObj, [{IdxNode,Obj}|T]) ->
+repair(VNode, StatName, MObj, [{IdxNode, Obj}|T]) ->
     case ft_obj:equal(MObj, Obj) of
         true ->
             repair(VNode, StatName, MObj, T);

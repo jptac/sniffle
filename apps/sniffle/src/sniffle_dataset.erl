@@ -58,7 +58,7 @@ sync_repair(UUID, Obj) ->
     do_write(UUID, sync_repair, Obj).
 
 list_() ->
-    {ok, Res} = ?FM(list_all,sniffle_full_coverage, raw,
+    {ok, Res} = ?FM(list_all, sniffle_full_coverage, raw,
                     [?MASTER, ?SERVICE, []]),
     Res1 = [R || {_, R} <- Res],
     {ok,  Res1}.

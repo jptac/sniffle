@@ -13,9 +13,7 @@
          db_get/1,
          db_delete/1,
          get_ring/1,
-         connections/1,
-         db_update/1,
-         update_snarl_meta/1
+         connections/1
         ]).
 
 -export([
@@ -52,32 +50,9 @@
               ips/1,
               networks/1,
               pkgs/1,
-              vms/1,
-              db_update/1,
-              update_snarl_meta/1
+              vms/1
              ]).
 
-update_snarl_meta([]) ->
-    update_metadata("Organisation", ls_org, ft_org),
-    update_metadata("User", ls_user, ft_user),
-    update_metadata("Role", ls_role, ft_role).
-
-update_metadata(Name, LS, FT) ->
-    {ok, Es} = LS:list(),
-    io:format("[~s] Updating ~p elements: ", [Name, length(Es)]),
-    [update_meta_element(LS, FT, E) || E <- Es],
-    io:format("done.~n").
-
-update_meta_element(LS, FT, ID) ->
-    {ok, E} = LS:get(ID),
-    M = FT:metadata(E),
-    MChanges = lists:foldl(fun({<<"public">>, _V}, Cs) ->
-                                   Cs;
-                              ({K, V}, Cs) ->
-                                   [{K, delete}, {[<<"public">>, K], V} | Cs]
-                           end, [], M),
-    LS:set_metadata(ID, MChanges),
-    io:format(".").
 
 init_leo([Host]) ->
     init_leo([Host, Host]);
@@ -85,10 +60,10 @@ init_leo([Host]) ->
 init_leo([Manager, Gateway]) ->
     P = 10020,
     User = "fifo",
-    OK = {ok,[{<<"result">>,<<"OK">>}]},
+    OK = {ok, [{<<"result">>, <<"OK">>}]},
 
     %% Create the user and store access and secret key
-    {ok,[{<<"access_key_id">>,AKey}, {<<"secret_access_key">>, SKey}]} =
+    {ok, [{<<"access_key_id">>, AKey}, {<<"secret_access_key">>, SKey}]} =
         libleofs:create_user(Manager, P, User),
     sniffle_opt:set(["storage", "s3", "access_key"], AKey),
     sniffle_opt:set(["storage", "s3", "secret_key"], SKey),
@@ -124,40 +99,6 @@ init_leo([Manager, Gateway]) ->
               "to take full effect!~n"),
     ok.
 
-
-db_update([]) ->
-    [db_update([E]) || E <- ["vms", "datasets", "dtraces", "hypervisors",
-                             "ipranges", "networks", "packages"]],
-    ok;
-
-db_update(["datasets"]) ->
-    io:format("Updating datasets...~n"),
-    do_update(sniffle_dataset, ft_dataset);
-
-db_update(["dtraces"]) ->
-    io:format("Updating dtrace scripts...~n"),
-    do_update(sniffle_dtrace, ft_dtrace);
-
-db_update(["hypervisors"]) ->
-    io:format("Updating hypervisors...~n"),
-    do_update(sniffle_hypervisor, ft_hypervisor);
-
-db_update(["ipranges"]) ->
-    io:format("Updating ipranges...~n"),
-    do_update(sniffle_iprange, ft_iprange);
-
-db_update(["networks"]) ->
-    io:format("Updating networks...~n"),
-    do_update(sniffle_network, ft_network);
-
-db_update(["packages"]) ->
-    io:format("Updating packages...~n"),
-    do_update(sniffle_package, ft_package);
-
-db_update(["vms"]) ->
-    io:format("Updating vms...~n"),
-    do_update(sniffle_vm, ft_vm).
-
 print_endpoints(Es) ->
     io:format("Hostname            "
               "                    "
@@ -169,7 +110,7 @@ print_endpoints(Es) ->
               " ---------------~n", []),
     [print_endpoint(E) || E <- Es].
 
-print_endpoint([{{Hostname, [{port,Port},{ip,IP}]}, _, Fails}]) ->
+print_endpoint([{{Hostname, [{port, Port}, {ip, IP}]}, _, Fails}]) ->
     HostPort = <<IP/binary, ":", Port/binary>>,
     io:format("~40s ~-19s ~9b~n", [Hostname, HostPort, Fails]).
 
@@ -411,31 +352,3 @@ config(["unset" | Ks]) ->
 
 pp_json(Obj) ->
     io:format("~s~n", [jsx:prettify(jsx:encode(Obj))]).
-
-
-do_update(MainMod, StateMod) ->
-    {ok, US} = MainMod:list_(),
-    io:format("  Entries found: ~p~n", [length(US)]),
-
-    io:format("  Grabbing UUIDs"),
-    US1 = [begin
-               io:format("."),
-               {StateMod:uuid(ft_obj:val(U)), ft_obj:update(U)}
-           end|| U <- US],
-    io:format(" done.~n"),
-
-    io:format("  Wipeing old entries"),
-    [begin
-         io:format("."),
-         MainMod:wipe(UUID)
-     end || {UUID, _} <- US1],
-    io:format(" done.~n"),
-
-    io:format("  Restoring entries"),
-    [begin
-         io:format("."),
-         MainMod:sync_repair(UUID, O)
-     end || {UUID, O} <- US1],
-    io:format(" done.~n"),
-    io:format("Update complete.~n"),
-    ok.

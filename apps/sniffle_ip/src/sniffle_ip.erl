@@ -105,16 +105,10 @@ handle_cast({claim, IPRange, From, Nodes}, State) ->
     case ft_iprange:free(IPRange) of
         [] ->
             gen_server:reply(From, {error, no_claim});
-         Free ->
+        Free ->
             case lists:filter(make_is_lock(), Free) of
                 [] ->
-                    case next_alife_node(Nodes) of
-                        no_nodes ->
-                            gen_server:reply(From, {error, no_claim});
-                        {Next,  Nodes1} ->
-                            rpc:cast(Next, sniffle_ip, claim,
-                                     [IPRange, From, Nodes1])
-                    end;
+                    next(From, IPRange, Nodes);
                 [First | _] ->
                     Reply = sniffle_iprange:claim_specific_ip(
                               ft_iprange:uuid(IPRange), First),
@@ -125,6 +119,18 @@ handle_cast({claim, IPRange, From, Nodes}, State) ->
 
 handle_cast(_Msg, State) ->
     {noreply, State}.
+
+next(From, IPRange, Nodes) ->
+    case next_alife_node(Nodes) of
+        no_nodes ->
+            gen_server:reply(From, {error, no_claim});
+        {Next,  Nodes1} ->
+            %% We need to add the next node
+            %% back to the list since we check for that
+            %% on the handover after the RPC
+            rpc:cast(Next, sniffle_ip, claim,
+                     [IPRange, From, [Next | Nodes1]])
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -192,4 +198,3 @@ next_alife_node([N | Rest]) ->
         pang ->
             next_alife_node(Rest)
     end.
-
