@@ -1,4 +1,4 @@
-[0m├─ bugsnag─0.0.0+build.23.ref636626c
+[0m├─ bugsnag─0.1.0
 ├─ clique─0.3.1+build.140.ref8067df5
 ├─ cluster_info─2.0.3
 ├─ cuttlefish─2.0.0+build.479.reff5f6fdc
@@ -19,7 +19,7 @@
 ├─ fifo_s3─0.1.13
 │  └─ base16─1.0
 ├─ fifo_spec─0.1.24
-├─ fifo_utils─0.1.17
+├─ fifo_utils─0.1.18
 ├─ folsom_ddb─0.1.20
 │  └─ ddb_client─0.1.17
 │     ├─ dproto─0.1.12
@@ -36,7 +36,7 @@
 │     ├─ mdns_client─0.1.7
 │     └─ pooler─1.4.0
 ├─ libleofs─0.1.2
-├─ libsnarl─0.3.35
+├─ libsnarl─0.3.36
 │  └─ oauth2─0.6.0
 ├─ mdns_server_lib─0.2.2
 │  ├─ mdns_server─0.2.0

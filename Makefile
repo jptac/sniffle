@@ -20,9 +20,6 @@ clean:
 long-test:
 	$(REBAR) as eqc,long eunit
 
-update:
-	$(REBAR) update
-
 rel: update
 	$(REBAR) as prod compile
 	sh generate_zabbix_template.sh
