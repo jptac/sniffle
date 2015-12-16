@@ -16,8 +16,8 @@
 ├─ fifo_lager─0.1.1
 │  ├─ lager_graylog─1
 │  └─ lager_logstash_backend─0.0.2
-├─ fifo_s3─0.1.13
-│  └─ base16─1.0
+├─ fifo_s3─0.1.14
+│  └─ base16─1.0.0
 ├─ fifo_spec─0.1.24
 ├─ fifo_utils─0.1.18
 ├─ folsom_ddb─0.1.20
