@@ -2,7 +2,7 @@
 {application, sniffle,
  [
   {description, "Project FiFo's central management server."},
-  {vsn, "0.7.0p7"},
+  {vsn, "0.7.1"},
   {registered, []},
   {applications, [
                   kernel,
@@ -27,6 +27,7 @@
                   eplugin,
                   fifo_lager,
                   lager,
+                  bugsnag,
                   jsxd,
                   sniffle_commons,
                   sniffle_console,
@@ -35,8 +36,7 @@
                   sniffle_write,
                   sniffle_coverage,
                   sniffle_dataset_download,
-                  sniffle_version,
-                  lager_watchdog
+                  sniffle_version
                  ]},
   {mod, {sniffle_app, []}},
   {env, []}

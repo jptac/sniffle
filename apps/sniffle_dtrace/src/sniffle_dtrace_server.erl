@@ -78,7 +78,8 @@ init([ID, Config, Listener]) ->
                 || {ok, S1} <- [sniffle_hypervisor:get(S0) || S0 <- Servers]],
     Runners = [ {L, Host, Port} ||
                   {{ok, L}, Host, Port} <-
-                      [{libchunter_dtrace_server:dtrace(Host, Port, Script), Host, Port}
+                      [{libchunter_dtrace_server:dtrace(Host, Port, Script),
+                        Host, Port}
                        || {Host, Port} <- Servers1]],
     erlang:monitor(process, Listener),
     timer:send_interval(1000, tick),
@@ -136,33 +137,39 @@ handle_cast(_Msg, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_info(tick, State) ->
-    {Composed, Runners} = lists:foldr(fun({S, Host, Port} = D, {Data, RunA}) ->
-                                   case libchunter_dtrace_server:walk(S, llquantize) of
-                                       ok ->
-                                           {Data, [D | RunA]};
-                                       {ok, R} ->
-                                           {jsxd:merge(fun merge_fn/3, Data, R), [D | RunA]};
-                                       E ->
-                                           lager:error("DTrace host (~p) died with: ~p.", [S, E]),
-                                           libchunter_dtrace_server:close(S),
-                                           {ok, S1} = libchunter_dtrace_server:dtrace(Host, Port, State#state.compiled),
-                                           {Data, [{S1, Host, Port} | RunA]}
-                                   end
-                           end, {[], []}, State#state.runners),
+    {Composed, Runners} =
+        lists:foldr(fun(D, {Data, RunA}) ->
+                            walk(D, Data, RunA, State#state.compiled)
+                    end, {[], []}, State#state.runners),
     [Pid ! {dtrace, Composed} || Pid <- State#state.listeners],
     {noreply, State#state{runners = Runners}};
 
-handle_info({'DOWN', _Ref, process, _Pid, _Reason}, State = #state{ listeners = []}) ->
+handle_info({'DOWN', _Ref, process, _Pid, _Reason},
+            State = #state{listeners = []}) ->
     {stop, normal, State};
 
-handle_info({'DOWN', _Ref, process, Pid, _Reason}, State = #state{ listeners = [Pid]}) ->
+handle_info({'DOWN', _Ref, process, Pid, _Reason},
+            State = #state{listeners = [Pid]}) ->
     {stop, normal, State};
 
-handle_info({'DOWN', _Ref, process, Pid, _Reason}, State = #state{ listeners = Ls}) ->
+handle_info({'DOWN', _Ref, process, Pid, _Reason},
+            State = #state{listeners = Ls}) ->
     {stop, normal, State#state{listeners = lists:delete(Pid, Ls)}};
 
 handle_info(_Info, State) ->
     {noreply, State}.
+walk({S, Host, Port} = D, Data, RunA, Compiled) ->
+    case libchunter_dtrace_server:walk(S, llquantize) of
+        ok ->
+            {Data, [D | RunA]};
+        {ok, R} ->
+            {jsxd:merge(fun merge_fn/3, Data, R), [D | RunA]};
+        E ->
+            lager:error("DTrace host (~p) died with: ~p.", [S, E]),
+            libchunter_dtrace_server:close(S),
+            {ok, S1} = libchunter_dtrace_server:dtrace(Host, Port, Compiled),
+            {Data, [{S1, Host, Port} | RunA]}
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -177,7 +184,7 @@ handle_info(_Info, State) ->
 %%--------------------------------------------------------------------
 terminate(_Reason, #state{runners = Runners} = _State) ->
 
-    [ libchunter_dtrace_server:close(R) || {R, _,_} <- Runners],
+    [libchunter_dtrace_server:close(R) || {R, _, _} <- Runners],
     ok.
 
 %%--------------------------------------------------------------------
@@ -267,10 +274,9 @@ filter_matcher([<<"custom">>, C]) when is_binary(C)->
 filter_matcher([E, V]) ->
     filter_matcher([E, <<"==">>, V]);
 
-filter_matcher([<<"args">> = E, I, V]) when is_integer(I) ->
-    filter_matcher([E, I, <<"==">>, V]);
-
-filter_matcher([<<"arg">> = E, I, V]) when is_integer(I) ->
+filter_matcher([E, I, V]) when is_integer(I),
+                               (E =:= <<"args">> orelse
+                                E =:= <<"arg">>) ->
     filter_matcher([E, I, <<"==">>, V]);
 
 filter_matcher([<<"pid">>, Cmp, P]) when is_number(P)->
@@ -295,8 +301,8 @@ filter_matcher([<<"args">>, I, Cmp, V]) when is_integer(I) ->
     [<<"args[">>, format_value(I), "]", Cmp, format_value(V)];
 
 filter_matcher([<<"arg">>, I, Cmp, V]) when is_integer(I),
-                                       I >= 0,
-                                       I =< 9->
+                                            I >= 0,
+                                            I =< 9->
     [<<"arg">>, format_value(I), Cmp, format_value(V)].
 
 
@@ -329,16 +335,18 @@ join_filter_test() ->
 compile_filters_test() ->
     ?assertEqual(<<>>, compile_filters([])),
     ?assertEqual(<<"a==1">>, compile_filters([[<<"custom">>, <<"a==1">>]])),
-    ?assertEqual(<<"(c==3&&b==2)">>, compile_filters([{<<"and">>,
-                                                     [[<<"custom">>, <<"c==3">>],
-                                                      [<<"custom">>, <<"b==2">>]]}])).
+    ?assertEqual(<<"(c==3&&b==2)">>,
+                 compile_filters([{<<"and">>,
+                                   [[<<"custom">>, <<"c==3">>],
+                                    [<<"custom">>, <<"b==2">>]]}])).
 
 compile_nested_test() ->
-    ?assertEqual(<<"(a==1&&(b==2||zonename==\"c\"))">>, compile_filters([{<<"and">>,
-                                                     [[<<"custom">>, <<"a==1">>],
-                                                      [{<<"or">>,
-                                                        [[<<"custom">>, <<"b==2">>],
-                                                         [<<"zonename">>, <<"c">>]]}]]}])).
+    ?assertEqual(<<"(a==1&&(b==2||zonename==\"c\"))">>,
+                 compile_filters([{<<"and">>,
+                                   [[<<"custom">>, <<"a==1">>],
+                                    [{<<"or">>,
+                                      [[<<"custom">>, <<"b==2">>],
+                                       [<<"zonename">>, <<"c">>]]}]]}])).
 
 fmt_h(V) ->
     R =format_value(V),

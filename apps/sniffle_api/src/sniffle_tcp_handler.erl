@@ -399,8 +399,7 @@ message({vm, snapshot, promote, Vm, UUID, Config}, State) when
 
 message({vm, create, Package, Dataset, Config}, State) when
       is_binary(Package),
-      is_list(Config),
-      is_binary(Dataset) ->
+      is_list(Config) ->
     {reply,
      sniffle_vm:create(Package, Dataset, Config),
      State};
@@ -424,6 +423,12 @@ message({vm, unregister, Vm}, State) when
       is_binary(Vm) ->
     {reply,
      sniffle_vm:unregister(Vm),
+     State};
+
+message({vm, get, docker, Vm}, State) when
+      is_binary(Vm) ->
+    {reply,
+     sniffle_vm:get_docker(Vm),
      State};
 
 message({vm, get, Vm}, State) when
@@ -695,13 +700,15 @@ message({network, list, Requirements, Full}, State) ->
 %%%  IPRange Functions
 %%%===================================================================
 
-message({iprange, create, Iprange, Network, Gateway, Netmask, First, Last, Tag, Vlan}, State) when
+message({iprange, create, Iprange, Network, Gateway, Netmask, First, Last, Tag,
+         Vlan}, State) when
       is_binary(Iprange), is_binary(Tag),
       is_integer(Network), is_integer(Gateway), is_integer(Netmask),
       is_integer(First), is_integer(Last),
       is_integer(Vlan)->
     {reply,
-     sniffle_iprange:create(Iprange, Network, Gateway, Netmask, First, Last, Tag, Vlan),
+     sniffle_iprange:create(Iprange, Network, Gateway, Netmask, First, Last,
+                            Tag, Vlan),
      State};
 
 message({iprange, delete, Iprange}, State) when
@@ -786,6 +793,18 @@ message({package, list, Requirements, Full}, State) when
       is_list(Requirements) ->
     {reply,
      sniffle_package:list(Requirements, Full),
+     State};
+
+message({package, resources, org, inc, Package, Resource, V}, State) when
+      is_binary(Package), is_binary(Resource), is_integer(V) ->
+    {reply,
+     sniffle_package:org_resource_inc(Package, Resource, V),
+     State};
+
+message({package, resources, org, dec, Package, Resource, V}, State) when
+      is_binary(Package), is_binary(Resource), is_integer(V) ->
+    {reply,
+     sniffle_package:org_resource_dec(Package, Resource, V),
      State};
 
 ?PM(set_metadata);

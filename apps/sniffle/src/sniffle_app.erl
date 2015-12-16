@@ -41,8 +41,10 @@ start(_StartType, _StartArgs) ->
     init_folsom(),
     case sniffle_sup:start_link() of
         {ok, Pid} ->
-            ok = riak_core_ring_events:add_guarded_handler(sniffle_ring_event_handler, []),
-            ok = riak_core_node_watcher_events:add_guarded_handler(sniffle_node_event_handler, []),
+            ok = riak_core_ring_events:add_guarded_handler(
+                   sniffle_ring_event_handler, []),
+            ok = riak_core_node_watcher_events:add_guarded_handler(
+                   sniffle_node_event_handler, []),
 
             ?SRV_WITH_AAE(sniffle_hypervisor_vnode, sniffle_hypervisor),
             ?SRV_WITH_AAE(sniffle_vm_vnode, sniffle_vm),
@@ -52,6 +54,7 @@ start(_StartType, _StartArgs) ->
             ?SRV_WITH_AAE(sniffle_grouping_vnode, sniffle_grouping),
             ?SRV_WITH_AAE(sniffle_network_vnode, sniffle_network),
             ?SRV_WITH_AAE(sniffle_dtrace_vnode, sniffle_dtrace),
+            ?SRV_WITH_AAE(sniffle_2i_vnode, sniffle_2i),
             timer:apply_after(2000, sniffle_opt, update, []),
             sniffle_snmp_handler:start(),
             {ok, Pid};
@@ -89,12 +92,17 @@ init_folsom() ->
     Pkgs = Basic ++
         [create, delete, set_metadata, blocksize, compression, cpu_cap,
          cpu_shares, max_swap, name, quota, ram, uuid, zfs_io_priority,
-         remove_requirement, add_requirement],
+         remove_requirement, add_requirement,
+         org_resource_inc, org_resource_dec, org_resource_remove,
+         hv_resource_inc, hv_resource_dec, hv_resource_remove],
     VMs = Basic ++
         [register, unregister, log, set_network_map, remove_grouping,
          add_grouping, set_metadata, set_info, set_config, set_backup,
-         set_snapshot, set_service, state, alias, owner, dataset, package,
-         hypervisor, remove_fw_rule, add_fw_rule, deleting, creating],
+         set_docker, set_snapshot, set_service, state, alias, owner, dataset,
+         package, hypervisor, remove_fw_rule, add_fw_rule, deleting, creating,
+         vm_type, created_at],
+    S2i = [list, get, add, delete, sync_repair],
+
     [folsom_metrics:new_histogram(Name, slide, 60) ||
         Name <-
             [{fifo_db, M} || M <- DBMs] ++
@@ -106,5 +114,6 @@ init_folsom() ->
             [{sniffle, network, M} || M <- Nets] ++
             [{sniffle, package, M} || M <- Pkgs] ++
             [{sniffle, vm, M} || M <- VMs] ++
+            [{sniffle, s2i, M} || M <- S2i] ++
             []
     ].

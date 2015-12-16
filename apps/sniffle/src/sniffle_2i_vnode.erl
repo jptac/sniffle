@@ -1,14 +1,8 @@
--module(sniffle_hypervisor_vnode).
+-module(sniffle_2i_vnode).
 -behaviour(riak_core_vnode).
 -behaviour(riak_core_aae_vnode).
 -include("sniffle.hrl").
 -include_lib("riak_core/include/riak_core_vnode.hrl").
-
--export([repair/4,
-         get/3,
-         register/4,
-         unregister/3,
-         set/4]).
 
 -export([start_vnode/1,
          init/1,
@@ -24,61 +18,34 @@
          encode_handoff_item/2,
          handle_coverage/4,
          handle_exit/3,
-         handle_info/2,
-         sync_repair/4]).
+         handle_info/2]).
 
 -export([
-         set_resource/4,
-         set_characteristic/4,
-         set_metadata/4,
-         set_pool/4,
-         set_service/4,
-         alias/4,
-         etherstubs/4,
-         host/4,
-         networks/4,
-         path/4,
-         port/4,
-         sysinfo/4,
-         uuid/4,
-         version/4,
-         virtualisation/4
+         master/0,
+         aae_repair/2,
+         hash_object/2
         ]).
 
+%% Reads
+-export([get/3]).
+
+%% Writes
+-export([add/4,
+         delete/3,
+         repair/4, sync_repair/4]).
+
 -ignore_xref([
-              set_resource/4,
-              set_characteristic/4,
-              set_metadata/4,
-              set_pool/4,
-              set_service/4,
-              alias/4,
-              etherstubs/4,
-              host/4,
-              networks/4,
-              path/4,
-              port/4,
-              sysinfo/4,
-              uuid/4,
-              version/4,
-              virtualisation/4
+              start_vnode/1,
+              get/3,
+              add/4,
+              delete/3,
+              repair/4, sync_repair/4,
+              handle_info/2
              ]).
 
--export([master/0,
-         aae_repair/2,
-         hash_object/2]).
+-define(SERVICE, sniffle_2i).
 
--ignore_xref([get/3,
-              register/4,
-              repair/4,
-              set/4,
-              start_vnode/1,
-              unregister/3,
-              handle_info/2,
-              sync_repair/4]).
-
--define(SERVICE, sniffle_hypervisor).
-
--define(MASTER, sniffle_hypervisor_vnode_master).
+-define(MASTER, sniffle_2i_vnode_master).
 
 %%%===================================================================
 %%% AAE
@@ -87,13 +54,12 @@
 master() ->
     ?MASTER.
 
-hash_object(BKey, RObj) ->
-    lager:debug("Hashing Key: ~p", [BKey]),
-    list_to_binary(integer_to_list(erlang:phash2({BKey, RObj}))).
+hash_object(Key, Obj) ->
+    sniffle_vnode:hash_object(Key, Obj).
 
 aae_repair(_, Key) ->
     lager:debug("AAE Repair: ~p", [Key]),
-    sniffle_hypervisor:get(Key).
+    sniffle_2i:get(Key).
 
 %%%===================================================================
 %%% API
@@ -102,9 +68,10 @@ aae_repair(_, Key) ->
 start_vnode(I) ->
     riak_core_vnode_master:get_vnode_pid(I, ?MODULE).
 
-repair(IdxNode, Hypervisor, VClock, Obj) ->
+
+repair(IdxNode, TK, VClock, Obj) ->
     riak_core_vnode_master:command(IdxNode,
-                                   {repair, Hypervisor, VClock, Obj},
+                                   {repair, TK, VClock, Obj},
                                    ignore,
                                    ?MASTER).
 
@@ -112,9 +79,9 @@ repair(IdxNode, Hypervisor, VClock, Obj) ->
 %%% API - reads
 %%%===================================================================
 
-get(Preflist, ReqID, Hypervisor) ->
+get(Preflist, ReqID, Key) ->
     riak_core_vnode_master:command(Preflist,
-                                   {get, ReqID, Hypervisor},
+                                   {get, ReqID, Key},
                                    {fsm, undefined, self()},
                                    ?MASTER).
 
@@ -128,71 +95,50 @@ sync_repair(Preflist, ReqID, UUID, Obj) ->
                                    {fsm, undefined, self()},
                                    ?MASTER).
 
-register(Preflist, ReqID, Hypervisor, Data) ->
+add(Preflist, ReqID, Key, Target) ->
     riak_core_vnode_master:command(Preflist,
-                                   {register, ReqID, Hypervisor, Data},
+                                   {add, ReqID, Key, Target},
                                    {fsm, undefined, self()},
                                    ?MASTER).
 
-unregister(Preflist, ReqID, Hypervisor) ->
+delete(Preflist, ReqID, Key) ->
     riak_core_vnode_master:command(Preflist,
-                                   {delete, ReqID, Hypervisor},
+                                   {delete, ReqID, Key},
                                    {fsm, undefined, self()},
                                    ?MASTER).
-
-set(Preflist, ReqID, Hypervisor, Data) ->
-    riak_core_vnode_master:command(Preflist,
-                                   {set, ReqID, Hypervisor, Data},
-                                   {fsm, undefined, self()},
-                                   ?MASTER).
-
-?VSET(set_resource).
-?VSET(set_characteristic).
-?VSET(set_metadata).
-?VSET(set_pool).
-?VSET(set_service).
-?VSET(alias).
-?VSET(etherstubs).
-?VSET(host).
-?VSET(networks).
-?VSET(path).
-?VSET(port).
-?VSET(sysinfo).
-?VSET(uuid).
-?VSET(version).
-?VSET(virtualisation).
 
 %%%===================================================================
 %%% VNode
 %%%===================================================================
-
 init([Part]) ->
-    sniffle_vnode:init(Part, <<"hypervisor">>, ?SERVICE, ?MODULE,
-                       ft_hypervisor).
+    sniffle_vnode:init(Part, <<"2i">>, ?SERVICE, ?MODULE, sniffle_2i_state).
 
 %%%===================================================================
-%%% Node Specific
+%%% General
 %%%===================================================================
 
-handle_command({register, {ReqID, Coordinator} = ID, Hypervisor, [IP, Port]},
+handle_command({add, {ReqID, Coordinator} = ID, Key, Target},
                _Sender, State) ->
-    H0 = ft_hypervisor:new(ID),
-    H1 = ft_hypervisor:port(ID, Port, H0),
-    H2 = ft_hypervisor:host(ID, IP, H1),
-    H3 = ft_hypervisor:uuid(ID, Hypervisor, H2),
-    H4 = ft_hypervisor:path(ID, [{Hypervisor, 1}], H3),
-    HObject = ft_obj:new(H4, Coordinator),
-    sniffle_vnode:put(Hypervisor, HObject, State),
+    S2i = sniffle_2i_state:new(ID),
+    S2i1 = sniffle_2i_state:target(ID, Target, S2i),
+    S2i1Obj = ft_obj:new(S2i1, Coordinator),
+    sniffle_vnode:put(Key, S2i1Obj, State),
     {reply, {ok, ReqID}, State};
+
+%% why did we even have this?
+%% handle_command({delete, {ReqID, _} = ID, Key},
+%%                _Sender, State) ->
+%%     sniffle_vnode:change(Key, target, [not_found], ID, State),
+%%     {reply, {ok, ReqID}, State};
 
 handle_command(Message, Sender, State) ->
     sniffle_vnode:handle_command(Message, Sender, State).
 
 handle_handoff_command(?FOLD_REQ{foldfun=Fun, acc0=Acc0}, _Sender, State) ->
-    Acc = fifo_db:fold(State#vstate.db, <<"hypervisor">>, Fun, Acc0),
+    Acc = fifo_db:fold(State#vstate.db, <<"2i">>, Fun, Acc0),
     {reply, Acc, State};
 
-handle_handoff_command({get, _ReqID, _Hypervisor} = Req, Sender, State) ->
+handle_handoff_command({get, _ReqID, _Vm} = Req, Sender, State) ->
     handle_command(Req, Sender, State);
 
 handle_handoff_command(Req, Sender, State) ->
@@ -204,7 +150,8 @@ handle_handoff_command(Req, Sender, State) ->
          end,
     {forward, S1}.
 
-handoff_starting(_TargetNode, State) ->
+handoff_starting(TargetNode, State) ->
+    lager:warning("Starting handof to: ~p", [TargetNode]),
     {true, State}.
 
 handoff_cancelled(State) ->
@@ -216,8 +163,9 @@ handoff_finished(_TargetNode, State) ->
 handle_handoff_data(Data, State) ->
     sniffle_vnode:repair(Data, State).
 
-encode_handoff_item(Hypervisor, Data) ->
-    term_to_binary({Hypervisor, Data}).
+
+encode_handoff_item(Role, Data) ->
+    term_to_binary({Role, Data}).
 
 is_empty(State) ->
     sniffle_vnode:is_empty(State).
@@ -234,13 +182,5 @@ handle_exit(_Pid, _Reason, State) ->
 terminate(_Reason, _State) ->
     ok.
 
-%%%===================================================================
-%%% AAE
-%%%===================================================================
-
 handle_info(Msg, State) ->
     sniffle_vnode:handle_info(Msg, State).
-
-%%%===================================================================
-%%% General
-%%%===================================================================

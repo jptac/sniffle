@@ -131,7 +131,8 @@ handle_info({'DOWN', Ref, process, _Pid, _Reason},
     case lists:member(Ref, Ws) of
         true ->
             lager:info("[create] Finished task, taking ~s next.", [UUID]),
-            {ok, Pid1} = sniffle_create_fsm:create(UUID, Package, Dataset, Config),
+            {ok, Pid1} = sniffle_create_fsm:create(UUID, Package, Dataset,
+                                                   Config),
             Ref1 = erlang:monitor(process, Pid1),
             Ws1 = lists:delete(Ref, Ws),
             {noreply, State#state{workers=[Ref1 | Ws1], rev_reqs = Rs}};

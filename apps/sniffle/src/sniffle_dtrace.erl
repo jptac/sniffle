@@ -72,7 +72,7 @@ add(Name, Script) ->
 -spec get(UUID::fifo:dtrace_id()) ->
                  not_found | {ok, DTrance::fifo:dtrace()} | {error, timeout}.
 get(UUID) ->
-    ?FM(get, sniffle_entity_read_fsm, start, [{?VNODE, ?SERVICE},get, UUID]).
+    ?FM(get, sniffle_entity_read_fsm, start, [{?VNODE, ?SERVICE}, get, UUID]).
 
 -spec delete(UUID::fifo:dtrace_id()) ->
                     not_found | {error, timeout} | ok.
@@ -82,7 +82,7 @@ delete(UUID) ->
 -spec list() ->
                   {ok, [UUID::fifo:dtrace_id()]} | {error, timeout}.
 list() ->
-    ?FM(list, sniffle_coverage, start, [?MASTER, ?SERVICE,list]).
+    ?FM(list, sniffle_coverage, start, [?MASTER, ?SERVICE, list]).
 
 %%--------------------------------------------------------------------
 %% @doc Lists all vm's and fiters by a given matcher set.

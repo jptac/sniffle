@@ -32,6 +32,7 @@
          delete_backup/2,
          delete_snapshot/2,
          get/1,
+         get_docker/1,
          list/0,
          list/2,
          log/2,
@@ -66,6 +67,9 @@
          set_service/2,
          set_snapshot/2,
          set_metadata/2,
+         set_docker/2,
+         vm_type/2,
+         created_at/2,
          add_fw_rule/2,
          remove_fw_rule/2
         ]).
@@ -115,7 +119,8 @@ sync_repair(UUID, Obj) ->
     do_write(UUID, sync_repair, Obj).
 
 list_() ->
-    {ok, Res} = ?FM(list_all, sniffle_full_coverage, raw, [?MASTER, ?SERVICE, []]),
+    {ok, Res} = ?FM(list_all, sniffle_full_coverage, raw,
+                    [?MASTER, ?SERVICE, []]),
     Res1 = [R || {_, R} <- Res],
     {ok,  Res1}.
 
@@ -158,28 +163,30 @@ restore(User, Vm, BID, Hypervisor) ->
         {ok, V} ->
             case ?S:hypervisor(V) of
                 <<>> ->
-                    {Server, Port} = get_hypervisor(Hypervisor),
-                    case jsxd:get([BID, <<"xml">>], true, ?S:backups(V)) of
-                        true ->
-                            case sniffle_s3:config(snapshot) of
-                                error ->
-                                    {error, not_supported};
-                                {ok, {S3Host, S3Port, AKey, SKey, Bucket}} ->
-                                    resource_action(V, restore, User, []),
-                                    libchunter:restore_backup(Server, Port, Vm,
-                                                              BID, S3Host,
-                                                              S3Port, Bucket,
-                                                              AKey, SKey)
-                            end;
-                        false ->
-                            no_xml
-                    end;
+                    restore_(User, Vm, V, BID, Hypervisor);
                 _ ->
                     already_deployed
             end;
         _ ->
             not_found
     end.
+
+restore_(User, UUID, V, BID, Hypervisor) ->
+    {Server, Port} = get_hypervisor(Hypervisor),
+    case jsxd:get([BID, <<"xml">>], true, ?S:backups(V)) of
+        true ->
+            case sniffle_s3:config(snapshot) of
+                error ->
+                    {error, not_supported};
+                {ok, {S3Host, S3Port, AKey, SKey, Bucket}} ->
+                    resource_action(V, restore, User, []),
+                    libchunter:restore_backup(Server, Port, UUID, BID, S3Host,
+                                              S3Port, Bucket, AKey, SKey)
+            end;
+        false ->
+            no_xml
+    end.
+
 
 %% Removes a backup from the hypervisor
 remove_backup(Vm, BID) ->
@@ -222,14 +229,11 @@ restore_backup(Vm, Snap) ->
             {Server, Port} = get_hypervisor(V),
             case jsxd:get([Snap], ?S:backups(V)) of
                 {ok, _} ->
-                    case sniffle_s3:config(snapshot) of
-                        error ->
-                            {error, not_supported};
-                        {ok, {S3Host, S3Port, AKey, SKey, Bucket}} ->
-                            libchunter:restore_backup(Server, Port, Vm, Snap,
-                                                      S3Host, S3Port, Bucket,
-                                                      AKey, SKey)
-                    end;
+                    {ok, {S3Host, S3Port, AKey, SKey, Bucket}} =
+                        sniffle_s3:config(snapshot),
+                    libchunter:restore_backup(Server, Port, Vm, Snap,
+                                              S3Host, S3Port, Bucket,
+                                              AKey, SKey);
                 _ ->
                     not_found
             end;
@@ -346,53 +350,7 @@ promote_to_image(Vm, SnapID, Config) ->
         {ok, V} ->
             case jsxd:get([SnapID, <<"timestamp">>], ?S:snapshots(V)) of
                 {ok, _} ->
-                    {Server, Port} = get_hypervisor(V),
-                    UUID = uuid:uuid4s(),
-                    ok = sniffle_dataset:create(UUID),
-                    C = ?S:config(V),
-                    Config1 = jsxd:from_list(Config),
-                    ds_set(
-                      [
-                       {<<"name">>, fun sniffle_dataset:name/2},
-                       {<<"version">>, fun sniffle_dataset:version/2},
-                       {<<"os">>, fun sniffle_dataset:os/2},
-                       {<<"description">>, fun sniffle_dataset:description/2}
-                      ], UUID, jsxd:from_list(Config)),
-
-                    {ok, Nets} = jsxd:get([<<"networks">>], C),
-                    Nets1 =
-                        jsxd:map(fun (Idx, E) ->
-                                         Name = io_lib:format("net~p", [Idx]),
-                                         {list_to_binary(Name),
-                                          jsxd:get(<<"tag">>, <<"undefined">>, E)}
-                                 end, Nets),
-                    [sniffle_dataset:add_network(UUID, Net) || Net <- Nets1],
-                    Type = jsxd:get([<<"type">>], <<"zone">>, C),
-                    sniffle_dataset:type(UUID, Type),
-                    case Type of
-                        <<"zone">> ->
-                            ok;
-                        _ ->
-                            ND = case jsxd:get(<<"nic_driver">>, Config) of
-                                     {ok, ND0} ->
-                                         ND0;
-                                     _ ->
-                                         jsxd:get([<<"networks">>, 0, model], <<"virtio">>, C)
-                                 end,
-                            DD = case jsxd:get(<<"disk_driver">>, Config)  of
-                                     {ok, DD0} ->
-                                         DD0;
-                                     _ ->
-                                         jsxd:get([<<"disks">>, 0, model], <<"virtio">>, C)
-                                 end,
-                            sniffle_dataset:nic_driver(UUID, ND),
-                            sniffle_dataset:disk_driver(UUID, DD)
-                    end,
-                    {ok, {S3Host, S3Port, AKey, SKey, Bucket}} = sniffle_s3:config(image),
-                    ok = libchunter:store_snapshot(
-                           Server, Port, Vm, SnapID, UUID, S3Host,
-                           S3Port, Bucket, AKey, SKey, []),
-                    {ok, UUID};
+                    promite_to_image_(Vm, SnapID, Config, V);
                 undefined ->
                     not_found
             end;
@@ -400,61 +358,63 @@ promote_to_image(Vm, SnapID, Config) ->
             E
     end.
 
+promite_to_image_(UUID, SnapID, Config, V) ->
+    {Server, Port} = get_hypervisor(V),
+    DatasetUUID = uuid:uuid4s(),
+    ok = sniffle_dataset:create(DatasetUUID),
+    C = ?S:config(V),
+    Config1 = jsxd:from_list(Config),
+    ds_set(
+      [
+       {<<"name">>, fun sniffle_dataset:name/2},
+       {<<"version">>, fun sniffle_dataset:version/2},
+       {<<"os">>, fun sniffle_dataset:os/2},
+       {<<"description">>, fun sniffle_dataset:description/2}
+      ], DatasetUUID, jsxd:from_list(Config)),
+
+    {ok, Nets} = jsxd:get([<<"networks">>], C),
+    Nets1 =
+        jsxd:map(fun (Idx, E) ->
+                         Name = io_lib:format("net~p", [Idx]),
+                         {list_to_binary(Name),
+                          jsxd:get(<<"tag">>, <<"undefined">>, E)}
+                 end, Nets),
+    [sniffle_dataset:add_network(DatasetUUID, Net) || Net <- Nets1],
+    Type = jsxd:get([<<"type">>], <<"zone">>, C),
+    sniffle_dataset:type(DatasetUUID, Type),
+    case Type of
+        <<"zone">> ->
+            ok;
+        _ ->
+            ND = case jsxd:get(<<"nic_driver">>, Config) of
+                     {ok, ND0} ->
+                         ND0;
+                     _ ->
+                         jsxd:get([<<"networks">>, 0, model], <<"virtio">>, C)
+                 end,
+            DD = case jsxd:get(<<"disk_driver">>, Config)  of
+                     {ok, DD0} ->
+                         DD0;
+                     _ ->
+                         jsxd:get([<<"disks">>, 0, model], <<"virtio">>, C)
+                 end,
+            sniffle_dataset:nic_driver(DatasetUUID, ND),
+            sniffle_dataset:disk_driver(DatasetUUID, DD)
+    end,
+    {ok, {S3Host, S3Port, AKey, SKey, Bucket}} = sniffle_s3:config(image),
+    ok = libchunter:store_snapshot(
+           Server, Port, UUID, SnapID, DatasetUUID, S3Host,
+           S3Port, Bucket, AKey, SKey, []),
+    {ok, DatasetUUID}.
+
 add_nic(Vm, Network) ->
     lager:info("[NIC ADD] Adding a new nic in ~s to ~s", [Network, Vm]),
     case sniffle_vm:get(Vm) of
         {ok, V} ->
             lager:info("[NIC ADD] VM found.", []),
-            H = ?S:hypervisor(V),
-            {ok, HypervisorObj} = sniffle_hypervisor:get(H),
-            HypervisorsNetwork = ft_hypervisor:networks(HypervisorObj),
-            {Server, Port} = ft_hypervisor:endpoint(HypervisorObj),
-            libchunter:ping(Server, Port),
             case ?S:state(V) of
                 <<"stopped">> ->
-                    Requirements = [{must, oneof, <<"tag">>, HypervisorsNetwork}],
-                    lager:info("[NIC ADD] Checking requirements: ~p.", [Requirements]),
-                    case sniffle_network:claim_ip(Network, Requirements) of
-                        {ok, IPRange, {Tag, IP, Net, Gw, VLan}} ->
-                            IPb = ft_iprange:to_bin(IP),
-                            Netb = ft_iprange:to_bin(Net),
-                            GWb = ft_iprange:to_bin(Gw),
-
-                            NicSpec0 =
-                                jsxd:from_list([{<<"ip">>, IPb},
-                                                {<<"gateway">>, GWb},
-                                                {<<"network_uuid">>, IPRange},
-                                                {<<"netmask">>, Netb},
-                                                {<<"nic_tag">>, Tag }]),
-                            NicSpec1 =
-                                case jsxd:get([<<"networks">>], ?S:config(V)) of
-                                    {ok, [_|_]} ->
-                                        NicSpec0;
-                                    _ ->
-                                        jsxd:set([<<"primary">>], true, NicSpec0)
-                                end,
-                            NicSpec2 =
-                                case VLan of
-                                    0 ->
-                                        eplugin:apply(
-                                          'vm:ip_assigned',
-                                          [Vm, update, <<"unknown">>, Tag, IPb, Netb, GWb, none]),
-                                        NicSpec1;
-                                    VLAN ->
-                                        eplugin:apply(
-                                          'vm:ip_assigned',
-                                          [Vm, update, <<"unknown">>, Tag, IPb, Netb, GWb, VLAN]),
-                                        jsxd:set(<<"vlan_id">>, VLAN, NicSpec1)
-                                end,
-                            UR = [{<<"add_nics">>, [NicSpec2]}],
-                            ok = libchunter:update_machine(Server, Port, Vm,
-                                                           undefined, UR),
-                            add_network_map(Vm, IP, IPRange);
-                        E ->
-                            lager:error("Could not get claim new IP: ~p for ~p ~p",
-                                        [E, Network, Requirements]),
-                            {error, claim_failed}
-                    end;
+                    add_nic_(Vm, V, Network);
                 E ->
                     lager:error("VM needs to be stoppped: ~p", [E]),
                     {error, not_stopped}
@@ -464,27 +424,69 @@ add_nic(Vm, Network) ->
             E
     end.
 
+add_nic_(Vm, V, Network) ->
+    H = ?S:hypervisor(V),
+    {ok, HypervisorObj} = sniffle_hypervisor:get(H),
+    HypervisorsNetwork = ft_hypervisor:networks(HypervisorObj),
+    {Server, Port} = ft_hypervisor:endpoint(HypervisorObj),
+    libchunter:ping(Server, Port),
+
+    Requirements = [{must, oneof, <<"tag">>, HypervisorsNetwork}],
+    lager:info("[NIC ADD] Checking requirements: ~p.", [Requirements]),
+    case sniffle_network:claim_ip(Network, Requirements) of
+        {ok, IPRange, {Tag, IP, Net, Gw, VLan}} ->
+            IPb = ft_iprange:to_bin(IP),
+            Netb = ft_iprange:to_bin(Net),
+            GWb = ft_iprange:to_bin(Gw),
+            NicSpec0 =
+                jsxd:from_list([{<<"ip">>, IPb},
+                                {<<"gateway">>, GWb},
+                                {<<"network_uuid">>, IPRange},
+                                {<<"netmask">>, Netb},
+                                {<<"nic_tag">>, Tag }]),
+            NicSpec1 = set_primary(jsxd:get([<<"networks">>], ?S:config(V)),
+                                   NicSpec0),
+            NicSpec2 = add_vlan(VLan, NicSpec1),
+            UR = [{<<"add_nics">>, [NicSpec2]}],
+            ok = libchunter:update_machine(Server, Port, Vm, undefined, UR),
+            add_network_map(Vm, IP, IPRange);
+        E ->
+            lager:error("Could not get claim new IP: ~p for ~p ~p",
+                        [E, Network, Requirements]),
+            {error, claim_failed}
+    end.
+
+add_vlan(0, Spec) ->
+    Spec;
+add_vlan(VLAN, Spec) ->
+    jsxd:set(<<"vlan_id">>, VLAN, Spec).
+
+%% TODO: check if the networks actually include a primary
+set_primary({ok, [_|_]}, Spec) ->
+    Spec;
+set_primary(_, Spec) ->
+    jsxd:set([<<"primary">>], true, Spec).
+
 remove_nic(Vm, Mac) ->
     case sniffle_vm:get(Vm) of
         {ok, V} ->
             NicMap = make_nic_map(V),
-            case jsxd:get(Mac, NicMap) of
-                {ok, Idx}  ->
+            case {?S:state(V), jsxd:get(Mac, NicMap)} of
+                {<<"stopped">>, {ok, Idx}}  ->
                     {Server, Port} = get_hypervisor(V),
-                    case ?S:state(V) of
-                        <<"stopped">> ->
-                            UR = [{<<"remove_nics">>, [Mac]}],
-                            {ok, IpStr} = jsxd:get([<<"networks">>, Idx, <<"ip">>], ?S:config(V)),
-                            IP = ft_iprange:parse_bin(IpStr),
-                            Ms = ?S:network_map(V),
-                            ok = libchunter:update_machine(Server, Port, Vm,
-                                                           undefined, UR),
-                            remove_network_map(Vm, IP),
-                            [{IP, Network}] = [ {IP1, Network} || {IP1, Network} <- Ms, IP1 =:= IP],
-                            sniffle_iprange:release_ip(Network, IP);
-                        _ ->
-                            {error, not_stopped}
-                    end;
+                    UR = [{<<"remove_nics">>, [Mac]}],
+                    {ok, IpStr} = jsxd:get([<<"networks">>, Idx, <<"ip">>],
+                                           ?S:config(V)),
+                    IP = ft_iprange:parse_bin(IpStr),
+                    Ms = ?S:network_map(V),
+                    ok = libchunter:update_machine(Server, Port, Vm,
+                                                   undefined, UR),
+                    remove_network_map(Vm, IP),
+                    [{IP, Network}] = [ {IP1, Network} ||
+                                          {IP1, Network} <- Ms, IP1 =:= IP],
+                    sniffle_iprange:release_ip(Network, IP);
+                {<<"stopped">>, _} ->
+                    {error, not_stopped};
                 _ ->
                     {error, not_found}
             end;
@@ -530,7 +532,7 @@ update(User, Vm, Package, Config) ->
             {Host, Port} = ft_hypervisor:endpoint(Hv),
             OrigPkg = ?S:package(V),
             {ok, OrigRam} = jsxd:get([<<"ram">>], ?S:config(V)),
-            case test_pkg(Package, OrigRam, Hv) of
+            case test_pkg(Package, OrigRam, Hv, V) of
                 no_pkg_change ->
                     libchunter:update_machine(Host, Port, Vm,
                                               undefined, Config);
@@ -548,10 +550,10 @@ update(User, Vm, Package, Config) ->
             E
     end.
 
-test_pkg(undefined, _, _) ->
+test_pkg(undefined, _, _, _) ->
     no_pkg_change;
 
-test_pkg(Package, OrigRam, H) ->
+test_pkg(Package, OrigRam, H, Vm) ->
     case sniffle_package:get(Package) of
         {ok, P} ->
             NewRam = ft_package:ram(P),
@@ -559,13 +561,61 @@ test_pkg(Package, OrigRam, H) ->
                           ft_hypervisor:resources(H)) of
                 {ok, Ram} when
                       Ram > (NewRam - OrigRam) ->
-                    {ok, P};
+                    check_org_res(P, ft_vm:package(Vm), ft_vm:owner(Vm));
                 _ ->
                     {error, not_enough_resources}
             end;
         E ->
             E
     end.
+%% If we have no org we always allow upgrading
+check_org_res(P, _, <<>>) ->
+    {ok, P};
+
+check_org_res(P, OldID, OrgID) ->
+    ResOld = case OldID of
+                 <<>> ->
+                     [];
+                 _ ->
+                     {ok, POld} = sniffle_package:get(OldID),
+                     ft_package:org_resources(POld)
+             end,
+    ResNew = ft_package:org_resources(P),
+    ResNew1 = orddict:from_list(ResNew),
+    ResOld1 = orddict:from_list(ResOld),
+    Res = orddict:fold(
+            fun(K, VOld, AccNew) ->
+                    VNew = case orddict:find(K, AccNew) of
+                               error ->
+                                   0;
+                               {ok, VNewX} ->
+                                   VNewX
+                           end,
+                    orddict:store(K, VNew - VOld, AccNew)
+            end, ResNew1, ResOld1),
+    {ok, Org} = ls_org:get(OrgID),
+    case check_resources(Org, Res) of
+        ok ->
+            [ls_org:resource_dec(OrgID, R, V)  || {R, V} <- Res],
+            {ok, P};
+        {R, V} ->
+            lager:warning("Could not resize VM since the Org missed the "
+                          "resource ~s: ~p", [R, V]),
+            {error, org_resource_missing}
+    end.
+
+check_resources(_Org, []) ->
+    ok;
+check_resources(Org, [{_R, V} | Rest]) when V =< 0 ->
+    check_resources(Org, Rest);
+check_resources(Org, [{R, V} | Rest]) ->
+    case ft_org:resource(Org, R) of
+        {ok, V1} when V1 >= V ->
+            check_resources(Org, Rest);
+        _ ->
+            {R, V}
+    end.
+
 
 %%--------------------------------------------------------------------
 %% @doc Registers am existing VM, no checks made here.
@@ -594,33 +644,31 @@ unregister(Vm) ->
                       end, ?S:network_map(V)),
             VmPrefix = [<<"vms">>, Vm],
             ChannelPrefix = [<<"channels">>, Vm],
-            case ls_user:list() of
-                {ok, Users} ->
-                    spawn(fun () ->
-                                  [ls_user:revoke_prefix(U, VmPrefix) || U <- Users],
-                                  [ls_user:revoke_prefix(U, ChannelPrefix) || U <- Users]
-                          end);
-                _ ->
-                    ok
-            end,
-            case ls_role:list() of
-                {ok, Roles} ->
-                    spawn(fun () ->
-                                  [ls_role:revoke_prefix(G, VmPrefix) || G <- Roles],
-                                  [ls_role:revoke_prefix(G, ChannelPrefix) || G <- Roles]
-                          end);
-                _ ->
-                    ok
-            end,
-            case ?S:groupings(V) of
-                [] ->
-                    ok;
-                Gs ->
-                    [sniffle_grouping:remove_element(G, Vm) || G <- Gs]
-            end;
+            Users = r_to_list(ls_user:list()),
+            spawn(fun () ->
+                          [begin
+                               ls_user:revoke_prefix(U, VmPrefix),
+                               ls_user:revoke_prefix(U, ChannelPrefix)
+                           end || U <- Users]
+                  end),
+            Roles = r_to_list(ls_role:list()),
+            spawn(fun () ->
+                          [begin
+                               ls_role:revoke_prefix(G, VmPrefix),
+                               ls_role:revoke_prefix(G, ChannelPrefix)
+                           end || G <- Roles]
+                  end),
+            [sniffle_grouping:remove_element(G, Vm) ||
+                G <- ?S:groupings(V)],
+            ok;
         _ ->
             do_write(Vm, unregister)
     end.
+
+r_to_list({ok, R}) ->
+    R;
+r_to_list(_) ->
+    [].
 
 %%--------------------------------------------------------------------
 %% @doc Tries to creat a VM from a Package and dataset uuid. This
@@ -632,9 +680,16 @@ unregister(Vm) ->
                     {error, timeout} | {ok, fifo:uuid()}.
 create(Package, Dataset, Config) ->
     UUID = uuid:uuid4s(),
-    do_write(UUID, register, <<"pooled">>), %we've to put pending here since undefined will cause a wrong call!
-    creating(UUID, {started, erlang:system_time(seconds)}),
-    Config1 = jsxd:from_list(Config),
+    %%we've to put pending here since undefined will cause a wrong call!
+    do_write(UUID, register, <<"pooled">>),
+    Secs = erlang:system_time(seconds),
+    creating(UUID, {started, Secs}),
+    created_at(UUID, Secs),
+    Config0 = jsxd:from_list(Config),
+    Config1 = jsxd:set(<<"uuid">>, UUID, Config0),
+    %% We need to set this for the config to be correct later on
+    %% but we do NOT use config2 as part of the create, we do
+    %% however use Config1
     Config2 = jsxd:update(<<"networks">>,
                           fun (N) ->
                                   jsxd:from_list(
@@ -646,16 +701,27 @@ create(Package, Dataset, Config) ->
     set_config(UUID, Config2),
     state(UUID, <<"pooled">>),
     package(UUID, Package),
-    dataset(UUID, Dataset),
+    case Dataset of
+        {docker, DockerImage} ->
+            {ok, Docker} = jsxd:get([<<"docker">>], Config1),
+            set_docker(UUID, Docker),
+            {ok, DockerID} = jsxd:get([<<"id">>], Docker),
+            sniffle_2i:add(docker, DockerID, UUID),
+            vm_type(UUID, docker),
+            dataset(UUID, DockerImage);
+        _ ->
+            vm_type(UUID, zone),
+            dataset(UUID, Dataset)
+    end,
     libhowl:send(UUID, [{<<"event">>, <<"update">>},
                         {<<"data">>,
-                         [{<<"config">>, Config2},
+                         [{<<"config">>, Config1},
                           {<<"package">>, Package}]}]),
     %% TODO: is this the right place?
-    {ok, Creator} = jsxd:get([<<"owner">>], Config),
+    {ok, Creator} = jsxd:get([<<"owner">>], Config1),
     ls_user:grant(Creator, [<<"vms">>, UUID, <<"...">>]),
     ls_user:grant(Creator, [<<"channels">>, UUID, <<"join">>]),
-    sniffle_create_pool:add(UUID, Package, Dataset, Config),
+    sniffle_create_pool:add(UUID, Package, Dataset, Config1),
     {ok, UUID}.
 
 dry_run(Package, Dataset, Config) ->
@@ -680,6 +746,16 @@ dry_run(Package, Dataset, Config) ->
 get(Vm) ->
     ?FM(get, sniffle_entity_read_fsm, start, [{?VNODE, ?SERVICE}, get, Vm]).
 
+get_docker(DockerID) ->
+    case sniffle_2i:get(docker, DockerID) of
+        {ok, UUID} ->
+            ?MODULE:get(UUID);
+        E ->
+            E
+    end.
+
+
+
 
 %%--------------------------------------------------------------------
 %% @doc Lists all vm's.
@@ -694,7 +770,8 @@ list() ->
 %% @doc Lists all vm's and fiters by a given matcher set.
 %% @end
 %%--------------------------------------------------------------------
--spec list([fifo:matcher()], boolean()) -> {error, timeout} | {ok, [fifo:uuid()]}.
+-spec list([fifo:matcher()], boolean()) ->
+                  {error, timeout} | {ok, [fifo:uuid()]}.
 
 list(Requirements, true) ->
     {ok, Res} = ?FM(list_all, sniffle_full_coverage, list,
@@ -729,56 +806,77 @@ delete(User, Vm) ->
                 {true, _, _, _} ->
                     {error, creating};
                 {_, _, true, _} ->
-                    finish_delete(Vm);
+                    finish_delete(V);
                 {_, _, _, <<"storing">>} ->
-                    libhowl:send(<<"command">>,
-                                 [{<<"event">>, <<"vm-stored">>},
-                                  {<<"uuid">>, uuid:uuid4s()},
-                                  {<<"data">>,
-                                   [{<<"uuid">>, Vm}]}]),
+                    vm_event(Vm, <<"vm-stored">>),
                     state(Vm, <<"stored">>),
                     hypervisor(Vm, <<>>);
                 {_, undefined, _, _} ->
-                    finish_delete(Vm);
+                    finish_delete(V);
                 {_, <<>>, _, _} ->
-                    finish_delete(Vm);
+                    finish_delete(V);
                 {_, <<"pooled">>, _, _} ->
-                    finish_delete(Vm);
+                    finish_delete(V);
                 {_, <<"pending">>, _, _} ->
-                    finish_delete(Vm);
+                    finish_delete(V);
                 {_, _, _, undefined} ->
-                    finish_delete(Vm);
+                    finish_delete(V);
                 {_, _, _, <<"failed-", _/binary>>} ->
-                    finish_delete(Vm);
+                    finish_delete(V);
                 {_, H, _, _} ->
                     state(Vm, <<"deleting">>),
                     deleting(Vm, true),
                     {Host, Port} = get_hypervisor(H),
-                    resource_action(V, destroy, User, []),
+                    resource_action(V, update, User,
+                                    [{<<"request">>, <<"destroy">>}]),
                     libchunter:delete_machine(Host, Port, Vm)
             end;
         E ->
             E
     end.
 
-finish_delete(Vm) ->
-    {ok, V} = ?MODULE:get(Vm),
+finish_delete(V) ->
+    Vm = ft_vm:uuid(V),
     [do_delete_backup(Vm, V, BID) || {BID, _} <- ?S:backups(V)],
+    Docker = ft_vm:docker(V),
+    case jsxd:get([<<"id">>], Docker) of
+        {ok, DockerID} ->
+            sniffle_2i:delete(docker, DockerID);
+        _ ->
+            ok
+    end,
     sniffle_vm:unregister(Vm),
-    resource_action(V, confirm_destroy, []),
+    resource_action(V, destroy, []),
     libhowl:send(Vm, [{<<"event">>, <<"delete">>}]),
+    free_res(V),
+    vm_event(Vm, <<"vm-delete">>).
+
+vm_event(UUID, Event) ->
     libhowl:send(<<"command">>,
-                 [{<<"event">>, <<"vm-delete">>},
+                 [{<<"event">>, Event},
                   {<<"uuid">>, uuid:uuid4s()},
                   {<<"data">>,
-                   [{<<"uuid">>, Vm}]}]).
+                   [{<<"uuid">>, UUID}]}]).
+
+free_res(V) ->
+    free_package_res(ft_vm:package(V), ft_vm:owner(V)).
+
+free_package_res(<<>>, _) ->
+    ok;
+free_package_res(_, <<>>) ->
+    ok;
+free_package_res(PkgID, OrgID) ->
+    {ok, P} = sniffle_package:get(PkgID),
+    Res  = ft_package:org_resources(P),
+    [ls_org:resource_inc(OrgID, R, V)  || {R, V} <- Res],
+    ok.
 
 %%--------------------------------------------------------------------
 %% @doc Triggers the start of a VM on the hypervisor.
 %% @end
 %%--------------------------------------------------------------------
 -spec start(Vm::fifo:uuid()) ->
-                   {error, timeout|creating} | not_found | ok.
+                   {error, timeout|creating|not_deployed} | not_found | ok.
 start(Vm) ->
     case sniffle_vm:get(Vm) of
         {ok, V} ->
@@ -786,13 +884,20 @@ start(Vm) ->
                 true ->
                     {error, creating};
                 false ->
-                    {Server, Port} = get_hypervisor(V),
-                    libchunter:start_machine(Server, Port, Vm)
+                    start_(Vm, V)
             end;
         E ->
             E
     end.
 
+start_(UUID, V) ->
+    case get_hypervisor(V) of
+        not_found ->
+            {error, not_deployed};
+        {Server, Port} when is_list(Server),
+                            is_integer(Port) ->
+            libchunter:start_machine(Server, Port, UUID)
+    end.
 %%--------------------------------------------------------------------
 %% @doc Triggers the stop of a VM on the hypervisor.
 %% @end
@@ -891,16 +996,14 @@ set_owner(User, Vm, Owner) ->
             %% We can use the Vm object we got to end the accouting period
             %% for the old org
             resource_action(V, destroy, User, []),
-            resource_action(V, confirm_destroy, User, []),
             case owner(Vm, Owner) of
                 ok ->
                     %% After a successful changed the owner we refetch the vm
                     %% to add accounting to the new org.
                     Opts = [{package, ft_vm:package(V)},
-                            {dataset, ft_vm:dataset(V)}],
+                            {dataset, encode_dataset(ft_vm:dataset(V))}],
                     {ok, V1} = sniffle_vm:get(Vm),
                     resource_action(V1, create, User, Opts),
-                    resource_action(V1, confirm_create, User, []),
                     ok;
                 E1 ->
                     E1
@@ -1059,6 +1162,7 @@ remove_fw_rule(UUID, V) ->
 ?S(set_backup).
 ?S(set_snapshot).
 ?S(set_service).
+?S(set_docker).
 
 ?S(state).
 ?S(creating).
@@ -1071,6 +1175,8 @@ deleting(UUID, V)
 ?S(dataset).
 ?S(package).
 ?S(hypervisor).
+?S(vm_type).
+?S(created_at).
 
 %%%===================================================================
 %%% Internal Functions
@@ -1149,7 +1255,9 @@ do_delete_backup(UUID, VM, BID) ->
                      _ ->
                          Files
                  end,
-            [sniffle_s3:delete(snapshot, F) || F <- Fs];
+            %% We do this for old and new backup formates here
+            [sniffle_s3:delete(snapshot, F) || F <- Fs, is_binary(F)],
+            [sniffle_s3:delete(snapshot, F) || {F, _} <- Fs, is_binary(F)];
         _ ->
             ok
     end,
@@ -1184,7 +1292,7 @@ resource_action(VM, Action, User, Opts) ->
             case Action of
                 create ->
                     ls_acc:create(Org, UUID, T, Opts1);
-                confirm_destroy ->
+                destroy ->
                     ls_acc:destroy(Org, UUID, T, Opts1);
                 Event ->
                     Event1 = atom_to_binary(Event, utf8),
@@ -1214,3 +1322,8 @@ is_creating(V) ->
         _ ->
             true
     end.
+
+encode_dataset({docker, D}) ->
+    <<"docker:", D/binary>>;
+encode_dataset(D) when is_binary(D) ->
+    D.

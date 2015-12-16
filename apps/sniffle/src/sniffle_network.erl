@@ -168,7 +168,7 @@ set(Network, Attributes) ->
                             Gateway::non_neg_integer(),
                             VLAN::non_neg_integer()}} |
                       {error, failed} |
-                      {'error','no_servers'}.
+                      {'error', 'no_servers'}.
 
 claim_ip(UUID) ->
     claim_ip(UUID, []).
@@ -209,16 +209,12 @@ get_ip([N | R], []) ->
 get_ip([N | R], Rules) ->
     case sniffle_iprange:get(N) of
         {ok, E} ->
-            case rankmatcher:match(E, fun ft_iprange:getter/2, Rules) of
+            G = fun ft_iprange:getter/2,
+            case rankmatcher:match(E, G, Rules) of
                 false ->
                     get_ip(R, Rules);
                 _ ->
-                    case sniffle_iprange:claim_ip(N) of
-                        {ok, Res} ->
-                            {ok, N, Res};
-                        _ ->
-                            get_ip(R, Rules)
-                    end
+                    try_claim(N, R, Rules)
             end;
         _ ->
             get_ip(R, Rules)
@@ -226,3 +222,12 @@ get_ip([N | R], Rules) ->
 
 get_ip([], _) ->
     not_found.
+
+
+try_claim(N, R, Rules) ->
+    case sniffle_iprange:claim_ip(N) of
+        {ok, Res} ->
+            {ok, N, Res};
+        _ ->
+            get_ip(R, Rules)
+    end.

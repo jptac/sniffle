@@ -3,15 +3,17 @@
 -export([command/2, help/0]).
 
 -define(T, ft_package).
--define(F(Hs, Vs), fifo_console:fields(Hs,Vs)).
+-define(F(Hs, Vs), fifo_console:fields(Hs, Vs)).
 -define(H(Hs), fifo_console:hdr(Hs)).
--define(Hdr, [{"UUID", 36}, {"Name", 18}, {"Ram (MB)", 6},
+-define(HDR, [{"UUID", 36}, {"Name", 18}, {"Ram (MB)", 6},
               {"Quota (GB)", 4}, {"Cpu Cap (%)", 5}]).
 help() ->
     io:format("Usage~n"
               "  list [-j]~n"
               "  get [-j] <uuid>~n"
               "  delete <uuid>~n").
+hdr() ->
+    ?H(?HDR).
 
 command(text, ["delete", ID]) ->
     case sniffle_package:delete(list_to_binary(ID)) of
@@ -34,7 +36,7 @@ command(json, ["get", UUID]) ->
     end;
 
 command(text, ["get", ID]) ->
-    ?H(?Hdr),
+    hdr(),
     case sniffle_package:get(list_to_binary(ID)) of
         {ok, P} ->
             print(P),
@@ -58,7 +60,7 @@ command(json, ["list"]) ->
     end;
 
 command(text, ["list"]) ->
-    ?H(?Hdr),
+    hdr(),
     case sniffle_package:list() of
         {ok, Ps} ->
             lists:map(fun (ID) ->
@@ -74,7 +76,7 @@ command(_, C) ->
     error.
 
 print(P) ->
-    ?F(?Hdr, [?T:uuid(P),
+    ?F(?HDR, [?T:uuid(P),
               ?T:name(P),
               ?T:ram(P),
               ?T:quota(P),

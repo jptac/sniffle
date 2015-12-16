@@ -8,7 +8,7 @@
 -define(T, ft_dataset).
 -define(F(Hs, Vs), fifo_console:fields(Hs, Vs)).
 -define(H(Hs), fifo_console:hdr(Hs)).
--define(Hdr, [{"UUID", 36}, {"OS", 7}, {"Name", 15}, {"Version", 8},
+-define(HDR, [{"UUID", 36}, {"OS", 7}, {"Name", 15}, {"Version", 8},
               {"Imported", 7}, {"Desc", n}]).
 
 help() ->
@@ -16,6 +16,9 @@ help() ->
               "  list [-j]~n"
               "  get [-j] <uuid>~n"
               "  delete <uuid>~n").
+
+hdr() ->
+    ?H(?HDR).
 
 command(text, ["delete", ID]) ->
     case sniffle_dataset:delete(list_to_binary(ID)) of
@@ -38,7 +41,7 @@ command(json, ["get", UUID]) ->
     end;
 
 command(text, ["get", ID]) ->
-    ?H(?Hdr),
+    hdr(),
     case sniffle_dataset:get(list_to_binary(ID)) of
         {ok, D} ->
             print(D),
@@ -62,7 +65,7 @@ command(json, ["list"]) ->
     end;
 
 command(text, ["list"]) ->
-    ?H(?Hdr),
+    hdr(),
     case sniffle_dataset:list() of
         {ok, Ds} ->
             lists:map(fun (ID) ->
@@ -78,7 +81,7 @@ command(_, C) ->
     error.
 
 print(D) ->
-    ?F(?Hdr, [?T:uuid(D),
+    ?F(?HDR, [?T:uuid(D),
               ?T:os(D),
               ?T:name(D),
               ?T:version(D),

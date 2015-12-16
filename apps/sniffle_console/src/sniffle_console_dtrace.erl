@@ -3,9 +3,9 @@
 -export([command/2, help/0]).
 
 -define(T, ft_dtrace).
--define(F(Hs, Vs), fifo_console:fields(Hs,Vs)).
+-define(F(Hs, Vs), fifo_console:fields(Hs, Vs)).
 -define(H(Hs), fifo_console:hdr(Hs)).
--define(Hdr, [{"UUID", 36}, {"Name", 15}]).
+-define(HDR, [{"UUID", 36}, {"Name", 15}]).
 
 help() ->
     io:format("Usage~n"
@@ -13,6 +13,8 @@ help() ->
               "  get [-j] <uuid>~n"
               "  delete <uuid>~n"
               "  import <file>~n").
+hdr() ->
+    ?H(?HDR).
 
 command(text, ["delete", ID]) ->
     case sniffle_dtrace:delete(list_to_binary(ID)) of
@@ -38,7 +40,7 @@ command(json, ["get", UUID]) ->
     end;
 
 command(text, ["get", ID]) ->
-    ?H(?Hdr),
+    hdr(),
     case sniffle_dtrace:get(list_to_binary(ID)) of
         {ok, D} ->
             print(D),
@@ -52,7 +54,7 @@ command(text, ["get", ID]) ->
 
 command(_, ["import", File]) ->
     case file:read_file(File) of
-        {error,enoent} ->
+        {error, enoent} ->
             io:format("That file does not exist or is not an absolute path.~n"),
             error;
         {ok, B} ->
@@ -88,7 +90,7 @@ command(json, ["list"]) ->
             error
     end;
 command(text, ["list"]) ->
-    ?H(?Hdr),
+    hdr(),
     case sniffle_dtrace:list() of
         {ok, Ds} ->
             lists:map(fun (ID) ->
@@ -104,7 +106,7 @@ command(_, C) ->
     error.
 
 print(D) ->
-    ?F(?Hdr, [?T:uuid(D),
+    ?F(?HDR, [?T:uuid(D),
               ?T:name(D)]).
 
 

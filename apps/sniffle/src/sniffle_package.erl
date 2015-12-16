@@ -18,6 +18,7 @@
          list/0, list/2,
          wipe/1,
          sync_repair/2,
+         org_resource_inc/3, org_resource_dec/3, org_resource_remove/2,
          list_/0
         ]).
 
@@ -70,7 +71,9 @@ lookup(Package) ->
                 end, not_found, Res).
 
 -spec create(Package::binary()) ->
-                    duplicate | {error, timeout} | {ok, UUID::fifo:package_id()}.
+                    duplicate |
+                    {error, timeout} |
+                    {ok, UUID::fifo:package_id()}.
 create(Package) ->
     UUID = uuid:uuid4s(),
     case sniffle_package:lookup(Package) of
@@ -82,6 +85,17 @@ create(Package) ->
         E ->
             E
     end.
+
+org_resource_inc(UUID, Resource, Val) ->
+    do_write(UUID, org_resource_inc, {Resource, Val}).
+
+org_resource_dec(UUID, Resource, Val) ->
+    do_write(UUID, org_resource_dec, {Resource, Val}).
+
+org_resource_remove(UUID, Resource) ->
+    do_write(UUID, org_resource_remove, Resource).
+
+
 
 -spec delete(Package::fifo:package_id()) ->
                     not_found | {error, timeout} | ok.
