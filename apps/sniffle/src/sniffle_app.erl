@@ -100,7 +100,7 @@ init_folsom() ->
          add_grouping, set_metadata, set_info, set_config, set_backup,
          set_docker, set_snapshot, set_service, state, alias, owner, dataset,
          package, hypervisor, remove_fw_rule, add_fw_rule, deleting, creating,
-         vm_type, created_at],
+         vm_type, created_at, created_by],
     S2i = [list, get, add, delete, sync_repair],
 
     [folsom_metrics:new_histogram(Name, slide, 60) ||
