@@ -25,7 +25,8 @@
          handle_coverage/4,
          handle_exit/3,
          handle_info/2,
-         sync_repair/4]).
+         sync_repair/4,
+         last_seen/4]).
 
 -export([
          set_resource/4,
@@ -74,7 +75,8 @@
               start_vnode/1,
               unregister/3,
               handle_info/2,
-              sync_repair/4]).
+              sync_repair/4,
+              last_seen/4]).
 
 -define(SERVICE, sniffle_hypervisor).
 
@@ -125,6 +127,12 @@ get(Preflist, ReqID, Hypervisor) ->
 sync_repair(Preflist, ReqID, UUID, Obj) ->
     riak_core_vnode_master:command(Preflist,
                                    {sync_repair, ReqID, UUID, Obj},
+                                   {fsm, undefined, self()},
+                                   ?MASTER).
+
+last_seen(Preflist, ReqID, UUID, Time) ->
+    riak_core_vnode_master:command(Preflist,
+                                   {last_seen, ReqID, UUID, Time},
                                    {fsm, undefined, self()},
                                    ?MASTER).
 

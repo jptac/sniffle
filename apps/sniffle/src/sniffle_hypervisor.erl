@@ -41,7 +41,8 @@
          sysinfo/2,
          uuid/2,
          version/2,
-         virtualisation/2
+         virtualisation/2,
+         last_seen/2
         ]).
 
 -ignore_xref([
@@ -55,6 +56,9 @@ wipe(UUID) ->
 
 sync_repair(UUID, Obj) ->
     do_write(UUID, sync_repair, Obj).
+
+last_seen(UUID, Time) when Time >= 0 ->
+    do_write(UUID, last_seen, Time).
 
 list_() ->
     {ok, Res} = ?FM(list_all, sniffle_full_coverage, raw,

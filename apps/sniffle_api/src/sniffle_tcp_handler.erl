@@ -519,6 +519,7 @@ message({vm, list, Requirements, Full}, State) when
 ?HM(set_service);
 
 ?HM(alias);
+?HM(last_seen);
 ?HM(etherstubs);
 ?HM(host);
 ?HM(networks);
