@@ -35,8 +35,9 @@
          set_info/4,
          set_metadata/4,
          set_docker/4,
-              vm_type/4,
-              created_at/4,
+         vm_type/4,
+         created_at/4,
+         created_by/4,
          add_grouping/4,
          remove_grouping/4,
          add_fw_rule/4,
@@ -69,6 +70,7 @@
               set_docker/4,
               vm_type/4,
               created_at/4,
+              created_by/4,
               set_info/4,
               remove_grouping/4,
               add_fw_rule/4,
@@ -210,6 +212,7 @@ remove_grouping(Preflist, ReqID, Vm, Grouping) ->
 ?S(dataset).
 ?S(package).
 ?S(created_at).
+?S(created_by).
 ?S(vm_type).
 ?S(hypervisor).
 

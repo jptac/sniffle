@@ -70,6 +70,7 @@
          set_docker/2,
          vm_type/2,
          created_at/2,
+         created_by/2,
          add_fw_rule/2,
          remove_fw_rule/2
         ]).
@@ -719,6 +720,7 @@ create(Package, Dataset, Config) ->
                           {<<"package">>, Package}]}]),
     %% TODO: is this the right place?
     {ok, Creator} = jsxd:get([<<"owner">>], Config1),
+    created_by(UUID, Creator),
     ls_user:grant(Creator, [<<"vms">>, UUID, <<"...">>]),
     ls_user:grant(Creator, [<<"channels">>, UUID, <<"join">>]),
     sniffle_create_pool:add(UUID, Package, Dataset, Config1),
@@ -1177,6 +1179,7 @@ deleting(UUID, V)
 ?S(hypervisor).
 ?S(vm_type).
 ?S(created_at).
+?S(created_by).
 
 %%%===================================================================
 %%% Internal Functions
