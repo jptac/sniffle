@@ -48,13 +48,7 @@ start_link() ->
     gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
 
 status() ->
-    case riak_ensemble_manager:get_leader(?ENSEMBLE) of
-        {_, Leader} ->
-            gen_server:call({?SERVER, Leader}, status);
-        %% TODO: This happens when no cluster could be started aka < 3 nodes
-        undefined ->
-            gen_server:call(?SERVER, status)
-    end.
+    gen_server:call(?SERVER, status).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -91,17 +85,8 @@ init([]) ->
 %%--------------------------------------------------------------------
 handle_call(status, _From,
             State = #state{alerts = Alerts}) ->
-    case riak_ensemble_manager:get_leader(?ENSEMBLE) of
-        {_Ensamble, Leader} when Leader == node() ->
-            Reply = sets:to_list(Alerts),
-            {reply, {ok, {Reply, []}}, State};
-        %% TODO: This happens when no cluster could be started aka < 3 nodes
-        undefined ->
-            Reply = sets:to_list(Alerts),
-            {reply, {ok, {Reply, []}}, State};
-        _ ->
-            {reply, {error, wrong_node}, State}
-    end;
+    Reply = sets:to_list(Alerts),
+    {reply, {ok, {Reply, []}}, State};
 
 handle_call(_Request, _From, State) ->
     Reply = ok,
@@ -131,18 +116,7 @@ handle_cast(_Msg, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_info(tick, State = #state{tick = Tick}) ->
-    S1 = case riak_ensemble_manager:get_leader(?ENSEMBLE) of
-             {_Ensamble, _Leader} when _Leader == node() ->
-                 erlang:send_after(Tick, self(), tick),
-                 run_check(State);
-             %% TODO: This happens when no cluster could be started
-             %% aka < 3 nodes
-             undefined ->
-                 run_check(State);
-             _ ->
-                 %% We only want to run this on the leader.
-                 State#state{alerts = sets:new()}
-         end,
+    S1 = run_check(State),
     erlang:send_after(Tick, self(), tick),
     {noreply, S1};
 
