@@ -17,6 +17,7 @@
                 from :: pid(),
                 reqs :: list(),
                 raw :: boolean(),
+                merge_fn = fun([E | _]) -> E  end :: fun( ([Type]) -> Type),
                 completed = [] :: [binary()]}).
 
 -define(PARTIAL_SIZE, 10).
@@ -74,33 +75,37 @@ init({From, ReqID, _}, {VNodeMaster, NodeCheckService, Request}) ->
     {Request, VNodeSelector, N, PrimaryVNodeCoverage,
      NodeCheckService, VNodeMaster, Timeout, State}.
 
+update(Key, State) when is_binary(Key) ->
+    update({Key, Key}, State);
 
-update(Key, State = #state{seen = Seen}) ->
+update({Key, Value}, State = #state{seen = Seen}) ->
     case sets:is_element(Key, Seen) of
         true ->
             State;
         false ->
-            update1(Key, State)
+            update1({Key, Value}, State)
     end.
 
-update1(Key, State = #state{r = R, completed = Competed, seen = Seen})
+update1({Key, Value}, State = #state{r = R, completed = Competed, seen = Seen})
   when R < 2 ->
     Seen1 = sets:add_element(Key, Seen),
-    State#state{seen = Seen1, completed = [Key | Competed]};
+    State#state{seen = Seen1, completed = [Value | Competed]};
 
-update1(Key, State = #state{r = R, completed = Competed, seen = Seen,
-                            replies = Replies}) ->
+update1({Key, Value},
+        State = #state{r = R, completed = Competed, seen = Seen,
+                       merge_fn = Merge, replies = Replies}) ->
     case maps:find(Key, Replies) of
         error ->
-            Replies1 = maps:put(Key, 1, Replies),
+            Replies1 = maps:put(Key, [Value], Replies),
             State#state{replies = Replies1};
-        {ok, Count} when Count =:= R - 1 ->
+        {ok, Vals} when length(Vals) =:= R - 1 ->
+            Merged = Merge([Value | Vals]),
             Seen1 = sets:add_element(Key, Seen),
             Replies1 = maps:remove(Key, Replies),
-            State#state{seen = Seen1, completed = [Key | Competed],
+            State#state{seen = Seen1, completed = [Merged | Competed],
                         replies = Replies1};
-        {ok, Count} ->
-            Replies1 = maps:put(Key, Count + 1, Replies),
+        {ok, Vals} ->
+            Replies1 = maps:put(Key, [Value | Vals], Replies),
             State#state{replies = Replies1}
     end.
 
