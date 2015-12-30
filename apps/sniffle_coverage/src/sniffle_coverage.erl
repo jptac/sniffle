@@ -10,18 +10,40 @@
          mk_reqid/0
         ]).
 
--record(state, {replies, r, reqid, from}).
+-record(state, {replies = #{} :: #{binary() => pos_integer()},
+                seen = sets:new() :: sets:set(),
+                r = 1 :: pos_integer(),
+                reqid :: integer(),
+                from :: pid(),
+                completed = [] :: [binary()]}).
 
 start(VNodeMaster, NodeCheckService, Request) ->
     ReqID = mk_reqid(),
     sniffle_coverage_sup:start_coverage(
       ?MODULE, {self(), ReqID, something_else},
       {VNodeMaster, NodeCheckService, Request}),
+    wait(ReqID).
+
+wait(ReqID) ->
     receive
-        ok ->
+        {ok, ReqID} ->
             ok;
-        {ok, Result} ->
+        {partial, ReqID, Result} ->
+            wait(ReqID, Result);
+        {ok, ReqID, Result} ->
             {ok, Result}
+    after 10000 ->
+            {error, timeout}
+    end.
+
+wait(ReqID, Result) ->
+    receive
+        {ok, ReqID} ->
+            ok;
+        {partial, ReqID, Result1} ->
+            wait(ReqID, Result1 ++ Result);
+        {ok, ReqID, Result1} ->
+            {ok, Result1 ++ Result}
     after 10000 ->
             {error, timeout}
     end.
@@ -35,26 +57,59 @@ init({From, ReqID, _}, {VNodeMaster, NodeCheckService, Request}) ->
     PrimaryVNodeCoverage = R,
     %% We timeout after 5s
     Timeout = 5000,
-    State = #state{replies = dict:new(), r = R,
-                   from = From, reqid = ReqID},
+    State = #state{r = R, from = From, reqid = ReqID},
     {Request, VNodeSelector, N, PrimaryVNodeCoverage,
      NodeCheckService, VNodeMaster, Timeout, State}.
 
+
+update(Key, R, Seen, Competed, Replies) ->
+    case sets:is_element(Key, Seen) of
+        true ->
+            {Seen, Competed, Replies};
+        false ->
+            update1(Key, R, Seen, Competed, Replies)
+    end.
+
+update1(Key, R, Seen, Competed, Replies) when R < 2 ->
+    Seen1 = sets:add_element(Key, Seen),
+    {Seen1, [Key | Competed], Replies};
+
+update1(Key, R, Seen, Competed, Replies) ->
+    case maps:find(Key, Replies) of
+        error ->
+            Replies1 = maps:put(Key, 1, Replies),
+            {Seen, Competed, Replies1};
+        {ok, Count} when Count =:= R - 1 ->
+            Seen1 = sets:add_element(Key, Seen),
+            Replies1 = maps:remove(Key, Replies),
+            {Seen1, [Key | Competed], Replies1};
+        {ok, Count} ->
+            Replies1 = maps:put(Key, Count + 1, Replies),
+            {Seen, Competed, Replies1}
+    end.
+
 process_results({partial, _ReqID, _IdxNode, Obj},
-                State = #state{replies = Replies}) ->
-    Replies1 = lists:foldl(fun (Key, D) ->
-                                  dict:update_counter(Key, 1, D)
-                          end, Replies, Obj),
+                State = #state{seen = Seen, completed = Completed,
+                               replies = Replies, r = R}) ->
+    {Seen1, Completed1, Replies1} =
+        lists:foldl(fun (Key, {SAcc, CAcc, RAcc}) ->
+                            update(Key, R, SAcc, CAcc, RAcc)
+                    end, {Seen, Completed, Replies}, Obj),
     %% If we return ok and not done this vnode will be considered
     %% to keep sending data.
-    {ok, State#state{replies = Replies1}};
+    {ok, State#state{seen = Seen1, completed = Completed1, replies = Replies1}};
 
 process_results({ok, _ReqID, _IdxNode, Obj},
-                State = #state{replies = Replies}) ->
-    Replies1 = lists:foldl(fun (Key, D) ->
-                                  dict:update_counter(Key, 1, D)
-                          end, Replies, Obj),
-    {done, State#state{replies = Replies1}};
+                State = #state{seen = Seen, completed = Completed,
+                               replies = Replies, r = R}) ->
+    {Seen1, Completed1, Replies1} =
+        lists:foldl(fun (Key, {SAcc, CAcc, RAcc}) ->
+                            update(Key, R, SAcc, CAcc, RAcc)
+                    end, {Seen, Completed, Replies}, Obj),
+    %% If we return ok and not done this vnode will be considered
+    %% to keep sending data.
+    {done,
+     State#state{seen = Seen1, completed = Completed1, replies = Replies1}};
 
 process_results({ok, _}, State) ->
     {done, State};
@@ -63,14 +118,9 @@ process_results(Result, State) ->
     lager:error("Unknown process results call: ~p ~p", [Result, State]),
     {done, State}.
 
-finish(clean, State = #state{replies = Replies,
-                             from = From, r = R}) ->
-    MergedReplies = dict:fold(fun(_Key, Count, Keys) when Count < R->
-                                      Keys;
-                                 (Key, _Count, Keys) ->
-                                      [Key | Keys]
-                              end, [], Replies),
-    From ! {ok, MergedReplies},
+finish(clean, State = #state{completed = Completed, reqid = ReqID,
+                             from = From}) ->
+    From ! {ok, ReqID, Completed},
     {stop, normal, State};
 
 finish(How, State) ->
