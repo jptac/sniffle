@@ -51,11 +51,18 @@ list(Getter, Requirements, Sender, State=#vstate{state=StateMod}) ->
     ID = mkid(),
     FoldFn = fun (Key, E, C) ->
                      E1 = load_obj(ID, StateMod, E),
-                     case rankmatcher:match(E1, Getter, Requirements) of
-                         false ->
-                             C;
-                         Pts ->
-                             [{Pts, {Key, E1}} | C]
+                     C1 = case rankmatcher:match(E1, Getter, Requirements) of
+                              false ->
+                                  C;
+                              Pts ->
+                                  [{Pts, {Key, E1}} | C]
+                          end,
+                     case length(C1) of
+                         ?PARTIAL_SIZE ->
+                             partial(C1, Sender, State),
+                             [];
+                         _ ->
+                             C1
                      end
              end,
     fold(FoldFn, [], Sender, State).
