@@ -25,11 +25,11 @@
 
 raw(VNodeMaster, NodeCheckService, Requirements) ->
     start(VNodeMaster, NodeCheckService,
-          {full_list, Requirements, true}).
+          {list, Requirements, true}).
 
 list(VNodeMaster, NodeCheckService, Requirements) ->
     start(VNodeMaster, NodeCheckService,
-          {full_list, Requirements, false}).
+          {list, Requirements, false}).
 
 start(VNodeMaster, NodeCheckService, Request) ->
     ReqID = mk_reqid(),
@@ -64,10 +64,11 @@ wait(ReqID, Result) ->
 
 %% The first is the vnode service used
 init(Req,
-     {VNodeMaster, NodeCheckService, {full_list, Requirements, Raw}}) ->
+     {VNodeMaster, NodeCheckService, {list, Requirements, Raw}}) ->
     {Request, VNodeSelector, N, PrimaryVNodeCoverage,
      NodeCheckService, VNodeMaster, Timeout, State1} =
-        init(Req, {VNodeMaster, NodeCheckService, {list, Requirements, true}}),
+        base_init(Req, {VNodeMaster, NodeCheckService,
+                        {list, Requirements, true}}),
     Merge = case Raw of
                 true ->
                     fun raw_merge/1;
@@ -78,7 +79,10 @@ init(Req,
     {Request, VNodeSelector, N, PrimaryVNodeCoverage,
      NodeCheckService, VNodeMaster, Timeout, State2};
 
-init({From, ReqID, _}, {VNodeMaster, NodeCheckService, Request}) ->
+init(Req, {VNodeMaster, NodeCheckService, Request}) ->
+    base_init(Req, {VNodeMaster, NodeCheckService, Request}).
+
+base_init({From, ReqID, _}, {VNodeMaster, NodeCheckService, Request}) ->
     {ok, N} = application:get_env(sniffle, n),
     {ok, R} = application:get_env(sniffle, r),
     %% all - full coverage; allup - partial coverage
