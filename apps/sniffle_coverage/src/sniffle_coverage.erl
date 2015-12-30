@@ -84,7 +84,7 @@ init({From, ReqID, _}, {VNodeMaster, NodeCheckService, Request}) ->
 update(Key, State) when is_binary(Key) ->
     update({Key, Key}, State);
 
-update({Pts, {Key, V}}, State) when is_integer(Pts) ->
+update({Pts, {Key, V}}, State) when not is_binary(Pts) ->
     update({Key, {Pts, V}}, State);
 
 update({Key, Value}, State = #state{seen = Seen}) ->
@@ -107,7 +107,7 @@ update1({Key, Value},
         error ->
             Replies1 = maps:put(Key, [Value], Replies),
             State#state{replies = Replies1};
-        {ok, Vals} when length(Vals) =:= R - 1 ->
+        {ok, Vals} when length(Vals) >= R - 1 ->
             Merged = Merge([Value | Vals]),
             Seen1 = sets:add_element(Key, Seen),
             Replies1 = maps:remove(Key, Replies),
@@ -179,22 +179,6 @@ raw_merge([{Score, V} | R], Score, Vs) ->
 raw_merge([{_Score1, V} | R], _Score2, Vs) when _Score1 =/= _Score2->
     raw_merge(R, recalculate, [V | Vs]).
 
-
-merge([{Score, V} | R]) ->
-    merge(R, Score, [V]).
-
-merge([], recalculate, Vs) ->
-    {0, merge_obj(Vs)};
-
-merge([], Score, Vs) ->
-    {Score, merge_obj(Vs)};
-
-merge([{Score, V} | R], Score, Vs) ->
-    merge(R, Score, [V | Vs]);
-
-merge([{_Score1, V} | R], _Score2, Vs) when _Score1 =/= _Score2->
-    merge(R, recalculate, [V | Vs]).
-
-merge_obj(Vs) ->
-    O = ft_obj:merge(sniffle_entity_read_fsm, Vs),
-    ft_obj:val(O).
+merge(Vs) ->
+    {Score, Obj} = raw_merge(Vs),
+    {Score, ft_obj:val(Obj)}.
