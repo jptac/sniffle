@@ -14,24 +14,27 @@
 -spec raw(atom(), atom(), [fifo:matcher()]) ->
                  {ok, [{integer(), ft_obj:obj()}]}.
 raw(VNodeMaster, NodeCheckService, Requirements) ->
-    start(VNodeMaster, NodeCheckService, {list, Requirements, true, true}).
+    sniffle_coverage:start(VNodeMaster, NodeCheckService,
+                           {list, Requirements, true, true}).
 
 list(VNodeMaster, NodeCheckService, Requirements) ->
-    start(VNodeMaster, NodeCheckService, {list, Requirements, true, false}).
+    sniffle_coverage:start(VNodeMaster, NodeCheckService,
+                           {list, Requirements, true, false}).
 
-start(VNodeMaster, NodeCheckService, Request = {list, Requirements, true, _}) ->
-    ReqID = mk_reqid(),
-    sniffle_coverage_sup:start_coverage(
-      ?MODULE, {self(), ReqID, Requirements},
-      {VNodeMaster, NodeCheckService, Request}),
-    receive
-        ok ->
-            ok;
-        {ok, Result} ->
-            {ok, Result}
-    after 10000 ->
-            {error, timeout}
-    end.
+%% start(VNodeMaster, NodeCheckService,
+%%       Request = {list, Requirements, true, _}) ->
+%%     ReqID = mk_reqid(),
+%%     sniffle_coverage_sup:start_coverage(
+%%       ?MODULE, {self(), ReqID, Requirements},
+%%       {VNodeMaster, NodeCheckService, Request}),
+%%     receive
+%%         ok ->
+%%             ok;
+%%         {ok, Result} ->
+%%             {ok, Result}
+%%     after 10000 ->
+%%             {error, timeout}
+%%     end.
 
 %% The first is the vnode service used
 init({From, ReqID, Requirements},
@@ -93,10 +96,6 @@ finish(How, State) ->
 %%%===================================================================
 %%% Internal Functions
 %%%===================================================================
-
-mk_reqid() ->
-    erlang:unique_integer().
-
 
 raw_merge([{Score, V} | R]) ->
     raw_merge(R, Score, [V]).

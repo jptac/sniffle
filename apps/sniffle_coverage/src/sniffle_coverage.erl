@@ -59,7 +59,13 @@ init(Req,
     {Request, VNodeSelector, N, PrimaryVNodeCoverage,
      NodeCheckService, VNodeMaster, Timeout, State1} =
         init(Req, {VNodeMaster, NodeCheckService, {list, Requirements, Full}}),
-    State2 = State1#state{reqs = Requirements, raw = Raw},
+    Merge = case Raw of
+                true ->
+                    fun raw_merge/1;
+                false ->
+                    fun merge/1
+            end,
+    State2 = State1#state{reqs = Requirements, raw = Raw, merge_fn = Merge},
     {Request, VNodeSelector, N, PrimaryVNodeCoverage,
      NodeCheckService, VNodeMaster, Timeout, State2};
 
@@ -153,3 +159,39 @@ finish(How, State) ->
 
 mk_reqid() ->
     erlang:unique_integer().
+
+
+raw_merge([{Score, V} | R]) ->
+    raw_merge(R, Score, [V]).
+
+raw_merge([], recalculate, Vs) ->
+    {0, ft_obj:merge(sniffle_entity_read_fsm, Vs)};
+
+raw_merge([], Score, Vs) ->
+    {Score, ft_obj:merge(sniffle_entity_read_fsm, Vs)};
+
+raw_merge([{Score, V} | R], Score, Vs) ->
+    raw_merge(R, Score, [V | Vs]);
+
+raw_merge([{_Score1, V} | R], _Score2, Vs) when _Score1 =/= _Score2->
+    raw_merge(R, recalculate, [V | Vs]).
+
+
+merge([{Score, V} | R]) ->
+    merge(R, Score, [V]).
+
+merge([], recalculate, Vs) ->
+    {0, merge_obj(Vs)};
+
+merge([], Score, Vs) ->
+    {Score, merge_obj(Vs)};
+
+merge([{Score, V} | R], Score, Vs) ->
+    merge(R, Score, [V | Vs]);
+
+merge([{_Score1, V} | R], _Score2, Vs) when _Score1 =/= _Score2->
+    merge(R, recalculate, [V | Vs]).
+
+merge_obj(Vs) ->
+    O = ft_obj:merge(sniffle_entity_read_fsm, Vs),
+    ft_obj:val(O).
