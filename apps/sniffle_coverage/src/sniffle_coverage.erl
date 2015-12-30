@@ -15,6 +15,8 @@
                 r = 1 :: pos_integer(),
                 reqid :: integer(),
                 from :: pid(),
+                reqs :: list(),
+                raw :: boolean(),
                 completed = [] :: [binary()]}).
 
 -define(PARTIAL_SIZE, 10).
@@ -51,6 +53,15 @@ wait(ReqID, Result) ->
     end.
 
 %% The first is the vnode service used
+init(Req,
+     {VNodeMaster, NodeCheckService, {list, Requirements, Full, Raw}}) ->
+    {Request, VNodeSelector, N, PrimaryVNodeCoverage,
+     NodeCheckService, VNodeMaster, Timeout, State1} =
+        init(Req, {VNodeMaster, NodeCheckService, {list, Requirements, Full}}),
+    State2 = State1#state{reqs = Requirements, raw = Raw},
+    {Request, VNodeSelector, N, PrimaryVNodeCoverage,
+     NodeCheckService, VNodeMaster, Timeout, State2};
+
 init({From, ReqID, _}, {VNodeMaster, NodeCheckService, Request}) ->
     {ok, N} = application:get_env(sniffle, n),
     {ok, R} = application:get_env(sniffle, r),
@@ -64,50 +75,48 @@ init({From, ReqID, _}, {VNodeMaster, NodeCheckService, Request}) ->
      NodeCheckService, VNodeMaster, Timeout, State}.
 
 
-update(Key, R, Seen, Competed, Replies) ->
+update(Key, State = #state{seen = Seen}) ->
     case sets:is_element(Key, Seen) of
         true ->
-            {Seen, Competed, Replies};
+            State;
         false ->
-            update1(Key, R, Seen, Competed, Replies)
+            update1(Key, State)
     end.
 
-update1(Key, R, Seen, Competed, Replies) when R < 2 ->
+update1(Key, State = #state{r = R, completed = Competed, seen = Seen})
+  when R < 2 ->
     Seen1 = sets:add_element(Key, Seen),
-    {Seen1, [Key | Competed], Replies};
+    State#state{seen = Seen1, completed = [Key | Competed]};
 
-update1(Key, R, Seen, Competed, Replies) ->
+update1(Key, State = #state{r = R, completed = Competed, seen = Seen,
+                            replies = Replies}) ->
     case maps:find(Key, Replies) of
         error ->
             Replies1 = maps:put(Key, 1, Replies),
-            {Seen, Competed, Replies1};
+            State#state{replies = Replies1};
         {ok, Count} when Count =:= R - 1 ->
             Seen1 = sets:add_element(Key, Seen),
             Replies1 = maps:remove(Key, Replies),
-            {Seen1, [Key | Competed], Replies1};
+            State#state{seen = Seen1, completed = [Key | Competed],
+                        replies = Replies1};
         {ok, Count} ->
             Replies1 = maps:put(Key, Count + 1, Replies),
-            {Seen, Competed, Replies1}
+            State#state{replies = Replies1}
     end.
 
 process_results({Type, _ReqID, _IdxNode, Obj},
-                State = #state{seen = Seen, completed = Completed,
-                               replies = Replies, r = R, reqid = ReqID,
-                               from = From})
+                State = #state{reqid = ReqID, from = From})
   when Type =:= partial;
        Type =:= ok
        ->
-    {Seen1, Completed1, Replies1} =
-        lists:foldl(fun (Key, {SAcc, CAcc, RAcc}) ->
-                            update(Key, R, SAcc, CAcc, RAcc)
-                    end, {Seen, Completed, Replies}, Obj),
-    Completed2 = case length(Completed1) of
-                     L when L >= ?PARTIAL_SIZE ->
-                         From ! {partial, ReqID, Completed1},
-                         [];
-                     _ ->
-                         Completed1
-                 end,
+    State1 = lists:foldl(fun update/2, State, Obj),
+    State2 = case length(State1#state.completed) of
+                 L when L >= ?PARTIAL_SIZE ->
+                     From ! {partial, ReqID, State1#state.completed},
+                     State1#state{completed = []};
+                 _ ->
+                     State1
+             end,
     %% If we return ok and not done this vnode will be considered
     %% to keep sending data.
     %% So we translate the reply type here
@@ -115,8 +124,7 @@ process_results({Type, _ReqID, _IdxNode, Obj},
                     ok -> done;
                     partial -> ok
                 end,
-    {ReplyType,
-     State#state{seen = Seen1, completed = Completed2, replies = Replies1}};
+    {ReplyType, State2};
 
 process_results({ok, _}, State) ->
     {done, State};
