@@ -40,6 +40,15 @@ init({From, ReqID, _}, {VNodeMaster, NodeCheckService, Request}) ->
     {Request, VNodeSelector, N, PrimaryVNodeCoverage,
      NodeCheckService, VNodeMaster, Timeout, State}.
 
+process_results({partial, _ReqID, _IdxNode, Obj},
+                State = #state{replies = Replies}) ->
+    Replies1 = lists:foldl(fun ({Pts, {Key, V}}, D) ->
+                                   dict:append(Key, {Pts, V}, D)
+                           end, Replies, Obj),
+    %% If we return ok and not done this vnode will be considered
+    %% to keep sending data.
+    {ok, State#state{replies = Replies1}};
+
 process_results({ok, _ReqID, _IdxNode, Obj},
                 State = #state{replies = Replies}) ->
     Replies1 = lists:foldl(fun (Key, D) ->
