@@ -17,6 +17,8 @@
                 from :: pid(),
                 completed = [] :: [binary()]}).
 
+-define(PARTIAL_SIZE, 10).
+
 start(VNodeMaster, NodeCheckService, Request) ->
     ReqID = mk_reqid(),
     sniffle_coverage_sup:start_coverage(
@@ -88,28 +90,33 @@ update1(Key, R, Seen, Competed, Replies) ->
             {Seen, Competed, Replies1}
     end.
 
-process_results({partial, _ReqID, _IdxNode, Obj},
+process_results({Type, _ReqID, _IdxNode, Obj},
                 State = #state{seen = Seen, completed = Completed,
-                               replies = Replies, r = R}) ->
+                               replies = Replies, r = R, reqid = ReqID,
+                               from = From})
+  when Type =:= partial;
+       Type =:= ok
+       ->
     {Seen1, Completed1, Replies1} =
         lists:foldl(fun (Key, {SAcc, CAcc, RAcc}) ->
                             update(Key, R, SAcc, CAcc, RAcc)
                     end, {Seen, Completed, Replies}, Obj),
+    Completed2 = case length(Completed1) of
+                     L when L >= ?PARTIAL_SIZE ->
+                         From ! {partial, ReqID, Completed1},
+                         [];
+                     _ ->
+                         Completed1
+                 end,
     %% If we return ok and not done this vnode will be considered
     %% to keep sending data.
-    {ok, State#state{seen = Seen1, completed = Completed1, replies = Replies1}};
-
-process_results({ok, _ReqID, _IdxNode, Obj},
-                State = #state{seen = Seen, completed = Completed,
-                               replies = Replies, r = R}) ->
-    {Seen1, Completed1, Replies1} =
-        lists:foldl(fun (Key, {SAcc, CAcc, RAcc}) ->
-                            update(Key, R, SAcc, CAcc, RAcc)
-                    end, {Seen, Completed, Replies}, Obj),
-    %% If we return ok and not done this vnode will be considered
-    %% to keep sending data.
-    {done,
-     State#state{seen = Seen1, completed = Completed1, replies = Replies1}};
+    %% So we translate the reply type here
+    ReplyType = case Type of
+                    ok -> done;
+                    partial -> ok
+                end,
+    {ReplyType,
+     State#state{seen = Seen1, completed = Completed2, replies = Replies1}};
 
 process_results({ok, _}, State) ->
     {done, State};
