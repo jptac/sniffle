@@ -84,7 +84,7 @@ init({From, ReqID, _}, {VNodeMaster, NodeCheckService, Request}) ->
 update(Key, State) when is_binary(Key) ->
     update({Key, Key}, State);
 
-update({Pts, {Key, V}}, State) ->
+update({Pts, {Key, V}}, State) when is_integer(Pts) ->
     update({Key, {Pts, V}}, State);
 
 update({Key, Value}, State = #state{seen = Seen}) ->
