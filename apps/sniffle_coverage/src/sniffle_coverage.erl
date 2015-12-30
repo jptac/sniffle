@@ -84,6 +84,9 @@ init({From, ReqID, _}, {VNodeMaster, NodeCheckService, Request}) ->
 update(Key, State) when is_binary(Key) ->
     update({Key, Key}, State);
 
+update({Pts, {Key, V}}, State) ->
+    update({Key, {Pts, V}}, State);
+
 update({Key, Value}, State = #state{seen = Seen}) ->
     case sets:is_element(Key, Seen) of
         true ->
