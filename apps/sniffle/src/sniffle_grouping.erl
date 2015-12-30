@@ -17,6 +17,7 @@
          get/1,
          list/0,
          list/2,
+         list/3,
          wipe/1,
          sync_repair/2,
          add_element/2,
@@ -243,9 +244,16 @@ set_config(Grouping, Attributes) ->
 %% @end
 %%--------------------------------------------------------------------
 
+
+
+list(Requirements, FoldFn, Acc0) ->
+    ?FM(list_all, sniffle_coverage, list,
+                    [?MASTER, ?SERVICE, Requirements, FoldFn, Acc0]).
+
 list(Requirements, Full) ->
     {ok, Res} = ?FM(list_all, sniffle_coverage, list,
                     [?MASTER, ?SERVICE, Requirements]),
+
     Res1 = lists:sort(rankmatcher:apply_scales(Res)),
     Res2 = case Full of
                true ->
