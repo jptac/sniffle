@@ -7,7 +7,8 @@
          process_results/2,
          finish/2,
          start/3,
-         mk_reqid/0
+         mk_reqid/0,
+         list/3, raw/3
         ]).
 
 -record(state, {replies = #{} :: #{binary() => pos_integer()},
@@ -21,6 +22,14 @@
                 completed = [] :: [binary()]}).
 
 -define(PARTIAL_SIZE, 10).
+
+raw(VNodeMaster, NodeCheckService, Requirements) ->
+    start(VNodeMaster, NodeCheckService,
+          {list, Requirements, true}).
+
+list(VNodeMaster, NodeCheckService, Requirements) ->
+    start(VNodeMaster, NodeCheckService,
+          {list, Requirements, false}).
 
 start(VNodeMaster, NodeCheckService, Request) ->
     ReqID = mk_reqid(),
@@ -55,10 +64,10 @@ wait(ReqID, Result) ->
 
 %% The first is the vnode service used
 init(Req,
-     {VNodeMaster, NodeCheckService, {list, Requirements, Full, Raw}}) ->
+     {VNodeMaster, NodeCheckService, {list, Requirements, Raw}}) ->
     {Request, VNodeSelector, N, PrimaryVNodeCoverage,
      NodeCheckService, VNodeMaster, Timeout, State1} =
-        init(Req, {VNodeMaster, NodeCheckService, {list, Requirements, Full}}),
+        init(Req, {VNodeMaster, NodeCheckService, {list, Requirements, true}}),
     Merge = case Raw of
                 true ->
                     fun raw_merge/1;

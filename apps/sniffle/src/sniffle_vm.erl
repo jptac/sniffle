@@ -120,7 +120,7 @@ sync_repair(UUID, Obj) ->
     do_write(UUID, sync_repair, Obj).
 
 list_() ->
-    {ok, Res} = ?FM(list_all, sniffle_full_coverage, raw,
+    {ok, Res} = ?FM(list_all, sniffle_coverage, raw,
                     [?MASTER, ?SERVICE, []]),
     Res1 = [R || {_, R} <- Res],
     {ok,  Res1}.
@@ -775,17 +775,17 @@ list() ->
 -spec list([fifo:matcher()], boolean()) ->
                   {error, timeout} | {ok, [fifo:uuid()]}.
 
-list(Requirements, true) ->
-    {ok, Res} = ?FM(list_all, sniffle_full_coverage, list,
+list(Requirements, Full) ->
+    {ok, Res} = ?FM(list_all, sniffle_coverage, list,
                     [?MASTER, ?SERVICE, Requirements]),
     Res1 = lists:sort(rankmatcher:apply_scales(Res)),
-    {ok,  Res1};
-
-list(Requirements, false) ->
-    {ok, Res} = ?FM(list_all, sniffle_coverage, start,
-                    [?MASTER, ?SERVICE, {list, Requirements}]),
-    Res1 = rankmatcher:apply_scales(Res),
-    {ok,  lists:sort(Res1)}.
+    Res2 = case Full of
+               true ->
+                   Res1;
+               false ->
+                   [{P, ft_vm:uuid(O)} || {P, O} <- Res1]
+           end,
+    {ok, Res2}.
 
 %%--------------------------------------------------------------------
 %% @doc Tries to delete a VM, either unregistering it if no

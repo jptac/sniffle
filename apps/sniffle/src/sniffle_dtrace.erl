@@ -56,7 +56,7 @@ sync_repair(UUID, Obj) ->
     do_write(UUID, sync_repair, Obj).
 
 list_() ->
-    {ok, Res} = ?FM(list_all, sniffle_full_coverage, raw,
+    {ok, Res} = ?FM(list_all, sniffle_coverage, raw,
                     [?MASTER, ?SERVICE, []]),
     Res1 = [R || {_, R} <- Res],
     {ok,  Res1}.
@@ -92,18 +92,17 @@ list() ->
                   {error, timeout} |
                   {ok, [{integer(), fifo:uuid() | fifo:dtrace()}]}.
 
-list(Requirements, true) ->
-    {ok, Res} = ?FM(list_all, sniffle_full_coverage, list,
+list(Requirements, Full) ->
+    {ok, Res} = ?FM(list_all, sniffle_coverage, list,
                     [?MASTER, ?SERVICE, Requirements]),
     Res1 = lists:sort(rankmatcher:apply_scales(Res)),
-    {ok,  Res1};
-
-list(Requirements, false) ->
-    {ok, Res} = ?FM(list_all, sniffle_coverage, start,
-                    [?MASTER, ?SERVICE, {list, Requirements}]),
-    Res1 = rankmatcher:apply_scales(Res),
-    {ok,  lists:sort(Res1)}.
-
+    Res2 = case Full of
+               true ->
+                   Res1;
+               false ->
+                   [{P, ft_dtrace:uuid(O)} || {P, O} <- Res1]
+           end,
+    {ok, Res2}.
 
 -spec set(UUID::fifo:dtrace_id(),
           Attribute::fifo:keys(),
