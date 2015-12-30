@@ -25,11 +25,11 @@
 
 raw(VNodeMaster, NodeCheckService, Requirements) ->
     start(VNodeMaster, NodeCheckService,
-          {list, Requirements, true}).
+          {full_list, Requirements, true}).
 
 list(VNodeMaster, NodeCheckService, Requirements) ->
     start(VNodeMaster, NodeCheckService,
-          {list, Requirements, false}).
+          {full_list, Requirements, false}).
 
 start(VNodeMaster, NodeCheckService, Request) ->
     ReqID = mk_reqid(),
@@ -64,7 +64,7 @@ wait(ReqID, Result) ->
 
 %% The first is the vnode service used
 init(Req,
-     {VNodeMaster, NodeCheckService, {list, Requirements, Raw}}) ->
+     {VNodeMaster, NodeCheckService, {full_list, Requirements, Raw}}) ->
     {Request, VNodeSelector, N, PrimaryVNodeCoverage,
      NodeCheckService, VNodeMaster, Timeout, State1} =
         init(Req, {VNodeMaster, NodeCheckService, {list, Requirements, true}}),
