@@ -32,32 +32,26 @@ list(VNodeMaster, NodeCheckService, Requirements) ->
           {list, Requirements, false}).
 
 start(VNodeMaster, NodeCheckService, Request) ->
+    FoldFn = fun(Es, Acc) ->
+                     Es ++ Acc
+             end,
+    fold(VNodeMaster, NodeCheckService, Request, FoldFn, []).
+
+fold(VNodeMaster, NodeCheckService, Request, FoldFn, Acc0) ->
     ReqID = mk_reqid(),
     sniffle_coverage_sup:start_coverage(
       ?MODULE, {self(), ReqID, something_else},
       {VNodeMaster, NodeCheckService, Request}),
-    wait(ReqID).
+    wait(ReqID, FoldFn, Acc0).
 
-wait(ReqID) ->
-    receive
-        {ok, ReqID} ->
-            ok;
-        {partial, ReqID, Result} ->
-            wait(ReqID, Result);
-        {ok, ReqID, Result} ->
-            {ok, Result}
-    after 10000 ->
-            {error, timeout}
-    end.
-
-wait(ReqID, Result) ->
+wait(ReqID, FoldFn, Acc) ->
     receive
         {ok, ReqID} ->
             ok;
         {partial, ReqID, Result1} ->
-            wait(ReqID, Result1 ++ Result);
+            wait(ReqID, FoldFn, FoldFn(Result1, Acc));
         {ok, ReqID, Result1} ->
-            {ok, Result1 ++ Result}
+            {ok, FoldFn(Result1, Acc)}
     after 10000 ->
             {error, timeout}
     end.
