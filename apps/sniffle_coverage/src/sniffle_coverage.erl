@@ -8,8 +8,11 @@
          finish/2,
          start/3,
          mk_reqid/0,
-         list/3, raw/3
+         list/3, raw/3,
+         list/5, raw/5
         ]).
+
+-ignore_xref([list/5, raw/5]).
 
 -record(state, {replies = #{} :: #{binary() => pos_integer()},
                 seen = sets:new() :: sets:set(),
@@ -23,19 +26,25 @@
 
 -define(PARTIAL_SIZE, 10).
 
+concat(Es, Acc) ->
+    Es ++ Acc.
+
 raw(VNodeMaster, NodeCheckService, Requirements) ->
-    start(VNodeMaster, NodeCheckService,
-          {list, Requirements, true}).
+    raw(VNodeMaster, NodeCheckService, Requirements, fun concat/2, []).
+
+raw(VNodeMaster, NodeCheckService, Requirements, FoldFn, Acc0) ->
+    fold(VNodeMaster, NodeCheckService,
+         {list, Requirements, true}, FoldFn, Acc0).
 
 list(VNodeMaster, NodeCheckService, Requirements) ->
-    start(VNodeMaster, NodeCheckService,
-          {list, Requirements, false}).
+    list(VNodeMaster, NodeCheckService, Requirements, fun concat/2, []).
+
+list(VNodeMaster, NodeCheckService, Requirements, FoldFn, Acc0) ->
+    fold(VNodeMaster, NodeCheckService,
+          {list, Requirements, false}, FoldFn, Acc0).
 
 start(VNodeMaster, NodeCheckService, Request) ->
-    FoldFn = fun(Es, Acc) ->
-                     Es ++ Acc
-             end,
-    fold(VNodeMaster, NodeCheckService, Request, FoldFn, []).
+    fold(VNodeMaster, NodeCheckService, Request, fun concat/2, []).
 
 fold(VNodeMaster, NodeCheckService, Request, FoldFn, Acc0) ->
     ReqID = mk_reqid(),
