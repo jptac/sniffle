@@ -508,6 +508,17 @@ message({vm, list, Requirements, Full}, State) when
      sniffle_vm:list(Requirements, Full),
      State};
 
+
+message({vm, stream, Requirements}, State) when
+      is_list(Requirements) ->
+    Fn = fun(Send) ->
+                 Fold = fun(Es, _) ->
+                                Send(Es)
+                        end,
+                 sniffle_vm:list(Requirements, Fold, ok)
+         end,
+    {stream, Fn, State};
+
 %%%===================================================================
 %%%  Hypervisor Functions
 %%%===================================================================

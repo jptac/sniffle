@@ -245,7 +245,6 @@ set_config(Grouping, Attributes) ->
 %%--------------------------------------------------------------------
 
 
-
 list(Requirements, FoldFn, Acc0) ->
     ?FM(list_all, sniffle_coverage, list,
                     [?MASTER, ?SERVICE, Requirements, FoldFn, Acc0]).

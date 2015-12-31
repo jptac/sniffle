@@ -35,6 +35,7 @@
          get_docker/1,
          list/0,
          list/2,
+         list/3,
          log/2,
          logs/1,
          primary_nic/2,
@@ -768,10 +769,15 @@ get_docker(DockerID) ->
 list() ->
     ?FM(list, sniffle_coverage, start, [?MASTER, ?SERVICE, list]).
 
+list(Requirements, FoldFn, Acc0) ->
+    ?FM(list_all, sniffle_coverage, list,
+                    [?MASTER, ?SERVICE, Requirements, FoldFn, Acc0]).
+
 %%--------------------------------------------------------------------
 %% @doc Lists all vm's and fiters by a given matcher set.
 %% @end
 %%--------------------------------------------------------------------
+
 -spec list([fifo:matcher()], boolean()) ->
                   {error, timeout} | {ok, [fifo:uuid()]}.
 
