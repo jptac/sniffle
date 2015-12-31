@@ -630,6 +630,16 @@ message({dataset, list, Requirements, Full}, State) when
      sniffle_dataset:list(Requirements, Full),
      State};
 
+message({dataset, stream, Requirements}, State) when
+      is_list(Requirements) ->
+    Fn = fun(Send) ->
+                 Fold = fun(Es, _) ->
+                                Send(Es)
+                        end,
+                 sniffle_dataset:list(Requirements, Fold, ok)
+         end,
+    {stream, Fn, State};
+
 message({dataset, import, URL}, State) ->
     {reply,
      sniffle_dataset:import(URL),
