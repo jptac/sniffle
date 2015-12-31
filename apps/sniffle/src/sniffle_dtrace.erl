@@ -19,6 +19,7 @@
     set/3,
     list/0,
     list/2,
+    list/3,
     delete/1,
     wipe/1,
     sync_repair/2,
@@ -83,6 +84,10 @@ delete(UUID) ->
                   {ok, [UUID::fifo:dtrace_id()]} | {error, timeout}.
 list() ->
     ?FM(list, sniffle_coverage, start, [?MASTER, ?SERVICE, list]).
+
+list(Requirements, FoldFn, Acc0) ->
+    ?FM(list_all, sniffle_coverage, list,
+                    [?MASTER, ?SERVICE, Requirements, FoldFn, Acc0]).
 
 %%--------------------------------------------------------------------
 %% @doc Lists all vm's and fiters by a given matcher set.

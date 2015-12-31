@@ -17,6 +17,7 @@
     get/1,
     list/0,
     list/2,
+    list/3,
     status/0,
     service/3,
     update/1,
@@ -152,6 +153,11 @@ to_msg({pool_error, UUID, Alias, Name, State}) ->
                   {ok, [IPR::fifo:hypervisor_id()]} | {error, timeout}.
 list() ->
     sniffle_coverage:start(?MASTER, ?SERVICE, list).
+
+
+list(Requirements, FoldFn, Acc0) ->
+    ?FM(list_all, sniffle_coverage, list,
+        [?MASTER, ?SERVICE, Requirements, FoldFn, Acc0]).
 
 service(UUID, Action, Service) ->
     case sniffle_hypervisor:get(UUID) of

@@ -757,9 +757,6 @@ get_docker(DockerID) ->
             E
     end.
 
-
-
-
 %%--------------------------------------------------------------------
 %% @doc Lists all vm's.
 %% @end
@@ -771,7 +768,7 @@ list() ->
 
 list(Requirements, FoldFn, Acc0) ->
     ?FM(list_all, sniffle_coverage, list,
-                    [?MASTER, ?SERVICE, Requirements, FoldFn, Acc0]).
+        [?MASTER, ?SERVICE, Requirements, FoldFn, Acc0]).
 
 %%--------------------------------------------------------------------
 %% @doc Lists all vm's and fiters by a given matcher set.

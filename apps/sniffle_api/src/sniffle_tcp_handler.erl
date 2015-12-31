@@ -142,6 +142,16 @@ message({grouping, list, Requreiments, Full}, State) ->
      sniffle_grouping:list(Requreiments, Full),
      State};
 
+message({grouping, stream, Requirements}, State) when
+      is_list(Requirements) ->
+    Fn = fun(Send) ->
+                 Fold = fun(Es, _) ->
+                                Send(Es)
+                        end,
+                 sniffle_grouping:list(Requirements, Fold, ok)
+         end,
+    {stream, Fn, State};
+
 message({grouping, element, add, ID, Element}, State) when
       is_binary(ID) ->
     {reply,
@@ -211,6 +221,17 @@ message({dtrace, list, Requreiments, Full}, State) ->
     {reply,
      sniffle_dtrace:list(Requreiments, Full),
      State};
+
+message({dtrace, stream, Requirements}, State) when
+      is_list(Requirements) ->
+    Fn = fun(Send) ->
+                 Fold = fun(Es, _) ->
+                                Send(Es)
+                        end,
+                 sniffle_dtrace:list(Requirements, Fold, ok)
+         end,
+    {stream, Fn, State};
+
 
 message({dtrace, run, ID, Servers}, State) ->
     {ok, _Pid} = sniffle_dtrace_server:run(ID, Servers, self()),
@@ -594,6 +615,17 @@ message({hypervisor, list, Requirements, Full}, State) when
      sniffle_hypervisor:list(Requirements, Full),
      State};
 
+message({hypervisor, stream, Requirements}, State) when
+      is_list(Requirements) ->
+    Fn = fun(Send) ->
+                 Fold = fun(Es, _) ->
+                                Send(Es)
+                        end,
+                 sniffle_hypervisor:list(Requirements, Fold, ok)
+         end,
+    {stream, Fn, State};
+
+
 %%%===================================================================
 %%%  Dataset Functions
 %%%===================================================================
@@ -714,6 +746,17 @@ message({network, list, Requirements, Full}, State) ->
      sniffle_network:list(Requirements, Full),
      State};
 
+message({network, stream, Requirements}, State) when
+      is_list(Requirements) ->
+    Fn = fun(Send) ->
+                 Fold = fun(Es, _) ->
+                                Send(Es)
+                        end,
+                 sniffle_network:list(Requirements, Fold, ok)
+         end,
+    {stream, Fn, State};
+
+
 ?NM(uuid);
 ?NM(name);
 ?NM(set_metadata);
@@ -772,6 +815,16 @@ message({iprange, list, Requirements, Full}, State) when
      sniffle_iprange:list(Requirements, Full),
      State};
 
+message({iprange, stream, Requirements}, State) when
+      is_list(Requirements) ->
+    Fn = fun(Send) ->
+                 Fold = fun(Es, _) ->
+                                Send(Es)
+                        end,
+                 sniffle_iprange:list(Requirements, Fold, ok)
+         end,
+    {stream, Fn, State};
+
 ?IPM(name);
 ?IPM(uuid);
 ?IPM(network);
@@ -816,6 +869,16 @@ message({package, list, Requirements, Full}, State) when
     {reply,
      sniffle_package:list(Requirements, Full),
      State};
+
+message({package, stream, Requirements}, State) when
+      is_list(Requirements) ->
+    Fn = fun(Send) ->
+                 Fold = fun(Es, _) ->
+                                Send(Es)
+                        end,
+                 sniffle_package:list(Requirements, Fold, ok)
+         end,
+    {stream, Fn, State};
 
 message({package, resources, org, inc, Package, Resource, V}, State) when
       is_binary(Package), is_binary(Resource), is_integer(V) ->
