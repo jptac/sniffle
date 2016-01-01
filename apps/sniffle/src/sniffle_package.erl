@@ -15,7 +15,7 @@
          delete/1,
          get/1,
          lookup/1,
-         list/0, list/2,
+         list/0, list/2, list/3,
          wipe/1,
          sync_repair/2,
          org_resource_inc/3, org_resource_dec/3, org_resource_remove/2,
@@ -54,7 +54,7 @@ sync_repair(UUID, Obj) ->
 
 -spec list_() -> {ok, [ft_obj:obj()]}.
 list_() ->
-    {ok, Res} = ?FM(list_all, sniffle_full_coverage, raw,
+    {ok, Res} = ?FM(list_all, sniffle_coverage, raw,
                     [?MASTER, ?SERVICE, []]),
     Res1 = [R || {_, R} <- Res],
     {ok,  Res1}.
@@ -113,6 +113,10 @@ get(Package) ->
 list() ->
     ?FM(list, sniffle_coverage, start, [?MASTER, ?SERVICE, list]).
 
+list(Requirements, FoldFn, Acc0) ->
+    ?FM(list_all, sniffle_coverage, list,
+        [?MASTER, ?SERVICE, Requirements, FoldFn, Acc0]).
+
 %%--------------------------------------------------------------------
 %% @doc Lists all vm's and fiters by a given matcher set.
 %% @end
@@ -123,7 +127,7 @@ list() ->
                    [{integer(), fifo:package()}]}.
 
 list(Requirements, true) ->
-    {ok, Res} = ?FM(list_all, sniffle_full_coverage, list,
+    {ok, Res} = ?FM(list_all, sniffle_coverage, list,
                     [?MASTER, ?SERVICE, Requirements]),
     Res1 = lists:sort(rankmatcher:apply_scales(Res)),
     {ok,  Res1};

@@ -163,26 +163,10 @@ start_fake_write_fsm() ->
 start_fake_coverage(Pid) ->
     meck:new(sniffle_coverage, [passthrough]),
     meck:expect(sniffle_coverage, start,
-                fun(_, O, C) ->
-                        M = list_to_atom(atom_to_list(O) ++ "_vnode"),
-                        Ref = make_ref(),
-                        Pid ! {coverage, M, self(), Ref, C},
-                        receive
-                            {Ref,  {ok, _, _, Res}} ->
-                                {ok, Res};
-                            {Ref, Res} ->
-                                Res
-                        after
-                            5000 ->
-                                {error, timeout}
-                        end
-                end),
-    meck:new(sniffle_full_coverage, [passthrough]),
-    meck:expect(sniffle_full_coverage, start,
                 fun (A, B, {C, Req, Full, true}) ->
-                        sniffle_full_coverage:start(A, B, {C, Req, Full});
+                        sniffle_coverage:start(A, B, {C, Req, Full});
                     (A, B, {C, Req, Full, false}) ->
-                        {ok, R} = sniffle_full_coverage:start(A, B, {C, Req, Full}),
+                        {ok, R} = sniffle_coverage:start(A, B, {C, Req, Full}),
                         {ok, [ft_obj:val(O) || O <- R]};
                     (_, O, {C, Req, Full}) ->
                         M = list_to_atom(atom_to_list(O) ++ "_vnode"),
@@ -196,9 +180,21 @@ start_fake_coverage(Pid) ->
                         after
                             5000 ->
                                 {error, timeout}
+                        end;
+                    (_, O, C) ->
+                        M = list_to_atom(atom_to_list(O) ++ "_vnode"),
+                        Ref = make_ref(),
+                        Pid ! {coverage, M, self(), Ref, C},
+                        receive
+                            {Ref,  {ok, _, _, Res}} ->
+                                {ok, Res};
+                            {Ref, Res} ->
+                                Res
+                        after
+                            5000 ->
+                                {error, timeout}
                         end
                 end).
-
 stop_fake_vnode_master() ->
     catch meck:unload(riak_core_vnode_master).
 
@@ -209,8 +205,7 @@ stop_fake_write_fsm() ->
     catch meck:unload(sniffle_entity_write_fsm).
 
 stop_fake_coverage() ->
-    catch meck:unload(sniffle_coverage),
-    catch meck:unload(sniffle_full_coverage).
+    catch meck:unload(sniffle_coverage).
 
 mock_vnode(Mod, Args) ->
     {ok, S, _} = Mod:init(Args),

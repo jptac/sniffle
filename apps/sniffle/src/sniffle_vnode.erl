@@ -20,6 +20,7 @@
           {Mod, Fun},
           Mod, Fun, Args)).
 
+-define(PARTIAL_SIZE, 10).
 
 hash_object(Key, Obj) ->
     term_to_binary(erlang:phash2({Key, Obj})).
@@ -50,18 +51,32 @@ list(Getter, Requirements, Sender, State=#vstate{state=StateMod}) ->
     ID = mkid(),
     FoldFn = fun (Key, E, C) ->
                      E1 = load_obj(ID, StateMod, E),
-                     case rankmatcher:match(E1, Getter, Requirements) of
-                         false ->
-                             C;
-                         Pts ->
-                             [{Pts, {Key, E1}} | C]
+                     C1 = case rankmatcher:match(E1, Getter, Requirements) of
+                              false ->
+                                  C;
+                              Pts ->
+                                  [{Pts, {Key, E1}} | C]
+                          end,
+                     case length(C1) of
+                         ?PARTIAL_SIZE ->
+                             partial(C1, Sender, State),
+                             [];
+                         _ ->
+                             C1
                      end
              end,
     fold(FoldFn, [], Sender, State).
 
 list_keys(Sender, State=#vstate{db=DB, bucket=Bucket}) ->
     FoldFn = fun (K, L) ->
-                     [K|L]
+                     L1 = [K|L],
+                     case length(L1) of
+                         ?PARTIAL_SIZE ->
+                             partial(L1, Sender, State),
+                             [];
+                         _ ->
+                             L1
+                     end
              end,
     AsyncWork = fun() ->
                         fold_keys(DB, Bucket, FoldFn, [])
@@ -75,11 +90,18 @@ list_keys(Getter, Requirements, Sender, State=#vstate{state=StateMod}) ->
     ID = mkid(),
     FoldFn = fun (Key, E, C) ->
                      E1 = load_obj(ID, StateMod, E),
-                     case rankmatcher:match(E1, Getter, Requirements) of
-                         false ->
-                             C;
-                         Pts ->
-                             [{Pts, Key} | C]
+                     C1 = case rankmatcher:match(E1, Getter, Requirements) of
+                              false ->
+                                  C;
+                              Pts ->
+                                  [{Pts, Key} | C]
+                          end,
+                     case length(C1) of
+                         ?PARTIAL_SIZE ->
+                             partial(C1, Sender, State),
+                             [];
+                         _ ->
+                             C1
                      end
              end,
     fold(FoldFn, [], Sender, State).
@@ -322,6 +344,9 @@ handle_command(Message, _Sender, State) ->
 
 reply(Reply, {_, ReqID, _} = Sender, #vstate{node=N, partition=P}) ->
     riak_core_vnode:reply(Sender, {ok, ReqID, {P, N}, Reply}).
+
+partial(Reply, {_, ReqID, _} = Sender, #vstate{node=N, partition=P}) ->
+    riak_core_vnode:reply(Sender, {partial, ReqID, {P, N}, Reply}).
 
 get(UUID, State) ->
     try
