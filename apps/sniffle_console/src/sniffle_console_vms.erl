@@ -39,7 +39,7 @@ command(text, ["remove-backup", "-f", VMUUIDs, BackupUUIDs]) ->
 command(text, ["remove-backup", VMUUIDs, BackupUUIDs]) ->
     VM = list_to_binary(VMUUIDs),
     BID = list_to_binary(BackupUUIDs),
-    io:format("Deleting backup ~s from VM ~p.~n", [BID, VM]),
+    io:format("Deleting backup ~s from VM ~s.~n", [BID, VM]),
     ok = sniffle_vm:delete_backup(VM, BID),
     io:format("Backup deleted successfully~n");
 
