@@ -23,7 +23,7 @@ help() ->
 command(text, ["remove-backup", "-f", VMUUIDs, BackupUUIDs]) ->
     VM = list_to_binary(VMUUIDs),
     BID = list_to_binary(BackupUUIDs),
-    io:format("Deleting backup ~s from VM ~p with force.~n", [BID, VM]),
+    io:format("Deleting backup ~s from VM ~s with force.~n", [BID, VM]),
     try
         ok = sniffle_vm:delete_backup(VM, BID),
         io:format("Backup deleted successfully~n")
@@ -31,8 +31,9 @@ command(text, ["remove-backup", "-f", VMUUIDs, BackupUUIDs]) ->
         _:_ ->
             io:format("Backup deletion failed, we'll still remove it from the "
                       "registry since this is forced~n")
+    after
+        sniffle_vm:set_backup(VM, [{[BID], delete}])
     end,
-    sniffle_vm:set_backup(VM, [{[BID], delete}]),
     ok;
 
 command(text, ["remove-backup", VMUUIDs, BackupUUIDs]) ->
