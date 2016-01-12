@@ -100,6 +100,9 @@ base_init({From, ReqID, _}, {VNodeMaster, NodeCheckService, Request}) ->
 update(Key, State) when is_binary(Key) ->
     update({Key, Key}, State);
 
+update(Key, State) when is_atom(Key) ->
+    update({Key, Key}, State);
+
 update({Pts, {Key, V}}, State) when not is_binary(Pts) ->
     update({Key, {Pts, V}}, State);
 
