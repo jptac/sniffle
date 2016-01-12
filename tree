@@ -10,7 +10,7 @@
 ├─ erlcloud─0.8.6
 ├─ fifo_db─0.1.7
 │  └─ eleveldb─2.1.0.0
-├─ fifo_dt─0.1.59
+├─ fifo_dt─0.1.60
 │  ├─ libsnarlmatch─0.1.7
 │  └─ riak_dt─2.1.1
 ├─ fifo_lager─0.1.1
@@ -36,7 +36,7 @@
 │     ├─ mdns_client─0.1.7
 │     └─ pooler─1.4.0
 ├─ libleofs─0.1.2
-├─ libsnarl─0.3.36
+├─ libsnarl─0.3.38
 │  └─ oauth2─0.6.0
 ├─ mdns_server_lib─0.2.3
 │  ├─ mdns_server─0.2.0
