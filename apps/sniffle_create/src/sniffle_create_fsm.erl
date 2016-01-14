@@ -13,9 +13,9 @@
 %% API
 -export([create/5,
          create/4,
-         restore/3,
+         restore/4,
          start_link/5,
-         start_link/3]).
+         start_link/4]).
 
 %% gen_fsm callbacks
 -export([
@@ -116,8 +116,8 @@
 start_link(UUID, Package, Dataset, Config, Pid) ->
     gen_fsm:start_link(?MODULE, [UUID, Package, Dataset, Config, Pid], []).
 
-start_link(UUID, BackupID, Requirements) ->
-    gen_fsm:start_link(?MODULE, [UUID, BackupID, Requirements], []).
+start_link(UUID, BackupID, Requirements, Creator) ->
+    gen_fsm:start_link(?MODULE, [UUID, BackupID, Requirements, Creator], []).
 
 create(UUID, Package, Dataset, Config) ->
     create(UUID, Package, Dataset, Config, undefined).
@@ -126,9 +126,9 @@ create(UUID, Package, Dataset, Config, Pid) ->
     supervisor:start_child(sniffle_create_fsm_sup,
                            [UUID, Package, Dataset, Config, Pid]).
 
-restore(UUID, BackupID, Requirements) ->
+restore(UUID, BackupID, Requirements, Creator) ->
     supervisor:start_child(sniffle_create_fsm_sup,
-                           [UUID, BackupID, Requirements]).
+                           [UUID, BackupID, Requirements, Creator]).
 
 
 %%%===================================================================
