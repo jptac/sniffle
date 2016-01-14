@@ -39,7 +39,7 @@
          get_dataset/2,
          create/2,
          get_server/2,
-         get_ower/2,
+         get_owner/2,
          create_permissions/2,
          resource_claim/2,
          get_ips/2,
@@ -171,6 +171,7 @@ init([UUID, BackupID, Rules, Creator]) ->
                  end,
     next(),
     {ok, prepare_backup, #state{
+                            creator = Creator,
                             permissions = Permissions,
                             uuid = UUID,
                             rules = Rules1,
@@ -202,7 +203,7 @@ init([UUID, Package, Dataset, Config, Pid]) ->
                          5
                  end,
     next(),
-    {ok, generate_grouping_rules, #state{
+    {ok, prepare_create, #state{
                                      uuid = UUID,
                                      package_uuid = Package,
                                      dataset_uuid = Dataset,
@@ -259,14 +260,14 @@ prepare_backup(_Event, State = #state{uuid = UUID}) ->
 
 generate_grouping_rules(_Event, State = #state{grouping = undefined}) ->
     next(),
-    {next_state, get_ower, State};
+    {next_state, get_owner, State};
 
 generate_grouping_rules(_Event, State = #state{test_pid = {_, _},
                                                grouping = Grouping,
                                                rules = Rules}) ->
     Rules1 = sniffle_grouping:create_rules(Grouping),
     next(),
-    {next_state, get_ower, State#state{rules = Rules1 ++ Rules}};
+    {next_state, get_owner, State#state{rules = Rules1 ++ Rules}};
 
 generate_grouping_rules(_Event, State = #state{
                                            uuid = UUID,
@@ -279,7 +280,7 @@ generate_grouping_rules(_Event, State = #state{
             sniffle_vm:add_grouping(UUID, Grouping),
             next(),
             State1 = State#state{rules = Rules1 ++ Rules},
-            {next_state, get_ower, State1};
+            {next_state, get_owner, State1};
         E ->
             vm_log(State, error, "Failed to create routing rule."),
             lager:error("[create] Creation Faild since grouing could "
@@ -287,7 +288,7 @@ generate_grouping_rules(_Event, State = #state{
             {stop, E, State}
     end.
 
-get_ower(_Event, State = #state{config = Config, owner = undefined,
+get_owner(_Event, State = #state{config = Config, owner = undefined,
                                 creator = Creator}) ->
     {ok, C} = ls_user:get(Creator),
     Owner = ft_user:active_org(C),
@@ -309,7 +310,7 @@ get_ower(_Event, State = #state{config = Config, owner = undefined,
        owner = Owner
       }};
 
-get_ower(_, State) ->
+get_owner(_, State) ->
     next(),
     {next_state, get_package, State}.
 
@@ -550,8 +551,9 @@ get_networks(_Event, State = #state{config = Config, retry = Try}) ->
                                               end, Rs2),
                               {Name, Rs3}
                       end, Nets),
+    next(),
     {next_state, get_server,
-     State#state{nets = Nets1, retry = Try + 1, log_cache = []}, 0}.
+     State#state{nets = Nets1, retry = Try + 1, log_cache = []}}.
 
 get_server(_Event, State = #state{
                               uuid = UUID,
@@ -641,7 +643,8 @@ build_key(_Event, State = #state{
                           fun (Ks) ->
                                   <<KeysB/binary, Ks/binary>>
                           end, KeysB, Config),
-    {next_state, create, State#state{config = Config1}, 0}.
+    next(),
+    {next_state, create, State#state{config = Config1}}.
 
 restore(_Event, State = #state{
                            uuid = UUID,
