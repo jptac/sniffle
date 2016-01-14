@@ -230,7 +230,7 @@ prepare_create(_Event, State = #state{config = Config}) ->
                rules = Rules,
                grouping = G
               },
-    {ok, generate_grouping_rules, State1}.
+    {next_state, generate_grouping_rules, State1}.
 
 prepare_backup(_Event, State = #state{uuid = UUID}) ->
     {ok, V} = sniffle_vm:get(UUID),
@@ -241,7 +241,7 @@ prepare_backup(_Event, State = #state{uuid = UUID}) ->
                package_uuid = Package,
                dataset_uuid = Dataset},
     next(),
-    {ok, generate_grouping_rules, State1}.
+    {next_state, generate_grouping_rules, State1}.
 
 
 
