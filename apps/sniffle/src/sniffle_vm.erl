@@ -160,12 +160,12 @@ has_xml([{_, B} | Bs]) ->
             has_xml(Bs)
     end.
 
-restore(User, Vm, BID, Hypervisor) ->
+restore(User, Vm, BID, Requeirements) ->
     case sniffle_vm:get(Vm) of
         {ok, V} ->
             case ?S:hypervisor(V) of
                 <<>> ->
-                    restore_(User, Vm, V, BID, Hypervisor);
+                    restore_(User, Vm, V, BID, Requeirements);
                 _ ->
                     already_deployed
             end;
@@ -173,18 +173,11 @@ restore(User, Vm, BID, Hypervisor) ->
             not_found
     end.
 
-restore_(User, UUID, V, BID, Hypervisor) ->
-    {Server, Port} = get_hypervisor(Hypervisor),
+restore_(User, UUID, V, BID, Requeirements) ->
     case jsxd:get([BID, <<"xml">>], true, ?S:backups(V)) of
         true ->
-            case sniffle_s3:config(snapshot) of
-                error ->
-                    {error, not_supported};
-                {ok, {S3Host, S3Port, AKey, SKey, Bucket}} ->
-                    resource_action(V, restore, User, []),
-                    libchunter:restore_backup(Server, Port, UUID, BID, S3Host,
-                                              S3Port, Bucket, AKey, SKey)
-            end;
+            resource_action(V, restore, User, []),
+            sniffle_create_pool:restore(UUID, BID, Requeirements);
         false ->
             no_xml
     end.
