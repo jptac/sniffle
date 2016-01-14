@@ -180,5 +180,5 @@ run_request({restore, UUID, BID, Requeirements, Creator}) ->
 
 uuid({add, UUID, _Package, _Dataset, _Config}) ->
     UUID;
-uuid({restore, UUID, _BID, _Requeirements}) ->
+uuid({restore, UUID, _BID, _Requeirements, _Creator}) ->
     UUID.
