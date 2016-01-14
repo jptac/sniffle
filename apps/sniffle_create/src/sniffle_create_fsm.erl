@@ -240,12 +240,13 @@ prepare_backup(_Event, State = #state{uuid = UUID}) ->
     {ok, V} = sniffle_vm:get(UUID),
     Package = ft_vm:package(V),
     Dataset = ft_vm:dataset(V),
+    Dataset = ft_vm:dataset(V),
     State1 = State#state{
                backup_vm = V,
                package_uuid = Package,
                dataset_uuid = Dataset},
     next(),
-    {next_state, generate_grouping_rules, State1}.
+    {next_state, get_package, State1}.
 
 
 
