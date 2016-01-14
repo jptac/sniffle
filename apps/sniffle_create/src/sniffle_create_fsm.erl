@@ -512,7 +512,7 @@ finish_rules(_Event, State = #state{
               {must, 'element', <<"virtualisation">>, Type},
               {must, '>=', <<"resources.free-memory">>, Ram}
               | Rules],
-    Rules1 = case State#state.backup_vm of
+    Rules2 = case State#state.backup_vm of
                  undefined ->
                      Rules1;
                  VM ->
@@ -524,7 +524,7 @@ finish_rules(_Event, State = #state{
              end,
     next(),
     {next_state, get_networks,
-     State#state{rules = Rules1}}.
+     State#state{rules = Rules2}}.
 
 get_networks(_event, State = #state{retry = R, max_retries = Max})
   when R > Max ->
