@@ -177,7 +177,7 @@ restore_(User, UUID, V, BID, Requeirements) ->
     case jsxd:get([BID, <<"xml">>], true, ?S:backups(V)) of
         true ->
             resource_action(V, restore, User, []),
-            sniffle_create_pool:restore(UUID, BID, Requeirements);
+            sniffle_create_pool:restore(UUID, BID, Requeirements, User);
         false ->
             no_xml
     end.
