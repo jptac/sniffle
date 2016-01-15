@@ -519,7 +519,7 @@ finish_rules(_Event, State = #state{
                      Mappings = ft_vm:network_map(VM),
                      Networks = [N || {_, N} <- Mappings],
                      Networks1 = ordsets:from_list(Networks),
-                     [{must, 'subset', <<"nic_tags">>, Networks1}
+                     [{must, 'subset', <<"networks">>, Networks1}
                       | Rules1]
              end,
     next(),
