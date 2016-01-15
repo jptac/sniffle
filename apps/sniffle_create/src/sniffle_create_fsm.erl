@@ -517,9 +517,10 @@ finish_rules(_Event, State = #state{
                      Rules1;
                  VM ->
                      Mappings = ft_vm:network_map(VM),
-                     Networks = [N || {_, N} <- Mappings],
-                     Networks1 = ordsets:from_list(Networks),
-                     [{must, 'subset', <<"networks">>, Networks1}
+                     Networks = [sniffle_iprange:get(N) || {_, N} <- Mappings],
+                     Networks1 = [ft_iprange:tag(N) || {ok, N} <- Networks],
+                     Networks2 = ordsets:from_list(Networks1),
+                     [{must, 'subset', <<"networks">>, Networks2}
                       | Rules1]
              end,
     next(),
