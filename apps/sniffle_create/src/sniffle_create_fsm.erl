@@ -654,11 +654,14 @@ build_key(_Event, State = #state{
 
 restore(_Event, State = #state{
                            uuid = UUID,
+                           hypervisor_id = HypervisorID,
                            hypervisor = {Host, Port},
                            backup = BID
                           }) ->
+
     {ok, {S3Host, S3Port, AKey, SKey, Bucket}} =
         sniffle_s3:config(snapshot),
+    sniffle_vm:hypervisor(UUID, HypervisorID),
     libchunter:restore_backup(Host, Port, UUID, BID, S3Host,
                               S3Port, Bucket, AKey, SKey),
     {stop, normal, State}.
