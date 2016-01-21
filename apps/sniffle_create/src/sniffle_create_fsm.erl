@@ -535,7 +535,7 @@ get_networks(_event, State = #state{retry = R, max_retries = Max})
     BMax= integer_to_binary(Max),
     vm_log(State, error, <<"Failed after too many retries: ", BR/binary, " > ",
                            BMax/binary,
-                           ", seriously we doublechecked twice!">>),
+                           ".">>),
     {stop, failed, State};
 
 %% We are restoring so we do not need thos whole shabang.
@@ -996,8 +996,8 @@ add_log(State = #state{log_cache = C}, Type, Msg) ->
     State#state{log_cache = [{Type, Msg} | C]}.
 
 add_log(State = #state{log_cache = C}, Type, Msg, EID) ->
-    Msg1 = io_lib:format("~s Please see thw warning log for further details"
-                         "the error id ~s will identify the entry.",
+    Msg1 = io_lib:format("~s Please see the warning log for further details "
+                         "the error id is ~s which will identify the entry.",
                          [Msg, EID]),
     State#state{log_cache = [{Type, Msg1} | C]}.
 
