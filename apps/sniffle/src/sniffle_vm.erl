@@ -375,6 +375,19 @@ promite_to_image_(UUID, SnapID, Config, V) ->
                           jsxd:get(<<"tag">>, <<"undefined">>, E)}
                  end, Nets),
     [sniffle_dataset:add_network(DatasetUUID, Net) || Net <- Nets1],
+    {ok, D} = sniffle_dataset:get(?S:dataset(V)),
+    case ft_dataset:zone_type(D) of
+        <<>> ->
+            ok;
+        ZoneType ->
+            sniffle_dataset:zone_type(DatasetUUID, ZoneType)
+    end,
+    [sniffle_dataset:add_requirement(DatasetUUID, R) ||
+        R <- ft_dataset:requirements(D)],
+    ds_set(
+      [
+       {<<"kernel_version">>, fun sniffle_dataset:kernel_version/2}
+      ], DatasetUUID, C),
     Type = jsxd:get([<<"type">>], <<"zone">>, C),
     sniffle_dataset:type(DatasetUUID, Type),
     case Type of
