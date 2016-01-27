@@ -33,6 +33,7 @@
          finish_rules/2,
          prepare_create/2,
          prepare_backup/2,
+         retry/2,
          generate_grouping_rules/2,
          get_package/2,
          check_org_resources/2,
@@ -96,6 +97,7 @@
           grouping,
           backup_vm,
           permissions,
+          grouping_rules,
           hypervisors
          }).
 
@@ -234,7 +236,7 @@ prepare_create(_Event, State = #state{config = Config}) ->
                rules = Rules,
                grouping = G
               },
-    {next_state, generate_grouping_rules, State1}.
+    {next_state, get_owner, State1}.
 
 prepare_backup(_Event, State = #state{uuid = UUID}) ->
     {ok, V} = sniffle_vm:get(UUID),
@@ -263,38 +265,8 @@ prepare_backup(_Event, State = #state{uuid = UUID}) ->
 %% @end
 %%--------------------------------------------------------------------
 
-generate_grouping_rules(_Event, State = #state{grouping = undefined}) ->
-    next(),
-    {next_state, get_owner, State};
-
-generate_grouping_rules(_Event, State = #state{test_pid = {_, _},
-                                               grouping = Grouping,
-                                               rules = Rules}) ->
-    Rules1 = sniffle_grouping:create_rules(Grouping),
-    next(),
-    {next_state, get_owner, State#state{rules = Rules1 ++ Rules}};
-
-generate_grouping_rules(_Event, State = #state{
-                                           uuid = UUID,
-                                           rules = Rules,
-                                           grouping = Grouping
-                                          }) ->
-    Rules1 = sniffle_grouping:create_rules(Grouping),
-    case sniffle_grouping:add_element(Grouping, UUID) of
-        ok ->
-            sniffle_vm:add_grouping(UUID, Grouping),
-            next(),
-            State1 = State#state{rules = Rules1 ++ Rules},
-            {next_state, get_owner, State1};
-        E ->
-            vm_log(State, error, "Failed to create routing rule."),
-            lager:error("[create] Creation Faild since grouing could "
-                        "not be joined: ~p", [E]),
-            {stop, E, State}
-    end.
-
 get_owner(_Event, State = #state{config = Config, owner = undefined,
-                                creator = Creator}) ->
+                                 creator = Creator}) ->
     {ok, C} = ls_user:get(Creator),
     Owner = ft_user:active_org(C),
     case Owner of
@@ -527,6 +499,51 @@ finish_rules(_Event, State = #state{
     {next_state, get_networks,
      State#state{rules = Rules2}}.
 
+
+retry(_event, State = #state{retry = R, max_retries = Max})
+  when R >= Max ->
+    lager:error("[create] Failed after too many retries: ~p > ~p",
+                [R, Max]),
+    BR = integer_to_binary(R),
+    BMax= integer_to_binary(Max),
+    vm_log(State, error, <<"Failed after too many retries: ", BR/binary, " > ",
+                           BMax/binary,
+                           ".">>),
+    {stop, failed, State};
+
+retry(_Event, State = #state{retry = Try}) ->
+    next(),
+    {next_state, generate_grouping_rules, State#state{retry = Try + 1}}.
+
+
+generate_grouping_rules(_Event, State = #state{grouping = undefined}) ->
+    next(),
+    {next_state, get_networks, State};
+
+generate_grouping_rules(_Event, State = #state{test_pid = {_, _},
+                                               grouping = Grouping}) ->
+    Rules = sniffle_grouping:create_rules(Grouping),
+    next(),
+    {next_state, get_networks, State#state{grouping_rules = Rules}};
+
+generate_grouping_rules(_Event, State = #state{
+                                           uuid = UUID,
+                                           grouping = Grouping
+                                          }) ->
+    Rules = sniffle_grouping:create_rules(Grouping),
+    case sniffle_grouping:add_element(Grouping, UUID) of
+        ok ->
+            sniffle_vm:add_grouping(UUID, Grouping),
+            next(),
+            State1 = State#state{grouping_rules = Rules},
+            {next_state, get_networks, State1};
+        E ->
+            vm_log(State, error, "Failed to create routing rule."),
+            lager:error("[create] Creation Faild since grouing could "
+                        "not be joined: ~p", [E]),
+            {stop, E, State}
+    end.
+
 get_networks(_event, State = #state{retry = R, max_retries = Max})
   when R > Max ->
     lager:error("[create] Failed after too many retries: ~p > ~p",
@@ -539,13 +556,13 @@ get_networks(_event, State = #state{retry = R, max_retries = Max})
     {stop, failed, State};
 
 %% We are restoring so we do not need thos whole shabang.
-get_networks(_Event, State = #state{backup_vm = B, retry = Try})
+get_networks(_Event, State = #state{backup_vm = B})
   when B =/= undefined ->
     next(),
     {next_state, get_server,
-     State#state{nets = [], retry = Try + 1, log_cache = []}};
+     State#state{nets = [], log_cache = []}};
 
-get_networks(_Event, State = #state{config = Config, retry = Try}) ->
+get_networks(_Event, State = #state{config = Config}) ->
     Nets = jsxd:get([<<"networks">>], [], Config),
     Nets1 = lists:map(fun({Name, Network}) ->
                               {ok, N} = sniffle_network:get(Network),
@@ -559,14 +576,16 @@ get_networks(_Event, State = #state{config = Config, retry = Try}) ->
                       end, Nets),
     next(),
     {next_state, get_server,
-     State#state{nets = Nets1, retry = Try + 1, log_cache = []}}.
+     State#state{nets = Nets1, log_cache = []}}.
 
 get_server(_Event, State = #state{
                               uuid = UUID,
-                              rules = Rules}) ->
+                              rules = Rules,
+                              grouping_rules = GRules}) ->
+    FinalRules = Rules ++ GRules,
     sniffle_vm:state(UUID, <<"fetching_server">>),
-    lager:debug("[create] Finding hypervisor: ~p", [Rules]),
-    {ok, Hypervisors} = sniffle_hypervisor:list(Rules, false),
+    lager:debug("[create] Finding hypervisor: ~p", [FinalRules]),
+    {ok, Hypervisors} = sniffle_hypervisor:list(FinalRules, false),
     Hypervisors1 = lists:reverse(lists:sort(Hypervisors)),
     lager:debug("[create] Hypervisors found: ~p", [Hypervisors1]),
     next(),
@@ -578,7 +597,9 @@ test_hypervisors(_Event, State = #state{
                                     uuid = UUID,
                                     nets = Nets,
                                     package = Package,
-                                    rules = Rules}) ->
+                                    rules = Rules,
+                                    grouping_rules = GRules}) ->
+    FinalRules = Rules ++ GRules,
     lager:debug("[create] get_server: ~p", [Nets]),
     Ram = ft_package:ram(Package),
     case {Hypervisors, test_hypervisors(UUID, Hypervisors, Nets)} of
@@ -596,7 +617,7 @@ test_hypervisors(_Event, State = #state{
             S1 = warn(State,
                       "Could not find Hypervisors matching rules.",
                       "[create] Could not find hypervisor for "
-                      "rules: ~p.", [Rules]),
+                      "rules: ~p.", [FinalRules]),
             do_retry(S1);
         {Hvs, EH} ->
             S1 = warn(State,
@@ -963,7 +984,9 @@ add_vlan(VLAN, Res) ->
 
 do_retry(State = #state{test_pid = undefined,
                         delay = Delay}) ->
-    {next_state, get_networks, State, Delay};
+    timer:sleep(Delay),
+    next(),
+    {next_state, retry, State};
 
 do_retry(State) ->
     {stop, error, State}.
