@@ -11,7 +11,7 @@
 -behaviour(gen_server).
 
 %% API
--export([start_link/0, add/4]).
+-export([start_link/0, restore/4, add/4]).
 
 -ignore_xref([start_link/0]).
 
@@ -44,6 +44,9 @@ start_link() ->
 
 add(UUID, Package, Dataset, Config) ->
     gen_server:cast(?MODULE, {add, UUID, Package, Dataset, Config}).
+
+restore(UUID, BID, Requeirements, Creator) ->
+    gen_server:cast(?MODULE, {restore, UUID, BID, Requeirements, Creator}).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -96,19 +99,17 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_cast({add, UUID, Package, Dataset, Config},
-            State = #state{workers = Ws, size = Size}) when length(Ws) < Size ->
-    {ok, Pid} = sniffle_create_fsm:create(UUID, Package, Dataset, Config),
+handle_cast(R, State = #state{workers = Ws, size = Size})
+  when length(Ws) < Size ->
+    {ok, Pid} = run_request(R),
     Ref = erlang:monitor(process, Pid),
-    lager:info("[create] Not throttling ~s", [UUID]),
-    sniffle_vm:creating(UUID, {pooled, erlang:system_time(seconds)}),
+    lager:info("[create] Not throttling ~s", [uuid(R)]),
+    sniffle_vm:creating(uuid(R), {pooled, erlang:system_time(seconds)}),
     {noreply, State#state{workers = [Ref | Ws]}};
 
-handle_cast({add, UUID, Package, Dataset, Config},
-            State = #state{reqs = Rs}) ->
-    lager:info("[create] Throtteling create request for ~s", [UUID]),
-    {noreply, State#state{reqs = [{UUID, Package, Dataset, Config} | Rs]}}.
-
+handle_cast(R, State = #state{reqs = Rs}) ->
+    lager:info("[create] Throtteling create request for ~s", [uuid(R)]),
+    {noreply, State#state{reqs = [R | Rs]}}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -126,13 +127,11 @@ handle_info({'DOWN', Ref, process, _Pid, _Reason},
     {noreply, State#state{workers=lists:delete(Ref, Ws)}};
 
 handle_info({'DOWN', Ref, process, _Pid, _Reason},
-            State = #state{rev_reqs = [{UUID, Package, Dataset, Config} |Rs],
-                           workers = Ws}) ->
+            State = #state{rev_reqs = [R |Rs], workers = Ws}) ->
     case lists:member(Ref, Ws) of
         true ->
-            lager:info("[create] Finished task, taking ~s next.", [UUID]),
-            {ok, Pid1} = sniffle_create_fsm:create(UUID, Package, Dataset,
-                                                   Config),
+            lager:info("[create] Finished task, taking next: ~p.", [uuid(R)]),
+            {ok, Pid1} = run_request(R),
             Ref1 = erlang:monitor(process, Pid1),
             Ws1 = lists:delete(Ref, Ws),
             {noreply, State#state{workers=[Ref1 | Ws1], rev_reqs = Rs}};
@@ -173,3 +172,13 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+
+run_request({add, UUID, Package, Dataset, Config}) ->
+    sniffle_create_fsm:create(UUID, Package, Dataset, Config);
+run_request({restore, UUID, BID, Requeirements, Creator}) ->
+    sniffle_create_fsm:restore(UUID, BID, Requeirements, Creator).
+
+uuid({add, UUID, _Package, _Dataset, _Config}) ->
+    UUID;
+uuid({restore, UUID, _BID, _Requeirements, _Creator}) ->
+    UUID.

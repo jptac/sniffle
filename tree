@@ -1,16 +1,16 @@
-[0m├─ bugsnag─0.1.0
+[0m├─ bugsnag─0.1.1
 ├─ clique─0.3.1+build.140.ref8067df5
 ├─ cluster_info─2.0.4
 ├─ cuttlefish─2.0.0+build.479.reff5f6fdc
 │  ├─ getopt─0.4.3
 │  └─ neotoma─1.7.2
-├─ edown─0.7+build.151.ref2f6d4d4
+├─ edown─0.7+build.153.refabd9f5b
 ├─ eper─0.94.0
 ├─ eplugin─0.1.4
 ├─ erlcloud─0.8.6
 ├─ fifo_db─0.1.7
 │  └─ eleveldb─2.1.0.0
-├─ fifo_dt─0.1.58
+├─ fifo_dt─0.1.60
 │  ├─ libsnarlmatch─0.1.7
 │  └─ riak_dt─2.1.1
 ├─ fifo_lager─0.1.1
@@ -18,8 +18,8 @@
 │  └─ lager_logstash_backend─0.0.2
 ├─ fifo_s3─0.1.14
 │  └─ base16─1.0.0
-├─ fifo_spec─0.1.24
-├─ fifo_utils─0.1.18
+├─ fifo_spec─0.1.26
+├─ fifo_utils─0.1.19
 ├─ folsom_ddb─0.1.20
 │  └─ ddb_client─0.1.17
 │     ├─ dproto─0.1.12
@@ -30,15 +30,15 @@
 ├─ jsxd─0.1.10
 ├─ lager─2.1.1
 │  └─ goldrush─0.1.7
-├─ libchunter─0.1.42
+├─ libchunter─0.1.43
 ├─ libhowl─0.1.30
 │  └─ mdns_client_lib─0.1.30
 │     ├─ mdns_client─0.1.7
 │     └─ pooler─1.4.0
 ├─ libleofs─0.1.2
-├─ libsnarl─0.3.36
+├─ libsnarl─0.3.38
 │  └─ oauth2─0.6.0
-├─ mdns_server_lib─0.2.2
+├─ mdns_server_lib─0.2.3
 │  ├─ mdns_server─0.2.0
 │  └─ ranch─1.1.0
 ├─ meck─0.8.2
@@ -57,7 +57,7 @@
 │  └─ riak_sysmon─2.0.0
 ├─ riak_ensemble─2.1.2
 ├─ sgte─0.7.1
-├─ sniffle─0.7.1
+├─ sniffle─0.7.2
 ├─ sniffle_api─0.1.0
 ├─ sniffle_commons─0.1.0
 ├─ sniffle_console─0.1.0

@@ -13,11 +13,35 @@ help() ->
         "  logs [-j] <uuid>~n"
         "  snapshots [-j] <uuid>~n"
         "  snapshot <uuid> <comment>~n"
+        "  remove-backup [-f] <uuid> <backup-id>~n"
         "  start <uuid>~n"
         "  stop <uuid>~n"
         "  reboot <uuid>~n"
         "  delete <uuid>~n").
 
+
+command(text, ["remove-backup", "-f", VMUUIDs, BackupUUIDs]) ->
+    VM = list_to_binary(VMUUIDs),
+    BID = list_to_binary(BackupUUIDs),
+    io:format("Deleting backup ~s from VM ~s with force.~n", [BID, VM]),
+    try
+        ok = sniffle_vm:delete_backup(VM, BID),
+        io:format("Backup deleted successfully~n")
+    catch
+        _:_ ->
+            io:format("Backup deletion failed, we'll still remove it from the "
+                      "registry since this is forced~n")
+    after
+        sniffle_vm:set_backup(VM, [{[BID], delete}])
+    end,
+    ok;
+
+command(text, ["remove-backup", VMUUIDs, BackupUUIDs]) ->
+    VM = list_to_binary(VMUUIDs),
+    BID = list_to_binary(BackupUUIDs),
+    io:format("Deleting backup ~s from VM ~s.~n", [BID, VM]),
+    ok = sniffle_vm:delete_backup(VM, BID),
+    io:format("Backup deleted successfully~n");
 
 command(text, ["init-cluster", UUIDs, Name]) ->
     UUID = list_to_binary(UUIDs),

@@ -35,6 +35,7 @@
          get_docker/1,
          list/0,
          list/2,
+         list/3,
          log/2,
          logs/1,
          primary_nic/2,
@@ -70,6 +71,7 @@
          set_docker/2,
          vm_type/2,
          created_at/2,
+         created_by/2,
          add_fw_rule/2,
          remove_fw_rule/2
         ]).
@@ -119,7 +121,7 @@ sync_repair(UUID, Obj) ->
     do_write(UUID, sync_repair, Obj).
 
 list_() ->
-    {ok, Res} = ?FM(list_all, sniffle_full_coverage, raw,
+    {ok, Res} = ?FM(list_all, sniffle_coverage, raw,
                     [?MASTER, ?SERVICE, []]),
     Res1 = [R || {_, R} <- Res],
     {ok,  Res1}.
@@ -158,12 +160,12 @@ has_xml([{_, B} | Bs]) ->
             has_xml(Bs)
     end.
 
-restore(User, Vm, BID, Hypervisor) ->
+restore(User, Vm, BID, Requeirements) ->
     case sniffle_vm:get(Vm) of
         {ok, V} ->
             case ?S:hypervisor(V) of
                 <<>> ->
-                    restore_(User, Vm, V, BID, Hypervisor);
+                    restore_(User, Vm, V, BID, Requeirements);
                 _ ->
                     already_deployed
             end;
@@ -171,18 +173,11 @@ restore(User, Vm, BID, Hypervisor) ->
             not_found
     end.
 
-restore_(User, UUID, V, BID, Hypervisor) ->
-    {Server, Port} = get_hypervisor(Hypervisor),
+restore_(User, UUID, V, BID, Requeirements) ->
     case jsxd:get([BID, <<"xml">>], true, ?S:backups(V)) of
         true ->
-            case sniffle_s3:config(snapshot) of
-                error ->
-                    {error, not_supported};
-                {ok, {S3Host, S3Port, AKey, SKey, Bucket}} ->
-                    resource_action(V, restore, User, []),
-                    libchunter:restore_backup(Server, Port, UUID, BID, S3Host,
-                                              S3Port, Bucket, AKey, SKey)
-            end;
+            resource_action(V, restore, User, []),
+            sniffle_create_pool:restore(UUID, BID, Requeirements, User);
         false ->
             no_xml
     end.
@@ -719,6 +714,7 @@ create(Package, Dataset, Config) ->
                           {<<"package">>, Package}]}]),
     %% TODO: is this the right place?
     {ok, Creator} = jsxd:get([<<"owner">>], Config1),
+    created_by(UUID, Creator),
     ls_user:grant(Creator, [<<"vms">>, UUID, <<"...">>]),
     ls_user:grant(Creator, [<<"channels">>, UUID, <<"join">>]),
     sniffle_create_pool:add(UUID, Package, Dataset, Config1),
@@ -754,9 +750,6 @@ get_docker(DockerID) ->
             E
     end.
 
-
-
-
 %%--------------------------------------------------------------------
 %% @doc Lists all vm's.
 %% @end
@@ -766,24 +759,29 @@ get_docker(DockerID) ->
 list() ->
     ?FM(list, sniffle_coverage, start, [?MASTER, ?SERVICE, list]).
 
+list(Requirements, FoldFn, Acc0) ->
+    ?FM(list_all, sniffle_coverage, list,
+        [?MASTER, ?SERVICE, Requirements, FoldFn, Acc0]).
+
 %%--------------------------------------------------------------------
 %% @doc Lists all vm's and fiters by a given matcher set.
 %% @end
 %%--------------------------------------------------------------------
+
 -spec list([fifo:matcher()], boolean()) ->
                   {error, timeout} | {ok, [fifo:uuid()]}.
 
-list(Requirements, true) ->
-    {ok, Res} = ?FM(list_all, sniffle_full_coverage, list,
+list(Requirements, Full) ->
+    {ok, Res} = ?FM(list_all, sniffle_coverage, list,
                     [?MASTER, ?SERVICE, Requirements]),
     Res1 = lists:sort(rankmatcher:apply_scales(Res)),
-    {ok,  Res1};
-
-list(Requirements, false) ->
-    {ok, Res} = ?FM(list_all, sniffle_coverage, start,
-                    [?MASTER, ?SERVICE, {list, Requirements}]),
-    Res1 = rankmatcher:apply_scales(Res),
-    {ok,  lists:sort(Res1)}.
+    Res2 = case Full of
+               true ->
+                   Res1;
+               false ->
+                   [{P, ft_vm:uuid(O)} || {P, O} <- Res1]
+           end,
+    {ok, Res2}.
 
 %%--------------------------------------------------------------------
 %% @doc Tries to delete a VM, either unregistering it if no
@@ -1177,6 +1175,7 @@ deleting(UUID, V)
 ?S(hypervisor).
 ?S(vm_type).
 ?S(created_at).
+?S(created_by).
 
 %%%===================================================================
 %%% Internal Functions

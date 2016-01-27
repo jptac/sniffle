@@ -17,6 +17,7 @@
          lookup/1,
          list/0,
          list/2,
+         list/3,
          claim_ip/1,
          claim_specific_ip/2,
          full/1,
@@ -59,7 +60,7 @@ sync_repair(UUID, Obj) ->
 -spec list_() -> {ok, [ft_obj:obj()]}.
 
 list_() ->
-    {ok, Res} = ?FM(list_all, sniffle_full_coverage, raw,
+    {ok, Res} = ?FM(list_all, sniffle_coverage, raw,
                     [?MASTER, ?SERVICE, []]),
     Res1 = [R || {_, R} <- Res],
     {ok,  Res1}.
@@ -115,6 +116,10 @@ get(Iprange) ->
 list() ->
     ?FM(list, sniffle_coverage, start, [?MASTER, ?SERVICE, list]).
 
+list(Requirements, FoldFn, Acc0) ->
+    ?FM(list_all, sniffle_coverage, list,
+        [?MASTER, ?SERVICE, Requirements, FoldFn, Acc0]).
+
 %%--------------------------------------------------------------------
 %% @doc Lists all vm's and fiters by a given matcher set.
 %% @end
@@ -124,17 +129,17 @@ list() ->
                   {ok, [{Rating::integer(), Value::fifo:iprange()}] |
                    [{Rating::integer(), Value::fifo:iprange_id()}]}.
 
-list(Requirements, true) ->
-    {ok, Res} = ?FM(list_all, sniffle_full_coverage, list,
+list(Requirements, Full) ->
+    {ok, Res} = ?FM(list_all, sniffle_coverage, list,
                     [?MASTER, ?SERVICE, Requirements]),
     Res1 = lists:sort(rankmatcher:apply_scales(Res)),
-    {ok,  Res1};
-
-list(Requirements, false) ->
-    {ok, Res} = ?FM(list, sniffle_coverage, start,
-                    [?MASTER, ?SERVICE, {list, Requirements}]),
-    Res1 = rankmatcher:apply_scales(Res),
-    {ok,  lists:sort(Res1)}.
+    Res2 = case Full of
+               true ->
+                   Res1;
+               false ->
+                   [{P, ft_iprange:uuid(O)} || {P, O} <- Res1]
+           end,
+    {ok, Res2}.
 
 -spec release_ip(Iprange::fifo:iprange_id(),
                  IP::integer()) ->

@@ -4,7 +4,7 @@
 
 -export([
          sync_repair/2,
-         list/0, list/2, list_/0,
+         list/0, list_/0,
          get/1, get/2, raw/1, raw/2,
          add/3, delete/2,
          wipe/2, reindex/1
@@ -12,6 +12,9 @@
 
 
 -define(TIMEOUT, 5000).
+-define(MASTER, sniffle_2i_vnode_master).
+-define(SERVICE, sniffle_2i).
+
 
 -define(FM(Met, Mod, Fun, Args),
         folsom_metrics:histogram_timed_update(
@@ -67,34 +70,17 @@ raw(TK) ->
 
 list() ->
     {ok, Res} = ?FM(list, sniffle_coverage, start,
-                  [sniffle_2i_vnode_master, sniffle_2i, list]),
+                    [?MASTER, ?SERVICE, list]),
     Res1 = [binary_to_term(R) || R <- Res],
     {ok,  Res1}.
 
 list_() ->
     {ok, Res} =
-        ?FM(list, sniffle_full_coverage, start,
-            [sniffle_2i_vnode_master, sniffle_2i,
-             {list, [], true, true}]),
+        ?FM(list, sniffle_coverage, raw,
+            [?MASTER, ?SERVICE, []]),
     Res1 = [binary_to_term(R) || {_, R} <- Res],
     {ok,  Res1}.
 
-
-%%--------------------------------------------------------------------
-%% @doc Lists all vm's and fiters by a given matcher set.
-%% @end
-%%--------------------------------------------------------------------
--spec list([fifo:matcher()], boolean()) ->
-                  {error, timeout} | {ok, [fifo:uuid()]}.
-
-list(Requirements, Full)
-  when Full == true orelse Full == false ->
-    {ok, Res} =
-        ?FM(list, sniffle_full_coverage, start,
-            [sniffle_2i_vnode_master, sniffle_2i,
-             {list, Requirements, Full}]),
-    Res1 = rankmatcher:apply_scales(Res),
-    {ok,  lists:sort(Res1)}.
 
 -spec add(Type::term(), K::binary(), Target::fifo:uuid()) ->
                  {ok, UUID::binary()} |
