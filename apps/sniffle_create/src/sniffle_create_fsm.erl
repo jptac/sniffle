@@ -97,7 +97,7 @@
           grouping,
           backup_vm,
           permissions,
-          grouping_rules,
+          grouping_rules = [],
           hypervisors
          }).
 
