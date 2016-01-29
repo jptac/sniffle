@@ -36,7 +36,7 @@
 │     ├─ mdns_client─0.1.7
 │     └─ pooler─1.4.0
 ├─ libleofs─0.1.2
-├─ libsnarl─0.3.38
+├─ libsnarl─0.3.39
 │  └─ oauth2─0.6.0
 ├─ mdns_server_lib─0.2.3
 │  ├─ mdns_server─0.2.0
@@ -57,7 +57,7 @@
 │  └─ riak_sysmon─2.0.0
 ├─ riak_ensemble─2.1.2
 ├─ sgte─0.7.1
-├─ sniffle─0.7.2
+├─ sniffle─0.7.3
 ├─ sniffle_api─0.1.0
 ├─ sniffle_commons─0.1.0
 ├─ sniffle_console─0.1.0
