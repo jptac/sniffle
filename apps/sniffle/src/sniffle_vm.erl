@@ -990,20 +990,26 @@ logs(Vm) ->
                 Owner::fifo:uuid()) ->
                        not_found | {error, timeout} | [fifo:log()].
 set_owner(User, Vm, Owner) ->
-    case fetch_hypervisor(Vm) of
-        {ok, Server, Port} ->
-            UR = [{<<"owner">>, Owner}],
-            ok = libchunter:update_machine(
-                   Server, Port, Vm, undefined, UR);
-        _ ->
-            ok
-    end,
-    ls_org:execute_trigger(Owner, vm_create, Vm),
-    libhowl:send(Vm, [{<<"event">>, <<"update">>},
-                      {<<"data">>,
-                       [{<<"owner">>, Owner}]}]),
     case sniffle_vm:get(Vm) of
         {ok, V} ->
+            case fetch_hypervisor(Vm) of
+                {ok, Server, Port} ->
+                    UR = [{<<"owner">>, Owner}],
+                    ok = libchunter:update_machine(
+                           Server, Port, Vm, undefined, UR);
+                _ ->
+                    ok
+            end,
+            ls_org:execute_trigger(Owner, vm_create, Vm),
+            case ft_vm:owner(V) of
+                <<>> ->
+                    ok;
+                OldOwner ->
+                    ls_org:reverse_trigger(OldOwner, vm_create, Vm)
+            end,
+            libhowl:send(Vm, [{<<"event">>, <<"update">>},
+                              {<<"data">>,
+                               [{<<"owner">>, Owner}]}]),
             %% We can use the Vm object we got to end the accouting period
             %% for the old org
             resource_action(V, destroy, User, []),

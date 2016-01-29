@@ -104,7 +104,7 @@
  {<<"libleofs">>,{pkg,<<"libleofs">>,<<"0.1.2">>},0},
  {<<"libsnarl">>,
   {git,"https://github.com/project-fifo/libsnarl.git",
-       {ref,"8d8ce0bc128c98cb36d98d5904e2eb99b1068791"}},
+       {ref,"36d5b265e3b9baf66c85d6bc8402d0725b222736"}},
   0},
  {<<"libsnarlmatch">>,{pkg,<<"libsnarlmatch">>,<<"0.1.7">>},1},
  {<<"mdns_client">>,{pkg,<<"mdns_client">>,<<"0.1.7">>},2},
