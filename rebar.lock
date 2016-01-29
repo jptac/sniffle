@@ -101,7 +101,7 @@
   1},
  {<<"libchunter">>,
   {git,"https://github.com/project-fifo/libchunter.git",
-       {ref,"bb692896b37f4cd8254c336647168919d98f0169"}},
+       {ref,"9e4e73695dcdcc06dc91abf461205347fa319dd7"}},
   0},
  {<<"libhowl">>,
   {git,"https://github.com/project-fifo/libhowl.git",
