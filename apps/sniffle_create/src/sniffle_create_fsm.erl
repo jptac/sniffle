@@ -488,7 +488,7 @@ finish_rules(_Event, State = #state{
                  undefined ->
                      Rules1;
                  VM ->
-                     Mappings = ft_vm:network_map(VM),
+                     Mappings = ft_vm:iprange_map(VM),
                      Networks = [sniffle_iprange:get(N) || {_, N} <- Mappings],
                      Networks1 = [ft_iprange:tag(N) || {ok, N} <- Networks],
                      Networks2 = ordsets:from_list(Networks1),
@@ -654,7 +654,7 @@ get_ips(_Event, State = #state{nets = Nets,
             [sniffle_iprange:release_ip(Range, IP) || {Range, IP} <- Mapping],
             do_retry(S1);
         {Nics1, Mapping} ->
-            [sniffle_vm:add_network_map(UUID, IP, Range)
+            [sniffle_vm:add_iprange_map(UUID, IP, Range)
              || {Range, IP} <- Mapping],
             {next_state, build_key,
              State#state{mapping=Mapping, resulting_networks=Nics1},
@@ -716,12 +716,12 @@ create(_Event, State = #state{
         {error, _} ->
             %% TODO is it a good idea to handle all errors like this?
             %% How can we assure no creation was started?
-            [sniffle_vm:add_network_map(UUID, IP, Range)
+            [sniffle_vm:add_iprange_map(UUID, IP, Range)
              || {Range, IP} <- Mapping],
 
             [begin
                  sniffle_iprange:release_ip(Range, IP),
-                 sniffle_vm:remove_network_map(UUID, IP)
+                 sniffle_vm:remove_iprange_map(UUID, IP)
              end || {Range, IP} <- Mapping],
             lager:warning("[create] Could not get lock."),
             do_retry(State);

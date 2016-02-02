@@ -27,7 +27,7 @@
          handle_exit/3,
          handle_info/2,
          sync_repair/4,
-         set_network_map/4,
+         set_iprange_map/4,
          set_backup/4,
          set_snapshot/4,
          set_service/4,
@@ -60,7 +60,7 @@
 
 %% those functions do not get called directly.
 -ignore_xref([
-              set_network_map/4,
+              set_iprange_map/4,
               set_backup/4,
               set_config/4,
               set_snapshot/4,
@@ -170,9 +170,9 @@ unregister(Preflist, ReqID, Vm) ->
                                    {fsm, undefined, self()},
                                    ?MASTER).
 
-set_network_map(Preflist, ReqID, Vm, [IP, Net]) ->
+set_iprange_map(Preflist, ReqID, Vm, [IP, Net]) ->
     riak_core_vnode_master:command(Preflist,
-                                   {set_network_map, ReqID, Vm, IP, Net},
+                                   {set_iprange_map, ReqID, Vm, IP, Net},
                                    {fsm, undefined, self()},
                                    ?MASTER).
 
