@@ -78,8 +78,8 @@
 
 
 -export([
-         add_network_map/3,
-         remove_network_map/2,
+         add_iprange_map/3,
+         remove_iprange_map/2,
          add_grouping/2,
          remove_grouping/2,
          state/2,
@@ -457,7 +457,7 @@ add_nic_(Vm, V, Network) ->
             NicSpec2 = add_vlan(VLan, NicSpec1),
             UR = [{<<"add_nics">>, [NicSpec2]}],
             ok = libchunter:update_machine(Server, Port, Vm, undefined, UR),
-            add_network_map(Vm, IP, IPRange);
+            add_iprange_map(Vm, IP, IPRange);
         E ->
             lager:error("Could not get claim new IP: ~p for ~p ~p",
                         [E, Network, Requirements]),
@@ -486,10 +486,10 @@ remove_nic(Vm, Mac) ->
                     {ok, IpStr} = jsxd:get([<<"networks">>, Idx, <<"ip">>],
                                            ?S:config(V)),
                     IP = ft_iprange:parse_bin(IpStr),
-                    Ms = ?S:network_map(V),
+                    Ms = ?S:iprange_map(V),
                     ok = libchunter:update_machine(Server, Port, Vm,
                                                    undefined, UR),
-                    remove_network_map(Vm, IP),
+                    remove_iprange_map(Vm, IP),
                     [{IP, Network}] = [ {IP1, Network} ||
                                           {IP1, Network} <- Ms, IP1 =:= IP],
                     sniffle_iprange:release_ip(Network, IP);
@@ -649,7 +649,7 @@ unregister(Vm) ->
             do_write(Vm, unregister),
             lists:map(fun({Ip, Net}) ->
                               sniffle_iprange:release_ip(Net, Ip)
-                      end, ?S:network_map(V)),
+                      end, ?S:iprange_map(V)),
             VmPrefix = [<<"vms">>, Vm],
             ChannelPrefix = [<<"channels">>, Vm],
             Users = r_to_list(ls_user:list()),
@@ -1144,11 +1144,11 @@ commit_snapshot_rollback(Vm, UUID) ->
             E
     end.
 
-add_network_map(UUID, IP, Net) ->
-    do_write(UUID, set_network_map, [IP, Net]).
+add_iprange_map(UUID, IP, Net) ->
+    do_write(UUID, set_iprange_map, [IP, Net]).
 
-remove_network_map(UUID, IP) ->
-    do_write(UUID, set_network_map, [IP, delete]).
+remove_iprange_map(UUID, IP) ->
+    do_write(UUID, set_iprange_map, [IP, delete]).
 
 
 

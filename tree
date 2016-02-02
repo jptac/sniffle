@@ -10,7 +10,7 @@
 ├─ erlcloud─0.8.6
 ├─ fifo_db─0.1.7
 │  └─ eleveldb─2.1.0.0
-├─ fifo_dt─0.1.60
+├─ fifo_dt─0.1.61
 │  ├─ libsnarlmatch─0.1.7
 │  └─ riak_dt─2.1.1
 ├─ fifo_lager─0.1.1
@@ -30,7 +30,7 @@
 ├─ jsxd─0.1.10
 ├─ lager─2.1.1
 │  └─ goldrush─0.1.7
-├─ libchunter─0.1.43
+├─ libchunter─0.1.44
 ├─ libhowl─0.1.30
 │  └─ mdns_client_lib─0.1.30
 │     ├─ mdns_client─0.1.7
