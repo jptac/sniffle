@@ -847,7 +847,7 @@ code_change(_OldVsn, StateName, State, _Extra) ->
 merge_keys(Keys) ->
     [[Key, "\n"] || {_ID, Key} <- Keys].
 
-test_net(Have, [{ID, {_, Tag}} | R]) ->
+test_net(Have, [{ID, Tag } | R]) ->
     lager:debug("[create] test_net: ~p ~p", [Have, [{ID, Tag} | R]]),
     case lists:member(Tag, Have) of
         true ->
@@ -886,14 +886,14 @@ test_hypervisors(_, [], _) ->
     {error, no_hypervisors}.
 
 
-test_hypervisor(UUID, H, [{NetName, {_, Posibilities}} | Nets], Acc) ->
+test_hypervisor(UUID, H, [{NetName, {Network, Posibilities}} | Nets], Acc) ->
     lager:debug("[create] test_hypervisor: ~p ~p ~p",
                 [H, [{NetName, Posibilities} | Nets], Acc]),
     case test_net(H, Posibilities) of
         false ->
             false;
         ID ->
-            test_hypervisor(UUID, H, Nets, [{NetName, ID} | Acc])
+            test_hypervisor(UUID, H, Nets, [{NetName, {Network, ID}} | Acc])
     end;
 
 test_hypervisor(_UUID, _, [], Acc) ->
