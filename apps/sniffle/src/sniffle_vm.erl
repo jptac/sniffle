@@ -80,6 +80,8 @@
 -export([
          add_iprange_map/3,
          remove_iprange_map/2,
+         add_network_map/3,
+         remove_network_map/2,
          add_grouping/2,
          remove_grouping/2,
          state/2,
@@ -457,6 +459,7 @@ add_nic_(Vm, V, Network) ->
             NicSpec2 = add_vlan(VLan, NicSpec1),
             UR = [{<<"add_nics">>, [NicSpec2]}],
             ok = libchunter:update_machine(Server, Port, Vm, undefined, UR),
+            add_network_map(Vm, IP, Network),
             add_iprange_map(Vm, IP, IPRange);
         E ->
             lager:error("Could not get claim new IP: ~p for ~p ~p",
@@ -489,10 +492,11 @@ remove_nic(Vm, Mac) ->
                     Ms = ?S:iprange_map(V),
                     ok = libchunter:update_machine(Server, Port, Vm,
                                                    undefined, UR),
+                    remove_network_map(Vm, IP),
                     remove_iprange_map(Vm, IP),
-                    [{IP, Network}] = [ {IP1, Network} ||
-                                          {IP1, Network} <- Ms, IP1 =:= IP],
-                    sniffle_iprange:release_ip(Network, IP);
+                    [{IP, IPRange}] = [ {IP1, IPRange} ||
+                                          {IP1, IPRange} <- Ms, IP1 =:= IP],
+                    sniffle_iprange:release_ip(IPRange, IP);
                 {<<"stopped">>, _} ->
                     {error, not_stopped};
                 _ ->
@@ -1149,6 +1153,12 @@ add_iprange_map(UUID, IP, Net) ->
 
 remove_iprange_map(UUID, IP) ->
     do_write(UUID, set_iprange_map, [IP, delete]).
+
+add_network_map(UUID, IP, Net) ->
+    do_write(UUID, set_network_map, [IP, Net]).
+
+remove_network_map(UUID, IP) ->
+    do_write(UUID, set_network_map, [IP, delete]).
 
 
 

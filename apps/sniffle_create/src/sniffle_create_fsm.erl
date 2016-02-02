@@ -83,10 +83,10 @@
           creator,
           creator_obj,
           type,
-          nets,
+          nets = [] :: [{binary(), {binary(), [binary()]}}],
           hypervisor,
           hypervisor_id,
-          mapping = [],
+          mapping = [] :: [{binary(), binary(), integer()}],
           delay = 5000,
           retry = 0,
           max_retries = 0,
@@ -513,7 +513,8 @@ retry(_event, State = #state{retry = R, max_retries = Max})
 
 retry(_Event, State = #state{retry = Try}) ->
     next(),
-    {next_state, generate_grouping_rules, State#state{retry = Try + 1}}.
+    {next_state, generate_grouping_rules,
+     State#state{retry = Try + 1, log_cache = []}}.
 
 
 generate_grouping_rules(_Event, State = #state{grouping = undefined}) ->
@@ -560,7 +561,7 @@ get_networks(_Event, State = #state{backup_vm = B})
   when B =/= undefined ->
     next(),
     {next_state, get_server,
-     State#state{nets = [], log_cache = []}};
+     State#state{nets = []}};
 
 get_networks(_Event, State = #state{config = Config}) ->
     Nets = jsxd:get([<<"networks">>], [], Config),
@@ -569,14 +570,13 @@ get_networks(_Event, State = #state{config = Config}) ->
                               Rs = ft_network:ipranges(N),
                               Rs1 = [{R, sniffle_iprange:get(R)} || R <- Rs],
                               Rs2 = [{R, D} || {R, {ok, D}} <- Rs1],
-                              Rs3 = lists:map(fun({ID, R}) ->
-                                                      {ID, ft_iprange:tag(R)}
-                                              end, Rs2),
-                              {Name, Rs3}
+                              Rs3 = [{IPRange, ft_iprange:tag(R)}
+                                     || {IPRange, R} <- Rs2],
+                              {Name, {Network, Rs3}}
                       end, Nets),
     next(),
     {next_state, get_server,
-     State#state{nets = Nets1, log_cache = []}}.
+     State#state{nets = Nets1}}.
 
 get_server(_Event, State = #state{
                               uuid = UUID,
@@ -651,11 +651,15 @@ get_ips(_Event, State = #state{nets = Nets,
                       "Could not get IP's.",
                       "[create] Failed to get ips: ~p with mapping: ~p",
                       [E, Mapping]),
-            [sniffle_iprange:release_ip(Range, IP) || {Range, IP} <- Mapping],
+            [sniffle_iprange:release_ip(Range, IP)
+             || {Range, _, IP} <- Mapping],
             do_retry(S1);
         {Nics1, Mapping} ->
-            [sniffle_vm:add_iprange_map(UUID, IP, Range)
-             || {Range, IP} <- Mapping],
+            [begin
+                 sniffle_vm:add_iprange_map(UUID, IP, Range),
+                 sniffle_vm:add_network_map(UUID, IP, Network)
+             end
+             || {Range, Network, IP} <- Mapping],
             {next_state, build_key,
              State#state{mapping=Mapping, resulting_networks=Nics1},
              0}
@@ -693,7 +697,7 @@ create(_Event, State = #state{
                           hypervisor = {Host, Port},
                           test_pid = {Pid, Ref}
                          }) ->
-    [sniffle_iprange:release_ip(Range, IP) ||{Range, IP} <- Mapping],
+    [sniffle_iprange:release_ip(Range, IP) ||{Range, _Network, IP} <- Mapping],
     libchunter:release(Host, Port, UUID),
     Pid ! {Ref, success},
     sniffle_vm:creating(UUID, false),
@@ -716,13 +720,11 @@ create(_Event, State = #state{
         {error, _} ->
             %% TODO is it a good idea to handle all errors like this?
             %% How can we assure no creation was started?
-            [sniffle_vm:add_iprange_map(UUID, IP, Range)
-             || {Range, IP} <- Mapping],
-
             [begin
                  sniffle_iprange:release_ip(Range, IP),
-                 sniffle_vm:remove_iprange_map(UUID, IP)
-             end || {Range, IP} <- Mapping],
+                 sniffle_vm:remove_iprange_map(UUID, IP),
+                 sniffle_vm:remove_network_map(UUID, IP)
+             end || {Range, _Network, IP} <- Mapping],
             lager:warning("[create] Could not get lock."),
             do_retry(State);
         ok ->
@@ -845,7 +847,7 @@ code_change(_OldVsn, StateName, State, _Extra) ->
 merge_keys(Keys) ->
     [[Key, "\n"] || {_ID, Key} <- Keys].
 
-test_net(Have, [{ID, Tag} | R]) ->
+test_net(Have, [{ID, {_, Tag}} | R]) ->
     lager:debug("[create] test_net: ~p ~p", [Have, [{ID, Tag} | R]]),
     case lists:member(Tag, Have) of
         true ->
@@ -884,7 +886,7 @@ test_hypervisors(_, [], _) ->
     {error, no_hypervisors}.
 
 
-test_hypervisor(UUID, H, [{NetName, Posibilities} | Nets], Acc) ->
+test_hypervisor(UUID, H, [{NetName, {_, Posibilities}} | Nets], Acc) ->
     lager:debug("[create] test_hypervisor: ~p ~p ~p",
                 [H, [{NetName, Posibilities} | Nets], Acc]),
     case test_net(H, Posibilities) of
@@ -945,12 +947,16 @@ make_random(Weight, C) ->
     {ok, High} = jsxd:get(<<"high">>, C),
     {Weight, Low, High}.
 
+-spec update_nics(term(), term(), term()) ->
+                         {error, term(), [{binary(), binary(), integer()}]} |
+                         {[[{binary(), term()}]],
+                          [{binary(), binary(), integer()}]}.
 update_nics(Nics, Nets, State) ->
     lists:foldl(
       fun (_, {error, E, Mps}) ->
               {error, E, Mps};
           ({Name, _Desc}, {NicsF, Mappings}) ->
-              {ok, NicTag} = jsxd:get(Name, Nets),
+              {Name, {Network, NicTag}} = lists:keyfind(Name, 1, Nets),
               vm_log(State, info, <<"Fetching network ", NicTag/binary,
                                     " for NIC ", Name/binary>>),
               case sniffle_iprange:claim_ip(NicTag) of
@@ -970,7 +976,7 @@ update_nics(Nics, Nets, State) ->
                                             {<<"gateway">>, GWb}]),
                       Res1 = add_vlan(VLAN, Res),
                       NicsF1 = [Res1 | NicsF],
-                      Mappings1 = [{NicTag, IP} | Mappings],
+                      Mappings1 = [{NicTag, Network, IP} | Mappings],
                       {NicsF1, Mappings1};
                   E ->
                       {error, E, Mappings}
