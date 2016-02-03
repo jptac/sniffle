@@ -11,7 +11,7 @@
 -behaviour(gen_server).
 
 %% API
--export([start_link/0, restore/4, add/4]).
+-export([start_link/0, restore/5, add/4]).
 
 -ignore_xref([start_link/0]).
 
@@ -45,8 +45,9 @@ start_link() ->
 add(UUID, Package, Dataset, Config) ->
     gen_server:cast(?MODULE, {add, UUID, Package, Dataset, Config}).
 
-restore(UUID, BID, Requeirements, Creator) ->
-    gen_server:cast(?MODULE, {restore, UUID, BID, Requeirements, Creator}).
+restore(UUID, BID, Requeirements, Package, Creator) ->
+    gen_server:cast(
+        ?MODULE, {restore, UUID, BID, Requeirements, Package, Creator}).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -175,10 +176,10 @@ code_change(_OldVsn, State, _Extra) ->
 
 run_request({add, UUID, Package, Dataset, Config}) ->
     sniffle_create_fsm:create(UUID, Package, Dataset, Config);
-run_request({restore, UUID, BID, Requeirements, Creator}) ->
-    sniffle_create_fsm:restore(UUID, BID, Requeirements, Creator).
+run_request({restore, UUID, BID, Requeirements, Package, Creator}) ->
+    sniffle_create_fsm:restore(UUID, BID, Requeirements, Package, Creator).
 
 uuid({add, UUID, _Package, _Dataset, _Config}) ->
     UUID;
-uuid({restore, UUID, _BID, _Requeirements, _Creator}) ->
+uuid({restore, UUID, _BID, _Requeirements, _Package, _Creator}) ->
     UUID.

@@ -1,3 +1,4 @@
+
 -module(sniffle_vm).
 
 -ifdef(TEST).
@@ -19,6 +20,7 @@
          create/3,
          delete/1, delete/2,
          restore/4,
+         restore/5,
          store/2,
          update/4
         ]).
@@ -163,11 +165,13 @@ has_xml([{_, B} | Bs]) ->
     end.
 
 restore(User, Vm, BID, Requeirements) ->
+    restore(User, Vm, BID, Requeirements, undefined).
+restore(User, Vm, BID, Requeirements, Package) ->
     case sniffle_vm:get(Vm) of
         {ok, V} ->
             case ?S:hypervisor(V) of
                 <<>> ->
-                    restore_(User, Vm, V, BID, Requeirements);
+                    restore_(User, Vm, V, BID, Requeirements, Package);
                 _ ->
                     already_deployed
             end;
@@ -175,11 +179,16 @@ restore(User, Vm, BID, Requeirements) ->
             not_found
     end.
 
-restore_(User, UUID, V, BID, Requeirements) ->
+restore_(User, UUID, V, BID, Requeirements, Package) ->
     case jsxd:get([BID, <<"xml">>], true, ?S:backups(V)) of
         true ->
-            resource_action(V, restore, User, []),
-            sniffle_create_pool:restore(UUID, BID, Requeirements, User);
+            Meta = case Package of
+                       undefined -> [];
+                       _ -> [{package, Package}]
+                   end,
+            resource_action(V, restore, User, Meta),
+            sniffle_create_pool:restore(
+              UUID, BID, Requeirements, Package, User);
         false ->
             no_xml
     end.

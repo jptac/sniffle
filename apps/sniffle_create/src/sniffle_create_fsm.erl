@@ -13,9 +13,8 @@
 %% API
 -export([create/5,
          create/4,
-         restore/4,
-         start_link/5,
-         start_link/4]).
+         restore/5,
+         start_link/6]).
 
 %% gen_fsm callbacks
 -export([
@@ -30,6 +29,7 @@
 
 -export([
          test_hypervisors/2,
+         get_backup_package/2,
          finish_rules/2,
          prepare_create/2,
          prepare_backup/2,
@@ -55,6 +55,7 @@
               create/5,
               check_org_resources/2,
               claim_org_resources/2,
+              get_backup_package/2,
               create/2,
               generate_grouping_rules/2,
               get_dataset/2,
@@ -115,22 +116,25 @@
 %% @end
 %%--------------------------------------------------------------------
 
-start_link(UUID, Package, Dataset, Config, Pid) ->
-    gen_fsm:start_link(?MODULE, [UUID, Package, Dataset, Config, Pid], []).
+start_link(create, UUID, Package, Dataset, Config, Pid) ->
+    gen_fsm:start_link(
+      ?MODULE, [create, UUID, Package, Dataset, Config, Pid], []);
 
-start_link(UUID, BackupID, Requirements, Creator) ->
-    gen_fsm:start_link(?MODULE, [UUID, BackupID, Requirements, Creator], []).
+start_link(restore, UUID, BackupID, Requirements, Package, Creator) ->
+    gen_fsm:start_link(
+      ?MODULE, [restore, UUID, BackupID, Requirements, Package, Creator], []).
 
 create(UUID, Package, Dataset, Config) ->
     create(UUID, Package, Dataset, Config, undefined).
 
 create(UUID, Package, Dataset, Config, Pid) ->
     supervisor:start_child(sniffle_create_fsm_sup,
-                           [UUID, Package, Dataset, Config, Pid]).
+                           [create, UUID, Package, Dataset, Config, Pid]).
 
-restore(UUID, BackupID, Requirements, Creator) ->
-    supervisor:start_child(sniffle_create_fsm_sup,
-                           [UUID, BackupID, Requirements, Creator]).
+restore(UUID, BackupID, Requirements, Package, Creator) ->
+    supervisor:start_child(
+      sniffle_create_fsm_sup,
+      [restore, UUID, BackupID, Requirements, Package, Creator]).
 
 
 %%%===================================================================
@@ -152,7 +156,7 @@ restore(UUID, BackupID, Requirements, Creator) ->
 %%--------------------------------------------------------------------
 
 %% We are restoring a backup
-init([UUID, BackupID, Rules, Creator]) ->
+init([restore, UUID, BackupID, Rules, Package, Creator]) ->
     sniffle_vm:state(UUID, <<"restoring">>),
     random:seed(erlang:phash2([node()]),
                 erlang:monotonic_time(),
@@ -177,6 +181,7 @@ init([UUID, BackupID, Rules, Creator]) ->
                  end,
     next(),
     {ok, prepare_backup, #state{
+                            package = Package,
                             creator = Creator,
                             permissions = Permissions,
                             uuid = UUID,
@@ -187,7 +192,7 @@ init([UUID, BackupID, Rules, Creator]) ->
                            }};
 
 
-init([UUID, Package, Dataset, Config, Pid]) ->
+init([create, UUID, Package, Dataset, Config, Pid]) ->
     sniffle_vm:state(UUID, <<"placing">>),
     sniffle_vm:creating(UUID, {creating, erlang:system_time(seconds)}),
     random:seed(erlang:phash2([node()]),
@@ -210,14 +215,14 @@ init([UUID, Package, Dataset, Config, Pid]) ->
                  end,
     next(),
     {ok, prepare_create, #state{
-                                     uuid = UUID,
-                                     package_uuid = Package,
-                                     dataset_uuid = Dataset,
-                                     config = Config1,
-                                     delay = Delay,
-                                     max_retries = MaxRetries,
-                                     test_pid = Pid
-                                    }}.
+                            uuid = UUID,
+                            package_uuid = Package,
+                            dataset_uuid = Dataset,
+                            config = Config1,
+                            delay = Delay,
+                            max_retries = MaxRetries,
+                            test_pid = Pid
+                           }}.
 
 prepare_create(_Event, State = #state{config = Config}) ->
     G = case jsxd:get([<<"grouping">>], Config) of
@@ -248,7 +253,18 @@ prepare_backup(_Event, State = #state{uuid = UUID}) ->
                package_uuid = Package,
                dataset_uuid = Dataset},
     next(),
-    {next_state, get_package, State1}.
+    {next_state, get_backup_package, State1}.
+
+get_backup_package(_Event, State = #state{package = undefined,
+                                          backup_vm = V}) ->
+    Package = ft_vm:package(V),
+    State1 = State#state{package_uuid = Package},
+    next(),
+    {next_state, get_package, State1};
+get_backup_package(_Event, State) ->
+    next(),
+    {next_state, get_package, State}.
+
 
 
 
