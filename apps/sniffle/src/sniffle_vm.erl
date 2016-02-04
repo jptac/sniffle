@@ -146,6 +146,7 @@ store(User, Vm) ->
                     hypervisor(Vm, <<>>),
                     {Host, Port} = get_hypervisor(V),
                     resource_action(V, store, User, []),
+                    free_res(V),
                     libchunter:delete_machine(Host, Port, Vm);
                 false ->
                     {error, no_backup}

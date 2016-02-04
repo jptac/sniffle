@@ -43,7 +43,7 @@
          get_server/2,
          get_owner/2,
          create_permissions/2,
-         resource_claim/2,
+         write_accounting/2,
          get_ips/2,
          build_key/2,
          restore/2
@@ -60,7 +60,7 @@
               generate_grouping_rules/2,
               get_dataset/2,
               get_package/2,
-              resource_claim/2,
+              write_accounting/2,
               start_link/5,
               get_server/2,
               create_permissions/2,
@@ -98,6 +98,7 @@
           grouping,
           backup_vm,
           permissions,
+          resources = [],
           grouping_rules = [],
           hypervisors
          }).
@@ -255,12 +256,13 @@ prepare_backup(_Event, State = #state{uuid = UUID}) ->
     next(),
     {next_state, get_backup_package, State1}.
 
-get_backup_package(_Event, State = #state{package = undefined,
+get_backup_package(_Event, State = #state{package_uuid = undefined,
                                           backup_vm = V}) ->
     Package = ft_vm:package(V),
     State1 = State#state{package_uuid = Package},
     next(),
     {next_state, get_package, State1};
+
 get_backup_package(_Event, State) ->
     next(),
     {next_state, get_package, State}.
@@ -327,12 +329,6 @@ get_package(_Event, State = #state{
     next(),
     {next_state, check_org_resources,
      State#state{package = Package, rules = Rules ++ Rules1}}.
-
-%% We can skip this for backups we also skip claim_org_resources and
-%% create_permissions.
-check_org_resources(_Event, State = #state{backup = B}) when B =/= undefined ->
-    next(),
-    {next_state, get_dataset, State};
 
 check_org_resources(_Event, State = #state{owner = <<>>, package = P}) ->
     lager:debug("[create] Checking resources (no owner)"),
@@ -410,6 +406,13 @@ claim_org_resources(_Event, State = #state{uuid = UUID,
 %%                   {stop, Reason, NewState}
 %% @end
 %%--------------------------------------------------------------------
+
+%% We can skip this for backups
+create_permissions(_Event, State = #state{backup_vm = V})
+  when V =/= undefined ->
+    next(),
+    {next_state, get_dataset, State};
+
 create_permissions(_Event, State = #state{
                                       uuid = UUID,
                                       creator = Creator,
@@ -427,14 +430,14 @@ create_permissions(_Event, State = #state{
     libhowl:send(UUID, [{<<"event">>, <<"update">>},
                         {<<"data">>, [{<<"owner">>, Owner}]}]),
     next(),
-    {next_state, resource_claim, State}.
+    {next_state, write_accounting, State}.
 
 %% If there is no owner we don't need to add triggers
-resource_claim(_Event, State = #state{owner = <<>>}) ->
+write_accounting(_Event, State = #state{owner = <<>>}) ->
     next(),
     {next_state, get_dataset, State};
 
-resource_claim(_Event, State = #state{
+write_accounting(_Event, State = #state{
                                   uuid = UUID,
                                   package_uuid = Package,
                                   dataset_uuid = Dataset,
@@ -676,9 +679,9 @@ get_ips(_Event, State = #state{nets = Nets,
                  sniffle_vm:add_network_map(UUID, IP, Network)
              end
              || {Range, Network, IP} <- Mapping],
+            next(),
             {next_state, build_key,
-             State#state{mapping=Mapping, resulting_networks=Nics1},
-             0}
+             State#state{mapping=Mapping, resulting_networks=Nics1}}
     end.
 
 build_key(_Event, State = #state{
