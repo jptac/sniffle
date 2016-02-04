@@ -180,6 +180,7 @@ init([restore, UUID, BackupID, Rules, Package, Creator]) ->
                      _ ->
                          5
                  end,
+
     next(),
     {ok, prepare_backup, #state{
                             package = Package,
@@ -249,8 +250,10 @@ prepare_backup(_Event, State = #state{uuid = UUID}) ->
     Package = ft_vm:package(V),
     Dataset = ft_vm:dataset(V),
     Dataset = ft_vm:dataset(V),
+    Owner = ft_vm:owner(V),
     State1 = State#state{
                backup_vm = V,
+               owner = Owner,
                package_uuid = Package,
                dataset_uuid = Dataset},
     next(),
@@ -266,9 +269,6 @@ get_backup_package(_Event, State = #state{package_uuid = undefined,
 get_backup_package(_Event, State) ->
     next(),
     {next_state, get_package, State}.
-
-
-
 
 %%--------------------------------------------------------------------
 %% @private
@@ -438,12 +438,12 @@ write_accounting(_Event, State = #state{owner = <<>>}) ->
     {next_state, get_dataset, State};
 
 write_accounting(_Event, State = #state{
-                                  uuid = UUID,
-                                  package_uuid = Package,
-                                  dataset_uuid = Dataset,
-                                  creator = Creator,
-                                  owner = Org
-                                 }) ->
+                                    uuid = UUID,
+                                    package_uuid = Package,
+                                    dataset_uuid = Dataset,
+                                    creator = Creator,
+                                    owner = Org
+                                   }) ->
     ls_acc:create(Org, UUID, sniffle_vm:timestamp(),
                   [{user, Creator},
                    {package, Package},
