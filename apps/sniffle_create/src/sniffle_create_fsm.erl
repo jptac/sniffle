@@ -185,7 +185,7 @@ init([restore, UUID, BackupID, Rules, Package, Creator]) ->
 
     next(),
     {ok, prepare_backup, #state{
-                            package = Package,
+                            package_uuid = Package,
                             creator = Creator,
                             permissions = Permissions,
                             uuid = UUID,
