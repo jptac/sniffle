@@ -72,35 +72,35 @@
              ]).
 
 -record(state, {
-          test_pid,
-          uuid         :: binary(),
-          package      :: ft_package:package(),
-          package_uuid :: binary(),
-          dataset      :: ft_dataset:dataset() | {docker, binary()},
-          dataset_uuid :: binary() | {docker, binary()},
-          config       :: term() | undefined,
-          resulting_networks = [],
-          owner        :: binary() | undefined,
-          creator      :: binary() | undefined,
-          creator_obj  :: ft_org:org(),
-          nets = [] :: [{binary(), {binary(), [binary()]}}],
-          hypervisor,
-          hypervisor_id,
-          mapping = [] :: [{binary(), binary(), integer()}],
-          delay = 5000 :: pos_integer(),
-          retry = 0    :: non_neg_integer(),
-          max_retries = 1,
-          rules = [],
-          log_cache = [],
-          last_error,
-          backup,
-          type = create :: create | restore,
-          grouping      :: binary() | undefined,
-          backup_vm     :: ft_vm:vm() | undefined,
-          permissions,
-          resources = [],
-          grouping_rules = [],
-          hypervisors
+          test_pid                :: {pid(), reference()},
+          uuid                    :: binary(),
+          package                 :: ft_package:package(),
+          package_uuid            :: binary(),
+          dataset                 :: ft_dataset:dataset() | {docker, binary()},
+          dataset_uuid            :: binary() | {docker, binary()},
+          config                  :: term() | undefined,
+          resulting_networks = [] :: [binary()],
+          owner                   :: binary() | undefined,
+          creator                 :: binary() | undefined,
+          creator_obj             :: ft_org:org(),
+          nets = []               :: [{binary(), {binary(), [binary()]}}],
+          hypervisor              :: {string(), pos_integer()},
+          hypervisor_id           :: binary(),
+          mapping = []            :: [{binary(), binary(), integer()}],
+          delay = 5000            :: pos_integer(),
+          retry = 0               :: non_neg_integer(),
+          max_retries = 1         :: pos_integer(),
+          rules = []              :: [librankmatcher:rule()],
+          log_cache = []          :: [{error | warning | info, binary()}],
+          last_error              :: atom(),
+          backup                  :: binary(),
+          type = create           :: create | restore,
+          grouping                :: binary() | undefined,
+          backup_vm               :: ft_vm:vm() | undefined,
+          permissions             :: [[binary()]],
+          resources = []          :: [{binary(), integer()}],
+          grouping_rules = []     :: [librankmatcher:rule()],
+          hypervisors             :: [{integer(), binary()}]
          }).
 
 %%%===================================================================
@@ -253,14 +253,12 @@ prepare_create(_Event, State = #state{config = Config}) ->
 prepare_backup(_Event, State = #state{uuid = UUID}) ->
     lager:debug("[create] prepare backup"),
     {ok, V} = sniffle_vm:get(UUID),
-    Package = ft_vm:package(V),
     Dataset = ft_vm:dataset(V),
     Dataset = ft_vm:dataset(V),
     Owner = ft_vm:owner(V),
     State1 = State#state{
                backup_vm = V,
                owner = Owner,
-               package_uuid = Package,
                dataset_uuid = Dataset},
     next(),
     {next_state, get_backup_package, State1}.
@@ -298,6 +296,7 @@ get_owner(_Event, State = #state{config = Config, owner = undefined,
     Owner = ft_user:active_org(C),
     case Owner of
         <<"">> ->
+            vm_log(State, warning, <<"No owner">>),
             lager:warning("[create] User ~p has no active org.",
                           [Creator]);
         _ ->
@@ -636,7 +635,7 @@ test_hypervisors(_Event, State = #state{
             RamB = list_to_binary(integer_to_list(Ram)),
             S1 = add_log(State, info,
                          <<"Assigning memory ", RamB/binary>>),
-            S2 =add_log(S1, info, <<"Deploying on hypervisor ",
+            S2 = add_log(S1, info, <<"Deploying on hypervisor ",
                                     HypervisorID/binary>>),
             next(),
             {next_state, get_ips,
@@ -1030,7 +1029,7 @@ do_retry(State) ->
 vm_log(#state{test_pid = {_, _}}, _)  ->
     ok;
 
-vm_log(#state{uuid = UUID}, M)  ->
+vm_log(#state{uuid = UUID}, M) when is_binary(M) ->
     sniffle_vm:log(UUID, M).
 
 vm_log(#state{test_pid = {_, _}}, _, _)  ->
@@ -1046,27 +1045,36 @@ vm_log(State, warning, M)  ->
     vm_log(State, <<"[warning] ", M/binary>>);
 
 vm_log(State, error, M)  ->
-    vm_log(State, <<"[error] ", M/binary>>);
+    vm_log(State, <<"[error] ", M/binary>>).
 
-vm_log(State, _, M)  ->
-    vm_log(State, M).
-
-add_log(State = #state{log_cache = C}, Type, Msg) ->
+add_log(State = #state{log_cache = C}, Type, Msg)
+  when is_binary(Msg),
+       (Type =:= info orelse
+        Type =:= warning orelse
+        Type =:= error) ->
     State#state{log_cache = [{Type, Msg} | C]}.
 
-add_log(State = #state{log_cache = C}, Type, Msg, EID) ->
-    Msg1 = io_lib:format("~s Please see the warning log for further details "
+add_log(State = #state{log_cache = C}, Type, Msg, EID)
+  when
+      is_binary(EID),
+      (is_binary(Msg) orelse is_list(Msg)),
+      (Type =:= info orelse
+       Type =:= warning orelse
+       Type =:= error) ->
+    Msg1 = io_lib:format("~s | Please see the warning log for further details "
                          "the error id is ~s which will identify the entry.",
                          [Msg, EID]),
-    State#state{log_cache = [{Type, Msg1} | C]}.
+    State#state{log_cache = [{Type, list_to_binary(Msg1)} | C]}.
 
-warn(State, Log, S, Fmt) ->
+warn(State, Log, S, Fmt) when
+      is_list(Log), is_list(S), is_list(Fmt) ->
     EID = uuid:uuid4s(),
     lager:warning("[~s] " ++ S, [EID] ++ Fmt),
-    add_log(State, error, Log, EID).
+    add_log(State, warning, Log, EID).
 
 encode_dataset({docker, D}) ->
     <<"docker:", D/binary>>;
+
 encode_dataset(D) when is_binary(D) ->
     D.
 

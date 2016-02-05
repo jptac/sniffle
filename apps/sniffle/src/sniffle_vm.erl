@@ -1047,7 +1047,7 @@ set_owner(User, Vm, Owner) ->
 %% @doc Adds a new log to the VM and timestamps it.
 %% @end
 %%--------------------------------------------------------------------
--spec log(Vm::fifo:uuid(), Log::term()) ->
+-spec log(Vm :: fifo:uuid(), Log :: binary()) ->
                  {error, timeout} | not_found | ok.
 log(Vm, Log) ->
     Timestamp = timestamp(),
