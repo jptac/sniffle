@@ -1453,7 +1453,9 @@ by_hostname(Hostname, Owner) ->
     Full = term_to_binary({Hostname, Owner}),
     case sniffle_2i:get(hostname, Full) of
         {ok, Bin} ->
-            {ok, binary_to_term(Bin)};
+            %% TODO: currently we don't allow multiple entries
+            %% so we will just return a list manually
+            {ok, [binary_to_term(Bin)]};
         E ->
             E
-    end .
+    end.
