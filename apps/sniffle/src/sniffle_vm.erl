@@ -22,7 +22,9 @@
          restore/4,
          restore/5,
          store/2,
-         update/4
+         update/4,
+         set_hostname/3,
+         by_hostname/2
         ]).
 
 -export([
@@ -84,6 +86,8 @@
          remove_iprange_map/2,
          add_network_map/3,
          remove_network_map/2,
+         add_hostname_map/3,
+         remove_hostname_map/2,
          add_grouping/2,
          remove_grouping/2,
          state/2,
@@ -503,6 +507,7 @@ remove_nic(Vm, Mac) ->
                     ok = libchunter:update_machine(Server, Port, Vm,
                                                    undefined, UR),
                     remove_network_map(Vm, IP),
+                    remove_hostname_map(Vm, IP, V),
                     remove_iprange_map(Vm, IP),
                     [{IP, IPRange}] = [ {IP1, IPRange} ||
                                           {IP1, IPRange} <- Ms, IP1 =:= IP],
@@ -1027,8 +1032,10 @@ set_owner(User, Vm, Owner) ->
             %% We can use the Vm object we got to end the accouting period
             %% for the old org
             resource_action(V, destroy, User, []),
+            delete_network_2i(Vm),
             case owner(Vm, Owner) of
                 ok ->
+                    update_network_2i(Vm),
                     %% After a successful changed the owner we refetch the vm
                     %% to add accounting to the new org.
                     Opts = [{package, ft_vm:package(V)},
@@ -1170,7 +1177,53 @@ add_network_map(UUID, IP, Net) ->
 remove_network_map(UUID, IP) ->
     do_write(UUID, set_network_map, [IP, delete]).
 
+add_hostname_map(UUID, IP, Net) ->
+    Res = do_write(UUID, set_hostname_map, [IP, Net]),
+    update_network_2i(UUID),
+    Res.
 
+set_hostname(UUID, IFace, Hostname) ->
+    {ok, V} = sniffle_vm:get(UUID),
+    Config = ft_vm:config(V),
+    Nics = jsxd:get([<<"networks">>], [], Config),
+    case find_ip(Nics, IFace) of
+        not_found ->
+            not_found;
+        {ok, IP} ->
+            case Hostname of
+                <<>> ->
+                    remove_hostname_map(UUID, IP);
+                _ ->
+                    add_hostname_map(UUID, IP, Hostname)
+            end
+    end.
+
+find_ip([], _IFace) ->
+    not_found;
+find_ip([I | R], IFace) ->
+    case jsxd:get([<<"interface">>], I) of
+        {ok, IFace} ->
+            jsxd:get([<<"ip">>], I);
+        _ ->
+            find_ip(R, IFace)
+    end.
+
+
+remove_hostname_map(UUID, IP) ->
+    {ok, V} = sniffle_vm:get(UUID),
+    remove_hostname_map(UUID, IP, V).
+
+remove_hostname_map(UUID, IP, V) ->
+    case ft_vm:owner(V) of
+        <<>> ->
+            ok;
+        Owner ->
+            Map = ft_vm:hostname_map(V),
+            Hostname = orddict:fetch(IP, Map),
+            Full = term_to_binary({Hostname, Owner}),
+            sniffle_2i:delete(hostname, Full)
+    end,
+    do_write(UUID, set_hostname_map, [IP, delete]).
 
 trigger_fw_change(UUID) ->
     {ok, VM} = sniffle_vm:get(UUID),
@@ -1365,3 +1418,42 @@ encode_dataset({docker, D}) ->
     <<"docker:", D/binary>>;
 encode_dataset(D) when is_binary(D) ->
     D.
+
+
+update_network_2i(UUID) ->
+    {ok, V} = sniffle_vm:get(UUID),
+    case ft_vm:owner(V) of
+        <<>> ->
+            ok;
+        Owner ->
+            [
+             begin
+                 Full = term_to_binary({Hostname, Owner}),
+                 Data = term_to_binary({UUID, IP}),
+                 sniffle_2i:add(hostname, Full, Data)
+             end || {IP, Hostname} <- ft_vm:hostname_map(V)
+            ]
+    end.
+
+delete_network_2i(UUID) ->
+    {ok, V} = sniffle_vm:get(UUID),
+    case ft_vm:owner(V) of
+        <<>> ->
+            ok;
+        Owner ->
+            [
+             begin
+                 Full = term_to_binary({Hostname, Owner}),
+                 sniffle_2i:delete(hostname, Full)
+             end || {_IP, Hostname} <- ft_vm:hostname_map(V)
+            ]
+    end.
+
+by_hostname(Hostname, Owner) ->
+    Full = term_to_binary({Hostname, Owner}),
+    case sniffle_2i:get(hostname, Full) of
+        {ok, Bin} ->
+            {ok, binary_to_term(Bin)};
+        E ->
+            E
+    end .
