@@ -25,7 +25,7 @@
   0},
  {<<"cuttlefish">>,
   {git,"https://github.com/tsloughter/cuttlefish.git",
-       {ref,"f5f6fdc1b0dd8ebe909b81f0b38f5715d4e869e6"}},
+       {ref,"bd2660f6e090e88556baf203b2769b9319a780d5"}},
   0},
  {<<"ddb_client">>,{pkg,<<"ddb_client">>,<<"0.1.17">>},1},
  {<<"dproto">>,{pkg,<<"dproto">>,<<"0.1.12">>},2},
