@@ -29,6 +29,7 @@
          sync_repair/4,
          set_iprange_map/4,
          set_network_map/4,
+         set_hostname_map/4,
          set_backup/4,
          set_snapshot/4,
          set_service/4,
@@ -63,6 +64,7 @@
 -ignore_xref([
               set_iprange_map/4,
               set_network_map/4,
+              set_hostname_map/4,
               set_backup/4,
               set_config/4,
               set_snapshot/4,
@@ -181,6 +183,12 @@ set_iprange_map(Preflist, ReqID, Vm, [IP, Net]) ->
 set_network_map(Preflist, ReqID, Vm, [IP, Net]) ->
     riak_core_vnode_master:command(Preflist,
                                    {set_network_map, ReqID, Vm, IP, Net},
+                                   {fsm, undefined, self()},
+                                   ?MASTER).
+
+set_hostname_map(Preflist, ReqID, Vm, [IP, Net]) ->
+    riak_core_vnode_master:command(Preflist,
+                                   {set_hostname_map, ReqID, Vm, IP, Net},
                                    {fsm, undefined, self()},
                                    ?MASTER).
 

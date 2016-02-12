@@ -513,6 +513,21 @@ message({vm, owner, User, Vm, Owner}, State) when
      sniffle_vm:set_owner(User, Vm, Owner),
      State};
 
+message({vm, hostname, Vm, Interface, Hostname}, State) when
+      is_binary(Vm),
+      is_binary(Interface),
+      is_binary(Hostname) ->
+    {reply,
+     sniffle_vm:set_hostname(Vm, Interface, Hostname),
+     State};
+
+message({vm, by_hostname, Hostname, Org}, State) when
+      is_binary(Hostname),
+      is_binary(Org) ->
+    {reply,
+     sniffle_vm:by_hostname(Hostname, Org),
+     State};
+
 ?VM(set_service);
 ?VM(state);
 ?VM(creating);
