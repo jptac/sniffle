@@ -23,8 +23,7 @@
          restore/5,
          store/2,
          update/4,
-         set_hostname/3,
-         by_hostname/2
+         set_hostname/3
         ]).
 
 -export([
@@ -1221,8 +1220,7 @@ remove_hostname_map(UUID, IP, V) ->
         Owner ->
             Map = ft_vm:hostname_map(V),
             Hostname = orddict:fetch(IP, Map),
-            Full = term_to_binary({Hostname, Owner}),
-            sniffle_2i:delete(hostname, Full)
+            sniffle_hostname:remove(Hostname, Owner, {UUID, IP})
     end,
     do_write(UUID, set_hostname_map, [IP, delete]).
 
@@ -1427,13 +1425,8 @@ update_network_2i(UUID) ->
         <<>> ->
             ok;
         Owner ->
-            [
-             begin
-                 Full = term_to_binary({Hostname, Owner}),
-                 Data = term_to_binary({UUID, IP}),
-                 sniffle_2i:add(hostname, Full, Data)
-             end || {IP, Hostname} <- ft_vm:hostname_map(V)
-            ]
+            [sniffle_hostname:add(Hostname, Owner, {UUID, IP})
+             || {IP, Hostname} <- ft_vm:hostname_map(V)]
     end.
 
 delete_network_2i(UUID) ->
@@ -1442,21 +1435,6 @@ delete_network_2i(UUID) ->
         <<>> ->
             ok;
         Owner ->
-            [
-             begin
-                 Full = term_to_binary({Hostname, Owner}),
-                 sniffle_2i:delete(hostname, Full)
-             end || {_IP, Hostname} <- ft_vm:hostname_map(V)
-            ]
-    end.
-
-by_hostname(Hostname, Owner) ->
-    Full = term_to_binary({Hostname, Owner}),
-    case sniffle_2i:get(hostname, Full) of
-        {ok, Bin} ->
-            %% TODO: currently we don't allow multiple entries
-            %% so we will just return a list manually
-            {ok, [binary_to_term(Bin)]};
-        E ->
-            E
+            [sniffle_hostname:remove(Hostname, Owner, {UUID, IP})
+             || {IP, Hostname} <- ft_vm:hostname_map(V)]
     end.

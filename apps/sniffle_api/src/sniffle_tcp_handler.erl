@@ -525,7 +525,7 @@ message({vm, get, hostname, Hostname, Org}, State) when
       is_binary(Hostname),
       is_binary(Org) ->
     {reply,
-     sniffle_vm:by_hostname(Hostname, Org),
+     sniffle_hostname:get(Hostname, Org),
      State};
 
 ?VM(set_service);
