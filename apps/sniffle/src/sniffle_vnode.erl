@@ -131,25 +131,23 @@ put(Key, Obj, State) ->
 
 change(UUID, Action, Vals, {ReqID, Coordinator} = ID,
        State=#vstate{state=Mod}) ->
-    case get(UUID, State) of
-        {ok, O} ->
-            O1 = load_obj(ID, Mod, O),
-            H1 = ft_obj:val(O1),
-            H2 = case Vals of
-                     [Val] ->
-                         Mod:Action(ID, Val, H1);
-                     [Val1, Val2] ->
-                         Mod:Action(ID, Val1, Val2, H1)
-                 end,
-            Obj = ft_obj:update(H2, Coordinator, O1),
-            sniffle_vnode:put(UUID, Obj, State),
-            {reply, {ok, ReqID}, State};
-        R ->
-            lager:warning("[~s] tried to write to a non existing element: ~p",
-                          [State#vstate.bucket, R]),
-            {reply, {ok, ReqID, not_found}, State}
-    end.
-
+    O1 = case get(UUID, State) of
+             {ok, O} ->
+                 load_obj(ID, Mod, O);
+             _R ->
+                 H0 = Mod:new({1, Coordinator}),
+                 ft_obj:new(H0, Coordinator)
+         end,
+    H1 = ft_obj:val(O1),
+    H2 = case Vals of
+             [Val] ->
+                 Mod:Action(ID, Val, H1);
+             [Val1, Val2] ->
+                 Mod:Action(ID, Val1, Val2, H1)
+         end,
+    Obj = ft_obj:update(H2, Coordinator, O1),
+    sniffle_vnode:put(UUID, Obj, State),
+    {reply, {ok, ReqID}, State}.
 
 %%%===================================================================
 %%% Callbacks
