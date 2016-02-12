@@ -1189,7 +1189,8 @@ set_hostname(UUID, IFace, Hostname) ->
     case find_ip(Nics, IFace) of
         not_found ->
             not_found;
-        {ok, IP} ->
+        {ok, IPs} ->
+            IP = ft_iprange:parse_bin(IPs),
             case Hostname of
                 <<>> ->
                     remove_hostname_map(UUID, IP);
