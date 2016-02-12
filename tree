@@ -1,10 +1,10 @@
 [0m├─ bugsnag─0.1.1
 ├─ clique─0.3.1+build.140.ref8067df5
 ├─ cluster_info─2.0.4
-├─ cuttlefish─2.0.0+build.479.reff5f6fdc
+├─ cuttlefish─2.0.0+build.502.refbd2660f
 │  ├─ getopt─0.4.3
 │  └─ neotoma─1.7.2
-├─ edown─0.8+build.155.refd864427
+├─ edown─0.8
 ├─ eper─0.94.0
 ├─ eplugin─0.1.4
 ├─ erlcloud─0.8.6
