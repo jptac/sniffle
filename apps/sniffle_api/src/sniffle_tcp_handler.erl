@@ -521,7 +521,7 @@ message({vm, hostname, Vm, Interface, Hostname}, State) when
      sniffle_vm:set_hostname(Vm, Interface, Hostname),
      State};
 
-message({vm, by_hostname, Hostname, Org}, State) when
+message({vm, get, hostname, Hostname, Org}, State) when
       is_binary(Hostname),
       is_binary(Org) ->
     {reply,
