@@ -10,7 +10,7 @@
 ├─ erlcloud─0.8.6
 ├─ fifo_db─0.1.7
 │  └─ eleveldb─2.1.0.0
-├─ fifo_dt─0.1.63
+├─ fifo_dt─0.1.65
 │  ├─ libsnarlmatch─0.1.7
 │  └─ riak_dt─2.1.1
 ├─ fifo_lager─0.1.1
