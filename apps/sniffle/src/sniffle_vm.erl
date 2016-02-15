@@ -1190,9 +1190,10 @@ set_hostname(UUID, IFace, Hostname) ->
             not_found;
         {ok, IPs} ->
             IP = ft_iprange:parse_bin(IPs),
+            remove_hostname_map(UUID, IP, V),
             case Hostname of
                 <<>> ->
-                    remove_hostname_map(UUID, IP);
+                    ok;
                 _ ->
                     add_hostname_map(UUID, IP, Hostname)
             end
