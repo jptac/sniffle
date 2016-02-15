@@ -1176,8 +1176,8 @@ add_network_map(UUID, IP, Net) ->
 remove_network_map(UUID, IP) ->
     do_write(UUID, set_network_map, [IP, delete]).
 
-add_hostname_map(UUID, IP, Net) ->
-    Res = do_write(UUID, set_hostname_map, [IP, Net]),
+add_hostname_map(UUID, IP, Hostname) ->
+    Res = do_write(UUID, set_hostname_map, [IP, Hostname]),
     update_network_2i(UUID),
     Res.
 
