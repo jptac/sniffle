@@ -40,6 +40,7 @@
          claim_org_resources/2,
          get_dataset/2,
          create/2,
+         set_hostname/2,
          get_server/2,
          get_owner/2,
          create_permissions/2,
@@ -86,7 +87,8 @@
           nets = []               :: [{binary(), {binary(), [binary()]}}],
           hypervisor              :: {string(), pos_integer()},
           hypervisor_id           :: binary(),
-          mapping = []            :: [{binary(), binary(), integer()}],
+          mapping = []            :: [{binary(), binary(),
+                                       binary(), integer()}],
           delay = 5000            :: pos_integer(),
           retry = 0               :: non_neg_integer(),
           max_retries = 1         :: pos_integer(),
@@ -687,7 +689,7 @@ get_ips(_Event, State = #state{nets = Nets,
                  sniffle_vm:add_iprange_map(UUID, IP, Range),
                  sniffle_vm:add_network_map(UUID, IP, Network)
              end
-             || {Range, Network, IP} <- Mapping],
+             || {_Name, Range, Network, IP} <- Mapping],
             next(),
             {next_state, build_key,
              State#state{mapping=Mapping, resulting_networks=Nics1}}
@@ -704,7 +706,7 @@ build_key(_Event, State = #state{
                                   <<KeysB/binary, Ks/binary>>
                           end, KeysB, Config),
     next(),
-    {next_state, create, State#state{config = Config1}}.
+    {next_state, set_hostname, State#state{config = Config1}}.
 
 restore(_Event, State = #state{
                            uuid = UUID,
@@ -720,13 +722,36 @@ restore(_Event, State = #state{
                               S3Port, Bucket, AKey, SKey),
     {stop, normal, State}.
 
+%% We don't set hostnames when we only do a dry run
+set_hostname(_Event, State = #state{
+                                test_pid = {_Pid, _Ref}
+                               }) ->
+    next(),
+    {next_state, create, State};
+
+set_hostname(_Event, State = #state{
+                                mapping = Mapping,
+                                config = Config,
+                                uuid = UUID
+                               }) ->
+    [case jsxd:get([<<"hostnames">>, Name], <<>>, Config) of
+         <<>> -> ok;
+         Hostname ->
+             sniffle_vm:add_hostname_map(UUID, IP, Hostname)
+     end
+     || {Name, _Range, _Network, IP} <- Mapping],
+    next(),
+    {next_state, create, State}.
+
+
 create(_Event, State = #state{
                           mapping = Mapping,
                           uuid = UUID,
                           hypervisor = {Host, Port},
                           test_pid = {Pid, Ref}
                          }) ->
-    [sniffle_iprange:release_ip(Range, IP) ||{Range, _Network, IP} <- Mapping],
+    [sniffle_iprange:release_ip(Range, IP)
+     || {_Name, Range, _Network, IP} <- Mapping],
     libchunter:release(Host, Port, UUID),
     Pid ! {Ref, success},
     sniffle_vm:creating(UUID, false),
@@ -753,7 +778,7 @@ create(_Event, State = #state{
                  sniffle_iprange:release_ip(Range, IP),
                  sniffle_vm:remove_iprange_map(UUID, IP),
                  sniffle_vm:remove_network_map(UUID, IP)
-             end || {Range, _Network, IP} <- Mapping],
+             end || {_Name, Range, _Network, IP} <- Mapping],
             lager:warning("[create] Could not get lock."),
             do_retry(State);
         ok ->
@@ -979,7 +1004,7 @@ make_random(Weight, C) ->
 -spec update_nics(term(), term(), term()) ->
                          {error, term(), [{binary(), binary(), integer()}]} |
                          {[[{binary(), term()}]],
-                          [{binary(), binary(), integer()}]}.
+                          [{binary(), binary(), binary(), integer()}]}.
 update_nics(Nics, Nets, State) ->
     lists:foldl(
       fun (_, {error, E, Mps}) ->
@@ -1005,7 +1030,7 @@ update_nics(Nics, Nets, State) ->
                                             {<<"gateway">>, GWb}]),
                       Res1 = add_vlan(VLAN, Res),
                       NicsF1 = [Res1 | NicsF],
-                      Mappings1 = [{NicTag, Network, IP} | Mappings],
+                      Mappings1 = [{Name, NicTag, Network, IP} | Mappings],
                       {NicsF1, Mappings1};
                   E ->
                       {error, E, Mappings}
