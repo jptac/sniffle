@@ -1,6 +1,5 @@
 [0m├─ bugsnag─0.1.2
 ├─ clique─0.3.1+build.140.ref8067df5
-├─ cluster_info─2.0.4
 ├─ cuttlefish─2.0.1+build.505.ref2348f6f
 │  └─ getopt─0.8.2
 ├─ edown─0.8
@@ -45,7 +44,7 @@
 ├─ poolboy─0.8.1p3
 ├─ rankmatcher─0.1.3
 ├─ recon─2.2.1
-├─ riak_core─fifo-0.4.4+build.1815.refd02a884
+├─ riak_core─2.1.5
 │  ├─ basho_stats─1.0.3
 │  ├─ chash─0.1.1
 │  ├─ exometer_core─1.0.0
@@ -54,8 +53,8 @@
 │  │  ├─ parse_trans─2.9.0
 │  │  └─ setup─1.7.0
 │  ├─ pbkdf2─2.0.0
+│  ├─ riak_ensemble─2.1.3
 │  └─ riak_sysmon─2.1.2
-├─ riak_ensemble─2.1.2
 ├─ sgte─0.7.1
 ├─ sniffle─0.7.3
 ├─ sniffle_api─0.1.0
