@@ -90,7 +90,7 @@ lookup(Name) when
                     {ok, UUID::fifo:iprange_id()}.
 create(Iprange, Network, Gateway, Netmask, First, Last, Tag, Vlan) when
       is_binary(Iprange) ->
-    UUID = list_to_binary(uuid:to_string(uuid:uuid4())),
+    UUID = fifo_utils:uuid(iprange),
     case sniffle_iprange:lookup(Iprange) of
         not_found ->
             ok = do_write(UUID, create, [Iprange, Network, Gateway, Netmask,

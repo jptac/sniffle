@@ -45,7 +45,7 @@ sync_repair(UUID, Obj) ->
 -spec create(Name::binary(), Type::cluster|stack|none) ->
                     duplicate | {ok, ClusterID :: binary()} | {error, timeout}.
 create(Name, Type) ->
-    UUID = uuid:uuid4s(),
+    UUID = fifo_utils:uuid(grouping),
     case do_write(UUID, create, [Name, Type]) of
         ok ->
             {ok, UUID};

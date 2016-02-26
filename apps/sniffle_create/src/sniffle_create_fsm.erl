@@ -1093,7 +1093,7 @@ add_log(State = #state{log_cache = C}, Type, Msg, EID)
 
 warn(State, Log, S, Fmt) when
       is_list(Log), is_list(S), is_list(Fmt) ->
-    EID = uuid:uuid4s(),
+    EID = fifo_utils:uuid(),
     lager:warning("[~s] " ++ S, [EID] ++ Fmt),
     add_log(State, warning, Log, EID).
 
