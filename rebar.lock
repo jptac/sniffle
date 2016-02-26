@@ -1,5 +1,4 @@
 [{<<"base16">>,{pkg,<<"base16">>,<<"1.0.0">>},1},
- {<<"basho_poolboy">>,{pkg,<<"basho_poolboy">>,<<"0.8.1-p3">>},1},
  {<<"basho_stats">>,{pkg,<<"basho_stats">>,<<"1.0.3">>},1},
  {<<"bear">>,{pkg,<<"bear">>,<<"0.8.3">>},3},
  {<<"bugsnag">>,{pkg,<<"bugsnag_erl">>,<<"0.1.2">>},0},
@@ -51,12 +50,11 @@
        {ref,"47d37a977a7d633199822bf6b08353007483d00f"}},
   1},
  {<<"mmath">>,{pkg,<<"mmath">>,<<"0.1.15">>},2},
- {<<"oauth2_erlang">>,{pkg,<<"oauth2_erlang">>,<<"0.6.1">>},1},
+ {<<"oauth2">>,{pkg,<<"oauth2_erlang">>,<<"0.6.1">>},1},
  {<<"parse_trans">>,{pkg,<<"parse_trans">>,<<"2.9.0">>},2},
  {<<"pbkdf2">>,{pkg,<<"pbkdf2">>,<<"2.0.0">>},1},
  {<<"poolboy">>,{pkg,<<"poolboy">>,<<"1.5.1">>},1},
  {<<"pooler">>,{pkg,<<"pooler">>,<<"1.4.0">>},2},
- {<<"quickrand">>,{pkg,<<"quickrand">>,<<"1.5.1">>},2},
  {<<"ranch">>,{pkg,<<"ranch">>,<<"1.1.0">>},1},
  {<<"rankmatcher">>,{pkg,<<"rankmatcher">>,<<"0.1.4">>},0},
  {<<"recon">>,{pkg,<<"recon">>,<<"2.2.1">>},0},
@@ -72,5 +70,4 @@
  {<<"uuid">>,
   {git,"https://github.com/project-fifo/erlang-uuid.git",
        {ref,"c28d740d878e91a075ee3d888ba15131d136e0d2"}},
-  0},
- {<<"uuid_erl">>,{pkg,<<"uuid_erl">>,<<"1.5.1">>},1}].
+  0}].
