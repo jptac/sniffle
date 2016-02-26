@@ -9,7 +9,6 @@
                   stdlib,
                   riak_core,
                   folsom_ddb,
-                  uuid,
                   libchunter,
                   libhowl,
                   libsnarl,
