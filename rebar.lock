@@ -37,7 +37,7 @@
  {<<"exometer_core">>,{pkg,<<"exometer_core">>,<<"1.0.0">>},1},
  {<<"fifo_db">>,
   {git,"https://github.com/project-fifo/fifo-db.git",
-       {ref,"6fad599d30a5dd21891f5051cbf8a5d2107d3a0e"}},
+       {ref,"be7c9f04bf87f7352874a6a55ccf19440ff2e9dd"}},
   0},
  {<<"fifo_dt">>,
   {git,"https://github.com/project-fifo/fifo_dt.git",
