@@ -35,7 +35,7 @@ case $2 in
         echo Trying to guess configuration ...
         IP=$(ifconfig net0 | grep inet | /usr/bin/awk '{print $2}')
         CONFFILE=/data/sniffle/etc/sniffle.conf
-        cp cp /opt/local/fifo-sniffle/etc/sniffle.conf.example ${CONFFILE}.example
+        cp /opt/local/fifo-sniffle/etc/sniffle.conf.example ${CONFFILE}.example
         if [ ! -f "${CONFFILE}" ]
         then
             echo "Creating new configuration from example file."
