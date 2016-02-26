@@ -10,7 +10,6 @@
                   libsnarl,
                   eplugin,
                   libchunter,
-                  uuid,
                   sniffle_ip,
                   sniffle
                  ]},
