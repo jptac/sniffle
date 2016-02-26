@@ -23,8 +23,11 @@
 │  └─ ddb_client─0.1.17
 │     ├─ dproto─0.1.12
 │     └─ mmath─0.1.15
-├─ hackney─0.6.1
-│  └─ mimetypes─1.0
+├─ hackney─1.4.8
+│  ├─ certifi─0.3.0
+│  ├─ idna─1.0.3
+│  ├─ mimerl─1.0.2
+│  └─ ssl_verify_hostname─1.0.5
 ├─ jsx─1.4.5
 ├─ jsxd─0.1.10
 ├─ libchunter─0.1.45

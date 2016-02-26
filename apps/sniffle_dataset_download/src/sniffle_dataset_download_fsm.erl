@@ -107,8 +107,8 @@ get_manifest(_E, State = #state{url = URL, from = From, ref = Ref,
                                 http_opts = HTTPOpts}) ->
     lager:info("[img:import] Importing: ~s", [URL]),
     Client = client(URL, HTTPOpts),
-    {ok, Body, Client1} = hackney:body(Client),
-    hackney:close(Client1),
+    {ok, Body} = hackney:body(Client),
+    hackney:close(Client),
     JSON = jsxd:from_list(jsx:decode(Body)),
     {ok, UUID} = jsxd:get([<<"uuid">>], JSON),
     ImgURL = case jsxd:get([<<"files">>, 0, <<"url">>], JSON) of
@@ -164,16 +164,16 @@ download(_D, State = #state{done = true}) ->
 download(_, State = #state{http_client = Client, acc = Acc, downloaded = Done,
                            total_size = TotalSize, sha1 = SHA1, uuid=UUID}) ->
     case hackney:stream_body(Client) of
-        {ok, Data, Client1} ->
+        {ok, Data} ->
             SHA11 = crypto:hash_update(SHA1, Data),
             Acc1 = <<Acc/binary, Data/binary>>,
             {next_state, download,
              State#state{downloaded = Done + byte_size(Data), acc = Acc1,
-                         sha1 = SHA11, http_client = Client1}, 0};
-        {done, Client1} ->
+                         sha1 = SHA11, http_client = Client}, 0};
+        done ->
             lager:info("[img:import:~s] Download complete after ~p of ~p byte",
                        [UUID, Done, TotalSize]),
-            hackney:close(Client1),
+            hackney:close(Client),
             {next_state, download, State#state{done = true}, 0}
     end.
 
