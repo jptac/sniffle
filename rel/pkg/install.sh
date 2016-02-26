@@ -34,8 +34,8 @@ case $2 in
         svccfg import /opt/local/fifo-sniffle/share/sniffle.xml
         echo Trying to guess configuration ...
         IP=$(ifconfig net0 | grep inet | /usr/bin/awk '{print $2}')
-        CONFFILE=/opt/local/fifo-sniffle/etc/sniffle.conf
-        cp cp /opt/local/fifo-sniffle/etc/sniffle.conf.example ${CONFFILE}
+        CONFFILE=/data/sniffle/etc/sniffle.conf
+        cp cp /opt/local/fifo-sniffle/etc/sniffle.conf.example ${CONFFILE}.example
         if [ ! -f "${CONFFILE}" ]
         then
             echo "Creating new configuration from example file."
