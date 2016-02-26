@@ -326,7 +326,7 @@ service_restart(Vm, Service) ->
     end.
 
 do_snap(Vm, V, Comment, Opts) ->
-    UUID = uuid:uuid4s(),
+    UUID = fifo_utils:uuid(),
     Opts1 = [create | Opts],
     {Server, Port} = get_hypervisor(V),
     case sniffle_s3:config(snapshot) of
@@ -370,7 +370,7 @@ promote_to_image(Vm, SnapID, Config) ->
 
 promite_to_image_(UUID, SnapID, Config, V) ->
     {Server, Port} = get_hypervisor(V),
-    DatasetUUID = uuid:uuid4s(),
+    DatasetUUID = fifo_utils:uuid(dataset),
     ok = sniffle_dataset:create(DatasetUUID),
     C = ?S:config(V),
     Config1 = jsxd:from_list(Config),
@@ -705,7 +705,7 @@ r_to_list(_) ->
 -spec create(Package::binary(), Dataset::binary(), Config::fifo:config()) ->
                     {error, timeout} | {ok, fifo:uuid()}.
 create(Package, Dataset, Config) ->
-    UUID = uuid:uuid4s(),
+    UUID = fifo_utils:uuid(vm),
     %%we've to put pending here since undefined will cause a wrong call!
     do_write(UUID, register, <<"pooled">>),
     Secs = erlang:system_time(seconds),
@@ -752,7 +752,7 @@ create(Package, Dataset, Config) ->
     {ok, UUID}.
 
 dry_run(Package, Dataset, Config) ->
-    UUID = uuid:uuid4s(),
+    UUID = fifo_utils:uuid(vm),
     Ref = make_ref(),
     sniffle_create_fsm:create(UUID, Package, Dataset, Config, {self(), Ref}),
     receive
@@ -883,7 +883,7 @@ finish_delete(V) ->
 vm_event(UUID, Event) ->
     libhowl:send(<<"command">>,
                  [{<<"event">>, Event},
-                  {<<"uuid">>, uuid:uuid4s()},
+                  {<<"uuid">>, fifo_utils:uuid()},
                   {<<"data">>,
                    [{<<"uuid">>, UUID}]}]).
 
@@ -1079,7 +1079,7 @@ snapshot(Vm, Comment) ->
     case sniffle_vm:get(Vm) of
         {ok, V} ->
             {Server, Port} = get_hypervisor(V),
-            UUID = uuid:uuid4s(),
+            UUID = fifo_utils:uuid(),
             TimeStamp = timestamp(),
             libchunter:snapshot(Server, Port, Vm, UUID),
             set_snapshot(Vm,

@@ -19,7 +19,7 @@
  {<<"fifo_lager">>,{pkg,<<"fifo_lager">>,<<"0.1.3">>},0},
  {<<"fifo_s3">>,{pkg,<<"fifo_s3">>,<<"0.1.16">>},0},
  {<<"fifo_spec">>,{pkg,<<"fifo_spec">>,<<"0.1.27">>},0},
- {<<"fifo_utils">>,{pkg,<<"fifo_utils">>,<<"0.1.21">>},0},
+ {<<"fifo_utils">>,{pkg,<<"fifo_utils">>,<<"0.1.22">>},0},
  {<<"folsom">>,{pkg,<<"folsom">>,<<"0.8.3">>},2},
  {<<"folsom_ddb">>,{pkg,<<"folsom_ddb">>,<<"0.1.20">>},0},
  {<<"getopt">>,{pkg,<<"getopt">>,<<"0.8.2">>},2},
@@ -55,6 +55,7 @@
  {<<"pbkdf2">>,{pkg,<<"pbkdf2">>,<<"2.0.0">>},1},
  {<<"poolboy">>,{pkg,<<"poolboy">>,<<"1.5.1">>},1},
  {<<"pooler">>,{pkg,<<"pooler">>,<<"1.4.0">>},2},
+ {<<"quickrand">>,{pkg,<<"quickrand">>,<<"1.5.1">>},2},
  {<<"ranch">>,{pkg,<<"ranch">>,<<"1.1.0">>},1},
  {<<"rankmatcher">>,{pkg,<<"rankmatcher">>,<<"0.1.4">>},0},
  {<<"recon">>,{pkg,<<"recon">>,<<"2.2.1">>},0},
@@ -67,7 +68,4 @@
   {git,"https://github.com/project-fifo/sgte.git",
        {ref,"c921b55dc6eb2d541a6afd8edf37aaa0b9b577c0"}},
   0},
- {<<"uuid">>,
-  {git,"https://github.com/project-fifo/erlang-uuid.git",
-       {ref,"c28d740d878e91a075ee3d888ba15131d136e0d2"}},
-  0}].
+ {<<"uuid">>,{pkg,<<"uuid_erl">>,<<"1.5.1">>},1}].

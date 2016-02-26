@@ -88,7 +88,7 @@ lookup(Name) when
                     duplicate | {error, timeout} | {ok, UUID::fifo:uuid()}.
 create(Network) when
       is_binary(Network) ->
-    UUID = list_to_binary(uuid:to_string(uuid:uuid4())),
+    UUID = fifo_utils:uuid(network),
     case sniffle_network:lookup(Network) of
         not_found ->
             ok = do_write(UUID, create, [Network]),
