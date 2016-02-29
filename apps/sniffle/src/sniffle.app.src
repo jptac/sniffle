@@ -28,6 +28,7 @@
                   lager,
                   bugsnag,
                   jsxd,
+                  rankmatcher,
                   sniffle_commons,
                   sniffle_console,
                   sniffle_dtrace,
