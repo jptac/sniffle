@@ -8,7 +8,7 @@ Copyright 2012 Project FiFo / Heinz N. Gies
   <service
       name='network/sniffle'
       type='service'
-      version='0.3.0'>
+      version='0.8.0'>
     <create_default_instance enabled='false' />
     <single_instance />
     <dependency
@@ -47,11 +47,11 @@ Copyright 2012 Project FiFo / Heinz N. Gies
         exec='/opt/local/fifo-sniffle/bin/sniffle %m'
         timeout_seconds='30'>
       <method_context>
-        <!--method_credential user='sniffle' group='sniffle' /-->
+        <method_credential user='sniffle' group='sniffle' />
         <method_environment>
           <envvar name='PATH' value='/opt/local/gnu/bin:/opt/local/bin:/opt/local/sbin:/usr/bin:/usr/sbin'/>
-          <envvar name='HOME' value='/var/db/sniffle'/>
-          <!--envvar name='http_proxy' value='http://10.0.0.1'/-->
+          <envvar name='HOME' value='/data/sniffle/db'/>
+          <envvar name='ERL_CRASH_DUMP' value='/data/sniffle/log'/>
         </method_environment>
       </method_context>
     </exec_method>
@@ -62,11 +62,11 @@ Copyright 2012 Project FiFo / Heinz N. Gies
         exec='/opt/local/fifo-sniffle/bin/sniffle %m'
         timeout_seconds='120'>
       <method_context>
-        <!--method_credential user='sniffle' group='sniffle' /-->
+        <method_credential user='sniffle' group='sniffle' />
         <method_environment>
           <envvar name='PATH' value='/opt/local/gnu/bin:/opt/local/bin:/opt/local/sbin:/usr/bin:/usr/sbin'/>
-          <envvar name='HOME' value='/var/db/sniffle'/>
-          <!--envvar name='http_proxy' value='http://10.0.0.1'/-->
+          <envvar name='HOME' value='/data/sniffle/db'/>
+          <envvar name='ERL_CRASH_DUMP' value='/data/sniffle/log'/>
         </method_environment>
       </method_context>
     </exec_method>
@@ -77,11 +77,11 @@ Copyright 2012 Project FiFo / Heinz N. Gies
         exec='/opt/local/fifo-sniffle/bin/sniffle %m'
         timeout_seconds='120'>
       <method_context>
-        <!--method_credential user='sniffle' group='sniffle' /-->
+        <method_credential user='sniffle' group='sniffle' />
         <method_environment>
           <envvar name='PATH' value='/opt/local/gnu/bin:/opt/local/bin:/opt/local/sbin:/usr/bin:/usr/sbin'/>
-          <envvar name='HOME' value='/var/db/sniffle'/>
-          <!--envvar name='http_proxy' value='http://10.0.0.1'/-->
+          <envvar name='HOME' value='/data/sniffle/db'/>
+          <envvar name='ERL_CRASH_DUMP' value='/data/sniffle/log'/>
         </method_environment>
       </method_context>
     </exec_method>
