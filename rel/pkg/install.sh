@@ -17,16 +17,17 @@ case $2 in
             echo "User already exists, skipping creation."
         else
             echo Creating sniffle user ...
-            useradd -g $GROUP -d /data/sniffle/db -s /bin/false $USER
+            useradd -g $GROUP -d /data/sniffle -s /bin/false $USER
         fi
         echo Creating directories ...
         mkdir -p /data/sniffle/db/ring
         mkdir -p /data/sniffle/etc
         mkdir -p /data/sniffle/log/sasl
-        chown -R sniffle:sniffle /data/sniffle
+        chown -R $USER:$GROUP /data/sniffle
+
         if [ -d /tmp/sniffle ]
         then
-            chown -R sniffle:sniffle /tmp/sniffle/
+            chown -R $USER:$GROUP /tmp/sniffle/
         fi
         ;;
     POST-INSTALL)

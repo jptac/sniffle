@@ -10,6 +10,7 @@
                   libsnarl,
                   eplugin,
                   libchunter,
+                  rankmatcher,
                   sniffle_ip,
                   sniffle
                  ]},
