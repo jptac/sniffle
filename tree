@@ -1,63 +1,67 @@
-[0m├─ bugsnag─0.1.1
-├─ clique─0.3.1+build.140.ref8067df5
-├─ cluster_info─2.0.4
-├─ cuttlefish─2.0.0+build.479.reff5f6fdc
-│  ├─ getopt─0.4.3
-│  └─ neotoma─1.7.2
-├─ edown─0.7+build.153.refabd9f5b
+[0m├─ bugsnag─0.1.2
+│  └─ lager─3.0.1
 ├─ eper─0.94.0
 ├─ eplugin─0.1.4
-├─ erlcloud─0.8.6
-├─ fifo_db─0.1.7
-│  └─ eleveldb─2.1.0.0
-├─ fifo_dt─0.1.60
+├─ erlcloud─0.13.0
+│  └─ lhttpc─1.3.0
+├─ fifo_db─0.2.1
+│  ├─ eleveldb─2.1.3
+│  └─ erocksdb─0.4.1
+├─ fifo_dt─0.1.68
 │  ├─ libsnarlmatch─0.1.7
 │  └─ riak_dt─2.1.1
-├─ fifo_lager─0.1.1
-│  ├─ lager_graylog─1
-│  └─ lager_logstash_backend─0.0.2
-├─ fifo_s3─0.1.14
+├─ fifo_lager─0.1.3
+│  ├─ lager_graylog─0.1.0
+│  └─ lager_logstash_backend─0.1.0
+├─ fifo_s3─0.1.16
 │  └─ base16─1.0.0
-├─ fifo_spec─0.1.26
-├─ fifo_utils─0.1.19
+├─ fifo_spec─0.1.27
+├─ fifo_utils─0.1.22
+│  └─ uuid─1.5.1
+│     └─ quickrand─1.5.1
 ├─ folsom_ddb─0.1.20
 │  └─ ddb_client─0.1.17
 │     ├─ dproto─0.1.12
 │     └─ mmath─0.1.15
-├─ hackney─0.6.1
-│  └─ mimetypes─1.0
+├─ hackney─1.4.8
+│  ├─ certifi─0.3.0
+│  ├─ idna─1.0.3
+│  ├─ mimerl─1.0.2
+│  └─ ssl_verify_hostname─1.0.5
 ├─ jsx─1.4.5
 ├─ jsxd─0.1.10
-├─ lager─2.1.1
-│  └─ goldrush─0.1.7
-├─ libchunter─0.1.43
-├─ libhowl─0.1.30
-│  └─ mdns_client_lib─0.1.30
+├─ libchunter─0.1.45
+├─ libhowl─0.1.31
+│  └─ mdns_client_lib─0.1.33
 │     ├─ mdns_client─0.1.7
 │     └─ pooler─1.4.0
 ├─ libleofs─0.1.2
-├─ libsnarl─0.3.38
-│  └─ oauth2─0.6.0
+├─ libsnarl─0.3.40
+│  └─ oauth2─0.6.1
 ├─ mdns_server_lib─0.2.3
 │  ├─ mdns_server─0.2.0
 │  └─ ranch─1.1.0
-├─ meck─0.8.2
-├─ poolboy─0.8.1p3
-├─ rankmatcher─0.1.2
+├─ poolboy─0.8.1-p3
+├─ rankmatcher─0.1.4
 ├─ recon─2.2.1
-├─ riak_core─fifo-0.4.4+build.1802.reffdf5dd7
+├─ riak_core─2.2.2
 │  ├─ basho_stats─1.0.3
 │  ├─ chash─0.1.1
-│  ├─ exometer_core─1.0.0-basho2
-│  │  ├─ folsom─0.7.4p5
-│  │  │  └─ bear─0.1.3p1
-│  │  ├─ parse_trans─2.9
-│  │  └─ setup─1.4
+│  ├─ clique─3.0.1
+│  ├─ cuttlefish─2.0.7
+│  │  └─ getopt─0.8.2
+│  ├─ edown─0.7.0
+│  ├─ exometer_core─1.0.0
+│  │  ├─ folsom─0.8.3
+│  │  │  └─ bear─0.8.3
+│  │  ├─ parse_trans─2.9.0
+│  │  └─ setup─1.7.0
+│  ├─ goldrush─0.1.7
 │  ├─ pbkdf2─2.0.0
-│  └─ riak_sysmon─2.0.0
-├─ riak_ensemble─2.1.2
+│  ├─ riak_ensemble─2.1.3
+│  └─ riak_sysmon─2.1.2
 ├─ sgte─0.7.1
-├─ sniffle─0.7.2
+├─ sniffle─0.8.0
 ├─ sniffle_api─0.1.0
 ├─ sniffle_commons─0.1.0
 ├─ sniffle_console─0.1.0
@@ -69,5 +73,4 @@
 ├─ sniffle_read─0.1.0
 ├─ sniffle_version─0.1.0
 ├─ sniffle_watchdog─0.1.0
-├─ sniffle_write─0.1.0
-└─ uuid─0.4.7
+└─ sniffle_write─0.1.0

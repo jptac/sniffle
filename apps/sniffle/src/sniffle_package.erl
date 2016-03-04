@@ -75,7 +75,7 @@ lookup(Package) ->
                     {error, timeout} |
                     {ok, UUID::fifo:package_id()}.
 create(Package) ->
-    UUID = uuid:uuid4s(),
+    UUID = fifo_utils:uuid(package),
     case sniffle_package:lookup(Package) of
         not_found ->
             ok = do_write(UUID, create, [Package]),

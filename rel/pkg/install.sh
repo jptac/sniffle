@@ -17,19 +17,17 @@ case $2 in
             echo "User already exists, skipping creation."
         else
             echo Creating sniffle user ...
-            useradd -g $GROUP -d /var/db/sniffle -s /bin/false $USER
+            useradd -g $GROUP -d /data/sniffle -s /bin/false $USER
         fi
         echo Creating directories ...
-        mkdir -p /var/db/sniffle/ring
-        mkdir -p /var/db/sniffle/ipranges
-        mkdir -p /var/db/sniffle/packages
-        mkdir -p /var/db/sniffle/datasets
-        chown -R sniffle:sniffle /var/db/sniffle
-        mkdir -p /var/log/sniffle/sasl
-        chown -R sniffle:sniffle /var/log/sniffle
+        mkdir -p /data/sniffle/db/ring
+        mkdir -p /data/sniffle/etc
+        mkdir -p /data/sniffle/log/sasl
+        chown -R $USER:$GROUP /data/sniffle
+
         if [ -d /tmp/sniffle ]
         then
-            chown -R sniffle:sniffle /tmp/sniffle/
+            chown -R $USER:$GROUP /tmp/sniffle/
         fi
         ;;
     POST-INSTALL)
@@ -37,7 +35,8 @@ case $2 in
         svccfg import /opt/local/fifo-sniffle/share/sniffle.xml
         echo Trying to guess configuration ...
         IP=$(ifconfig net0 | grep inet | /usr/bin/awk '{print $2}')
-        CONFFILE=/opt/local/fifo-sniffle/etc/sniffle.conf
+        CONFFILE=/data/sniffle/etc/sniffle.conf
+        cp /opt/local/fifo-sniffle/etc/sniffle.conf.example ${CONFFILE}.example
         if [ ! -f "${CONFFILE}" ]
         then
             echo "Creating new configuration from example file."

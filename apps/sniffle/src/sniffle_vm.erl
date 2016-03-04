@@ -1,3 +1,4 @@
+
 -module(sniffle_vm).
 
 -ifdef(TEST).
@@ -19,8 +20,10 @@
          create/3,
          delete/1, delete/2,
          restore/4,
+         restore/5,
          store/2,
-         update/4
+         update/4,
+         set_hostname/3
         ]).
 
 -export([
@@ -78,8 +81,12 @@
 
 
 -export([
+         add_iprange_map/3,
+         remove_iprange_map/2,
          add_network_map/3,
          remove_network_map/2,
+         add_hostname_map/3,
+         remove_hostname_map/2,
          add_grouping/2,
          remove_grouping/2,
          state/2,
@@ -142,6 +149,7 @@ store(User, Vm) ->
                     hypervisor(Vm, <<>>),
                     {Host, Port} = get_hypervisor(V),
                     resource_action(V, store, User, []),
+                    free_res(V),
                     libchunter:delete_machine(Host, Port, Vm);
                 false ->
                     {error, no_backup}
@@ -161,11 +169,13 @@ has_xml([{_, B} | Bs]) ->
     end.
 
 restore(User, Vm, BID, Requeirements) ->
+    restore(User, Vm, BID, Requeirements, undefined).
+restore(User, Vm, BID, Requeirements, Package) ->
     case sniffle_vm:get(Vm) of
         {ok, V} ->
             case ?S:hypervisor(V) of
                 <<>> ->
-                    restore_(User, Vm, V, BID, Requeirements);
+                    restore_(User, Vm, V, BID, Requeirements, Package);
                 _ ->
                     already_deployed
             end;
@@ -173,11 +183,16 @@ restore(User, Vm, BID, Requeirements) ->
             not_found
     end.
 
-restore_(User, UUID, V, BID, Requeirements) ->
+restore_(User, UUID, V, BID, Requeirements, Package) ->
     case jsxd:get([BID, <<"xml">>], true, ?S:backups(V)) of
         true ->
-            resource_action(V, restore, User, []),
-            sniffle_create_pool:restore(UUID, BID, Requeirements, User);
+            Meta = case Package of
+                       undefined -> [];
+                       _ -> [{package, Package}]
+                   end,
+            resource_action(V, restore, User, Meta),
+            sniffle_create_pool:restore(
+              UUID, BID, Requeirements, Package, User);
         false ->
             no_xml
     end.
@@ -311,7 +326,7 @@ service_restart(Vm, Service) ->
     end.
 
 do_snap(Vm, V, Comment, Opts) ->
-    UUID = uuid:uuid4s(),
+    UUID = fifo_utils:uuid(),
     Opts1 = [create | Opts],
     {Server, Port} = get_hypervisor(V),
     case sniffle_s3:config(snapshot) of
@@ -355,7 +370,7 @@ promote_to_image(Vm, SnapID, Config) ->
 
 promite_to_image_(UUID, SnapID, Config, V) ->
     {Server, Port} = get_hypervisor(V),
-    DatasetUUID = uuid:uuid4s(),
+    DatasetUUID = fifo_utils:uuid(dataset),
     ok = sniffle_dataset:create(DatasetUUID),
     C = ?S:config(V),
     Config1 = jsxd:from_list(Config),
@@ -457,7 +472,8 @@ add_nic_(Vm, V, Network) ->
             NicSpec2 = add_vlan(VLan, NicSpec1),
             UR = [{<<"add_nics">>, [NicSpec2]}],
             ok = libchunter:update_machine(Server, Port, Vm, undefined, UR),
-            add_network_map(Vm, IP, IPRange);
+            add_network_map(Vm, IP, Network),
+            add_iprange_map(Vm, IP, IPRange);
         E ->
             lager:error("Could not get claim new IP: ~p for ~p ~p",
                         [E, Network, Requirements]),
@@ -486,13 +502,15 @@ remove_nic(Vm, Mac) ->
                     {ok, IpStr} = jsxd:get([<<"networks">>, Idx, <<"ip">>],
                                            ?S:config(V)),
                     IP = ft_iprange:parse_bin(IpStr),
-                    Ms = ?S:network_map(V),
+                    Ms = ?S:iprange_map(V),
                     ok = libchunter:update_machine(Server, Port, Vm,
                                                    undefined, UR),
                     remove_network_map(Vm, IP),
-                    [{IP, Network}] = [ {IP1, Network} ||
-                                          {IP1, Network} <- Ms, IP1 =:= IP],
-                    sniffle_iprange:release_ip(Network, IP);
+                    remove_hostname_map(Vm, IP, V),
+                    remove_iprange_map(Vm, IP),
+                    [{IP, IPRange}] = [ {IP1, IPRange} ||
+                                          {IP1, IPRange} <- Ms, IP1 =:= IP],
+                    sniffle_iprange:release_ip(IPRange, IP);
                 {<<"stopped">>, _} ->
                     {error, not_stopped};
                 _ ->
@@ -649,7 +667,7 @@ unregister(Vm) ->
             do_write(Vm, unregister),
             lists:map(fun({Ip, Net}) ->
                               sniffle_iprange:release_ip(Net, Ip)
-                      end, ?S:network_map(V)),
+                      end, ?S:iprange_map(V)),
             VmPrefix = [<<"vms">>, Vm],
             ChannelPrefix = [<<"channels">>, Vm],
             Users = r_to_list(ls_user:list()),
@@ -687,7 +705,7 @@ r_to_list(_) ->
 -spec create(Package::binary(), Dataset::binary(), Config::fifo:config()) ->
                     {error, timeout} | {ok, fifo:uuid()}.
 create(Package, Dataset, Config) ->
-    UUID = uuid:uuid4s(),
+    UUID = fifo_utils:uuid(vm),
     %%we've to put pending here since undefined will cause a wrong call!
     do_write(UUID, register, <<"pooled">>),
     Secs = erlang:system_time(seconds),
@@ -734,7 +752,7 @@ create(Package, Dataset, Config) ->
     {ok, UUID}.
 
 dry_run(Package, Dataset, Config) ->
-    UUID = uuid:uuid4s(),
+    UUID = fifo_utils:uuid(vm),
     Ref = make_ref(),
     sniffle_create_fsm:create(UUID, Package, Dataset, Config, {self(), Ref}),
     receive
@@ -865,7 +883,7 @@ finish_delete(V) ->
 vm_event(UUID, Event) ->
     libhowl:send(<<"command">>,
                  [{<<"event">>, Event},
-                  {<<"uuid">>, uuid:uuid4s()},
+                  {<<"uuid">>, fifo_utils:uuid()},
                   {<<"data">>,
                    [{<<"uuid">>, UUID}]}]).
 
@@ -990,25 +1008,33 @@ logs(Vm) ->
                 Owner::fifo:uuid()) ->
                        not_found | {error, timeout} | [fifo:log()].
 set_owner(User, Vm, Owner) ->
-    case fetch_hypervisor(Vm) of
-        {ok, Server, Port} ->
-            UR = [{<<"owner">>, Owner}],
-            ok = libchunter:update_machine(
-                   Server, Port, Vm, undefined, UR);
-        _ ->
-            ok
-    end,
-    ls_org:execute_trigger(Owner, vm_create, Vm),
-    libhowl:send(Vm, [{<<"event">>, <<"update">>},
-                      {<<"data">>,
-                       [{<<"owner">>, Owner}]}]),
     case sniffle_vm:get(Vm) of
         {ok, V} ->
+            case fetch_hypervisor(Vm) of
+                {ok, Server, Port} ->
+                    UR = [{<<"owner">>, Owner}],
+                    ok = libchunter:update_machine(
+                           Server, Port, Vm, undefined, UR);
+                _ ->
+                    ok
+            end,
+            ls_org:execute_trigger(Owner, vm_create, Vm),
+            case ft_vm:owner(V) of
+                <<>> ->
+                    ok;
+                OldOwner ->
+                    ls_org:reverse_trigger(OldOwner, vm_create, Vm)
+            end,
+            libhowl:send(Vm, [{<<"event">>, <<"update">>},
+                              {<<"data">>,
+                               [{<<"owner">>, Owner}]}]),
             %% We can use the Vm object we got to end the accouting period
             %% for the old org
             resource_action(V, destroy, User, []),
+            delete_network_2i(Vm),
             case owner(Vm, Owner) of
                 ok ->
+                    update_network_2i(Vm),
                     %% After a successful changed the owner we refetch the vm
                     %% to add accounting to the new org.
                     Opts = [{package, ft_vm:package(V)},
@@ -1027,7 +1053,7 @@ set_owner(User, Vm, Owner) ->
 %% @doc Adds a new log to the VM and timestamps it.
 %% @end
 %%--------------------------------------------------------------------
--spec log(Vm::fifo:uuid(), Log::term()) ->
+-spec log(Vm :: fifo:uuid(), Log :: binary()) ->
                  {error, timeout} | not_found | ok.
 log(Vm, Log) ->
     Timestamp = timestamp(),
@@ -1053,7 +1079,7 @@ snapshot(Vm, Comment) ->
     case sniffle_vm:get(Vm) of
         {ok, V} ->
             {Server, Port} = get_hypervisor(V),
-            UUID = uuid:uuid4s(),
+            UUID = fifo_utils:uuid(),
             TimeStamp = timestamp(),
             libchunter:snapshot(Server, Port, Vm, UUID),
             set_snapshot(Vm,
@@ -1138,13 +1164,66 @@ commit_snapshot_rollback(Vm, UUID) ->
             E
     end.
 
+add_iprange_map(UUID, IP, Net) ->
+    do_write(UUID, set_iprange_map, [IP, Net]).
+
+remove_iprange_map(UUID, IP) ->
+    do_write(UUID, set_iprange_map, [IP, delete]).
+
 add_network_map(UUID, IP, Net) ->
     do_write(UUID, set_network_map, [IP, Net]).
 
 remove_network_map(UUID, IP) ->
     do_write(UUID, set_network_map, [IP, delete]).
 
+add_hostname_map(UUID, IP, Hostname) ->
+    Res = do_write(UUID, set_hostname_map, [IP, Hostname]),
+    update_network_2i(UUID),
+    Res.
 
+set_hostname(UUID, IFace, Hostname) ->
+    {ok, V} = sniffle_vm:get(UUID),
+    Config = ft_vm:config(V),
+    Nics = jsxd:get([<<"networks">>], [], Config),
+    case find_ip(Nics, IFace) of
+        not_found ->
+            not_found;
+        {ok, IPs} ->
+            IP = ft_iprange:parse_bin(IPs),
+            remove_hostname_map(UUID, IP, V),
+            case Hostname of
+                <<>> ->
+                    ok;
+                _ ->
+                    add_hostname_map(UUID, IP, Hostname)
+            end
+    end.
+
+find_ip([], _IFace) ->
+    not_found;
+find_ip([I | R], IFace) ->
+    case jsxd:get([<<"interface">>], I) of
+        {ok, IFace} ->
+            jsxd:get([<<"ip">>], I);
+        _ ->
+            find_ip(R, IFace)
+    end.
+
+
+remove_hostname_map(UUID, IP) ->
+    {ok, V} = sniffle_vm:get(UUID),
+    remove_hostname_map(UUID, IP, V).
+
+remove_hostname_map(UUID, IP, V) ->
+    case ft_vm:owner(V) of
+        <<>> ->
+            ok;
+        Owner ->
+            Map = ft_vm:hostname_map(V),
+            Hostname = orddict:fetch(IP, Map),
+            sniffle_hostname:remove(Hostname, Owner, {UUID, IP})
+    end,
+    do_write(UUID, set_hostname_map, [IP, delete]).
 
 trigger_fw_change(UUID) ->
     {ok, VM} = sniffle_vm:get(UUID),
@@ -1339,3 +1418,24 @@ encode_dataset({docker, D}) ->
     <<"docker:", D/binary>>;
 encode_dataset(D) when is_binary(D) ->
     D.
+
+
+update_network_2i(UUID) ->
+    {ok, V} = sniffle_vm:get(UUID),
+    case ft_vm:owner(V) of
+        <<>> ->
+            ok;
+        Owner ->
+            [sniffle_hostname:add(Hostname, Owner, {UUID, IP})
+             || {IP, Hostname} <- ft_vm:hostname_map(V)]
+    end.
+
+delete_network_2i(UUID) ->
+    {ok, V} = sniffle_vm:get(UUID),
+    case ft_vm:owner(V) of
+        <<>> ->
+            ok;
+        Owner ->
+            [sniffle_hostname:remove(Hostname, Owner, {UUID, IP})
+             || {IP, Hostname} <- ft_vm:hostname_map(V)]
+    end.

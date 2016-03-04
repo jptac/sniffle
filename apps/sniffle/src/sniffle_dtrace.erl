@@ -66,7 +66,7 @@ list_() ->
           Script::string()) ->
                  {ok, UUID::fifo:dtrace_id()} | {error, timeout}.
 add(Name, Script) ->
-    UUID = list_to_binary(uuid:to_string(uuid:uuid4())),
+    UUID = fifo_utils:uuid(dtrace),
     do_write(UUID, create, [Name, Script]),
     {ok, UUID}.
 

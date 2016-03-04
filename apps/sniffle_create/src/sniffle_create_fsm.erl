@@ -13,9 +13,8 @@
 %% API
 -export([create/5,
          create/4,
-         restore/4,
-         start_link/5,
-         start_link/4]).
+         restore/5,
+         start_link/6]).
 
 %% gen_fsm callbacks
 -export([
@@ -30,6 +29,7 @@
 
 -export([
          test_hypervisors/2,
+         get_backup_package/2,
          finish_rules/2,
          prepare_create/2,
          prepare_backup/2,
@@ -40,10 +40,11 @@
          claim_org_resources/2,
          get_dataset/2,
          create/2,
+         set_hostname/2,
          get_server/2,
          get_owner/2,
          create_permissions/2,
-         resource_claim/2,
+         write_accounting/2,
          get_ips/2,
          build_key/2,
          restore/2
@@ -55,11 +56,12 @@
               create/5,
               check_org_resources/2,
               claim_org_resources/2,
+              get_backup_package/2,
               create/2,
               generate_grouping_rules/2,
               get_dataset/2,
               get_package/2,
-              resource_claim/2,
+              write_accounting/2,
               start_link/5,
               get_server/2,
               create_permissions/2,
@@ -71,34 +73,36 @@
              ]).
 
 -record(state, {
-          test_pid,
-          uuid,
-          package,
-          package_uuid,
-          dataset,
-          dataset_uuid,
-          config,
-          resulting_networks = [],
-          owner,
-          creator,
-          creator_obj,
-          type,
-          nets,
-          hypervisor,
-          hypervisor_id,
-          mapping = [],
-          delay = 5000,
-          retry = 0,
-          max_retries = 0,
-          rules = [],
-          log_cache = [],
-          last_error,
-          backup,
-          grouping,
-          backup_vm,
-          permissions,
-          grouping_rules = [],
-          hypervisors
+          test_pid                :: {pid(), reference()},
+          uuid                    :: binary(),
+          package                 :: ft_package:package(),
+          package_uuid            :: binary(),
+          dataset                 :: ft_dataset:dataset() | {docker, binary()},
+          dataset_uuid            :: binary() | {docker, binary()},
+          config                  :: term() | undefined,
+          resulting_networks = [] :: [binary()],
+          owner                   :: binary() | undefined,
+          creator                 :: binary() | undefined,
+          creator_obj             :: ft_org:org(),
+          nets = []               :: [{binary(), {binary(), [binary()]}}],
+          hypervisor              :: {string(), pos_integer()},
+          hypervisor_id           :: binary(),
+          mapping = []            :: [{binary(), binary(),
+                                       binary(), integer()}],
+          delay = 5000            :: pos_integer(),
+          retry = 0               :: non_neg_integer(),
+          max_retries = 1         :: pos_integer(),
+          rules = []              :: [librankmatcher:rule()],
+          log_cache = []          :: [{error | warning | info, binary()}],
+          last_error              :: atom(),
+          backup                  :: binary(),
+          type = create           :: create | restore,
+          grouping                :: binary() | undefined,
+          backup_vm               :: ft_vm:vm() | undefined,
+          permissions             :: [[binary()]],
+          resources = []          :: [{binary(), integer()}],
+          grouping_rules = []     :: [librankmatcher:rule()],
+          hypervisors             :: [{integer(), binary()}]
          }).
 
 %%%===================================================================
@@ -115,22 +119,25 @@
 %% @end
 %%--------------------------------------------------------------------
 
-start_link(UUID, Package, Dataset, Config, Pid) ->
-    gen_fsm:start_link(?MODULE, [UUID, Package, Dataset, Config, Pid], []).
+start_link(create, UUID, Package, Dataset, Config, Pid) ->
+    gen_fsm:start_link(
+      ?MODULE, [create, UUID, Package, Dataset, Config, Pid], []);
 
-start_link(UUID, BackupID, Requirements, Creator) ->
-    gen_fsm:start_link(?MODULE, [UUID, BackupID, Requirements, Creator], []).
+start_link(restore, UUID, BackupID, Requirements, Package, Creator) ->
+    gen_fsm:start_link(
+      ?MODULE, [restore, UUID, BackupID, Requirements, Package, Creator], []).
 
 create(UUID, Package, Dataset, Config) ->
     create(UUID, Package, Dataset, Config, undefined).
 
 create(UUID, Package, Dataset, Config, Pid) ->
     supervisor:start_child(sniffle_create_fsm_sup,
-                           [UUID, Package, Dataset, Config, Pid]).
+                           [create, UUID, Package, Dataset, Config, Pid]).
 
-restore(UUID, BackupID, Requirements, Creator) ->
-    supervisor:start_child(sniffle_create_fsm_sup,
-                           [UUID, BackupID, Requirements, Creator]).
+restore(UUID, BackupID, Requirements, Package, Creator) ->
+    supervisor:start_child(
+      sniffle_create_fsm_sup,
+      [restore, UUID, BackupID, Requirements, Package, Creator]).
 
 
 %%%===================================================================
@@ -152,7 +159,9 @@ restore(UUID, BackupID, Requirements, Creator) ->
 %%--------------------------------------------------------------------
 
 %% We are restoring a backup
-init([UUID, BackupID, Rules, Creator]) ->
+init([restore, UUID, BackupID, Rules, Package, Creator]) ->
+    lager:debug("[create] initialiing restore ~s ~s ~p ~s ~s",
+                [UUID, BackupID, Rules, Package, Creator]),
     sniffle_vm:state(UUID, <<"restoring">>),
     random:seed(erlang:phash2([node()]),
                 erlang:monotonic_time(),
@@ -175,19 +184,24 @@ init([UUID, BackupID, Rules, Creator]) ->
                      _ ->
                          5
                  end,
+
     next(),
     {ok, prepare_backup, #state{
+                            package_uuid = Package,
                             creator = Creator,
                             permissions = Permissions,
                             uuid = UUID,
                             rules = Rules1,
                             backup = BackupID,
+                            type = restore,
                             delay = Delay,
                             max_retries = MaxRetries
                            }};
 
 
-init([UUID, Package, Dataset, Config, Pid]) ->
+init([create, UUID, Package, Dataset, Config, Pid]) ->
+    lager:debug("[create] initialiing create ~s ~s ~s ~p ~p",
+                [UUID, Package, Dataset, Config, Pid]),
     sniffle_vm:state(UUID, <<"placing">>),
     sniffle_vm:creating(UUID, {creating, erlang:system_time(seconds)}),
     random:seed(erlang:phash2([node()]),
@@ -210,14 +224,14 @@ init([UUID, Package, Dataset, Config, Pid]) ->
                  end,
     next(),
     {ok, prepare_create, #state{
-                                     uuid = UUID,
-                                     package_uuid = Package,
-                                     dataset_uuid = Dataset,
-                                     config = Config1,
-                                     delay = Delay,
-                                     max_retries = MaxRetries,
-                                     test_pid = Pid
-                                    }}.
+                            uuid = UUID,
+                            package_uuid = Package,
+                            dataset_uuid = Dataset,
+                            config = Config1,
+                            delay = Delay,
+                            max_retries = MaxRetries,
+                            test_pid = Pid
+                           }}.
 
 prepare_create(_Event, State = #state{config = Config}) ->
     G = case jsxd:get([<<"grouping">>], Config) of
@@ -239,18 +253,30 @@ prepare_create(_Event, State = #state{config = Config}) ->
     {next_state, get_owner, State1}.
 
 prepare_backup(_Event, State = #state{uuid = UUID}) ->
+    lager:debug("[create] prepare backup"),
     {ok, V} = sniffle_vm:get(UUID),
-    Package = ft_vm:package(V),
     Dataset = ft_vm:dataset(V),
     Dataset = ft_vm:dataset(V),
+    Owner = ft_vm:owner(V),
     State1 = State#state{
                backup_vm = V,
-               package_uuid = Package,
+               owner = Owner,
                dataset_uuid = Dataset},
     next(),
-    {next_state, get_package, State1}.
+    {next_state, get_backup_package, State1}.
 
+get_backup_package(_Event, State = #state{package_uuid = undefined,
+                                          backup_vm = V}) ->
+    lager:debug("[create] get backup package from VM"),
+    Package = ft_vm:package(V),
+    State1 = State#state{package_uuid = Package},
+    next(),
+    {next_state, get_package, State1};
 
+get_backup_package(_Event, State) ->
+    lager:debug("[create] get backup package was passed"),
+    next(),
+    {next_state, get_package, State}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -267,10 +293,12 @@ prepare_backup(_Event, State = #state{uuid = UUID}) ->
 
 get_owner(_Event, State = #state{config = Config, owner = undefined,
                                  creator = Creator}) ->
+    lager:debug("[create] get owner"),
     {ok, C} = ls_user:get(Creator),
     Owner = ft_user:active_org(C),
     case Owner of
         <<"">> ->
+            vm_log(State, warning, <<"No owner">>),
             lager:warning("[create] User ~p has no active org.",
                           [Creator]);
         _ ->
@@ -288,6 +316,7 @@ get_owner(_Event, State = #state{config = Config, owner = undefined,
       }};
 
 get_owner(_, State) ->
+    lager:debug("[create] get owner (was already set)"),
     next(),
     {next_state, get_package, State}.
 
@@ -303,7 +332,7 @@ get_package(_Event, State = #state{
                                package_uuid = PackageUUID,
                                rules = Rules
                               }) ->
-    lager:info("[create] Fetching Package: ~p", [PackageUUID]),
+    lager:debug("[create] Fetching Package: ~p", [PackageUUID]),
     vm_log(State, info, <<"Fetching package ", PackageUUID/binary>>),
     sniffle_vm:state(UUID, <<"fetching_package">>),
     {ok, Package} = sniffle_package:get(PackageUUID),
@@ -311,12 +340,6 @@ get_package(_Event, State = #state{
     next(),
     {next_state, check_org_resources,
      State#state{package = Package, rules = Rules ++ Rules1}}.
-
-%% We can skip this for backups we also skip claim_org_resources and
-%% create_permissions.
-check_org_resources(_Event, State = #state{backup = B}) when B =/= undefined ->
-    next(),
-    {next_state, get_dataset, State};
 
 check_org_resources(_Event, State = #state{owner = <<>>, package = P}) ->
     lager:debug("[create] Checking resources (no owner)"),
@@ -357,6 +380,7 @@ check_org_resources(_Event, State = #state{owner = OrgID, package = P}) ->
 %% We don't claim resources if there is no owner
 claim_org_resources(_Event, State = #state{uuid = UUID, owner = <<>>,
                                            package_uuid = PackageUUID}) ->
+    lager:debug("[create] claim resources (no owner)"),
     sniffle_vm:package(UUID, PackageUUID),
     next(),
     {next_state, create_permissions, State};
@@ -365,6 +389,7 @@ claim_org_resources(_Event, State = #state{uuid = UUID, owner = <<>>,
 %% we can also skip create_permissions.
 claim_org_resources(_Event, State = #state{uuid = UUID, test_pid = {_, _},
                                            package_uuid = PackageUUID}) ->
+    lager:debug("[create] claim resources (test)"),
     sniffle_vm:package(UUID, PackageUUID),
     next(),
     {next_state, get_dataset, State};
@@ -373,6 +398,7 @@ claim_org_resources(_Event, State = #state{uuid = UUID, test_pid = {_, _},
 claim_org_resources(_Event, State = #state{uuid = UUID,
                                            owner = OrgID, package = P,
                                            package_uuid = PackageUUID}) ->
+    lager:debug("[create] claim resources"),
     Res = ft_package:org_resources(P),
     [ls_org:resource_dec(OrgID, R, V)  || {R, V} <- Res],
     sniffle_vm:package(UUID, PackageUUID),
@@ -394,11 +420,19 @@ claim_org_resources(_Event, State = #state{uuid = UUID,
 %%                   {stop, Reason, NewState}
 %% @end
 %%--------------------------------------------------------------------
+
+%% We can skip this for backups
+create_permissions(_Event, State = #state{type = restore}) ->
+    lager:debug("[create] create permissions (backup)"),
+    next(),
+    {next_state, get_dataset, State};
+
 create_permissions(_Event, State = #state{
                                       uuid = UUID,
                                       creator = Creator,
                                       owner = Owner
                                      }) ->
+    lager:debug("[create] create permissions"),
     ls_user:grant(Creator, [<<"vms">>, UUID, <<"...">>]),
     ls_user:grant(Creator, [<<"channels">>, UUID, <<"join">>]),
     case Owner of
@@ -411,20 +445,22 @@ create_permissions(_Event, State = #state{
     libhowl:send(UUID, [{<<"event">>, <<"update">>},
                         {<<"data">>, [{<<"owner">>, Owner}]}]),
     next(),
-    {next_state, resource_claim, State}.
+    {next_state, write_accounting, State}.
 
 %% If there is no owner we don't need to add triggers
-resource_claim(_Event, State = #state{owner = <<>>}) ->
+write_accounting(_Event, State = #state{owner = <<>>}) ->
+    lager:debug("[create] write accounting (no owner)"),
     next(),
     {next_state, get_dataset, State};
 
-resource_claim(_Event, State = #state{
-                                  uuid = UUID,
-                                  package_uuid = Package,
-                                  dataset_uuid = Dataset,
-                                  creator = Creator,
-                                  owner = Org
-                                 }) ->
+write_accounting(_Event, State = #state{
+                                    uuid = UUID,
+                                    package_uuid = Package,
+                                    dataset_uuid = Dataset,
+                                    creator = Creator,
+                                    owner = Org
+                                   }) ->
+    lager:debug("[create] write accounting"),
     ls_acc:create(Org, UUID, sniffle_vm:timestamp(),
                   [{user, Creator},
                    {package, Package},
@@ -435,7 +471,7 @@ resource_claim(_Event, State = #state{
 get_dataset(_Event, State = #state{
                                dataset_uuid = {docker, DockerImage}
                               }) ->
-    lager:info("[create] Oh My this is a docker image: ~p", [DockerImage]),
+    lager:debug("[create] Oh My this is a docker image: ~p", [DockerImage]),
     next(),
     {next_state, finish_rules, State#state{dataset = {docker, DockerImage}}};
 
@@ -444,7 +480,7 @@ get_dataset(_Event, State = #state{
                                dataset_uuid = DatasetName,
                                rules = Rules
                               }) ->
-    lager:info("[create] Fetching Dataset: ~p", [DatasetName]),
+    lager:debug("[create] Fetching Dataset: ~p", [DatasetName]),
     vm_log(State, info, <<"Fetching dataset ", DatasetName/binary>>),
     sniffle_vm:state(UUID, <<"fetching_dataset">>),
     {ok, Dataset} = sniffle_dataset:get(DatasetName),
@@ -457,11 +493,10 @@ get_dataset(_Event, State = #state{
 finish_rules(_Event, State = #state{
                                 dataset = Dataset,
                                 uuid = UUID,
-                                nets = Nets,
-                                package = Package,
+                              package = Package,
                                 permissions = Permissions,
                                 rules = Rules}) ->
-    lager:debug("[create] get_server: ~p", [Nets]),
+    lager:debug("[create] finish srules"),
     Ram = ft_package:ram(Package),
     sniffle_vm:state(UUID, <<"fetching_server">>),
     Permission = [<<"hypervisors">>, {<<"res">>, <<"uuid">>}, <<"create">>],
@@ -488,7 +523,7 @@ finish_rules(_Event, State = #state{
                  undefined ->
                      Rules1;
                  VM ->
-                     Mappings = ft_vm:network_map(VM),
+                     Mappings = ft_vm:iprange_map(VM),
                      Networks = [sniffle_iprange:get(N) || {_, N} <- Mappings],
                      Networks1 = [ft_iprange:tag(N) || {ok, N} <- Networks],
                      Networks2 = ordsets:from_list(Networks1),
@@ -512,16 +547,20 @@ retry(_event, State = #state{retry = R, max_retries = Max})
     {stop, failed, State};
 
 retry(_Event, State = #state{retry = Try}) ->
+    lager:debug("[create] retry #~p", [Try + 1]),
     next(),
-    {next_state, generate_grouping_rules, State#state{retry = Try + 1}}.
+    {next_state, generate_grouping_rules,
+     State#state{retry = Try + 1, log_cache = []}}.
 
 
 generate_grouping_rules(_Event, State = #state{grouping = undefined}) ->
+    lager:debug("[create] generate grouping rules (no grouping)"),
     next(),
     {next_state, get_networks, State};
 
 generate_grouping_rules(_Event, State = #state{test_pid = {_, _},
                                                grouping = Grouping}) ->
+    lager:debug("[create] generate grouping rules (test)"),
     Rules = sniffle_grouping:create_rules(Grouping),
     next(),
     {next_state, get_networks, State#state{grouping_rules = Rules}};
@@ -530,6 +569,7 @@ generate_grouping_rules(_Event, State = #state{
                                            uuid = UUID,
                                            grouping = Grouping
                                           }) ->
+    lager:debug("[create] generate grouping rules"),
     Rules = sniffle_grouping:create_rules(Grouping),
     case sniffle_grouping:add_element(Grouping, UUID) of
         ok ->
@@ -544,44 +584,34 @@ generate_grouping_rules(_Event, State = #state{
             {stop, E, State}
     end.
 
-get_networks(_event, State = #state{retry = R, max_retries = Max})
-  when R > Max ->
-    lager:error("[create] Failed after too many retries: ~p > ~p",
-                [R, Max]),
-    BR = integer_to_binary(R),
-    BMax= integer_to_binary(Max),
-    vm_log(State, error, <<"Failed after too many retries: ", BR/binary, " > ",
-                           BMax/binary,
-                           ".">>),
-    {stop, failed, State};
-
 %% We are restoring so we do not need thos whole shabang.
-get_networks(_Event, State = #state{backup_vm = B})
-  when B =/= undefined ->
+get_networks(_Event, State = #state{type = restore}) ->
+    lager:debug("[create] get_networks (backups)"),
     next(),
     {next_state, get_server,
-     State#state{nets = [], log_cache = []}};
+     State#state{nets = []}};
 
 get_networks(_Event, State = #state{config = Config}) ->
+    lager:debug("[create] get_networks"),
     Nets = jsxd:get([<<"networks">>], [], Config),
     Nets1 = lists:map(fun({Name, Network}) ->
                               {ok, N} = sniffle_network:get(Network),
                               Rs = ft_network:ipranges(N),
                               Rs1 = [{R, sniffle_iprange:get(R)} || R <- Rs],
                               Rs2 = [{R, D} || {R, {ok, D}} <- Rs1],
-                              Rs3 = lists:map(fun({ID, R}) ->
-                                                      {ID, ft_iprange:tag(R)}
-                                              end, Rs2),
-                              {Name, Rs3}
+                              Rs3 = [{IPRange, ft_iprange:tag(R)}
+                                     || {IPRange, R} <- Rs2],
+                              {Name, {Network, Rs3}}
                       end, Nets),
     next(),
     {next_state, get_server,
-     State#state{nets = Nets1, log_cache = []}}.
+     State#state{nets = Nets1}}.
 
 get_server(_Event, State = #state{
                               uuid = UUID,
                               rules = Rules,
                               grouping_rules = GRules}) ->
+    lager:debug("[create] get_server"),
     FinalRules = Rules ++ GRules,
     sniffle_vm:state(UUID, <<"fetching_server">>),
     lager:debug("[create] Finding hypervisor: ~p", [FinalRules]),
@@ -599,15 +629,15 @@ test_hypervisors(_Event, State = #state{
                                     package = Package,
                                     rules = Rules,
                                     grouping_rules = GRules}) ->
+    lager:debug("[create] test_hypervisors: ~p", [Nets]),
     FinalRules = Rules ++ GRules,
-    lager:debug("[create] get_server: ~p", [Nets]),
     Ram = ft_package:ram(Package),
     case {Hypervisors, test_hypervisors(UUID, Hypervisors, Nets)} of
         {_, {ok, HypervisorID, H, Nets1}} ->
             RamB = list_to_binary(integer_to_list(Ram)),
             S1 = add_log(State, info,
                          <<"Assigning memory ", RamB/binary>>),
-            S2 =add_log(S1, info, <<"Deploying on hypervisor ",
+            S2 = add_log(S1, info, <<"Deploying on hypervisor ",
                                     HypervisorID/binary>>),
             next(),
             {next_state, get_ips,
@@ -629,15 +659,15 @@ test_hypervisors(_Event, State = #state{
     end.
 
 
-get_ips(_Event, State = #state{nets = [], backup_vm = B})
-  when B =/= undefined ->
+get_ips(_Event, State = #state{type = restore}) ->
+    lager:debug("[create] get ips (restore)"),
     next(),
     {next_state, restore, State#state{}};
 
 get_ips(_Event, State = #state{nets = Nets,
                                uuid = UUID,
                                dataset = Dataset}) ->
-    lager:debug("[create] get_ips: ~p", [Nets]),
+    lager:debug("[create] get ips: ~p", [Nets]),
     Nics0 = case Dataset of
                 {docker, _} ->
                     lager:warning("[TODO] Need to figure out docker nics"),
@@ -651,19 +681,24 @@ get_ips(_Event, State = #state{nets = Nets,
                       "Could not get IP's.",
                       "[create] Failed to get ips: ~p with mapping: ~p",
                       [E, Mapping]),
-            [sniffle_iprange:release_ip(Range, IP) || {Range, IP} <- Mapping],
+            [sniffle_iprange:release_ip(Range, IP)
+             || {Range, _, IP} <- Mapping],
             do_retry(S1);
         {Nics1, Mapping} ->
-            [sniffle_vm:add_network_map(UUID, IP, Range)
-             || {Range, IP} <- Mapping],
+            [begin
+                 sniffle_vm:add_iprange_map(UUID, IP, Range),
+                 sniffle_vm:add_network_map(UUID, IP, Network)
+             end
+             || {_Name, Range, Network, IP} <- Mapping],
+            next(),
             {next_state, build_key,
-             State#state{mapping=Mapping, resulting_networks=Nics1},
-             0}
+             State#state{mapping=Mapping, resulting_networks=Nics1}}
     end.
 
 build_key(_Event, State = #state{
                              config = Config,
                              creator_obj = User}) ->
+    lager:debug("[create] build keys"),
     Keys = ft_user:keys(User),
     KeysB = iolist_to_binary(merge_keys(Keys)),
     Config1 = jsxd:update([<<"ssh_keys">>],
@@ -671,7 +706,7 @@ build_key(_Event, State = #state{
                                   <<KeysB/binary, Ks/binary>>
                           end, KeysB, Config),
     next(),
-    {next_state, create, State#state{config = Config1}}.
+    {next_state, set_hostname, State#state{config = Config1}}.
 
 restore(_Event, State = #state{
                            uuid = UUID,
@@ -679,7 +714,7 @@ restore(_Event, State = #state{
                            hypervisor = {Host, Port},
                            backup = BID
                           }) ->
-
+    lager:debug("[create] restore"),
     {ok, {S3Host, S3Port, AKey, SKey, Bucket}} =
         sniffle_s3:config(snapshot),
     sniffle_vm:hypervisor(UUID, HypervisorID),
@@ -687,13 +722,36 @@ restore(_Event, State = #state{
                               S3Port, Bucket, AKey, SKey),
     {stop, normal, State}.
 
+%% We don't set hostnames when we only do a dry run
+set_hostname(_Event, State = #state{
+                                test_pid = {_Pid, _Ref}
+                               }) ->
+    next(),
+    {next_state, create, State};
+
+set_hostname(_Event, State = #state{
+                                mapping = Mapping,
+                                config = Config,
+                                uuid = UUID
+                               }) ->
+    [case jsxd:get([<<"hostnames">>, Name], <<>>, Config) of
+         <<>> -> ok;
+         Hostname ->
+             sniffle_vm:add_hostname_map(UUID, IP, Hostname)
+     end
+     || {Name, _Range, _Network, IP} <- Mapping],
+    next(),
+    {next_state, create, State}.
+
+
 create(_Event, State = #state{
                           mapping = Mapping,
                           uuid = UUID,
                           hypervisor = {Host, Port},
                           test_pid = {Pid, Ref}
                          }) ->
-    [sniffle_iprange:release_ip(Range, IP) ||{Range, IP} <- Mapping],
+    [sniffle_iprange:release_ip(Range, IP)
+     || {_Name, Range, _Network, IP} <- Mapping],
     libchunter:release(Host, Port, UUID),
     Pid ! {Ref, success},
     sniffle_vm:creating(UUID, false),
@@ -716,13 +774,11 @@ create(_Event, State = #state{
         {error, _} ->
             %% TODO is it a good idea to handle all errors like this?
             %% How can we assure no creation was started?
-            [sniffle_vm:add_network_map(UUID, IP, Range)
-             || {Range, IP} <- Mapping],
-
             [begin
                  sniffle_iprange:release_ip(Range, IP),
+                 sniffle_vm:remove_iprange_map(UUID, IP),
                  sniffle_vm:remove_network_map(UUID, IP)
-             end || {Range, IP} <- Mapping],
+             end || {_Name, Range, _Network, IP} <- Mapping],
             lager:warning("[create] Could not get lock."),
             do_retry(State);
         ok ->
@@ -845,7 +901,7 @@ code_change(_OldVsn, StateName, State, _Extra) ->
 merge_keys(Keys) ->
     [[Key, "\n"] || {_ID, Key} <- Keys].
 
-test_net(Have, [{ID, Tag} | R]) ->
+test_net(Have, [{ID, Tag } | R]) ->
     lager:debug("[create] test_net: ~p ~p", [Have, [{ID, Tag} | R]]),
     case lists:member(Tag, Have) of
         true ->
@@ -884,14 +940,14 @@ test_hypervisors(_, [], _) ->
     {error, no_hypervisors}.
 
 
-test_hypervisor(UUID, H, [{NetName, Posibilities} | Nets], Acc) ->
+test_hypervisor(UUID, H, [{NetName, {Network, Posibilities}} | Nets], Acc) ->
     lager:debug("[create] test_hypervisor: ~p ~p ~p",
                 [H, [{NetName, Posibilities} | Nets], Acc]),
     case test_net(H, Posibilities) of
         false ->
             false;
         ID ->
-            test_hypervisor(UUID, H, Nets, [{NetName, ID} | Acc])
+            test_hypervisor(UUID, H, Nets, [{NetName, {Network, ID}} | Acc])
     end;
 
 test_hypervisor(_UUID, _, [], Acc) ->
@@ -945,12 +1001,16 @@ make_random(Weight, C) ->
     {ok, High} = jsxd:get(<<"high">>, C),
     {Weight, Low, High}.
 
+-spec update_nics(term(), term(), term()) ->
+                         {error, term(), [{binary(), binary(), integer()}]} |
+                         {[[{binary(), term()}]],
+                          [{binary(), binary(), binary(), integer()}]}.
 update_nics(Nics, Nets, State) ->
     lists:foldl(
       fun (_, {error, E, Mps}) ->
               {error, E, Mps};
           ({Name, _Desc}, {NicsF, Mappings}) ->
-              {ok, NicTag} = jsxd:get(Name, Nets),
+              {Name, {Network, NicTag}} = lists:keyfind(Name, 1, Nets),
               vm_log(State, info, <<"Fetching network ", NicTag/binary,
                                     " for NIC ", Name/binary>>),
               case sniffle_iprange:claim_ip(NicTag) of
@@ -970,7 +1030,7 @@ update_nics(Nics, Nets, State) ->
                                             {<<"gateway">>, GWb}]),
                       Res1 = add_vlan(VLAN, Res),
                       NicsF1 = [Res1 | NicsF],
-                      Mappings1 = [{NicTag, IP} | Mappings],
+                      Mappings1 = [{Name, NicTag, Network, IP} | Mappings],
                       {NicsF1, Mappings1};
                   E ->
                       {error, E, Mappings}
@@ -994,7 +1054,7 @@ do_retry(State) ->
 vm_log(#state{test_pid = {_, _}}, _)  ->
     ok;
 
-vm_log(#state{uuid = UUID}, M)  ->
+vm_log(#state{uuid = UUID}, M) when is_binary(M) ->
     sniffle_vm:log(UUID, M).
 
 vm_log(#state{test_pid = {_, _}}, _, _)  ->
@@ -1010,27 +1070,36 @@ vm_log(State, warning, M)  ->
     vm_log(State, <<"[warning] ", M/binary>>);
 
 vm_log(State, error, M)  ->
-    vm_log(State, <<"[error] ", M/binary>>);
+    vm_log(State, <<"[error] ", M/binary>>).
 
-vm_log(State, _, M)  ->
-    vm_log(State, M).
-
-add_log(State = #state{log_cache = C}, Type, Msg) ->
+add_log(State = #state{log_cache = C}, Type, Msg)
+  when is_binary(Msg),
+       (Type =:= info orelse
+        Type =:= warning orelse
+        Type =:= error) ->
     State#state{log_cache = [{Type, Msg} | C]}.
 
-add_log(State = #state{log_cache = C}, Type, Msg, EID) ->
-    Msg1 = io_lib:format("~s Please see the warning log for further details "
+add_log(State = #state{log_cache = C}, Type, Msg, EID)
+  when
+      is_binary(EID),
+      (is_binary(Msg) orelse is_list(Msg)),
+      (Type =:= info orelse
+       Type =:= warning orelse
+       Type =:= error) ->
+    Msg1 = io_lib:format("~s | Please see the warning log for further details "
                          "the error id is ~s which will identify the entry.",
                          [Msg, EID]),
-    State#state{log_cache = [{Type, Msg1} | C]}.
+    State#state{log_cache = [{Type, list_to_binary(Msg1)} | C]}.
 
-warn(State, Log, S, Fmt) ->
-    EID = uuid:uuid4s(),
+warn(State, Log, S, Fmt) when
+      is_list(Log), is_list(S), is_list(Fmt) ->
+    EID = fifo_utils:uuid(),
     lager:warning("[~s] " ++ S, [EID] ++ Fmt),
-    add_log(State, error, Log, EID).
+    add_log(State, warning, Log, EID).
 
 encode_dataset({docker, D}) ->
     <<"docker:", D/binary>>;
+
 encode_dataset(D) when is_binary(D) ->
     D.
 

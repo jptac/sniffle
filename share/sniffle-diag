@@ -45,13 +45,13 @@ log_run lsof -P $pid
 log_run lsof -F $pid
 
 echo "Copying Logfiles"
-cp -r /var/log/sniffle $dir/logs
+cp -r /data/sniffle/log $dir/logs
 cp /var/svc/log/network-sniffle:default.log $dir/logs
 
 echo "Copying config files"
 mkdir $dir/config
-cp /opt/local/fifo-sniffle/etc/sniffle.conf* $dir/config
-cp -r /var/db/sniffle/generated.configs/ $dir/config
+cp /data/sniffle/etc/sniffle.conf* $dir/config
+cp -r /data/sniffle/db/generated.configs/ $dir/config
 
 echo "Compressing data"
 (cd $base; tar cfz sniffle-diag-$date.tgz $date)

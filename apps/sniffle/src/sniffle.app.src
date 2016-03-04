@@ -2,14 +2,13 @@
 {application, sniffle,
  [
   {description, "Project FiFo's central management server."},
-  {vsn, "0.7.2"},
+  {vsn, "0.8.0"},
   {registered, []},
   {applications, [
                   kernel,
                   stdlib,
                   riak_core,
                   folsom_ddb,
-                  uuid,
                   libchunter,
                   libhowl,
                   libsnarl,
@@ -29,6 +28,7 @@
                   lager,
                   bugsnag,
                   jsxd,
+                  rankmatcher,
                   sniffle_commons,
                   sniffle_console,
                   sniffle_dtrace,

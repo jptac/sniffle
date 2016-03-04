@@ -55,6 +55,7 @@ start(_StartType, _StartArgs) ->
             ?SRV_WITH_AAE(sniffle_network_vnode, sniffle_network),
             ?SRV_WITH_AAE(sniffle_dtrace_vnode, sniffle_dtrace),
             ?SRV_WITH_AAE(sniffle_2i_vnode, sniffle_2i),
+            ?SRV_WITH_AAE(sniffle_hostname_vnode, sniffle_hostname),
             timer:apply_after(2000, sniffle_opt, update, []),
             sniffle_snmp_handler:start(),
             {ok, Pid};
@@ -96,12 +97,13 @@ init_folsom() ->
          org_resource_inc, org_resource_dec, org_resource_remove,
          hv_resource_inc, hv_resource_dec, hv_resource_remove],
     VMs = Basic ++
-        [register, unregister, log, set_network_map, remove_grouping,
-         add_grouping, set_metadata, set_info, set_config, set_backup,
-         set_docker, set_snapshot, set_service, state, alias, owner, dataset,
-         package, hypervisor, remove_fw_rule, add_fw_rule, deleting, creating,
-         vm_type, created_at, created_by],
+        [register, unregister, log, set_iprange_map, set_network_map,
+         remove_grouping, add_grouping, set_metadata, set_info, set_config,
+         set_backup, set_docker, set_snapshot, set_service, state, alias, owner,
+         dataset, package, hypervisor, remove_fw_rule, add_fw_rule, deleting,
+         creating, vm_type, created_at, created_by, set_hostname_map],
     S2i = [list, get, add, delete, sync_repair],
+    Hostname =  [get, add_a, remove_a, delete, sync_repair],
 
     [folsom_metrics:new_histogram(Name, slide, 60) ||
         Name <-
@@ -115,5 +117,6 @@ init_folsom() ->
             [{sniffle, package, M} || M <- Pkgs] ++
             [{sniffle, vm, M} || M <- VMs] ++
             [{sniffle, s2i, M} || M <- S2i] ++
+            [{sniffle, hostname, M} || M <- Hostname] ++
             []
     ].

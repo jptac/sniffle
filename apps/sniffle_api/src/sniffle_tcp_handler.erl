@@ -376,6 +376,13 @@ message({vm, backup, restore, User, Vm, Backup, Rules}, State) when
      sniffle_vm:restore(User, Vm, Backup, Rules),
      State};
 
+message({vm, backup, restore, User, Vm, Backup, Package, Rules}, State) when
+      is_binary(Vm),
+      is_binary(Backup) ->
+    {reply,
+     sniffle_vm:restore(User, Vm, Backup, Package, Rules),
+     State};
+
 message({vm, backup, delete, Vm, Backup}, State) when
       is_binary(Vm),
       is_binary(Backup) ->
@@ -504,6 +511,21 @@ message({vm, owner, User, Vm, Owner}, State) when
       is_binary(Vm) ->
     {reply,
      sniffle_vm:set_owner(User, Vm, Owner),
+     State};
+
+message({vm, hostname, Vm, Interface, Hostname}, State) when
+      is_binary(Vm),
+      is_binary(Interface),
+      is_binary(Hostname) ->
+    {reply,
+     sniffle_vm:set_hostname(Vm, Interface, Hostname),
+     State};
+
+message({vm, get, hostname, Hostname, Org}, State) when
+      is_binary(Hostname),
+      is_binary(Org) ->
+    {reply,
+     sniffle_hostname:get(Hostname, Org),
      State};
 
 ?VM(set_service);
