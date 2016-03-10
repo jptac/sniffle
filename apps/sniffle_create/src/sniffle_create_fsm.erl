@@ -531,7 +531,7 @@ finish_rules(_Event, State = #state{
                       | Rules1]
              end,
     next(),
-    {next_state, get_networks,
+    {next_state, generate_grouping_rules,
      State#state{rules = Rules2}}.
 
 
