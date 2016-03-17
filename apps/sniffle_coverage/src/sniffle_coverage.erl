@@ -92,7 +92,7 @@ base_init({From, ReqID, _}, {VNodeMaster, NodeCheckService, Request}) ->
     VNodeSelector = allup,
     PrimaryVNodeCoverage = R,
     %% We timeout after 5s
-    Timeout = 5000,
+    Timeout = 9000,
     State = #state{r = R, from = From, reqid = ReqID},
     {Request, VNodeSelector, N, PrimaryVNodeCoverage,
      NodeCheckService, VNodeMaster, Timeout, State}.
@@ -163,7 +163,8 @@ process_results({ok, _}, State) ->
     {done, State};
 
 process_results(Result, State) ->
-    lager:error("Unknown process results call: ~p ~p", [Result, State]),
+    lager:error("[coverage] Unknown process results call: ~p ~p",
+                [Result, State]),
     {done, State}.
 
 finish(clean, State = #state{completed = Completed, reqid = ReqID,
@@ -171,8 +172,14 @@ finish(clean, State = #state{completed = Completed, reqid = ReqID,
     From ! {ok, ReqID, Completed},
     {stop, normal, State};
 
+finish({error, E}, State = #state{completed = Completed, reqid = ReqID,
+                             from = From}) ->
+    lager:error("[coverage] Finished with error: ~p", [E]),
+    From ! {ok, ReqID, Completed},
+    {stop, normal, State};
+
 finish(How, State) ->
-    lager:error("Unknown process results call: ~p ~p", [How, State]),
+    lager:error("[coverage] Unknown finish call: ~p ~p", [How, State]),
     {error, failed}.
 
 %%%===================================================================
