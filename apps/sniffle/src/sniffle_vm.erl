@@ -1220,8 +1220,12 @@ remove_hostname_map(UUID, IP, V) ->
             ok;
         Owner ->
             Map = ft_vm:hostname_map(V),
-            Hostname = orddict:fetch(IP, Map),
-            sniffle_hostname:remove(Hostname, Owner, {UUID, IP})
+            case orddict:find(IP, Map) of
+                {ok, Hostname} ->
+                    sniffle_hostname:remove(Hostname, Owner, {UUID, IP});
+                _ ->
+                    ok
+            end
     end,
     do_write(UUID, set_hostname_map, [IP, delete]).
 
