@@ -11,8 +11,7 @@ include ../../_build/prod/lib/fifo_utils/priv/pkg.mk
 prepare:
 	-rm -r $(STAGE_DIR)/$(COMPONENT)
 	cp -r ../../_build/prod/rel/$(COMPONENT_INTERNAL) $(STAGE_DIR)/$(COMPONENT)
-	rm -rf $(STAGE_DIR)/$(COMPONENT)/lib/erocksdb*/c_src
-	rm -rf $(STAGE_DIR)/$(COMPONENT)/lib/eleveldb*/c_src
+	rm -rf $(STAGE_DIR)/$(COMPONENT)/lib/*/c_src
 
 package: prepare $(FILE).tgz
 
