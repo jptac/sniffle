@@ -22,7 +22,7 @@
  {<<"fifo_spec">>,{pkg,<<"fifo_spec">>,<<"0.1.27">>},0},
  {<<"fifo_utils">>,{pkg,<<"fifo_utils">>,<<"0.1.22">>},0},
  {<<"folsom">>,{pkg,<<"folsom">>,<<"0.8.3">>},2},
- {<<"folsom_ddb">>,{pkg,<<"folsom_ddb">>,<<"0.1.20">>},0},
+ {<<"folsom_ddb">>,{pkg,<<"folsom_ddb">>,<<"0.1.22">>},0},
  {<<"getopt">>,{pkg,<<"getopt">>,<<"0.8.2">>},2},
  {<<"goldrush">>,{pkg,<<"goldrush">>,<<"0.1.7">>},1},
  {<<"hackney">>,{pkg,<<"hackney">>,<<"1.4.8">>},0},

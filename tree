@@ -19,7 +19,7 @@
 ├─ fifo_utils─0.1.22
 │  └─ uuid─1.5.1
 │     └─ quickrand─1.5.1
-├─ folsom_ddb─0.1.20
+├─ folsom_ddb─0.1.22
 │  └─ ddb_client─0.1.17
 │     ├─ dproto─0.1.12
 │     └─ mmath─0.1.15
@@ -61,7 +61,7 @@
 │  ├─ riak_ensemble─2.1.3
 │  └─ riak_sysmon─2.1.2
 ├─ sgte─0.7.1
-├─ sniffle─0.8.0p7
+├─ sniffle─0.8.0p9
 ├─ sniffle_api─0.1.0
 ├─ sniffle_commons─0.1.0
 ├─ sniffle_console─0.1.0
