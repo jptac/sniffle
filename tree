@@ -19,7 +19,7 @@
 ├─ fifo_utils─0.1.22
 │  └─ uuid─1.5.1
 │     └─ quickrand─1.5.1
-├─ folsom_ddb─0.1.20
+├─ folsom_ddb─0.1.22
 │  └─ ddb_client─0.1.17
 │     ├─ dproto─0.1.12
 │     └─ mmath─0.1.15
@@ -30,13 +30,13 @@
 │  └─ ssl_verify_hostname─1.0.5
 ├─ jsx─1.4.5
 ├─ jsxd─0.1.10
-├─ libchunter─0.1.45
-├─ libhowl─0.1.31
-│  └─ mdns_client_lib─0.1.33
+├─ libchunter─0.1.46
+├─ libhowl─0.1.34
+│  └─ mdns_client_lib─0.1.38
 │     ├─ mdns_client─0.1.7
-│     └─ pooler─1.4.0
+│     └─ pooler─1.5.0
 ├─ libleofs─0.1.2
-├─ libsnarl─0.3.40
+├─ libsnarl─0.3.44
 │  └─ oauth2─0.6.1
 ├─ mdns_server_lib─0.2.3
 │  ├─ mdns_server─0.2.0
@@ -44,7 +44,7 @@
 ├─ poolboy─0.8.1-p3
 ├─ rankmatcher─0.1.4
 ├─ recon─2.2.1
-├─ riak_core─2.2.2
+├─ riak_core─2.2.3
 │  ├─ basho_stats─1.0.3
 │  ├─ chash─0.1.1
 │  ├─ clique─3.0.1
@@ -61,7 +61,7 @@
 │  ├─ riak_ensemble─2.1.3
 │  └─ riak_sysmon─2.1.2
 ├─ sgte─0.7.1
-├─ sniffle─0.8.0
+├─ sniffle─0.8.1
 ├─ sniffle_api─0.1.0
 ├─ sniffle_commons─0.1.0
 ├─ sniffle_console─0.1.0
