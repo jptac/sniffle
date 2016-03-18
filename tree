@@ -19,7 +19,7 @@
 ├─ fifo_utils─0.1.22
 │  └─ uuid─1.5.1
 │     └─ quickrand─1.5.1
-├─ folsom_ddb─0.1.21
+├─ folsom_ddb─0.1.22
 │  └─ ddb_client─0.1.17
 │     ├─ dproto─0.1.12
 │     └─ mmath─0.1.15

@@ -46,7 +46,7 @@
        {ref,"41555f295e276b8ae6de7bb47d81cb21350bc91d"}},
   0},
  {<<"folsom">>,{pkg,<<"folsom">>,<<"0.8.3">>},2},
- {<<"folsom_ddb">>,{pkg,<<"folsom_ddb">>,<<"0.1.21">>},0},
+ {<<"folsom_ddb">>,{pkg,<<"folsom_ddb">>,<<"0.1.22">>},0},
  {<<"getopt">>,{pkg,<<"getopt">>,<<"0.8.2">>},2},
  {<<"goldrush">>,{pkg,<<"goldrush">>,<<"0.1.7">>},1},
  {<<"hackney">>,{pkg,<<"hackney">>,<<"1.4.8">>},0},
