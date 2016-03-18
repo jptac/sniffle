@@ -271,8 +271,9 @@ handle_command({register, {ReqID, Coordinator}=ID, Vm, Hypervisor},
                   {ok, O} ->
                       H0 = ft_obj:val(O),
                       H1 = ft_vm:load(ID, H0),
-                      H2 = ft_vm:hypervisor(ID, Hypervisor, H1),
-                      ft_obj:update(H2, Coordinator, O)
+                      H2 = ft_vm:uuid(ID, Vm, H1),
+                      H3 = ft_vm:hypervisor(ID, Hypervisor, H2),
+                      ft_obj:update(H3, Coordinator, O)
               end,
     sniffle_vnode:put(Vm, HObject, State),
     {reply, {ok, ReqID}, State};
