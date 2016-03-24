@@ -76,6 +76,7 @@ hash_object(BKey, RObj) ->
     sniffle_vnode:hash_object(BKey, RObj).
 
 aae_repair(_, Key) ->
+    lager:debug("AAE Repair: ~p", [Key]),
     sniffle_grouping:get(Key).
 
 %%%===================================================================
