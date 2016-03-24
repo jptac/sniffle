@@ -184,12 +184,23 @@ init([Part]) ->
 
 handle_command({register, {ReqID, Coordinator} = ID, Hypervisor, [IP, Port]},
                _Sender, State) ->
-    H0 = ft_hypervisor:new(ID),
-    H1 = ft_hypervisor:port(ID, Port, H0),
-    H2 = ft_hypervisor:host(ID, IP, H1),
-    H3 = ft_hypervisor:uuid(ID, Hypervisor, H2),
-    H4 = ft_hypervisor:path(ID, [{Hypervisor, 1}], H3),
-    HObject = ft_obj:new(H4, Coordinator),
+
+    HObject = case fifo_db:get(State#vstate.db, <<"hypervisor">>, Hypervisor) of
+                  not_found ->
+                      H0 = ft_hypervisor:new(ID),
+                      H1 = ft_hypervisor:port(ID, Port, H0),
+                      H2 = ft_hypervisor:host(ID, IP, H1),
+                      H3 = ft_hypervisor:uuid(ID, Hypervisor, H2),
+                      H4 = ft_hypervisor:path(ID, [{Hypervisor, 1}], H3),
+                      ft_obj:new(H4, Coordinator);
+                  {ok, O} ->
+                      HV = ft_obj:val(O),
+                      H0 = ft_hypervisor:load(ID, HV),
+                      H1 = ft_hypervisor:port(ID, Port, H0),
+                      H2 = ft_hypervisor:host(ID, IP, H1),
+                      H3 = ft_hypervisor:uuid(ID, Hypervisor, H2),
+                      ft_obj:update(H3, Coordinator, O)
+              end,
     sniffle_vnode:put(Hypervisor, HObject, State),
     {reply, {ok, ReqID}, State};
 

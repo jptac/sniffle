@@ -73,14 +73,7 @@ list_() ->
                       duplicate | {error, timeout} | ok.
 
 register(Hypervisor, IP, Port) ->
-    case sniffle_hypervisor:get(Hypervisor) of
-        not_found ->
-            do_write(Hypervisor, register, [IP, Port]);
-        {ok, _UserObj} ->
-            host(Hypervisor, IP),
-            port(Hypervisor, Port),
-            duplicate
-    end.
+    do_write(Hypervisor, register, [IP, Port]).
 
 -spec unregister(Hypervisor::fifo:hypervisor_id()) ->
                         not_found | {error, timeout} | ok.

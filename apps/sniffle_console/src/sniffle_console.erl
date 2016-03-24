@@ -94,9 +94,7 @@ init_leo([Manager, Gateway]) ->
     OK = libleofs:add_endpoint(Manager, P, Gateway),
     sniffle_opt:set(["storage", "s3", "host"], Gateway),
     ok = sniffle_opt:set(["storage", "s3", "port"], 443),
-    io:format("Configuring endpoint as: https://~s:~p~n", [Gateway, P]),
-    io:format("Setting storage backend to s3, please reastart sniffle for this "
-              "to take full effect!~n"),
+    io:format("Configuring endpoint as: https://~s:~p~nyes", [Gateway, P]),
     ok.
 
 print_endpoints(Es) ->
