@@ -267,7 +267,7 @@ handle_command({get, ReqID, UUID}, _Sender, State) ->
 handle_command({delete, {ReqID, _Coordinator}, UUID}, _Sender, State) ->
     ?FM(fifo_db, delete, [State#vstate.db, State#vstate.bucket, UUID]),
     riak_core_index_hashtree:delete(
-      {State#vstate.service_bin, UUID}, State#vstate.hashtrees),
+      [{State#vstate.service_bin, UUID}], State#vstate.hashtrees),
     {reply, {ok, ReqID}, State};
 
 
@@ -323,7 +323,7 @@ handle_command({rehash, {_, UUID}}, _,
               ServiceBin, UUID, vc_bin(ft_obj:vclock(Obj)), HT);
         _ ->
             %% Make sure hashtree isn't tracking deleted data
-            riak_core_index_hashtree:delete({ServiceBin, UUID}, HT)
+            riak_core_index_hashtree:delete([{ServiceBin, UUID}], HT)
     end,
     {noreply, State};
 
