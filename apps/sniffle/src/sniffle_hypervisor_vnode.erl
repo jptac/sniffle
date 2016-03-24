@@ -195,7 +195,7 @@ handle_command({register, {ReqID, Coordinator} = ID, Hypervisor, [IP, Port]},
                       ft_obj:new(H4, Coordinator);
                   {ok, O} ->
                       HV = ft_obj:val(O),
-                      H0 = ft_vm:load(ID, HV),
+                      H0 = ft_hypervisor:load(ID, HV),
                       H1 = ft_hypervisor:port(ID, Port, H0),
                       H2 = ft_hypervisor:host(ID, IP, H1),
                       H3 = ft_hypervisor:uuid(ID, Hypervisor, H2),
