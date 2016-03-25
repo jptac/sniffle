@@ -67,9 +67,10 @@ wait(ReqID, FoldFn, Acc) ->
     end.
 
 %% The first is the vnode service used
-init(Req, {list, Requirements, Raw}) ->
+init(Req, RequestIn = #req{request = {list, Requirements, Raw}}) ->
     {Request, VNodeSelector, N, PrimaryVNodeCoverage,
-     Timeout, State1} = base_init(Req, {list, Requirements, true}),
+     sniffle, sniffle_vnode_master, Timeout, State1} =
+        base_init(Req, RequestIn#req{request = {list, Requirements, true}}),
     Merge = case Raw of
                 true ->
                     fun raw_merge/1;
@@ -92,7 +93,8 @@ base_init({From, ReqID, _}, Request) ->
     %% We timeout after 5s
     Timeout = 9000,
     State = #state{r = R, from = From, reqid = ReqID},
-    {Request, VNodeSelector, N, PrimaryVNodeCoverage, Timeout, State}.
+    {Request, VNodeSelector, N, PrimaryVNodeCoverage,
+     sniffle, sniffle_vnode_master, Timeout, State}.
 
 update(Key, State) when is_binary(Key) ->
     update({Key, Key}, State);
