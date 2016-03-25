@@ -99,7 +99,7 @@
  {<<"recon">>,{pkg,<<"recon">>,<<"2.2.1">>},0},
  {<<"riak_core">>,
   {git,"https://github.com/project-fifo/riak_core",
-       {ref,"40aa9831766f7768ce059d4b41bbce405a0f80e8"}},
+       {ref,"3aea9bad54effa779998817bcfff557ad3fc9bc7"}},
   0},
  {<<"riak_dt">>,{pkg,<<"riak_dt">>,<<"2.1.1">>},1},
  {<<"riak_ensemble">>,{pkg,<<"riak_ensemble">>,<<"2.1.3">>},1},
