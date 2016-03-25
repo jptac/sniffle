@@ -356,9 +356,9 @@ handle_info(retry_create_hashtree,
     {ok, State#state{hashtrees = HT}};
 handle_info(retry_create_hashtree, State) ->
     {ok, State};
-handle_info({'DOWN', _, _, Pid, _},
+handle_info({'DOWN', _, _, Pid, Reason},
             State=#state{hashtrees=Pid, partition=Idx}) ->
-    lager:info("[vnode:~p] hashtree ~p went down.", [Idx, Pid]),
+    lager:info("[vnode:~p] hashtree ~p went down: Reason.", [Idx, Pid, Reason]),
     erlang:send_after(1000, self(), retry_create_hashtree),
     {ok, State#state{hashtrees = undefined}};
 handle_info({'DOWN', _, _, _, _}, State) ->
