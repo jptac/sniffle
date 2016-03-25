@@ -247,7 +247,7 @@ handle_command(Message, _Sender, State) ->
     {noreply, State}.
 
 handle_handoff_command(?FOLD_REQ{foldfun=Fun, acc0=Acc0}, _Sender, State) ->
-    Fun1 = fun(Key, Acc) -> Fun(split(Key), Acc) end,
+    Fun1 = fun(Key, V, Acc) -> Fun(split(Key), V, Acc) end,
     Acc = fifo_db:fold(State#state.db, <<>>, Fun1, Acc0),
     {reply, Acc, State};
 
