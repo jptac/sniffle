@@ -68,7 +68,7 @@ init_folsom() ->
          version, kernel_version, sha1, status, imported, remove_requirement,
          add_requirement, create, delete],
     Dtraces = Basic ++
-        [create, delete, set, name, uuid, script, set_metadata, set_config],
+        [create, delete, name, uuid, script, set_metadata, set_config],
     Groupings = Basic ++
         [create, delete, add_element, add_grouping, remove_element,
          remove_grouping, set_metadata, set_config],
@@ -80,8 +80,7 @@ init_folsom() ->
         [create, delete, lookup, name, uuid, network, netmask, gateway,
          set_metadata, tag, vlan, release_ip, claim_ip],
     Nets = Basic ++
-        [create, delete, name, set_metadata, uuid, add_iprange, remove_iprange,
-         set],
+        [create, delete, name, set_metadata, uuid, add_iprange, remove_iprange],
     Pkgs = Basic ++
         [create, delete, set_metadata, blocksize, compression, cpu_cap,
          cpu_shares, max_swap, name, quota, ram, uuid, zfs_io_priority,

@@ -219,11 +219,7 @@ db_keys([CHashS, PrefixS]) ->
     end.
 
 aae_status([]) ->
-    Services = [{sniffle_hypervisor, "Hypervisor"}, {sniffle_vm, "VM"},
-                {sniffle_iprange, "IP Range"}, {sniffle_package, "Package"},
-                {sniffle_dataset, "Dataset"}, {sniffle_network, "Network"},
-                {sniffle_dtrace, "DTrace"}],
-    [fifo_console:aae_status(E) || E <- Services].
+    fifo_console:aae_status({general, "AAE Status"}).
 
 %% aae_status([]) ->
 %%     ExchangeInfo = riak_kv_entropy_info:compute_exchange_info(),
