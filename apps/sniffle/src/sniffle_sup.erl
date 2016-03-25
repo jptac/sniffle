@@ -23,8 +23,7 @@ init(_Args) ->
     %% ===================================================================
     %% VNodes
     %% ===================================================================
-
-    VVM = {
+    VNode = {
       sniffle_vnode_master,
       { riak_core_vnode_master, start_link, [sniffle_general_vnode]},
       permanent, 5000, worker, [sniffle_vnode_master]},
@@ -70,16 +69,17 @@ init(_Args) ->
     %% ===================================================================
     %% AAE
     %% ===================================================================
+    EntropyManager =
+        {sniffle_entropy_manager,
+         {riak_core_entropy_manager, start_link,
+          [sniffle, sniffle_general_vnode]},
+         permanent, 30000, worker, [riak_core_entropy_manager]},
+
+
     EntropyManagerHypervisor =
         {sniffle_hypervisor_entropy_manager,
          {riak_core_entropy_manager, start_link,
           [sniffle_hypervisor, sniffle_hypervisor_vnode]},
-         permanent, 30000, worker, [riak_core_entropy_manager]},
-
-    EntropyManagerVm =
-        {sniffle_vm_entropy_manager,
-         {riak_core_entropy_manager, start_link,
-          [sniffle_vm, sniffle_vm_vnode]},
          permanent, 30000, worker, [riak_core_entropy_manager]},
 
     EntropyManagerIPRange =
@@ -134,10 +134,10 @@ init(_Args) ->
      {{one_for_one, 5, 10},
       [
        %% VNodes
-       VHypervisor, VVM, VIprange, VDataset, VPackage, VDTrace, VNetwork,
+       VNode, VHypervisor, VIprange, VDataset, VPackage, VDTrace, VNetwork,
        VGrouping, V2i, VHostname,
        %% AAE
-       EntropyManagerVm, EntropyManagerHypervisor, EntropyManagerIPRange,
+       EntropyManager, EntropyManagerHypervisor, EntropyManagerIPRange,
        EntropyManagerNetwork, EntropyManagerDataset, EntropyManagerDtrace,
        EntropyManagerPackage, EntropyManagerGrouping, EntropyManager2i,
        EntropyManagerHostname]}}.
