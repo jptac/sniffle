@@ -219,7 +219,7 @@ db_keys([CHashS, PrefixS]) ->
     end.
 
 aae_status([]) ->
-    fifo_console:aae_status({general, "AAE Status"}).
+    fifo_console:aae_status({sniffle, "AAE Status"}).
 
 %% aae_status([]) ->
 %%     ExchangeInfo = riak_kv_entropy_info:compute_exchange_info(),
