@@ -289,7 +289,7 @@ delete(State) ->
         undefined ->
             ok;
         HT ->
-            riak_kv_index_hashtree:destroy(HT)
+            riak_core_index_hashtree:destroy(HT)
     end,
     {ok, State#state{hashtrees=undefined}}.
 

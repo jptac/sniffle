@@ -1,5 +1,6 @@
 -module(sniffle_hypervisor).
 -define(CMD, sniffle_hypervisor_cmd).
+-define(BUCKET, <<"hypervisor">>).
 -include("sniffle.hrl").
 
 -define(FM(Met, Mod, Fun, Args),
@@ -50,7 +51,7 @@
              ]).
 
 wipe(UUID) ->
-    ?FM(wipe, sniffle_coverage, start, [?MASTER, ?MODULE, {wipe, UUID}]).
+    ?FM(wipe, sniffle_coverage, fold, [?REQ({wipe, UUID})]).
 
 sync_repair(UUID, Obj) ->
     do_write(UUID, sync_repair, Obj).
@@ -59,8 +60,8 @@ last_seen(UUID, Time) when Time >= 0 ->
     do_write(UUID, last_seen, [Time]).
 
 list_() ->
-    {ok, Res} = ?FM(list_all, sniffle_coverage, raw,
-                    [?MASTER, ?MODULE, []]),
+    {ok, Res} = ?FM(list_all, sniffle_coverage, fold,
+                    [?REQ({list, [], true})]),
     Res1 = [R || {_, R} <- Res],
     {ok,  Res1}.
 
@@ -142,12 +143,13 @@ to_msg({pool_error, UUID, Alias, Name, State}) ->
 -spec list() ->
                   {ok, [IPR::fifo:hypervisor_id()]} | {error, timeout}.
 list() ->
-    sniffle_coverage:start(?MASTER, ?MODULE, list).
+    ?FM(list_all, sniffle_coverage, fold,
+        [?REQ(list)]).
 
 
 list(Requirements, FoldFn, Acc0) ->
-    ?FM(list_all, sniffle_coverage, list,
-        [?MASTER, ?MODULE, Requirements, FoldFn, Acc0]).
+    ?FM(list_all, sniffle_coverage, fold,
+        [?REQ({list, Requirements, false}), FoldFn, Acc0]).
 
 service(UUID, Action, Service) ->
     case sniffle_hypervisor:get(UUID) of
@@ -208,8 +210,8 @@ update() ->
                   {error, timeout} | {ok, [fifo:uuid()]}.
 
 list(Requirements, Full) ->
-    {ok, Res} = ?FM(list_all, sniffle_coverage, list,
-                    [?MASTER, ?MODULE, Requirements]),
+    {ok, Res} = ?FM(list_all, sniffle_coverage, fold,
+                    [?REQ({list, Requirements, false})]),
     Res1 = lists:sort(rankmatcher:apply_scales(Res)),
     Res2 = case Full of
                true ->

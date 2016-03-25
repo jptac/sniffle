@@ -11,11 +11,6 @@
           vnode
          }).
 
--record(req, {
-          id      :: {integer(), atom()},
-          request :: term(),
-          bucket  :: binary()
-         }).
 
 -define(DEFAULT_TIMEOUT, 1000).
 
@@ -33,10 +28,7 @@
 -define(VNODE, sniffle_vnode).
 -define(MASTER, sniffle_vnode_master).
 
--define(REQ(R), #req{request = R, bucket = ?BUCKET}).
--define(REQ(ID, R), #req{id = ID, request = R, bucket = ?BUCKET}).
-
-
+-include_lib("sniffle_req/include/req.hrl").
 
 -define(REQUEST(Preflist, ReqID, Request),
         riak_core_vnode_master:command(Preflist,
@@ -46,3 +38,4 @@
 -define(VSET(Field),
         Field(Preflist, ReqID, UUID, Vals) ->
                ?REQUEST(Preflist, ReqID, {change, Field, UUID, Vals})).
+
