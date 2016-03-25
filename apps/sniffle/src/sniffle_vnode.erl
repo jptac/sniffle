@@ -284,7 +284,7 @@ is_empty(State=#state{db=DB}) ->
     fold_keys(DB, <<>>, FoldFn, {true, State}).
 
 delete(State) ->
-    ?FM(fifo_db, delete, [State#state.db]),
+    ?FM(fifo_db, destroy, [State#state.db]),
     {ok, State}.
 
 handle_coverage(#req{request = {wipe, UUID}, bucket = Bucket}, _KeySpaces,
