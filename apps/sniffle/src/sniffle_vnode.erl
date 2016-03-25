@@ -284,8 +284,14 @@ is_empty(State=#state{db=DB}) ->
     fold_keys(DB, <<>>, FoldFn, {true, State}).
 
 delete(State) ->
-    ?FM(fifo_db, destroy, [State#state.db]),
-    {ok, State}.
+    fifo_db:destroy(State#state.db),
+    case State#state.hashtrees of
+        undefined ->
+            ok;
+        HT ->
+            riak_kv_index_hashtree:destroy(HT)
+    end,
+    {ok, State#state{hashtrees=undefined}}.
 
 handle_coverage(#req{request = {wipe, UUID}, bucket = Bucket}, _KeySpaces,
                  {_, ReqID, _}, State) ->
