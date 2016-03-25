@@ -85,7 +85,7 @@ init([Partition]) ->
 %%% Commands
 %%%===================================================================
 
-handle_command(#req{id = ID, request = {apply, Key, Fun, Args},
+handle_command(#req{id = ID = {ReqID, _}, request = {apply, Key, Fun, Args},
                     bucket = Bucket}, _Sender, State) ->
     R = case Fun(ID, fifo_db:get(State#state.db, Bucket, Key), Args) of
             {write, R0, Obj} ->
@@ -96,11 +96,11 @@ handle_command(#req{id = ID, request = {apply, Key, Fun, Args},
     end,
     case R of
         ok ->
-            {reply, {ok, ID}, State};
+            {reply, {ok, ReqID}, State};
         {ok, V} ->
-            {reply, {ok, ID, V}, State};
+            {reply, {ok, ReqID, V}, State};
         {error, V} ->
-            {reply, {error, ID, V}, State};
+            {reply, {error, ReqID, V}, State};
         {raw, R1} ->
             {reply, R1, State};
         R1 ->
