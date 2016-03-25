@@ -28,11 +28,21 @@
 
 -define(SET(T),
         T(UUID, V) ->
-               do_write(UUID, T, V)).
+               do_write(UUID, T, [V])).
 
+-define(VNODE, sniffle_vnode).
+-define(MASTER, sniffle_vnode_master).
+
+-define(REQ(R), #req{request = R, bucket = ?BUCKET}).
+-define(REQ(ID, R), #req{id = ID, request = R, bucket = ?BUCKET}).
+
+
+
+-define(REQUEST(Preflist, ReqID, Request),
+        riak_core_vnode_master:command(Preflist,
+                                       ?REQ(ReqID, Request),
+                                       {fsm, undefined, self()},
+                                       ?MASTER)).
 -define(VSET(Field),
-        Field(Preflist, ReqID, Vm, Val) ->
-               riak_core_vnode_master:command(Preflist,
-                                              {Field, ReqID, Vm, Val},
-                                              {fsm, undefined, self()},
-                                              ?MASTER)).
+        Field(Preflist, ReqID, UUID, Val) ->
+               ?REQUEST(Preflist, ReqID, {change, Field, UUID, [Val]})).

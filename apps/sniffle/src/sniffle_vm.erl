@@ -1,15 +1,7 @@
-
 -module(sniffle_vm).
-
--ifdef(TEST).
--include_lib("eunit/include/eunit.hrl").
--endif.
-
+-define(CMD, sniffle_vm_cmd).
 -include("sniffle.hrl").
 
--define(MASTER, sniffle_vnode_master).
--define(VNODE, sniffle_general_vnode).
--define(SERVICE, sniffle).
 -define(S, ft_vm).
 -define(FM(Met, Mod, Fun, Args),
         folsom_metrics:histogram_timed_update(
@@ -121,7 +113,7 @@
 -spec wipe(fifo:vm_id()) -> ok.
 
 wipe(UUID) ->
-    ?FM(wipe, sniffle_coverage, start, [?MASTER, ?SERVICE, {wipe, UUID}]).
+    ?FM(wipe, sniffle_coverage, start, [?MASTER, ?MODULE, {wipe, UUID}]).
 
 -spec sync_repair(fifo:vm_id(), ft_obj:obj()) -> ok.
 sync_repair(UUID, Obj) ->
@@ -129,7 +121,7 @@ sync_repair(UUID, Obj) ->
 
 list_() ->
     {ok, Res} = ?FM(list_all, sniffle_coverage, raw,
-                    [?MASTER, ?SERVICE, []]),
+                    [?MASTER, ?MODULE, []]),
     Res1 = [R || {_, R} <- Res],
     {ok,  Res1}.
 
@@ -771,7 +763,7 @@ dry_run(Package, Dataset, Config) ->
 -spec get(Vm::fifo:uuid()) ->
                  not_found | {error, timeout} | {ok, fifo:vm()}.
 get(Vm) ->
-    ?FM(get, sniffle_entity_read_fsm, start, [{?VNODE, ?SERVICE}, get, Vm]).
+    ?FM(get, sniffle_entity_read_fsm, start, [{?CMD, ?MODULE}, get, Vm]).
 
 get_docker(DockerID) ->
     case sniffle_2i:get(docker, DockerID) of
@@ -788,11 +780,11 @@ get_docker(DockerID) ->
 -spec list() ->
                   {error, timeout} | {ok, [fifo:uuid()]}.
 list() ->
-    ?FM(list, sniffle_coverage, start, [?MASTER, ?SERVICE, list]).
+    ?FM(list, sniffle_coverage, start, [?MASTER, ?MODULE, list]).
 
 list(Requirements, FoldFn, Acc0) ->
     ?FM(list_all, sniffle_coverage, list,
-        [?MASTER, ?SERVICE, Requirements, FoldFn, Acc0]).
+        [?MASTER, ?MODULE, Requirements, FoldFn, Acc0]).
 
 %%--------------------------------------------------------------------
 %% @doc Lists all vm's and fiters by a given matcher set.
@@ -804,7 +796,7 @@ list(Requirements, FoldFn, Acc0) ->
 
 list(Requirements, Full) ->
     {ok, Res} = ?FM(list_all, sniffle_coverage, list,
-                    [?MASTER, ?SERVICE, Requirements]),
+                    [?MASTER, ?MODULE, Requirements]),
     Res1 = lists:sort(rankmatcher:apply_scales(Res)),
     Res2 = case Full of
                true ->
@@ -1245,33 +1237,30 @@ remove_fw_rule(UUID, V) ->
     trigger_fw_change(UUID),
     R.
 
--define(S(T),
-        T(UUID, V) ->
-               do_write(UUID, T, V)).
-?S(remove_grouping).
-?S(add_grouping).
-?S(set_metadata).
-?S(set_info).
-?S(set_config).
-?S(set_backup).
-?S(set_snapshot).
-?S(set_service).
-?S(set_docker).
+?SET(remove_grouping).
+?SET(add_grouping).
+?SET(set_metadata).
+?SET(set_info).
+?SET(set_config).
+?SET(set_backup).
+?SET(set_snapshot).
+?SET(set_service).
+?SET(set_docker).
 
-?S(state).
-?S(creating).
+?SET(state).
+?SET(creating).
 deleting(UUID, V)
   when V =:= true;
        V =:= false ->
     do_write(UUID, deleting, V).
-?S(alias).
-?S(owner).
-?S(dataset).
-?S(package).
-?S(hypervisor).
-?S(vm_type).
-?S(created_at).
-?S(created_by).
+?SET(alias).
+?SET(owner).
+?SET(dataset).
+?SET(package).
+?SET(hypervisor).
+?SET(vm_type).
+?SET(created_at).
+?SET(created_by).
 
 %%%===================================================================
 %%% Internal Functions
@@ -1280,13 +1269,13 @@ deleting(UUID, V)
 -spec do_write(VM::fifo:uuid(), Op::atom()) -> fifo:write_fsm_reply().
 
 do_write(VM, Op) ->
-    ?FM(Op, sniffle_entity_write_fsm, write, [{?VNODE, ?SERVICE}, VM, Op]).
+    ?FM(Op, sniffle_entity_write_fsm, write, [{?CMD, ?MODULE}, VM, Op]).
 
 -spec do_write(VM::fifo:uuid(), Op::atom(), Val::term()) ->
                       fifo:write_fsm_reply().
 
 do_write(VM, Op, Val) ->
-    ?FM(Op, sniffle_entity_write_fsm, write, [{?VNODE, ?SERVICE}, VM, Op, Val]).
+    ?FM(Op, sniffle_entity_write_fsm, write, [{?CMD, ?MODULE}, VM, Op, Val]).
 
 get_hypervisor(V) ->
     get_hypervisor(fifo_dt:type(V), V).

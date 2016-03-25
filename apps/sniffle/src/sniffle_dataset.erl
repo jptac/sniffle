@@ -1,9 +1,6 @@
 -module(sniffle_dataset).
+-define(CMD, sniffle_dataset_cmd).
 -include("sniffle.hrl").
-
--define(MASTER, sniffle_dataset_vnode_master).
--define(VNODE, sniffle_dataset_vnode).
--define(SERVICE, sniffle_dataset).
 
 -define(FM(Met, Mod, Fun, Args),
         folsom_metrics:histogram_timed_update(
@@ -53,14 +50,14 @@
         ]).
 
 wipe(UUID) ->
-    ?FM(wipe, sniffle_coverage, start, [?MASTER, ?SERVICE, {wipe, UUID}]).
+    ?FM(wipe, sniffle_coverage, start, [?MASTER, ?MODULE, {wipe, UUID}]).
 
 sync_repair(UUID, Obj) ->
     do_write(UUID, sync_repair, Obj).
 
 list_() ->
     {ok, Res} = ?FM(list_all, sniffle_coverage, raw,
-                    [?MASTER, ?SERVICE, []]),
+                    [?MASTER, ?MODULE, []]),
     Res1 = [R || {_, R} <- Res],
     {ok,  Res1}.
 
@@ -88,16 +85,16 @@ delete(UUID) ->
 -spec get(UUID::fifo:dtrace_id()) ->
                  not_found | {ok, Dataset::fifo:dataset()} | {error, timeout}.
 get(UUID) ->
-    ?FM(get, sniffle_entity_read_fsm, start, [{?VNODE, ?SERVICE}, get, UUID]).
+    ?FM(get, sniffle_entity_read_fsm, start, [{?CMD, ?MODULE}, get, UUID]).
 
 -spec list() ->
                   {ok, [UUID::fifo:dataset_id()]} | {error, timeout}.
 list() ->
-    ?FM(list, sniffle_coverage, start, [?MASTER, ?SERVICE, list]).
+    ?FM(list, sniffle_coverage, start, [?MASTER, ?MODULE, list]).
 
 list(Requirements, FoldFn, Acc0) ->
     ?FM(list_all, sniffle_coverage, list,
-                    [?MASTER, ?SERVICE, Requirements, FoldFn, Acc0]).
+                    [?MASTER, ?MODULE, Requirements, FoldFn, Acc0]).
 
 %%--------------------------------------------------------------------
 %% @doc Lists all vm's and fiters by a given matcher set.
@@ -108,7 +105,7 @@ list(Requirements, FoldFn, Acc0) ->
 
 list(Requirements, Full) ->
     {ok, Res} = ?FM(list_all, sniffle_coverage, list,
-                    [?MASTER, ?SERVICE, Requirements]),
+                    [?MASTER, ?MODULE, Requirements]),
     Res1 = lists:sort(rankmatcher:apply_scales(Res)),
     Res2 = case Full of
                true ->
@@ -147,8 +144,8 @@ import(URL) ->
 %%%===================================================================
 
 do_write(Dataset, Op) ->
-    ?FM(Op, sniffle_entity_write_fsm, write, [{?VNODE, ?SERVICE}, Dataset, Op]).
+    ?FM(Op, sniffle_entity_write_fsm, write, [{?CMD, ?MODULE}, Dataset, Op]).
 
 do_write(Dataset, Op, Val) ->
     ?FM(Op, sniffle_entity_write_fsm, write,
-        [{?VNODE, ?SERVICE}, Dataset, Op, Val]).
+        [{?CMD, ?MODULE}, Dataset, Op, Val]).

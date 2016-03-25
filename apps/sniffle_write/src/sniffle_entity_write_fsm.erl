@@ -34,7 +34,7 @@
                 op :: atom(),
                 n,
                 w,
-                vnode,
+                cmd,
                 system,
                 cordinator :: node(),
                 val = undefined :: term() | undefined,
@@ -61,20 +61,20 @@
 %%% API
 %%%===================================================================
 
-start_link({VNode, System}, ReqID, From, Entity, Op) ->
-    start_link({VNode, System}, ReqID, From, Entity, Op, undefined).
+start_link({Cmd, System}, ReqID, From, Entity, Op) ->
+    start_link({Cmd, System}, ReqID, From, Entity, Op, undefined).
 
-start_link({VNode, System}, ReqID, From, Entity, Op, Val) ->
+start_link({Cmd, System}, ReqID, From, Entity, Op, Vals) ->
     gen_fsm:start_link(?MODULE,
-                       [{VNode, System}, ReqID, From, Entity, Op, Val], []).
+                       [{Cmd, System}, ReqID, From, Entity, Op, Vals], []).
 
-write({VNode, System}, User, Op) ->
-    write({VNode, System}, User, Op, undefined).
+write({Cmd, System}, User, Op) ->
+    write({Cmd, System}, User, Op, undefined).
 
-write({VNode, System}, User, Op, Val) ->
+write({Cmd, System}, User, Op, Val) ->
     ReqID = sniffle_vnode:mk_reqid(),
     sniffle_entity_write_fsm_sup:start_write_fsm(
-      [{VNode, System}, ReqID, self(), User, Op, Val]),
+      [{Cmd, System}, ReqID, self(), User, Op, Val]),
     receive
         {ReqID, ok} ->
             ok;
@@ -95,7 +95,7 @@ write({VNode, System}, User, Op, Val) ->
 
 %% @doc Initialize the state data.
 -spec init(_) -> {ok, prepare, state(), 0}.
-init([{VNode, System}, ReqID, From, Entity, Op, Val]) ->
+init([{Cmd, System}, ReqID, From, Entity, Op, Val]) ->
     {ok, N} = application:get_env(sniffle, n),
     {ok, W} = application:get_env(sniffle, w),
 
@@ -105,7 +105,7 @@ init([{VNode, System}, ReqID, From, Entity, Op, Val]) ->
                 n=N,
                 entity=Entity,
                 op=Op,
-                vnode=VNode,
+                cmd=Cmd,
                 system=System,
                 cordinator=node(),
                 val=Val},
@@ -119,7 +119,7 @@ prepare(timeout, SD0=#state{
                   }) ->
     Bucket = list_to_binary(atom_to_list(System)),
     DocIdx = riak_core_util:chash_key({Bucket, Entity}),
-    Preflist = riak_core_apl:get_apl(DocIdx, N, System),
+    Preflist = riak_core_apl:get_apl(DocIdx, N, sniffle),
     SD = SD0#state{preflist=Preflist},
     {next_state, execute, SD, 0}.
 
@@ -129,14 +129,14 @@ execute(timeout, SD0=#state{req_id=ReqID,
                             entity=Entity,
                             op=Op,
                             val=Val,
-                            vnode=VNode,
+                            cmd=Cmd,
                             cordinator=Cordinator,
                             preflist=Preflist}) ->
     case Val of
         undefined ->
-            VNode:Op(Preflist, {ReqID, Cordinator}, Entity);
+            Cmd:Op(Preflist, {ReqID, Cordinator}, Entity);
         _ ->
-            VNode:Op(Preflist, {ReqID, Cordinator}, Entity, Val)
+            Cmd:Op(Preflist, {ReqID, Cordinator}, Entity, Val)
     end,
     {next_state, waiting, SD0}.
 
@@ -187,17 +187,17 @@ terminate(_Reason, _SN, _SD) ->
 %%%===================================================================
 %%% Internal Functions
 %%%===================================================================
-%%stat_name(sniffle_dtrace_vnode) ->
+%%stat_name(sniffle_dtrace_cmd) ->
 %%    "dtrace";
-%%stat_name(sniffle_vm_vnode) ->
+%%stat_name(sniffle_vm_cmd) ->
 %%    "vm";
-%%stat_name(sniffle_hypervisor_vnode) ->
+%%stat_name(sniffle_hypervisor_cmd) ->
 %%    "hypervisor";
-%%stat_name(sniffle_package_vnode) ->
+%%stat_name(sniffle_package_cmd) ->
 %%    "package";
-%%stat_name(sniffle_dataset_vnode) ->
+%%stat_name(sniffle_dataset_cmd) ->
 %%    "dataset";
-%%stat_name(sniffle_network_vnode) ->
+%%stat_name(sniffle_network_cmd) ->
 %%    "network";
-%%stat_name(sniffle_iprange_vnode) ->
+%%stat_name(sniffle_iprange_cmd) ->
 %%    "iprange".

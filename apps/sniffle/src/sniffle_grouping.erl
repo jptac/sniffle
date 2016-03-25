@@ -1,9 +1,6 @@
 -module(sniffle_grouping).
+-define(CMD, sniffle_grouping_cmd).
 -include("sniffle.hrl").
-
--define(MASTER, sniffle_grouping_vnode_master).
--define(VNODE, sniffle_grouping_vnode).
--define(SERVICE, sniffle_grouping).
 
 -define(FM(Met, Mod, Fun, Args),
         folsom_metrics:histogram_timed_update(
@@ -37,7 +34,7 @@
              ]).
 
 wipe(UUID) ->
-    ?FM(wipe, sniffle_coverage, start, [?MASTER, ?SERVICE, {wipe, UUID}]).
+    ?FM(wipe, sniffle_coverage, start, [?MASTER, ?MODULE, {wipe, UUID}]).
 
 sync_repair(UUID, Obj) ->
     do_write(UUID, sync_repair, Obj).
@@ -58,7 +55,7 @@ create(Name, Type) ->
                                   {ok, Grouping::fifo:grouping()} |
                                   {error, timeout}.
 get(UUID) ->
-    ?FM(get, sniffle_entity_read_fsm, start, [{?VNODE, ?SERVICE}, get, UUID]).
+    ?FM(get, sniffle_entity_read_fsm, start, [{?CMD, ?MODULE}, get, UUID]).
 
 %% Add a alement and make sure only vm's can be added to clusters
 %% and only cluster groupings can be added to stacks
@@ -83,7 +80,7 @@ add_to_cluster(UUID, Element) ->
     case sniffle_vm:get(Element) of
         {ok, _} ->
             sniffle_vm:add_grouping(Element, UUID),
-            do_write(UUID, add_element, Element);
+            do_write(UUID, add_element, [Element]);
         E ->
             E
     end.
@@ -93,8 +90,8 @@ add_to_stack(UUID, Element) ->
         {ok, E} ->
             case ft_grouping:type(E) of
                 cluster ->
-                    do_write(Element, add_grouping, UUID),
-                    do_write(UUID, add_element, Element);
+                    do_write(Element, add_grouping, [UUID]),
+                    do_write(UUID, add_element, [Element]);
                 _ ->
                     {error, not_supported}
             end;
@@ -107,11 +104,11 @@ remove_element(UUID, Element) ->
         {ok, T} ->
             case ft_grouping:type(T) of
                 stack ->
-                    do_write(Element, remove_grouping, UUID),
-                    do_write(UUID, remove_element, Element);
+                    do_write(Element, remove_grouping, [UUID]),
+                    do_write(UUID, remove_element, [Element]);
                 _ ->
-                    sniffle_vm:remove_grouping(Element, UUID),
-                    do_write(UUID, remove_element, Element)
+                    sniffle_vm:remove_grouping(Element, [UUID]),
+                    do_write(UUID, remove_element, [Element])
             end;
         E ->
             E
@@ -180,8 +177,8 @@ add_grouping(UUID, Element) ->
             case {ft_grouping:type(T),
                   ft_grouping:type(E)} of
                 {cluster, stack} ->
-                    do_write(Element, add_element, UUID),
-                    do_write(UUID, add_grouping, Element);
+                    do_write(Element, add_element, [UUID]),
+                    do_write(UUID, add_grouping, [Element]);
                 _ ->
                     {error, not_supported}
             end;
@@ -190,8 +187,8 @@ add_grouping(UUID, Element) ->
     end.
 
 remove_grouping(UUID, Element) ->
-    do_write(Element, remove_element, UUID),
-    do_write(UUID, remove_grouping, Element).
+    do_write(Element, remove_element, [UUID]),
+    do_write(UUID, remove_grouping, [Element]).
 
 -spec delete(UUID::fifo:uuid()) ->
                     not_found | {error, timeout} | ok.
@@ -201,12 +198,12 @@ delete(UUID) ->
             Elements = ft_grouping:elements(T),
             case ft_grouping:type(T) of
                 stack ->
-                    [do_write(Element, remove_grouping, UUID) ||
+                    [do_write(Element, remove_grouping, [UUID]) ||
                         Element <- Elements];
                 _ ->
-                    [sniffle_vm:remove_grouping(Element, UUID) ||
+                    [sniffle_vm:remove_grouping(Element, [UUID]) ||
                         Element <- Elements],
-                    [do_write(Stack, remove_element, UUID) ||
+                    [do_write(Stack, remove_element, [UUID]) ||
                         Stack <- ft_grouping:groupings(T)]
             end;
         _ ->
@@ -217,27 +214,16 @@ delete(UUID) ->
 -spec list() ->
                   {ok, [UUID::fifo:uuid()]} | {error, timeout}.
 list() ->
-    ?FM(list, sniffle_coverage, start, [?MASTER, ?SERVICE, list]).
+    ?FM(list, sniffle_coverage, start, [?MASTER, ?MODULE, list]).
 
 list_() ->
     {ok, Res} = ?FM(list_all, sniffle_coverage, raw,
-                    [?MASTER, ?SERVICE, []]),
+                    [?MASTER, ?MODULE, []]),
     Res1 = [R || {_, R} <- Res],
     {ok,  Res1}.
 
--spec set_metadata(Grouping::fifo:uuid(), Attirbutes::fifo:attr_list()) ->
-                          not_found |
-                          {error, timeout} |
-                          ok.
-set_metadata(Grouping, Attributes) ->
-    do_write(Grouping, set_metadata, Attributes).
-
--spec set_config(Grouping::fifo:uuid(), Attirbutes::fifo:attr_list()) ->
-                        not_found |
-                        {error, timeout} |
-                        ok.
-set_config(Grouping, Attributes) ->
-    do_write(Grouping, set_config, Attributes).
+?SET(set_metadata).
+?SET(set_config).
 
 %%--------------------------------------------------------------------
 %% @doc Lists all vm's and fiters by a given matcher set.
@@ -247,11 +233,11 @@ set_config(Grouping, Attributes) ->
 
 list(Requirements, FoldFn, Acc0) ->
     ?FM(list_all, sniffle_coverage, list,
-                    [?MASTER, ?SERVICE, Requirements, FoldFn, Acc0]).
+                    [?MASTER, ?MODULE, Requirements, FoldFn, Acc0]).
 
 list(Requirements, Full) ->
     {ok, Res} = ?FM(list_all, sniffle_coverage, list,
-                    [?MASTER, ?SERVICE, Requirements]),
+                    [?MASTER, ?MODULE, Requirements]),
 
     Res1 = lists:sort(rankmatcher:apply_scales(Res)),
     Res2 = case Full of
@@ -264,8 +250,8 @@ list(Requirements, Full) ->
 
 do_write(Grouping, Op) ->
     ?FM(Op, sniffle_entity_write_fsm, write,
-        [{?VNODE, ?SERVICE}, Grouping, Op]).
+        [{?CMD, ?MODULE}, Grouping, Op]).
 
 do_write(Grouping, Op, Val) ->
     ?FM(Op, sniffle_entity_write_fsm, write,
-        [{?VNODE, ?SERVICE}, Grouping, Op, Val]).
+        [{?CMD, ?MODULE}, Grouping, Op, Val]).

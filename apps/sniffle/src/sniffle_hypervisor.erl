@@ -1,9 +1,6 @@
 -module(sniffle_hypervisor).
+-define(CMD, sniffle_hypervisor_cmd).
 -include("sniffle.hrl").
-
--define(MASTER, sniffle_hypervisor_vnode_master).
--define(VNODE, sniffle_hypervisor_vnode).
--define(SERVICE, sniffle_hypervisor).
 
 -define(FM(Met, Mod, Fun, Args),
         folsom_metrics:histogram_timed_update(
@@ -53,17 +50,17 @@
              ]).
 
 wipe(UUID) ->
-    ?FM(wipe, sniffle_coverage, start, [?MASTER, ?SERVICE, {wipe, UUID}]).
+    ?FM(wipe, sniffle_coverage, start, [?MASTER, ?MODULE, {wipe, UUID}]).
 
 sync_repair(UUID, Obj) ->
     do_write(UUID, sync_repair, Obj).
 
 last_seen(UUID, Time) when Time >= 0 ->
-    do_write(UUID, last_seen, Time).
+    do_write(UUID, last_seen, [Time]).
 
 list_() ->
     {ok, Res} = ?FM(list_all, sniffle_coverage, raw,
-                    [?MASTER, ?SERVICE, []]),
+                    [?MASTER, ?MODULE, []]),
     Res1 = [R || {_, R} <- Res],
     {ok,  Res1}.
 
@@ -90,7 +87,7 @@ unregister(Hypervisor) ->
                  not_found | {ok, HV::fifo:hypervisor()} | {error, timeout}.
 get(Hypervisor) ->
     ?FM(get, sniffle_entity_read_fsm, start,
-        [{?VNODE, ?SERVICE}, get, Hypervisor]).
+        [{?CMD, ?MODULE}, get, Hypervisor]).
 
 -spec status() -> {error, timeout} |
                   {ok, {Resources::fifo:object(),
@@ -145,12 +142,12 @@ to_msg({pool_error, UUID, Alias, Name, State}) ->
 -spec list() ->
                   {ok, [IPR::fifo:hypervisor_id()]} | {error, timeout}.
 list() ->
-    sniffle_coverage:start(?MASTER, ?SERVICE, list).
+    sniffle_coverage:start(?MASTER, ?MODULE, list).
 
 
 list(Requirements, FoldFn, Acc0) ->
     ?FM(list_all, sniffle_coverage, list,
-        [?MASTER, ?SERVICE, Requirements, FoldFn, Acc0]).
+        [?MASTER, ?MODULE, Requirements, FoldFn, Acc0]).
 
 service(UUID, Action, Service) ->
     case sniffle_hypervisor:get(UUID) of
@@ -212,7 +209,7 @@ update() ->
 
 list(Requirements, Full) ->
     {ok, Res} = ?FM(list_all, sniffle_coverage, list,
-                    [?MASTER, ?SERVICE, Requirements]),
+                    [?MASTER, ?MODULE, Requirements]),
     Res1 = lists:sort(rankmatcher:apply_scales(Res)),
     Res2 = case Full of
                true ->
@@ -227,11 +224,11 @@ list(Requirements, Full) ->
 %%%===================================================================
 
 do_write(User, Op) ->
-    ?FM(Op, sniffle_entity_write_fsm, write, [{?VNODE, ?SERVICE}, User, Op]).
+    ?FM(Op, sniffle_entity_write_fsm, write, [{?CMD, ?MODULE}, User, Op]).
 
 do_write(User, Op, Val) ->
     ?FM(Op, sniffle_entity_write_fsm, write,
-        [{?VNODE, ?SERVICE}, User, Op, Val]).
+        [{?CMD, ?MODULE}, User, Op, Val]).
 
 bin_fmt(F, L) ->
     list_to_binary(io_lib:format(F, L)).

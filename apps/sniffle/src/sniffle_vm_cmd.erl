@@ -1,4 +1,5 @@
--module(sniffle_vm_vnode).
+-module(sniffle_vm_cmd).
+-define(BUCKET, <<"vm">>).
 -include("sniffle.hrl").
 
 -export([repair/4,
@@ -35,12 +36,6 @@
          dataset/4,
          package/4,
          hypervisor/4
-        ]).
-
--export([
-         master/0,
-         aae_repair/2,
-         hash_object/2
         ]).
 
 %% those functions do not get called directly.
@@ -81,41 +76,15 @@
               sync_repair/4
              ]).
 
--define(SERVICE, sniffle).
-
--define(MASTER, sniffle_vnode_master).
-
--define(REQ(R), #req{request = R, bucket = <<"vm">>}).
--define(REQ(ID, R), #req{id = ID, request = R, bucket = <<"vm">>}).
-
-%%%===================================================================
-%%% AAE
-%%%===================================================================
-
-master() ->
-    ?MASTER.
-
-hash_object(BKey, RObj) ->
-    sniffle_vnode:hash_object(BKey, RObj).
-
-aae_repair(_, Key) ->
-    lager:debug("AAE Repair: ~p", [Key]),
-    sniffle_vm:get(Key).
 
 %%%===================================================================
 %%% API
 %%%===================================================================
 
-repair(Preflist, Vm, VClock, Obj) ->
+repair(Preflist, UUID, VClock, Obj) ->
     riak_core_vnode_master:command(Preflist,
-                                   ?REQ({repair, Vm, VClock, Obj}),
+                                   ?REQ({repair, UUID, VClock, Obj}),
                                    ignore,
-                                   ?MASTER).
-
-request(Preflist, ReqID, Request) ->
-    riak_core_vnode_master:command(Preflist,
-                                   ?REQ(ReqID, Request),
-                                   {fsm, undefined, self()},
                                    ?MASTER).
 
 %%%===================================================================
@@ -124,76 +93,67 @@ request(Preflist, ReqID, Request) ->
 
 -spec get(any(), any(), Vm::fifo:uuid()) -> ok.
 
-get(Preflist, ReqID, Vm) ->
-    request(Preflist, ReqID, {get, Vm}).
+get(Preflist, ReqID, UUID) ->
+    ?REQUEST(Preflist, ReqID, {get, UUID}).
 
 %%%===================================================================
 %%% API - writes
 %%%===================================================================
 
 sync_repair(Preflist, ReqID, UUID, Obj) ->
-    request(Preflist, ReqID, {sync_repair, UUID, Obj}).
+    ?REQUEST(Preflist, ReqID, {sync_repair, UUID, Obj}).
+
+register_fn({_, Coordinator} = ReqID, not_found, [UUID, Hypervisor]) ->
+    H0 = ft_vm:new(ReqID),
+    H1 = ft_vm:uuid(ReqID, UUID, H0),
+    H2 = ft_vm:hypervisor(ReqID, Hypervisor, H1),
+    {write, ok, ft_obj:new(H2, Coordinator)};
+register_fn({_, Coordinator} = ReqID, {ok, O}, [UUID, Hypervisor]) ->
+    H0 = ft_obj:val(O),
+    H1 = ft_vm:load(ReqID, H0),
+    H2 = ft_vm:uuid(ReqID, UUID, H1),
+    H3 = ft_vm:hypervisor(ReqID, Hypervisor, H2),
+    {write, ok, ft_obj:update(H3, Coordinator, O)}.
 
 -spec register(any(), any(), fifo:uuid(), binary()) -> ok.
 
-register(Preflist, {_, Coordinator} = ReqID, VM, Hypervisor) ->
-    RegFn = fun(not_found) ->
-                    H0 = ft_vm:new(ReqID),
-                    H1 = ft_vm:uuid(ReqID, VM, H0),
-                    H2 = ft_vm:hypervisor(ReqID, Hypervisor, H1),
-                    ft_obj:new(H2, Coordinator);
-               ({ok, O}) ->
-                    H0 = ft_obj:val(O),
-                    H1 = ft_vm:load(ReqID, H0),
-                    H2 = ft_vm:uuid(ReqID, VM, H1),
-                    H3 = ft_vm:hypervisor(ReqID, Hypervisor, H2),
-                    ft_obj:update(H3, Coordinator, O)
-            end,
-    request(Preflist, ReqID, {add, VM, RegFn}).
+register(Preflist, ReqID, UUID, Hypervisor) ->
+    ?REQUEST(Preflist, ReqID, {apply, UUID, fun register_fn/3,
+                               [UUID, Hypervisor]}).
 
 log(Preflist, ReqID, UUID, [Time, Log]) ->
-    request(Preflist, ReqID, {change, log, UUID, [Time, Log]}).
+    ?REQUEST(Preflist, ReqID, {change, log, UUID, [Time, Log]}).
 
 -spec unregister(any(), any(), fifo:uuid()) -> ok.
 
 unregister(Preflist, ReqID, UUDI) ->
-    request(Preflist, ReqID, {delete, UUDI}).
+    ?REQUEST(Preflist, ReqID, {delete, UUDI}).
 
-set_iprange_map(Preflist, ReqID, UUID, [IP, Net]) ->
-    request(Preflist, ReqID, {change, set_iprange_map, UUID, [IP, Net]}).
-
-set_network_map(Preflist, ReqID, UUID, [IP, Net]) ->
-    request(Preflist, ReqID, {change, set_network_map, UUID, [IP, Net]}).
-
-set_hostname_map(Preflist, ReqID, UUID, [IP, Net]) ->
-    request(Preflist, ReqID, {change, set_hostname_map, UUID, [IP, Net]}).
-
--define(S(Field),
-        Field(Preflist, ReqID, UUID, Val) ->
-               request(Preflist, ReqID, {change, Field, UUID, [Val]})).
-
-?S(set_service).
-?S(set_backup).
-?S(set_snapshot).
-?S(set_config).
-?S(set_info).
-?S(set_docker).
-?S(set_metadata).
-?S(add_fw_rule).
-?S(remove_fw_rule).
-?S(add_grouping).
-?S(remove_grouping).
-?S(state).
-?S(deleting).
-?S(creating).
-?S(alias).
-?S(owner).
-?S(dataset).
-?S(package).
-?S(created_at).
-?S(created_by).
-?S(vm_type).
-?S(hypervisor).
+?VSET(set_iprange_map).
+?VSET(set_network_map).
+?VSET(set_hostname_map).
+?VSET(set_service).
+?VSET(set_backup).
+?VSET(set_snapshot).
+?VSET(set_config).
+?VSET(set_info).
+?VSET(set_docker).
+?VSET(set_metadata).
+?VSET(add_fw_rule).
+?VSET(remove_fw_rule).
+?VSET(add_grouping).
+?VSET(remove_grouping).
+?VSET(state).
+?VSET(deleting).
+?VSET(creating).
+?VSET(alias).
+?VSET(owner).
+?VSET(dataset).
+?VSET(package).
+?VSET(created_at).
+?VSET(created_by).
+?VSET(vm_type).
+?VSET(hypervisor).
 
 %%%===================================================================
 %%% VNode

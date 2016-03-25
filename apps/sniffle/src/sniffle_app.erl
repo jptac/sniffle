@@ -46,17 +46,8 @@ start(_StartType, _StartArgs) ->
             ok = riak_core_node_watcher_events:add_guarded_handler(
                    sniffle_node_event_handler, []),
 
-            ?SRV_WITH_AAE(sniffle_general_vnode, sniffle),
+            ?SRV_WITH_AAE(sniffle_vnode, sniffle),
 
-            ?SRV_WITH_AAE(sniffle_hypervisor_vnode, sniffle_hypervisor),
-            ?SRV_WITH_AAE(sniffle_iprange_vnode, sniffle_iprange),
-            ?SRV_WITH_AAE(sniffle_package_vnode, sniffle_package),
-            ?SRV_WITH_AAE(sniffle_dataset_vnode, sniffle_dataset),
-            ?SRV_WITH_AAE(sniffle_grouping_vnode, sniffle_grouping),
-            ?SRV_WITH_AAE(sniffle_network_vnode, sniffle_network),
-            ?SRV_WITH_AAE(sniffle_dtrace_vnode, sniffle_dtrace),
-            ?SRV_WITH_AAE(sniffle_2i_vnode, sniffle_2i),
-            ?SRV_WITH_AAE(sniffle_hostname_vnode, sniffle_hostname),
             timer:apply_after(2000, sniffle_opt, update, []),
             sniffle_snmp_handler:start(),
             {ok, Pid};

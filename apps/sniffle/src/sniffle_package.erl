@@ -1,9 +1,6 @@
 -module(sniffle_package).
+-define(CMD, sniffle_package_cmd).
 -include("sniffle.hrl").
-
--define(MASTER, sniffle_package_vnode_master).
--define(VNODE, sniffle_package_vnode).
--define(SERVICE, sniffle_package).
 
 -define(FM(Met, Mod, Fun, Args),
         folsom_metrics:histogram_timed_update(
@@ -46,7 +43,7 @@
 
 -spec wipe(fifo:package_id()) -> ok.
 wipe(UUID) ->
-    ?FM(wipe, sniffle_coverage, start, [?MASTER, ?SERVICE, {wipe, UUID}]).
+    ?FM(wipe, sniffle_coverage, start, [?MASTER, ?MODULE, {wipe, UUID}]).
 
 -spec sync_repair(fifo:package_id(), ft_obj:obj()) -> ok.
 sync_repair(UUID, Obj) ->
@@ -55,7 +52,7 @@ sync_repair(UUID, Obj) ->
 -spec list_() -> {ok, [ft_obj:obj()]}.
 list_() ->
     {ok, Res} = ?FM(list_all, sniffle_coverage, raw,
-                    [?MASTER, ?SERVICE, []]),
+                    [?MASTER, ?MODULE, []]),
     Res1 = [R || {_, R} <- Res],
     {ok,  Res1}.
 
@@ -63,7 +60,7 @@ list_() ->
                     not_found | {ok, Pkg::fifo:package()} | {error, timeout}.
 lookup(Package) ->
     {ok, Res} = ?FM(list, sniffle_coverage, start,
-                    [?MASTER, ?SERVICE, {lookup, Package}]),
+                    [?MASTER, ?MODULE, {lookup, Package}]),
     lists:foldl(fun (not_found, Acc) ->
                         Acc;
                     (R, _) ->
@@ -87,14 +84,12 @@ create(Package) ->
     end.
 
 org_resource_inc(UUID, Resource, Val) ->
-    do_write(UUID, org_resource_inc, {Resource, Val}).
+    do_write(UUID, org_resource_inc, [Resource, Val]).
 
 org_resource_dec(UUID, Resource, Val) ->
-    do_write(UUID, org_resource_dec, {Resource, Val}).
+    do_write(UUID, org_resource_dec, [Resource, Val]).
 
-org_resource_remove(UUID, Resource) ->
-    do_write(UUID, org_resource_remove, Resource).
-
+?SET(org_resource_remove).
 
 
 -spec delete(Package::fifo:package_id()) ->
@@ -106,16 +101,16 @@ delete(Package) ->
                  not_found | {ok, Pkg::fifo:package()} | {error, timeout}.
 get(Package) ->
     ?FM(get, sniffle_entity_read_fsm, start,
-        [{?VNODE, ?SERVICE}, get, Package]).
+        [{?CMD, ?MODULE}, get, Package]).
 
 -spec list() ->
                   {ok, [Pkg::fifo:package_id()]} | {error, timeout}.
 list() ->
-    ?FM(list, sniffle_coverage, start, [?MASTER, ?SERVICE, list]).
+    ?FM(list, sniffle_coverage, start, [?MASTER, ?MODULE, list]).
 
 list(Requirements, FoldFn, Acc0) ->
     ?FM(list_all, sniffle_coverage, list,
-        [?MASTER, ?SERVICE, Requirements, FoldFn, Acc0]).
+        [?MASTER, ?MODULE, Requirements, FoldFn, Acc0]).
 
 %%--------------------------------------------------------------------
 %% @doc Lists all vm's and fiters by a given matcher set.
@@ -128,7 +123,7 @@ list(Requirements, FoldFn, Acc0) ->
 
 list(Requirements, Full) ->
     {ok, Res} = ?FM(list_all, sniffle_coverage, list,
-                    [?MASTER, ?SERVICE, Requirements]),
+                    [?MASTER, ?MODULE, Requirements]),
     Res1 = lists:sort(rankmatcher:apply_scales(Res)),
     Res2 = case Full of
                true ->
@@ -158,8 +153,8 @@ list(Requirements, Full) ->
 
 do_write(Package, Op) ->
     ?FM(Op, sniffle_entity_write_fsm, write,
-        [{?VNODE, ?SERVICE}, Package, Op]).
+        [{?CMD, ?MODULE}, Package, Op]).
 
 do_write(Package, Op, Val) ->
     ?FM(Op, sniffle_entity_write_fsm, write,
-        [{?VNODE, ?SERVICE}, Package, Op, Val]).
+        [{?CMD, ?MODULE}, Package, Op, Val]).

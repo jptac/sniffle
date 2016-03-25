@@ -1,9 +1,6 @@
 -module(sniffle_iprange).
+-define(CMD, sniffle_iprange_cmd).
 -include("sniffle.hrl").
-
--define(MASTER, sniffle_iprange_vnode_master).
--define(VNODE, sniffle_iprange_vnode).
--define(SERVICE, sniffle_iprange).
 
 -define(FM(Met, Mod, Fun, Args),
         folsom_metrics:histogram_timed_update(
@@ -50,7 +47,7 @@
 -spec wipe(fifo:iprange_id()) -> ok.
 
 wipe(UUID) ->
-    ?FM(wipe, sniffle_coverage, start, [?MASTER, ?SERVICE, {wipe, UUID}]).
+    ?FM(wipe, sniffle_coverage, start, [?MASTER, ?MODULE, {wipe, UUID}]).
 
 -spec sync_repair(fifo:iprange_id(), ft_obj:obj()) -> ok.
 
@@ -61,7 +58,7 @@ sync_repair(UUID, Obj) ->
 
 list_() ->
     {ok, Res} = ?FM(list_all, sniffle_coverage, raw,
-                    [?MASTER, ?SERVICE, []]),
+                    [?MASTER, ?MODULE, []]),
     Res1 = [R || {_, R} <- Res],
     {ok,  Res1}.
 
@@ -70,7 +67,7 @@ list_() ->
 lookup(Name) when
       is_binary(Name) ->
     {ok, Res} = ?FM(lookup, sniffle_coverage, start,
-                    [?MASTER, ?SERVICE, {lookup, Name}]),
+                    [?MASTER, ?MODULE, {lookup, Name}]),
     lists:foldl(fun (not_found, Acc) ->
                         Acc;
                     (R, _) ->
@@ -109,16 +106,16 @@ delete(Iprange) ->
                  not_found | {ok, IPR::fifo:iprange()} | {error, timeout}.
 get(Iprange) ->
     ?FM(get, sniffle_entity_read_fsm, start,
-        [{?VNODE, ?SERVICE}, get, Iprange]).
+        [{?CMD, ?MODULE}, get, Iprange]).
 
 -spec list() ->
                   {ok, [IPR::fifo:iprange_id()]} | {error, timeout}.
 list() ->
-    ?FM(list, sniffle_coverage, start, [?MASTER, ?SERVICE, list]).
+    ?FM(list, sniffle_coverage, start, [?MASTER, ?MODULE, list]).
 
 list(Requirements, FoldFn, Acc0) ->
     ?FM(list_all, sniffle_coverage, list,
-        [?MASTER, ?SERVICE, Requirements, FoldFn, Acc0]).
+        [?MASTER, ?MODULE, Requirements, FoldFn, Acc0]).
 
 %%--------------------------------------------------------------------
 %% @doc Lists all vm's and fiters by a given matcher set.
@@ -131,7 +128,7 @@ list(Requirements, FoldFn, Acc0) ->
 
 list(Requirements, Full) ->
     {ok, Res} = ?FM(list_all, sniffle_coverage, list,
-                    [?MASTER, ?SERVICE, Requirements]),
+                    [?MASTER, ?MODULE, Requirements]),
     Res1 = lists:sort(rankmatcher:apply_scales(Res)),
     Res2 = case Full of
                true ->
@@ -176,11 +173,11 @@ claim_specific_ip(Iprange, IP) ->
 %%%===================================================================
 
 do_write(Iprange, Op) ->
-    ?FM(Op, sniffle_entity_write_fsm, write, [{?VNODE, ?SERVICE}, Iprange, Op]).
+    ?FM(Op, sniffle_entity_write_fsm, write, [{?CMD, ?MODULE}, Iprange, Op]).
 
 do_write(Iprange, Op, Val) ->
     ?FM(Op, sniffle_entity_write_fsm, write,
-        [{?VNODE, ?SERVICE}, Iprange, Op, Val]).
+        [{?CMD, ?MODULE}, Iprange, Op, Val]).
 
 claim_ip(_Iprange, ?MAX_TRIES) ->
     {error, failed};
