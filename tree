@@ -4,7 +4,7 @@
 ├─ eplugin─0.1.4
 ├─ erlcloud─0.13.2
 │  └─ lhttpc─1.4.0
-├─ fifo_db─0.2.1
+├─ fifo_db─0.2.2
 │  ├─ eleveldb─2.1.3
 │  └─ erocksdb─0.4.1
 ├─ fifo_dt─0.1.68
