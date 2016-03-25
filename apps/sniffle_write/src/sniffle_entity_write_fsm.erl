@@ -71,10 +71,10 @@ start_link({Cmd, System}, ReqID, From, Entity, Op, Vals) ->
 write({Cmd, System}, User, Op) ->
     write({Cmd, System}, User, Op, undefined).
 
-write({Cmd, System}, User, Op, Val) ->
+write({Cmd, System}, User, Op, Vals) ->
     ReqID = sniffle_vnode:mk_reqid(),
     sniffle_entity_write_fsm_sup:start_write_fsm(
-      [{Cmd, System}, ReqID, self(), User, Op, Val]),
+      [{Cmd, System}, ReqID, self(), User, Op, Vals]),
     receive
         {ReqID, ok} ->
             ok;
@@ -95,7 +95,7 @@ write({Cmd, System}, User, Op, Val) ->
 
 %% @doc Initialize the state data.
 -spec init(_) -> {ok, prepare, state(), 0}.
-init([{Cmd, System}, ReqID, From, Entity, Op, Val]) ->
+init([{Cmd, System}, ReqID, From, Entity, Op, Vals]) ->
     {ok, N} = application:get_env(sniffle, n),
     {ok, W} = application:get_env(sniffle, w),
 
@@ -108,7 +108,7 @@ init([{Cmd, System}, ReqID, From, Entity, Op, Val]) ->
                 cmd=Cmd,
                 system=System,
                 cordinator=node(),
-                val=Val},
+                val=Vals},
     {ok, prepare, SD, 0}.
 
 %% @doc Prepare the write by calculating the _preference list_.
@@ -128,15 +128,15 @@ prepare(timeout, SD0=#state{
 execute(timeout, SD0=#state{req_id=ReqID,
                             entity=Entity,
                             op=Op,
-                            val=Val,
+                            val=Vals,
                             cmd=Cmd,
                             cordinator=Cordinator,
                             preflist=Preflist}) ->
-    case Val of
+    case Vals of
         undefined ->
             Cmd:Op(Preflist, {ReqID, Cordinator}, Entity);
         _ ->
-            Cmd:Op(Preflist, {ReqID, Cordinator}, Entity, Val)
+            Cmd:Op(Preflist, {ReqID, Cordinator}, Entity, Vals)
     end,
     {next_state, waiting, SD0}.
 

@@ -45,4 +45,4 @@
                                        ?MASTER)).
 -define(VSET(Field),
         Field(Preflist, ReqID, UUID, Vals) ->
-               ?REQUEST(Preflist, ReqID, {change, Field, UUID, [Vals]})).
+               ?REQUEST(Preflist, ReqID, {change, Field, UUID, Vals})).
