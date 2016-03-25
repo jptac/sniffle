@@ -11,6 +11,12 @@
           vnode
          }).
 
+-record(req, {
+          id      :: {integer(), atom()},
+          request :: term(),
+          bucket  :: binary()
+         }).
+
 -define(DEFAULT_TIMEOUT, 1000).
 
 -type val() ::  statebox:statebox().

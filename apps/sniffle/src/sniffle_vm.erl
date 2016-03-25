@@ -7,9 +7,9 @@
 
 -include("sniffle.hrl").
 
--define(MASTER, sniffle_vm_vnode_master).
--define(VNODE, sniffle_vm_vnode).
--define(SERVICE, sniffle_vm).
+-define(MASTER, sniffle_vnode_master).
+-define(VNODE, sniffle_general_vnode).
+-define(SERVICE, sniffle).
 -define(S, ft_vm).
 -define(FM(Met, Mod, Fun, Args),
         folsom_metrics:histogram_timed_update(
@@ -1057,7 +1057,7 @@ set_owner(User, Vm, Owner) ->
                  {error, timeout} | not_found | ok.
 log(Vm, Log) ->
     Timestamp = timestamp(),
-    case do_write(Vm, log, {Timestamp, Log}) of
+    case do_write(Vm, log, [Timestamp, Log]) of
         ok ->
             libhowl:send(Vm, [{<<"event">>, <<"log">>},
                               {<<"data">>,

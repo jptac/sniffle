@@ -24,14 +24,16 @@ init(_Args) ->
     %% VNodes
     %% ===================================================================
 
+    VVM = {
+      sniffle_vnode_master,
+      { riak_core_vnode_master, start_link, [sniffle_general_vnode]},
+      permanent, 5000, worker, [sniffle_vnode_master]},
+
+
     VHypervisor = {
       sniffle_hypervisor_vnode_master,
       { riak_core_vnode_master, start_link, [sniffle_hypervisor_vnode]},
       permanent, 5000, worker, [sniffle_hypervisor_vnode_master]},
-    VVM = {
-      sniffle_vm_vnode_master,
-      { riak_core_vnode_master, start_link, [sniffle_vm_vnode]},
-      permanent, 5000, worker, [sniffle_vm_vnode_master]},
     VIprange = {
       sniffle_iprange_vnode_master,
       { riak_core_vnode_master, start_link, [sniffle_iprange_vnode]},
