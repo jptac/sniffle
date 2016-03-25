@@ -28,7 +28,7 @@
 
 -define(SET(T),
         T(UUID, V) ->
-               do_write(UUID, T, V)).
+               do_write(UUID, T, [V])).
 
 -define(VNODE, sniffle_vnode).
 -define(MASTER, sniffle_vnode_master).
