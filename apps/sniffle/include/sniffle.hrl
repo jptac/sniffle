@@ -28,7 +28,7 @@
 
 -define(SET(T),
         T(UUID, V) ->
-               do_write(UUID, T, [V])).
+               do_write(UUID, T, V)).
 
 -define(VNODE, sniffle_vnode).
 -define(MASTER, sniffle_vnode_master).
@@ -44,5 +44,5 @@
                                        {fsm, undefined, self()},
                                        ?MASTER)).
 -define(VSET(Field),
-        Field(Preflist, ReqID, UUID, Val) ->
-               ?REQUEST(Preflist, ReqID, {change, Field, UUID, Val})).
+        Field(Preflist, ReqID, UUID, Vals) ->
+               ?REQUEST(Preflist, ReqID, {change, Field, UUID, [Vals]})).

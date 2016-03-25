@@ -499,7 +499,7 @@ change(Bucket, UUID, Action, Vals, {ReqID, Coordinator} = ID,
                  ft_obj:new(H0, Coordinator)
          end,
     H1 = ft_obj:val(O1),
-    H2 = erlang:apply(Mod, Action, [ID | Vals ++ [H1]]),
+    H2 = erlang:apply(Mod, Action, [ID] ++ Vals ++ [H1]),
     Obj = ft_obj:update(H2, Coordinator, O1),
     put(Bucket, UUID, Obj, State),
     {reply, {ok, ReqID}, State}.
