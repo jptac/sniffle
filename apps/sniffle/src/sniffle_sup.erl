@@ -26,7 +26,7 @@ init(_Args) ->
     VNode = {
       sniffle_vnode_master,
       { riak_core_vnode_master, start_link, [sniffle_vnode]},
-      permanent, 5000, worker, [sniffle_vnode_master]},
+      permanent, 5000, worker, [riak_core_vnode_master]},
 
     %% ===================================================================
     %% AAE
