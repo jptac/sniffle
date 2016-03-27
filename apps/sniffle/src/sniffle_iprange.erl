@@ -1,5 +1,7 @@
 -module(sniffle_iprange).
 -define(CMD, sniffle_iprange_cmd).
+-define(BUCKET, <<"iprange">>).
+-define(S, ft_iprange).
 -include("sniffle.hrl").
 
 -define(FM(Met, Mod, Fun, Args),
@@ -10,27 +12,11 @@
 -export([
          create/8,
          delete/1,
-         get/1,
          lookup/1,
-         list/0,
-         list/2,
-         list/3,
          claim_ip/1,
          claim_specific_ip/2,
          full/1,
          release_ip/2,
-         wipe/1,
-         sync_repair/2,
-         list_/0
-        ]).
-
--ignore_xref([
-              sync_repair/2,
-              list_/0,
-              wipe/1
-              ]).
-
--export([
          name/2,
          uuid/2,
          network/2,
@@ -43,24 +29,31 @@
 
 
 -define(MAX_TRIES, 3).
-
+%%%===================================================================
+%%% General section
+%%%===================================================================
 -spec wipe(fifo:iprange_id()) -> ok.
-
-wipe(UUID) ->
-    ?FM(wipe, sniffle_coverage, start, [?MASTER, ?MODULE, {wipe, UUID}]).
 
 -spec sync_repair(fifo:iprange_id(), ft_obj:obj()) -> ok.
 
-sync_repair(UUID, Obj) ->
-    do_write(UUID, sync_repair, Obj).
-
 -spec list_() -> {ok, [ft_obj:obj()]}.
 
-list_() ->
-    {ok, Res} = ?FM(list_all, sniffle_coverage, raw,
-                    [?MASTER, ?MODULE, []]),
-    Res1 = [R || {_, R} <- Res],
-    {ok,  Res1}.
+-spec get(Iprange::fifo:iprange_id()) ->
+                 not_found | {ok, IPR::fifo:iprange()} | {error, timeout}.
+
+-spec list() ->
+                  {ok, [IPR::fifo:iprange_id()]} | {error, timeout}.
+
+-spec list([fifo:matcher()], boolean()) ->
+                  {error, timeout} |
+                  {ok, [{Rating::integer(), Value::fifo:iprange()}] |
+                   [{Rating::integer(), Value::fifo:iprange_id()}]}.
+
+
+-include("sniffle_api.hrl").
+%%%===================================================================
+%%% Custom section
+%%%===================================================================
 
 -spec lookup(IPRange::binary()) ->
                     not_found | {ok, IPR::fifo:iprange()} | {error, timeout}.
@@ -102,42 +95,6 @@ create(Iprange, Network, Gateway, Netmask, First, Last, Tag, Vlan) when
 delete(Iprange) ->
     do_write(Iprange, delete).
 
--spec get(Iprange::fifo:iprange_id()) ->
-                 not_found | {ok, IPR::fifo:iprange()} | {error, timeout}.
-get(Iprange) ->
-    ?FM(get, sniffle_entity_read_fsm, start,
-        [{?CMD, ?MODULE}, get, Iprange]).
-
--spec list() ->
-                  {ok, [IPR::fifo:iprange_id()]} | {error, timeout}.
-list() ->
-    ?FM(list, sniffle_coverage, start, [?MASTER, ?MODULE, list]).
-
-list(Requirements, FoldFn, Acc0) ->
-    ?FM(list_all, sniffle_coverage, list,
-        [?MASTER, ?MODULE, Requirements, FoldFn, Acc0]).
-
-%%--------------------------------------------------------------------
-%% @doc Lists all vm's and fiters by a given matcher set.
-%% @end
-%%--------------------------------------------------------------------
--spec list([fifo:matcher()], boolean()) ->
-                  {error, timeout} |
-                  {ok, [{Rating::integer(), Value::fifo:iprange()}] |
-                   [{Rating::integer(), Value::fifo:iprange_id()}]}.
-
-list(Requirements, Full) ->
-    {ok, Res} = ?FM(list_all, sniffle_coverage, list,
-                    [?MASTER, ?MODULE, Requirements]),
-    Res1 = lists:sort(rankmatcher:apply_scales(Res)),
-    Res2 = case Full of
-               true ->
-                   Res1;
-               false ->
-                   [{P, ft_iprange:uuid(O)} || {P, O} <- Res1]
-           end,
-    {ok, Res2}.
-
 -spec release_ip(Iprange::fifo:iprange_id(),
                  IP::integer()) ->
                         ok | {error, timeout}.
@@ -171,13 +128,6 @@ claim_specific_ip(Iprange, IP) ->
 %%%===================================================================
 %%% Internal Functions
 %%%===================================================================
-
-do_write(Iprange, Op) ->
-    ?FM(Op, sniffle_entity_write_fsm, write, [{?CMD, ?MODULE}, Iprange, Op]).
-
-do_write(Iprange, Op, Val) ->
-    ?FM(Op, sniffle_entity_write_fsm, write,
-        [{?CMD, ?MODULE}, Iprange, Op, Val]).
 
 claim_ip(_Iprange, ?MAX_TRIES) ->
     {error, failed};

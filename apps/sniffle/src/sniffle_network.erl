@@ -1,5 +1,7 @@
 -module(sniffle_network).
 -define(CMD, sniffle_network_cmd).
+-define(BUCKET, <<"network">>).
+-define(S, ft_network).
 -include("sniffle.hrl").
 
 -define(FM(Met, Mod, Fun, Args),
@@ -10,60 +12,38 @@
 -export([
          create/1,
          delete/1,
-         get/1,
          lookup/1,
-         list/0,
-         list/2,
-         list/3,
          add_iprange/2,
          remove_iprange/2,
          claim_ip/1,
          claim_ip/2,
-         wipe/1,
-         sync_repair/2,
-         list_/0
-        ]).
-
--ignore_xref([
-              create/1,
-              delete/1,
-              get/1,
-              lookup/1,
-              list/0,
-              list/2,
-              add_iprange/2,
-              remove_iprange/2,
-              claim_ip/1,
-              claim_ip/2,
-              sync_repair/2,
-              list_/0,
-              wipe/1
-             ]).
-
--export([
          name/2,
          set_metadata/2,
          uuid/2
         ]).
 
--define(MAX_TRIES, 3).
-
+%%%===================================================================
+%%% General section
+%%%===================================================================
 -spec wipe(fifo:network_id()) ->
                   ok.
-wipe(UUID) ->
-    ?FM(wipe, sniffle_coverage, start, [?MASTER, ?MODULE, {wipe, UUID}]).
 
 -spec sync_repair(fifo:network_id(), ft_obj:obj()) ->
                          ok.
-sync_repair(UUID, Obj) ->
-    do_write(UUID, sync_repair, Obj).
-
 -spec list_() -> {ok, [fifo:obj()]}.
-list_() ->
-    {ok, Res} = ?FM(list_all, sniffle_coverage, raw,
-                    [?MASTER, ?MODULE, []]),
-    Res1 = [R || {_, R} <- Res],
-    {ok,  Res1}.
+-spec get(Network::fifo:network_id()) ->
+                 not_found | {ok, IPR::fifo:network()} | {error, timeout}.
+-spec list() ->
+                  {ok, [IPR::fifo:network_id()]} | {error, timeout}.
+-spec list([fifo:matcher()], boolean()) ->
+                  {error, timeout} |
+                  {ok, [{integer(), fifo:network_id()}]
+                   | [{integer(), fifo:network()}]}.
+-include("sniffle_api.hrl").
+%%%===================================================================
+%%% Custom section
+%%%===================================================================
+-define(MAX_TRIES, 3).
 
 -spec lookup(Network::binary()) ->
                     not_found | {ok, IPR::fifo:network()} | {error, timeout}.
@@ -95,12 +75,6 @@ create(Network) when
 delete(Network) ->
     do_write(Network, delete).
 
--spec get(Network::fifo:network_id()) ->
-                 not_found | {ok, IPR::fifo:network()} | {error, timeout}.
-get(Network) ->
-    ?FM(get, sniffle_entity_read_fsm, start,
-        [{?CMD, ?MODULE}, get, Network]).
-
 -spec add_iprange(fifo:network_id(), fifo:iprange_id()) ->
                          ok | not_found | {error, timeout}.
 add_iprange(Network, IPRange) ->
@@ -116,35 +90,6 @@ add_iprange(Network, IPRange) ->
 remove_iprange(Network, IPRange) ->
     do_write(Network, remove_iprange, [IPRange]).
 
--spec list() ->
-                  {ok, [IPR::fifo:network_id()]} | {error, timeout}.
-list() ->
-    ?FM(list, sniffle_coverage, start, [?MASTER, ?MODULE, list]).
-
-list(Requirements, FoldFn, Acc0) ->
-    ?FM(list_all, sniffle_coverage, list,
-        [?MASTER, ?MODULE, Requirements, FoldFn, Acc0]).
-
-%%--------------------------------------------------------------------
-%% @doc Lists all vm's and fiters by a given matcher set.
-%% @end
-%%--------------------------------------------------------------------
--spec list([fifo:matcher()], boolean()) ->
-                  {error, timeout} |
-                  {ok, [{integer(), fifo:network_id()}]
-                   | [{integer(), fifo:network()}]}.
-
-list(Requirements, Full) ->
-    {ok, Res} = ?FM(list_all, sniffle_coverage, list,
-                    [?MASTER, ?MODULE, Requirements]),
-    Res1 = lists:sort(rankmatcher:apply_scales(Res)),
-    Res2 = case Full of
-               true ->
-                   Res1;
-               false ->
-                   [{P, ft_network:uuid(O)} || {P, O} <- Res1]
-           end,
-    {ok, Res2}.
 
 -spec claim_ip(Iprange::fifo:network_id()) ->
                       not_found |
@@ -171,18 +116,9 @@ claim_ip(UUID, Rules) ->
 ?SET(name).
 ?SET(set_metadata).
 ?SET(uuid).
-
-
 %%%===================================================================
-%%% Internal Functions
+%%% Inernal functions
 %%%===================================================================
-
-do_write(Network, Op) ->
-    ?FM(Op, sniffle_entity_write_fsm, write, [{?CMD, ?MODULE}, Network, Op]).
-
-do_write(Network, Op, Val) ->
-    ?FM(Op, sniffle_entity_write_fsm, write,
-        [{?CMD, ?MODULE}, Network, Op, Val]).
 
 get_ip([N | R], []) ->
     case sniffle_iprange:claim_ip(N) of

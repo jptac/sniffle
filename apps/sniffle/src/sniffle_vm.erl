@@ -1,8 +1,9 @@
 -module(sniffle_vm).
 -define(CMD, sniffle_vm_cmd).
+-define(BUCKET, <<"vm">>).
+-define(S, ft_vm).
 -include("sniffle.hrl").
 
--define(S, ft_vm).
 -define(FM(Met, Mod, Fun, Args),
         folsom_metrics:histogram_timed_update(
           {sniffle, vm, Met},
@@ -26,11 +27,7 @@
          create_backup/4,
          delete_backup/2,
          delete_snapshot/2,
-         get/1,
          get_docker/1,
-         list/0,
-         list/2,
-         list/3,
          log/2,
          logs/1,
          primary_nic/2,
@@ -53,9 +50,6 @@
          stop/1,
          stop/2,
          unregister/1,
-         wipe/1,
-         sync_repair/2,
-         list_/0,
          dry_run/3,
          set_backup/2,
          set_config/2,
@@ -91,39 +85,35 @@
          hypervisor/2
         ]).
 
--ignore_xref([
-              alias/2,
-              hypervisor/2,
-
-              add_grouping/2,
-              remove_grouping/2,
-              dataset/2,
-              logs/1,
-              sync_repair/2,
-              list_/0,
-              wipe/1,
-              children/2
-             ]).
-
 -type backup_opts() ::
         delete |
         {delete, parent} |
         xml.
 
+
+%%%===================================================================
+%%% General section
+%%%===================================================================
+
+-spec do_write(VM::fifo:uuid(), Op::atom()) -> fifo:write_fsm_reply().
+
+-spec do_write(VM::fifo:uuid(), Op::atom(), Val::term()) ->
+                      fifo:write_fsm_reply().
 -spec wipe(fifo:vm_id()) -> ok.
 
-wipe(UUID) ->
-    ?FM(wipe, sniffle_coverage, start, [?MASTER, ?MODULE, {wipe, UUID}]).
-
 -spec sync_repair(fifo:vm_id(), ft_obj:obj()) -> ok.
-sync_repair(UUID, Obj) ->
-    do_write(UUID, sync_repair, Obj).
+-spec get(Vm::fifo:uuid()) ->
+                 not_found | {error, timeout} | {ok, fifo:vm()}.
+-spec list() ->
+                  {error, timeout} | {ok, [fifo:uuid()]}.
 
-list_() ->
-    {ok, Res} = ?FM(list_all, sniffle_coverage, raw,
-                    [?MASTER, ?MODULE, []]),
-    Res1 = [R || {_, R} <- Res],
-    {ok,  Res1}.
+-spec list([fifo:matcher()], boolean()) ->
+                  {error, timeout} | {ok, [fifo:uuid()]}.
+
+-include("sniffle_api.hrl").
+%%%===================================================================
+%%% Custom section
+%%%===================================================================
 
 store(User, Vm) ->
     case sniffle_vm:get(Vm) of
@@ -345,7 +335,6 @@ ds_set([{K, F} | R], UUID, O) ->
             ok
     end,
     ds_set(R, UUID, O).
-
 
 promote_to_image(Vm, SnapID, Config) ->
     case sniffle_vm:get(Vm) of
@@ -756,15 +745,6 @@ dry_run(Package, Dataset, Config) ->
     end.
 
 
-%%--------------------------------------------------------------------
-%% @doc Reads a VM object form the DB.
-%% @end
-%%--------------------------------------------------------------------
--spec get(Vm::fifo:uuid()) ->
-                 not_found | {error, timeout} | {ok, fifo:vm()}.
-get(Vm) ->
-    ?FM(get, sniffle_entity_read_fsm, start, [{?CMD, ?MODULE}, get, Vm]).
-
 get_docker(DockerID) ->
     case sniffle_2i:get(docker, DockerID) of
         {ok, UUID} ->
@@ -773,38 +753,6 @@ get_docker(DockerID) ->
             E
     end.
 
-%%--------------------------------------------------------------------
-%% @doc Lists all vm's.
-%% @end
-%%--------------------------------------------------------------------
--spec list() ->
-                  {error, timeout} | {ok, [fifo:uuid()]}.
-list() ->
-    ?FM(list, sniffle_coverage, start, [?MASTER, ?MODULE, list]).
-
-list(Requirements, FoldFn, Acc0) ->
-    ?FM(list_all, sniffle_coverage, list,
-        [?MASTER, ?MODULE, Requirements, FoldFn, Acc0]).
-
-%%--------------------------------------------------------------------
-%% @doc Lists all vm's and fiters by a given matcher set.
-%% @end
-%%--------------------------------------------------------------------
-
--spec list([fifo:matcher()], boolean()) ->
-                  {error, timeout} | {ok, [fifo:uuid()]}.
-
-list(Requirements, Full) ->
-    {ok, Res} = ?FM(list_all, sniffle_coverage, list,
-                    [?MASTER, ?MODULE, Requirements]),
-    Res1 = lists:sort(rankmatcher:apply_scales(Res)),
-    Res2 = case Full of
-               true ->
-                   Res1;
-               false ->
-                   [{P, ft_vm:uuid(O)} || {P, O} <- Res1]
-           end,
-    {ok, Res2}.
 
 %%--------------------------------------------------------------------
 %% @doc Tries to delete a VM, either unregistering it if no
@@ -1265,17 +1213,6 @@ deleting(UUID, V)
 %%%===================================================================
 %%% Internal Functions
 %%%===================================================================
-
--spec do_write(VM::fifo:uuid(), Op::atom()) -> fifo:write_fsm_reply().
-
-do_write(VM, Op) ->
-    ?FM(Op, sniffle_entity_write_fsm, write, [{?CMD, ?MODULE}, VM, Op]).
-
--spec do_write(VM::fifo:uuid(), Op::atom(), Val::term()) ->
-                      fifo:write_fsm_reply().
-
-do_write(VM, Op, Val) ->
-    ?FM(Op, sniffle_entity_write_fsm, write, [{?CMD, ?MODULE}, VM, Op, Val]).
 
 get_hypervisor(V) ->
     get_hypervisor(fifo_dt:type(V), V).

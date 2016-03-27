@@ -1,5 +1,7 @@
 -module(sniffle_grouping).
 -define(CMD, sniffle_grouping_cmd).
+-define(BUCKET, <<"grouping">>).
+-define(S, ft_grouping).
 -include("sniffle.hrl").
 
 -define(FM(Met, Mod, Fun, Args),
@@ -11,33 +13,29 @@
          create_rules/1,
          create/2,
          delete/1,
-         get/1,
-         list/0,
-         list/2,
-         list/3,
-         wipe/1,
-         sync_repair/2,
          add_element/2,
          remove_element/2,
          add_grouping/2,
          remove_grouping/2,
-         list_/0,
          set_metadata/2,
          set_config/2
         ]).
 
--ignore_xref([
-              create_rules/1,
-              sync_repair/2,
-              list_/0,
-              wipe/1
-             ]).
+%%%===================================================================
+%%% General section
+%%%===================================================================
+-spec sniffle_grouping:get(UUID::fifo:uuid()) ->
+                                  not_found |
+                                  {ok, Grouping::fifo:grouping()} |
+                                  {error, timeout}.
+-spec list() ->
+                  {ok, [UUID::fifo:uuid()]} | {error, timeout}.
 
-wipe(UUID) ->
-    ?FM(wipe, sniffle_coverage, start, [?MASTER, ?MODULE, {wipe, UUID}]).
 
-sync_repair(UUID, Obj) ->
-    do_write(UUID, sync_repair, Obj).
+-include("sniffle_api.hrl").
+%%%===================================================================
+%%% Custom section
+%%%===================================================================
 
 -spec create(Name::binary(), Type::cluster|stack|none) ->
                     duplicate | {ok, ClusterID :: binary()} | {error, timeout}.
@@ -49,13 +47,6 @@ create(Name, Type) ->
         E ->
             E
     end.
-
--spec sniffle_grouping:get(UUID::fifo:uuid()) ->
-                                  not_found |
-                                  {ok, Grouping::fifo:grouping()} |
-                                  {error, timeout}.
-get(UUID) ->
-    ?FM(get, sniffle_entity_read_fsm, start, [{?CMD, ?MODULE}, get, UUID]).
 
 %% Add a alement and make sure only vm's can be added to clusters
 %% and only cluster groupings can be added to stacks
@@ -211,47 +202,6 @@ delete(UUID) ->
     end,
     do_write(UUID, delete).
 
--spec list() ->
-                  {ok, [UUID::fifo:uuid()]} | {error, timeout}.
-list() ->
-    ?FM(list, sniffle_coverage, start, [?MASTER, ?MODULE, list]).
-
-list_() ->
-    {ok, Res} = ?FM(list_all, sniffle_coverage, raw,
-                    [?MASTER, ?MODULE, []]),
-    Res1 = [R || {_, R} <- Res],
-    {ok,  Res1}.
-
 ?SET(set_metadata).
 ?SET(set_config).
 
-%%--------------------------------------------------------------------
-%% @doc Lists all vm's and fiters by a given matcher set.
-%% @end
-%%--------------------------------------------------------------------
-
-
-list(Requirements, FoldFn, Acc0) ->
-    ?FM(list_all, sniffle_coverage, list,
-                    [?MASTER, ?MODULE, Requirements, FoldFn, Acc0]).
-
-list(Requirements, Full) ->
-    {ok, Res} = ?FM(list_all, sniffle_coverage, list,
-                    [?MASTER, ?MODULE, Requirements]),
-
-    Res1 = lists:sort(rankmatcher:apply_scales(Res)),
-    Res2 = case Full of
-               true ->
-                   Res1;
-               false ->
-                   [{P, ft_grouping:uuid(O)} || {P, O} <- Res1]
-           end,
-    {ok, Res2}.
-
-do_write(Grouping, Op) ->
-    ?FM(Op, sniffle_entity_write_fsm, write,
-        [{?CMD, ?MODULE}, Grouping, Op]).
-
-do_write(Grouping, Op, Val) ->
-    ?FM(Op, sniffle_entity_write_fsm, write,
-        [{?CMD, ?MODULE}, Grouping, Op, Val]).

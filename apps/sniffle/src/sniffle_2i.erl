@@ -1,5 +1,6 @@
 -module(sniffle_2i).
 -define(CMD, sniffle_2i_cmd).
+-define(BUCKET, <<"2i">>).
 -include_lib("sniffle.hrl").
 
 -export([
@@ -24,8 +25,7 @@ reindex(_) -> ok.
 
 wipe(Type, Key) ->
     TK = term_to_binary({Type, Key}),
-    ?FM(wipe, sniffle_coverage, start,
-        [sniffle_vnode_master, ?MODULE, {wipe, TK}]).
+    ?FM(wipe, sniffle_coverage, fold, [?REQ({wipe, TK})]).
 
 sync_repair(TK, Obj) ->
     do_write(TK, sync_repair, Obj).
@@ -66,15 +66,14 @@ raw(TK) ->
 
 
 list() ->
-    {ok, Res} = ?FM(list, sniffle_coverage, start,
-                    [?MASTER, ?MODULE, list]),
+    {ok, Res} = ?FM(list_all, sniffle_coverage, fold,
+                    [?REQ(list)]),
     Res1 = [binary_to_term(R) || R <- Res],
     {ok,  Res1}.
 
 list_() ->
-    {ok, Res} =
-        ?FM(list, sniffle_coverage, raw,
-            [?MASTER, ?MODULE, []]),
+    {ok, Res} = ?FM(list_all, sniffle_coverage, fold,
+                    [?REQ({list, [], true})]),
     Res1 = [binary_to_term(R) || {_, R} <- Res],
     {ok,  Res1}.
 
