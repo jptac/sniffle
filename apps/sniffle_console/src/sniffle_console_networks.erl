@@ -14,7 +14,7 @@ init() ->
 cmd_list(_, _, _) ->
     {ok, Hs} = sniffle_network:list([], true),
     Tbl = lists:map(fun to_tbl/1, Hs),
-    [clique_status:table([?HDR | Tbl])].
+    [clique_status:table(Tbl)].
 
 help() ->
     io:format("Usage~n"
@@ -59,13 +59,11 @@ command(_, Cmd) ->
 
 
 to_tbl({_, N}) ->
-    [{uuid, ?T:uuid(N)},
-     {name, ?T:name(N)},
-     {ipranges, length(?T:ipranges(N))}];
+    to_tbl(N);
 to_tbl(N) ->
-    [{uuid, ?T:uuid(N)},
-     {name, ?T:name(N)},
-     {ipranges, length(?T:ipranges(N))}].
+    [{"UUDI", ?T:uuid(N)},
+     {"Name", ?T:name(N)},
+     {"IPRanges", length(?T:ipranges(N))}].
 print(N) ->
     ?F(?HDR, [?T:uuid(N),
               ?T:name(N),
