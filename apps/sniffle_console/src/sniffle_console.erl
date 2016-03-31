@@ -13,8 +13,7 @@
          db_keys/1,
          db_get/1,
          db_delete/1,
-         get_ring/1,
-         connections/1
+         get_ring/1
         ]).
 
 -export([
@@ -27,7 +26,7 @@
          dtrace/1,
          hvs/1,
          ips/1,
-         networks/1,
+         command/1,
          pkgs/1,
          vms/1
         ]).
@@ -42,26 +41,68 @@
               db_get/1,
               db_delete/1,
               get_ring/1,
-              connections/1,
               aae_status/1,
               config/1,
               ds/1,
               dtrace/1,
               hvs/1,
               ips/1,
-              networks/1,
+              command/1,
               pkgs/1,
               vms/1
              ]).
 
+cmds_for(E, L) ->
+    Pfx = ["sniffle-admin", E],
+    [{Pfx ++ Cmd,  KeySpecs, FlagSpecs, Callback, Usage} ||
+        {Cmd, KeySpecs, FlagSpecs, Callback, Usage} <- L].
+
 init() ->
     Cmds =
-        [ {["sniffle-admin", "networks"] ++ Cmd,
-           KeySpecs, FlagSpecs, Callback} ||
-            {Cmd, KeySpecs, FlagSpecs, Callback} <-
-                sniffle_console_networks:init()],
-    [clique:register_command(Cmd, KeySpecs, FlagSpecs, Callback) ||
-        {Cmd, KeySpecs, FlagSpecs, Callback} <- Cmds].
+        cmds_for("networks", sniffle_console_networks:commands()) ++
+        [{["sniffle-admin"] ++ Cmd,  KeySpecs, FlagSpecs, Callback, Usage} ||
+            {Cmd, KeySpecs, FlagSpecs, Callback, Usage} <- commands()],
+    [begin
+         clique:register_command(Cmd, KeySpecs, FlagSpecs, Callback),
+         clique:register_usage(Cmd, Usage)
+     end || {Cmd, KeySpecs, FlagSpecs, Callback, Usage} <- Cmds].
+
+commands() ->
+    ConFlags =
+        [{endpoint, [{shortname, "e"},
+                     {longname, "endpoint"},
+                     {typecast, fun to_endpoint/1}]}],
+    [
+     {["connections"], [], ConFlags, fun cmd_connections/3, help_connections()}
+    ].
+
+to_endpoint("snarl") ->
+    snarl;
+to_endpoint("howl") ->
+    howl;
+to_endpoint("all") ->
+    all;
+to_endpoint(_) ->
+    {error, bad_endpoint}.
+
+help_connections() ->
+    [
+     "Lists all connections currently held by this server\n",
+     " the --endpoint=snarl|howl|all parameter can be passed.\n"
+    ].
+
+cmd_connections(_, _, [{endpoint, snarl}]) ->
+    [clique_status:text("Snarl endpoints.~n"),
+     print_endpoints(libsnarl:servers())];
+cmd_connections(_, _, [{endpoint, howl}]) ->
+    [clique_status:text("Snarl endpoints.~n"),
+     print_endpoints(libsnarl:servers())];
+cmd_connections(C, K, [{endpoint, all}]) ->
+    cmd_connections(C, K, []);
+cmd_connections(C, K, []) ->
+    cmd_connections(C, K, [{endpoint, snarl}]) ++
+        cmd_connections(C, K, [{endpoint, howl}]).
+
 
 init_leo([Host]) ->
     init_leo([Host, Host]);
@@ -107,31 +148,16 @@ init_leo([Manager, Gateway]) ->
     ok.
 
 print_endpoints(Es) ->
-    io:format("Hostname            "
-              "                    "
-              " Node               "
-              " Errors    ~n"),
-    io:format("--------------------"
-              "--------------------"
-              "----------"
-              " ---------------~n", []),
     [print_endpoint(E) || E <- Es].
 
 print_endpoint([{{Hostname, [{port, Port}, {ip, IP}]}, _, Fails}]) ->
     HostPort = <<IP/binary, ":", Port/binary>>,
-    io:format("~40s ~-19s ~9b~n", [Hostname, HostPort, Fails]).
+    [
+     {"Hostname", Hostname},
+     {"Endpoint", HostPort},
+     {"Failures", Fails}
+     ].
 
-connections(["snarl"]) ->
-    io:format("Snarl endpoints.~n"),
-    print_endpoints(libsnarl:servers());
-
-connections(["howl"]) ->
-    io:format("Howl endpoints.~n"),
-    print_endpoints(libhowl:servers());
-
-connections([]) ->
-    connections(["snarl"]),
-    connections(["howl"]).
 
 get_ring([]) ->
     {ok, RingData} = riak_core_ring_manager:get_my_ring(),
@@ -301,15 +327,8 @@ ips([C, "-j" | R]) ->
 ips(R) ->
     sniffle_console_ipranges:command(text, R).
 
-networks([]) ->
-    sniffle_console_networks:help(),
-    ok;
-
-networks([C, "-j" | R]) ->
-    sniffle_console_networks:command(json, [C | R]);
-
-networks(R) ->
-    sniffle_console_networks:command(text, R).
+command(Cmd) ->
+    clique:run(Cmd).
 
 config(["show"]) ->
     io:format("Storage~n  General Section~n"),
