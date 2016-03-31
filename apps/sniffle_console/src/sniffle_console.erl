@@ -55,7 +55,13 @@
              ]).
 
 init() ->
-    sniffle_console_networks:init().
+    Cmds =
+        [ {["sniffle-admin", "networks"] ++ Cmd,
+           KeySpecs, FlagSpecs, Callback} ||
+            {Cmd, KeySpecs, FlagSpecs, Callback} <-
+                sniffle_console_networks:init()],
+    [clique:register_command(Cmd, KeySpecs, FlagSpecs, Callback) ||
+        {Cmd, KeySpecs, FlagSpecs, Callback} <- Cmds].
 
 init_leo([Host]) ->
     init_leo([Host, Host]);

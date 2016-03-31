@@ -8,13 +8,23 @@
 -define(HDR, [{"UUID", 18}, {"Name", 10}, {"IPRanges", 10}]).
 
 init() ->
-    CmdList = ["sniffle-admin", "networks", "list"],
-    clique:register_command(CmdList, [], [], fun cmd_list/3).
+    [{["list"], [], [], fun cmd_list/3},
+     {["get", '*'], [], [], fun cmd_get/3}].
 
 cmd_list(_, _, _) ->
     {ok, Hs} = sniffle_network:list([], true),
     Tbl = lists:map(fun to_tbl/1, Hs),
     [clique_status:table(Tbl)].
+
+cmd_get(["sniffle-admin", "networks", "get", UUIDs], _, _) ->
+    UUID = list_to_binary(UUIDs),
+    case sniffle_network:list(get, UUID) of
+        {ok, H} ->
+            Tbl = [to_tbl(H)],
+            [clique_status:table(Tbl)];
+        not_found ->
+            [clique_status:warning("Network not found.")]
+    end.
 
 help() ->
     io:format("Usage~n"
@@ -32,15 +42,6 @@ command(text, ["delete", UUID]) ->
         E ->
             io:format("Network ~s not removed (~p).~n", [UUID, E]),
             ok
-    end;
-
-command(json, ["get", ID]) ->
-    case sniffle_network:get(list_to_binary(ID)) of
-        {ok, N} ->
-            sniffle_console:pp_json(?T:to_json(N)),
-            ok;
-        _ ->
-            error
     end;
 
 command(text, ["get", ID]) ->
