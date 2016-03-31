@@ -96,7 +96,7 @@ cmd_connections(_, _, [{endpoint, snarl}]) ->
      clique_status:table(print_endpoints(libsnarl:servers()))];
 cmd_connections(_, _, [{endpoint, howl}]) ->
     [clique_status:text("===== Howl endpoints ====="),
-     clique_status:table(print_endpoints(libsnarl:servers()))];
+     clique_status:table(print_endpoints(libhowl:servers()))];
 cmd_connections(C, K, [{endpoint, all}]) ->
     cmd_connections(C, K, []);
 cmd_connections(C, K, []) ->
