@@ -18,7 +18,7 @@ cmd_list(_, _, _) ->
 
 cmd_get(["sniffle-admin", "networks", "get", UUIDs], _, _) ->
     UUID = list_to_binary(UUIDs),
-    case sniffle_network:list(get, UUID) of
+    case sniffle_network:get(UUID) of
         {ok, H} ->
             Tbl = [to_tbl(H)],
             [clique_status:table(Tbl)];
