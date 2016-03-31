@@ -476,7 +476,7 @@ case "$1" in
         ;;
     networks)
         node_up_check
-        $NODETOOL rpc sniffle_console networks sniffle-admin $@
+        $NODETOOL rpc sniffle_console command sniffle-admin $@
         ;;
 
     dtrace)
@@ -485,8 +485,8 @@ case "$1" in
         ;;
 
     connections)
-        shift
-        run sniffle_console connections $@
+        node_up_check
+        $NODETOOL rpc sniffle_console command sniffle-admin $@
         ;;
 
     db)
