@@ -58,6 +58,10 @@ command(_, Cmd) ->
     clique:run(Cmd).
 
 
+to_tbl({_, N}) ->
+    [{uuid, ?T:uuid(N)},
+     {name, ?T:name(N)},
+     {ipranges, length(?T:ipranges(N))}];
 to_tbl(N) ->
     [{uuid, ?T:uuid(N)},
      {name, ?T:name(N)},

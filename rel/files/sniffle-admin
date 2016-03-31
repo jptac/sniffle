@@ -476,7 +476,7 @@ case "$1" in
         ;;
     networks)
         node_up_check
-        $NODETOOL rpc sniffle_console networks sniffle-admin networks $@
+        $NODETOOL rpc sniffle_console networks sniffle-admin $@
         ;;
 
     dtrace)
