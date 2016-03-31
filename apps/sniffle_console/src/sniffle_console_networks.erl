@@ -1,11 +1,20 @@
 %% @doc Interface for sniffle-admin commands.
 -module(sniffle_console_networks).
--export([command/2, help/0]).
+-export([init/0, command/2, help/0]).
 
 -define(T, ft_network).
 -define(F(Hs, Vs), fifo_console:fields(Hs, Vs)).
 -define(H(Hs), fifo_console:hdr(Hs)).
 -define(HDR, [{"UUID", 18}, {"Name", 10}, {"IPRanges", 10}]).
+
+init() ->
+    CmdList = ["sniffle-admin", "networks", "list"],
+    clique:register_command(CmdList, [], [], fun cmd_list/3).
+
+cmd_list(_, _, _) ->
+    {ok, Hs} = sniffle_network:list([], true),
+    Tbl = lists:map(fun to_tbl/1, Hs),
+    clique_status:table([?HDR | Tbl]).
 
 help() ->
     io:format("Usage~n"
@@ -44,35 +53,15 @@ command(text, ["get", ID]) ->
             error
     end;
 
-command(text, ["list"]) ->
-    hdr(),
-    case sniffle_network:list() of
-        {ok, Hs} ->
-            lists:map(fun (ID) ->
-                              {ok, N} = sniffle_network:get(ID),
-                              print(N)
-                      end, Hs);
-        _ ->
-            []
-    end;
 
-command(json, ["list"]) ->
-    case sniffle_network:list() of
-        {ok, Hs} ->
-            lists:map(fun (ID) ->
-                              {ok, N} = sniffle_network:get(ID),
-                              sniffle_console:pp_json(?T:to_json(N))
-                      end, Hs);
-        _ ->
-            []
-    end;
+command(_, Cmd) ->
+    clique:run(Cmd).
 
 
-command(_, C) ->
-    io:format("Unknown parameters: ~p~n", [C]),
-    error.
-
-
+to_tbl(N) ->
+    [{uuid, ?T:uuid(N)},
+     {name, ?T:name(N)},
+     {ipranges, length(?T:ipranges(N))}].
 print(N) ->
     ?F(?HDR, [?T:uuid(N),
               ?T:name(N),

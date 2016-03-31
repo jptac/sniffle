@@ -15,6 +15,8 @@
 
 -ignore_xref([list/5, raw/5]).
 
+-type merge_fn() ::  fun(([term()]) -> term()).
+
 -record(state, {replies = #{} :: #{binary() => pos_integer()},
                 seen = sets:new() :: sets:set(),
                 r = 1 :: pos_integer(),
@@ -22,7 +24,7 @@
                 from :: pid(),
                 reqs :: list(),
                 raw :: boolean(),
-                merge_fn = fun([E | _]) -> E  end :: fun( ([Type]) -> Type),
+                merge_fn = fun([E | _]) -> E  end :: merge_fn(),
                 completed = [] :: [binary()]}).
 
 -define(PARTIAL_SIZE, 10).
@@ -54,6 +56,8 @@ fold(Request, FoldFn, Acc0) ->
       ?MODULE, {self(), ReqID, something_else}, Request#req{id = ReqID}),
     wait(ReqID, FoldFn, Acc0).
 
+-spec wait(term(), fun(), term()) ->
+    ok | {ok, term()} | {error, term()}.
 wait(ReqID, FoldFn, Acc) ->
     receive
         {ok, ReqID} ->

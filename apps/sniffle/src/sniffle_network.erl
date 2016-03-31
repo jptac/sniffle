@@ -30,7 +30,7 @@
 
 -spec sync_repair(fifo:network_id(), ft_obj:obj()) ->
                          ok.
--spec list_() -> {ok, [fifo:obj()]}.
+-spec list_() -> {ok, [fifo:obj()]} | {error, term()}.
 -spec get(Network::fifo:network_id()) ->
                  not_found | {ok, IPR::fifo:network()} | {error, timeout}.
 -spec list() ->

@@ -474,6 +474,10 @@ case "$1" in
         shift
         run sniffle_console ips $@
         ;;
+    networks)
+        node_up_check
+        $NODETOOL rpc sniffle_console networks sniffle-admin networks $@
+        ;;
 
     dtrace)
         shift

@@ -8,6 +8,7 @@
 -endif.
 
 -export([
+         init/0,
          init_leo/1,
          db_keys/1,
          db_get/1,
@@ -53,6 +54,8 @@
               vms/1
              ]).
 
+init() ->
+    sniffle_console_networks:init().
 
 init_leo([Host]) ->
     init_leo([Host, Host]);
