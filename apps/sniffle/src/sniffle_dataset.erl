@@ -1,9 +1,8 @@
 -module(sniffle_dataset).
+-define(CMD, sniffle_dataset_cmd).
+-define(BUCKET, <<"dataset">>).
+-define(S, ft_dataset).
 -include("sniffle.hrl").
-
--define(MASTER, sniffle_dataset_vnode_master).
--define(VNODE, sniffle_dataset_vnode).
--define(SERVICE, sniffle_dataset).
 
 -define(FM(Met, Mod, Fun, Args),
         folsom_metrics:histogram_timed_update(
@@ -13,26 +12,13 @@
 -export([
          create/1,
          delete/1,
-         get/1,
-         list/0,
-         list/2,
-         list/3,
          import/1,
-         wipe/1,
-         sync_repair/2,
-         list_/0,
          remove_requirement/2,
          add_requirement/2,
          remove_network/2,
          add_network/2
         ]).
 
--ignore_xref([
-              sync_repair/2,
-              list_/0,
-              get_/1,
-              wipe/1
-             ]).
 -export([
          set_metadata/2,
          description/2,
@@ -52,17 +38,24 @@
          kernel_version/2
         ]).
 
-wipe(UUID) ->
-    ?FM(wipe, sniffle_coverage, start, [?MASTER, ?SERVICE, {wipe, UUID}]).
 
-sync_repair(UUID, Obj) ->
-    do_write(UUID, sync_repair, Obj).
+%%%===================================================================
+%%% General section
+%%%===================================================================
+-spec get(UUID::fifo:dtrace_id()) ->
+                 not_found | {ok, Dataset::fifo:dataset()} | {error, timeout}.
 
-list_() ->
-    {ok, Res} = ?FM(list_all, sniffle_coverage, raw,
-                    [?MASTER, ?SERVICE, []]),
-    Res1 = [R || {_, R} <- Res],
-    {ok,  Res1}.
+-spec list() ->
+                  {ok, [UUID::fifo:dataset_id()]} | {error, timeout}.
+
+-spec list([fifo:matcher()], boolean()) ->
+                  {error, timeout} | {ok, [fifo:uuid()]}.
+
+-include("sniffle_api.hrl").
+%%%===================================================================
+%%% Custom section
+%%%===================================================================
+
 
 -spec create(UUID::fifo:dataset_id()) ->
                     duplicate | ok | {error, timeout}.
@@ -84,39 +77,6 @@ delete(UUID) ->
         E ->
             E
     end.
-
--spec get(UUID::fifo:dtrace_id()) ->
-                 not_found | {ok, Dataset::fifo:dataset()} | {error, timeout}.
-get(UUID) ->
-    ?FM(get, sniffle_entity_read_fsm, start, [{?VNODE, ?SERVICE}, get, UUID]).
-
--spec list() ->
-                  {ok, [UUID::fifo:dataset_id()]} | {error, timeout}.
-list() ->
-    ?FM(list, sniffle_coverage, start, [?MASTER, ?SERVICE, list]).
-
-list(Requirements, FoldFn, Acc0) ->
-    ?FM(list_all, sniffle_coverage, list,
-                    [?MASTER, ?SERVICE, Requirements, FoldFn, Acc0]).
-
-%%--------------------------------------------------------------------
-%% @doc Lists all vm's and fiters by a given matcher set.
-%% @end
-%%--------------------------------------------------------------------
--spec list([fifo:matcher()], boolean()) ->
-                  {error, timeout} | {ok, [fifo:uuid()]}.
-
-list(Requirements, Full) ->
-    {ok, Res} = ?FM(list_all, sniffle_coverage, list,
-                    [?MASTER, ?SERVICE, Requirements]),
-    Res1 = lists:sort(rankmatcher:apply_scales(Res)),
-    Res2 = case Full of
-               true ->
-                   Res1;
-               false ->
-                   [{P, ft_dataset:uuid(O)} || {P, O} <- Res1]
-           end,
-    {ok, Res2}.
 
 import(URL) ->
     sniffle_dataset_download_fsm:download(URL).
@@ -141,14 +101,3 @@ import(URL) ->
 ?SET(add_requirement).
 ?SET(remove_network).
 ?SET(add_network).
-
-%%%===================================================================
-%%% Internal Functions
-%%%===================================================================
-
-do_write(Dataset, Op) ->
-    ?FM(Op, sniffle_entity_write_fsm, write, [{?VNODE, ?SERVICE}, Dataset, Op]).
-
-do_write(Dataset, Op, Val) ->
-    ?FM(Op, sniffle_entity_write_fsm, write,
-        [{?VNODE, ?SERVICE}, Dataset, Op, Val]).

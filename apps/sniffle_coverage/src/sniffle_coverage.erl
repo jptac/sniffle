@@ -1,15 +1,16 @@
 -module(sniffle_coverage).
-
+-include_lib("sniffle_req/include/req.hrl").
 -behaviour(riak_core_coverage_fsm).
 
 -export([
          init/2,
          process_results/2,
          finish/2,
-         start/3,
+         start/1,
          mk_reqid/0,
-         list/3, raw/3,
-         list/5, raw/5
+         fold/1, fold/3,
+         list/1, raw/1,
+         list/3, raw/3
         ]).
 
 -ignore_xref([list/5, raw/5]).
@@ -29,28 +30,28 @@
 concat(Es, Acc) ->
     Es ++ Acc.
 
-raw(VNodeMaster, NodeCheckService, Requirements) ->
-    raw(VNodeMaster, NodeCheckService, Requirements, fun concat/2, []).
+raw(Requirements) ->
+    raw(Requirements, fun concat/2, []).
 
-raw(VNodeMaster, NodeCheckService, Requirements, FoldFn, Acc0) ->
-    fold(VNodeMaster, NodeCheckService,
-         {list, Requirements, true}, FoldFn, Acc0).
+raw(Requirements, FoldFn, Acc0) ->
+    fold(#req{request = {list, Requirements, true}}, FoldFn, Acc0).
 
-list(VNodeMaster, NodeCheckService, Requirements) ->
-    list(VNodeMaster, NodeCheckService, Requirements, fun concat/2, []).
+list(Requirements) ->
+    list(Requirements, fun concat/2, []).
 
-list(VNodeMaster, NodeCheckService, Requirements, FoldFn, Acc0) ->
-    fold(VNodeMaster, NodeCheckService,
-          {list, Requirements, false}, FoldFn, Acc0).
+list(Requirements, FoldFn, Acc0) ->
+    fold(#req{request = {list, Requirements, false}}, FoldFn, Acc0).
 
-start(VNodeMaster, NodeCheckService, Request) ->
-    fold(VNodeMaster, NodeCheckService, Request, fun concat/2, []).
+start(Request) ->
+    fold(Request, fun concat/2, []).
 
-fold(VNodeMaster, NodeCheckService, Request, FoldFn, Acc0) ->
+fold(Request) ->
+    fold(Request, fun concat/2, []).
+
+fold(Request, FoldFn, Acc0) ->
     ReqID = mk_reqid(),
     sniffle_coverage_sup:start_coverage(
-      ?MODULE, {self(), ReqID, something_else},
-      {VNodeMaster, NodeCheckService, Request}),
+      ?MODULE, {self(), ReqID, something_else}, Request#req{id = ReqID}),
     wait(ReqID, FoldFn, Acc0).
 
 wait(ReqID, FoldFn, Acc) ->
@@ -66,12 +67,10 @@ wait(ReqID, FoldFn, Acc) ->
     end.
 
 %% The first is the vnode service used
-init(Req,
-     {VNodeMaster, NodeCheckService, {list, Requirements, Raw}}) ->
+init(Req, RequestIn = #req{request = {list, Requirements, Raw}}) ->
     {Request, VNodeSelector, N, PrimaryVNodeCoverage,
-     NodeCheckService, VNodeMaster, Timeout, State1} =
-        base_init(Req, {VNodeMaster, NodeCheckService,
-                        {list, Requirements, true}}),
+     sniffle, sniffle_vnode_master, Timeout, State1} =
+        base_init(Req, RequestIn#req{request = {list, Requirements, true}}),
     Merge = case Raw of
                 true ->
                     fun raw_merge/1;
@@ -80,12 +79,12 @@ init(Req,
             end,
     State2 = State1#state{reqs = Requirements, raw = Raw, merge_fn = Merge},
     {Request, VNodeSelector, N, PrimaryVNodeCoverage,
-     NodeCheckService, VNodeMaster, Timeout, State2};
+     sniffle, sniffle_vnode_master, Timeout, State2};
 
-init(Req, {VNodeMaster, NodeCheckService, Request}) ->
-    base_init(Req, {VNodeMaster, NodeCheckService, Request}).
+init(Req, Request) ->
+    base_init(Req, Request).
 
-base_init({From, ReqID, _}, {VNodeMaster, NodeCheckService, Request}) ->
+base_init({From, ReqID, _}, Request) ->
     {ok, N} = application:get_env(sniffle, n),
     {ok, R} = application:get_env(sniffle, r),
     %% all - full coverage; allup - partial coverage
@@ -95,7 +94,7 @@ base_init({From, ReqID, _}, {VNodeMaster, NodeCheckService, Request}) ->
     Timeout = 9000,
     State = #state{r = R, from = From, reqid = ReqID},
     {Request, VNodeSelector, N, PrimaryVNodeCoverage,
-     NodeCheckService, VNodeMaster, Timeout, State}.
+     sniffle, sniffle_vnode_master, Timeout, State}.
 
 update(Key, State) when is_binary(Key) ->
     update({Key, Key}, State);

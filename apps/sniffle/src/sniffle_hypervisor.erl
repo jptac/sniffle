@@ -1,9 +1,8 @@
 -module(sniffle_hypervisor).
+-define(CMD, sniffle_hypervisor_cmd).
+-define(BUCKET, <<"hypervisor">>).
+-define(S, ft_hypervisor).
 -include("sniffle.hrl").
-
--define(MASTER, sniffle_hypervisor_vnode_master).
--define(VNODE, sniffle_hypervisor_vnode).
--define(SERVICE, sniffle_hypervisor).
 
 -define(FM(Met, Mod, Fun, Args),
         folsom_metrics:histogram_timed_update(
@@ -14,17 +13,10 @@
    [
     register/3,
     unregister/1,
-    get/1,
-    list/0,
-    list/2,
-    list/3,
     status/0,
     service/3,
     update/1,
-    update/0,
-    wipe/1,
-    sync_repair/2,
-    list_/0
+    update/0
    ]).
 
 -export([
@@ -46,26 +38,27 @@
          last_seen/2
         ]).
 
--ignore_xref([
-              sync_repair/2,
-              list_/0,
-              wipe/1
-             ]).
 
-wipe(UUID) ->
-    ?FM(wipe, sniffle_coverage, start, [?MASTER, ?SERVICE, {wipe, UUID}]).
+%%%===================================================================
+%%% General section
+%%%===================================================================
+-spec get(Hypervisor::fifo:hypervisor_id()) ->
+                 not_found | {ok, HV::fifo:hypervisor()} | {error, timeout}.
 
-sync_repair(UUID, Obj) ->
-    do_write(UUID, sync_repair, Obj).
+-spec list() ->
+                  {ok, [IPR::fifo:hypervisor_id()]} | {error, timeout}.
+
+
+-spec list([fifo:matcher()], boolean()) ->
+                  {error, timeout} | {ok, [fifo:uuid()]}.
+
+-include("sniffle_api.hrl").
+%%%===================================================================
+%%% Custom section
+%%%===================================================================
 
 last_seen(UUID, Time) when Time >= 0 ->
-    do_write(UUID, last_seen, Time).
-
-list_() ->
-    {ok, Res} = ?FM(list_all, sniffle_coverage, raw,
-                    [?MASTER, ?SERVICE, []]),
-    Res1 = [R || {_, R} <- Res],
-    {ok,  Res1}.
+    do_write(UUID, last_seen, [Time]).
 
 -spec register(Hypervisor::fifo:hypervisor_id(),
                IP::inet:ip_address() | inet:hostname(),
@@ -86,11 +79,6 @@ unregister(Hypervisor) ->
      end || {_, VM} <- VMs],
     do_write(Hypervisor, unregister).
 
--spec get(Hypervisor::fifo:hypervisor_id()) ->
-                 not_found | {ok, HV::fifo:hypervisor()} | {error, timeout}.
-get(Hypervisor) ->
-    ?FM(get, sniffle_entity_read_fsm, start,
-        [{?VNODE, ?SERVICE}, get, Hypervisor]).
 
 -spec status() -> {error, timeout} |
                   {ok, {Resources::fifo:object(),
@@ -140,17 +128,6 @@ to_msg({pool_error, UUID, Alias, Name, State}) ->
                              [Name, Alias, UUID, State])},
      {<<"type">>, <<"critical">>}
     ].
-
-
--spec list() ->
-                  {ok, [IPR::fifo:hypervisor_id()]} | {error, timeout}.
-list() ->
-    sniffle_coverage:start(?MASTER, ?SERVICE, list).
-
-
-list(Requirements, FoldFn, Acc0) ->
-    ?FM(list_all, sniffle_coverage, list,
-        [?MASTER, ?SERVICE, Requirements, FoldFn, Acc0]).
 
 service(UUID, Action, Service) ->
     case sniffle_hypervisor:get(UUID) of
@@ -203,35 +180,9 @@ update() ->
 ?SET(version).
 ?SET(virtualisation).
 
-%%--------------------------------------------------------------------
-%% @doc Lists all vm's and fiters by a given matcher set.
-%% @end
-%%--------------------------------------------------------------------
--spec list([fifo:matcher()], boolean()) ->
-                  {error, timeout} | {ok, [fifo:uuid()]}.
-
-list(Requirements, Full) ->
-    {ok, Res} = ?FM(list_all, sniffle_coverage, list,
-                    [?MASTER, ?SERVICE, Requirements]),
-    Res1 = lists:sort(rankmatcher:apply_scales(Res)),
-    Res2 = case Full of
-               true ->
-                   Res1;
-               false ->
-                   [{P, ft_hypervisor:uuid(O)} || {P, O} <- Res1]
-           end,
-    {ok, Res2}.
-
 %%%===================================================================
 %%% Internal Functions
 %%%===================================================================
-
-do_write(User, Op) ->
-    ?FM(Op, sniffle_entity_write_fsm, write, [{?VNODE, ?SERVICE}, User, Op]).
-
-do_write(User, Op, Val) ->
-    ?FM(Op, sniffle_entity_write_fsm, write,
-        [{?VNODE, ?SERVICE}, User, Op, Val]).
 
 bin_fmt(F, L) ->
     list_to_binary(io_lib:format(F, L)).

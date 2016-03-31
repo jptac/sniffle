@@ -20,7 +20,7 @@
 
 -define(SERVER, ?MODULE).
 
--define(TICK, 1000).
+-define(TICK, 10000).
 -define(FIRST_TICK, (60*1000)).
 -define(NODE_LIST_TIME, 120).
 -define(PING_CONCURRENCY, 5).
@@ -162,11 +162,9 @@ run_check(State = #state{}) ->
 
 check_riak_core() ->
     {Down, Handoffs} = riak_core_status:transfers(),
-    Alerts1 = lists:foldl(
-                fun({waiting_to_handoff, Node, _}, As) ->
-                        sets:add_element({handoff, Node}, As);
-                   ({stopped, Node, _}, As) ->
-                        sets:add_element({stopped, Node}, As)
-                end, sets:new(), Handoffs),
-    Down1 = sets:from_list([{down, N} || N <- Down]),
-    sets:union(Alerts1, Down1).
+    lists:foldl(
+      fun({waiting_to_handoff, Node, _}, As) ->
+              sets:add_element({handoff, Node}, As);
+         ({stopped, Node, _}, As) ->
+              sets:add_element({stopped, Node}, As)
+      end, sets:from_list([{down, N} || N <- Down]), Handoffs).

@@ -11,6 +11,7 @@
           vnode
          }).
 
+
 -define(DEFAULT_TIMEOUT, 1000).
 
 -type val() ::  statebox:statebox().
@@ -22,11 +23,19 @@
 
 -define(SET(T),
         T(UUID, V) ->
-               do_write(UUID, T, V)).
+               do_write(UUID, T, [V])).
 
+-define(VNODE, sniffle_vnode).
+-define(MASTER, sniffle_vnode_master).
+
+-include_lib("sniffle_req/include/req.hrl").
+
+-define(REQUEST(Preflist, ReqID, Request),
+        riak_core_vnode_master:command(Preflist,
+                                       ?REQ(ReqID, Request),
+                                       {fsm, undefined, self()},
+                                       ?MASTER)).
 -define(VSET(Field),
-        Field(Preflist, ReqID, Vm, Val) ->
-               riak_core_vnode_master:command(Preflist,
-                                              {Field, ReqID, Vm, Val},
-                                              {fsm, undefined, self()},
-                                              ?MASTER)).
+        Field(Preflist, ReqID, UUID, Vals) ->
+               ?REQUEST(Preflist, ReqID, {change, Field, UUID, Vals})).
+

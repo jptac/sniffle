@@ -1,15 +1,7 @@
-
 -module(sniffle_hostname).
-
--ifdef(TEST).
--include_lib("eunit/include/eunit.hrl").
--endif.
-
+-define(CMD, sniffle_hostname_cmd).
 -include("sniffle.hrl").
 
--define(MASTER, sniffle_hostname_vnode_master).
--define(VNODE, sniffle_hostname_vnode).
--define(SERVICE, sniffle_hostname).
 -define(S, ft_hostname).
 -define(FM(Met, Mod, Fun, Args),
         folsom_metrics:histogram_timed_update(
@@ -40,7 +32,7 @@ delete(Hostname, Org) ->
 
 remove(Hostname, Org, Element) ->
     Key = to_key(Hostname, Org),
-    R = do_write(Key, remove_a, Element),
+    R = do_write(Key, remove_a, [Element]),
     {ok, H} = get(Hostname, Org),
     case ft_hostname:empty(H) of
         true ->
@@ -51,7 +43,7 @@ remove(Hostname, Org, Element) ->
 
 add(Hostname, Org, Element) ->
     Key = to_key(Hostname, Org),
-    do_write(Key, add_a, Element).
+    do_write(Key, add_a, [Element]).
 
 
 -spec get(Hostname::binary(), Org::fifo:uuid()) ->
@@ -61,7 +53,7 @@ get(Hostname, Org) ->
     sniffle_hostname:get(Key).
 
 get(Key) ->
-    ?FM(get, sniffle_entity_read_fsm, start, [{?VNODE, ?SERVICE}, get, Key]).
+    ?FM(get, sniffle_entity_read_fsm, start, [{?CMD, ?MODULE}, get, Key]).
 
 -spec sync_repair(fifo:hostname_id(), ft_obj:obj()) -> ok.
 sync_repair(UUID, Obj) ->
@@ -75,14 +67,14 @@ sync_repair(UUID, Obj) ->
 
 do_write(HOSTNAME, Op) ->
     ?FM(Op, sniffle_entity_write_fsm, write,
-        [{?VNODE, ?SERVICE}, HOSTNAME, Op]).
+        [{?CMD, ?MODULE}, HOSTNAME, Op]).
 
 -spec do_write(HOSTNAME::fifo:uuid(), Op::atom(), Val::term()) ->
                       fifo:write_fsm_reply().
 
 do_write(HOSTNAME, Op, Val) ->
     ?FM(Op, sniffle_entity_write_fsm, write,
-        [{?VNODE, ?SERVICE}, HOSTNAME, Op, Val]).
+        [{?CMD, ?MODULE}, HOSTNAME, Op, Val]).
 
 
 to_key(Hostname, Org) ->
