@@ -92,10 +92,10 @@ help_connections() ->
     ].
 
 cmd_connections(_, _, [{endpoint, snarl}]) ->
-    [clique_status:text("===== Snarl endpoints =====~n"),
+    [clique_status:text("===== Snarl endpoints ====="),
      clique_status:table(print_endpoints(libsnarl:servers()))];
 cmd_connections(_, _, [{endpoint, howl}]) ->
-    [clique_status:text("===== Snarl endpoints =====~n"),
+    [clique_status:text("===== Howl endpoints ====="),
      clique_status:table(print_endpoints(libsnarl:servers()))];
 cmd_connections(C, K, [{endpoint, all}]) ->
     cmd_connections(C, K, []);
@@ -150,13 +150,13 @@ init_leo([Manager, Gateway]) ->
 print_endpoints(Es) ->
     [print_endpoint(E) || E <- Es].
 
-print_endpoint([{{Hostname, [{port, Port}, {ip, IP}]}, _, Fails}]) ->
+print_endpoint({{Hostname, [{port, Port}, {ip, IP}]}, _, Fails}) ->
     HostPort = <<IP/binary, ":", Port/binary>>,
     [
      {"Hostname", Hostname},
      {"Endpoint", HostPort},
      {"Failures", Fails}
-     ].
+    ].
 
 
 get_ring([]) ->
