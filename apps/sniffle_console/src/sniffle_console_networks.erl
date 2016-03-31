@@ -14,7 +14,7 @@ init() ->
 cmd_list(_, _, _) ->
     {ok, Hs} = sniffle_network:list([], true),
     Tbl = lists:map(fun to_tbl/1, Hs),
-    clique_status:table([?HDR | Tbl]).
+    [clique_status:table([?HDR | Tbl])].
 
 help() ->
     io:format("Usage~n"
