@@ -45,16 +45,16 @@
                   {error, timeout} |
                   {ok, [{integer(), fifo:package_id()}] |
                    [{integer(), fifo:package()}]}.
+
 -include("sniffle_api.hrl").
 %%%===================================================================
 %%% Custom section
 %%%===================================================================
-
--spec lookup(Package::binary()) ->
+-spec lookup(Name::binary()) ->
                     not_found | {ok, Pkg::fifo:package()} | {error, timeout}.
-lookup(Package) ->
+lookup(Name) ->
     {ok, Res} = ?FM(list, sniffle_coverage, start,
-                    [?MASTER, ?MODULE, {lookup, Package}]),
+                    [?REQ({lookup, Name})]),
     lists:foldl(fun (not_found, Acc) ->
                         Acc;
                     (R, _) ->

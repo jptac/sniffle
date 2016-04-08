@@ -50,7 +50,7 @@
 lookup(Name) when
       is_binary(Name) ->
     {ok, Res} = ?FM(list, sniffle_coverage, start,
-                    [?MASTER, ?MODULE, {lookup, Name}]),
+                    [?REQ({lookup, Name})]),
     lists:foldl(fun (not_found, Acc) ->
                         Acc;
                     (R, _) ->
