@@ -44,7 +44,7 @@
 ├─ poolboy─0.8.1-p3
 ├─ rankmatcher─0.1.4
 ├─ recon─2.2.1
-├─ riak_core─2.2.4
+├─ riak_core─2.2.5
 │  ├─ basho_stats─1.0.3
 │  ├─ chash─0.1.1
 │  ├─ clique─3.0.1
