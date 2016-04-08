@@ -1200,7 +1200,7 @@ remove_fw_rule(UUID, V) ->
 deleting(UUID, V)
   when V =:= true;
        V =:= false ->
-    do_write(UUID, deleting, V).
+    do_write(UUID, deleting, [V]).
 ?SET(alias).
 ?SET(owner).
 ?SET(dataset).
