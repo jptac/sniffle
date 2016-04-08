@@ -30,20 +30,20 @@
 │  └─ ssl_verify_hostname─1.0.5
 ├─ jsx─1.4.5
 ├─ jsxd─0.1.10
-├─ libchunter─0.1.46
-├─ libhowl─0.1.34
-│  └─ mdns_client_lib─0.1.38
+├─ libchunter─0.1.47
+├─ libhowl─0.1.36
+│  └─ mdns_client_lib─0.1.39
 │     ├─ mdns_client─0.1.7
 │     └─ pooler─1.5.0
 ├─ libleofs─0.1.2
-├─ libsnarl─0.3.44
+├─ libsnarl─0.3.46
 │  └─ oauth2─0.6.1
 ├─ mdns_server_lib─0.2.3
 │  ├─ mdns_server─0.2.0
 │  └─ ranch─1.1.0
 ├─ poolboy─0.8.1-p3
 ├─ rankmatcher─0.1.4
-├─ recon─2.2.1
+├─ recon─2.3.1
 ├─ riak_core─2.2.5
 │  ├─ basho_stats─1.0.3
 │  ├─ chash─0.1.1
