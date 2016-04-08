@@ -463,12 +463,8 @@ case "$1" in
         run sniffle_console pkgs $@
         ;;
     datasets)
-        shift
-        run sniffle_console ds $@
-        ;;
-    ipranges)
-        shift
-        run sniffle_console ips $@
+        node_up_check
+        $NODETOOL rpc sniffle_console command sniffle-admin $@
         ;;
     ipranges)
         shift
@@ -480,10 +476,9 @@ case "$1" in
         ;;
 
     dtrace)
-        shift
-        run sniffle_console dtrace $@
+        node_up_check
+        $NODETOOL rpc sniffle_console command sniffle-admin $@
         ;;
-
     connections)
         node_up_check
         $NODETOOL rpc sniffle_console command sniffle-admin $@

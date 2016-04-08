@@ -22,8 +22,6 @@
 
 -export([
          config/1,
-         ds/1,
-         dtrace/1,
          hvs/1,
          ips/1,
          command/1,
@@ -43,8 +41,6 @@
               get_ring/1,
               aae_status/1,
               config/1,
-              ds/1,
-              dtrace/1,
               hvs/1,
               ips/1,
               command/1,
@@ -60,6 +56,8 @@ cmds_for(E, L) ->
 init() ->
     Cmds =
         cmds_for("networks", sniffle_console_networks:commands()) ++
+        cmds_for("dtrace", sniffle_console_dtrace:commands()) ++
+        cmds_for("datasets", sniffle_console_datasets:commands()) ++
         [{["sniffle-admin"] ++ Cmd,  KeySpecs, FlagSpecs, Callback, Usage} ||
             {Cmd, KeySpecs, FlagSpecs, Callback, Usage} <- commands()],
     [begin
@@ -265,18 +263,6 @@ aae_status([]) ->
 %%     io:format("~n"),
 %%     aae_repair_status(ExchangeInfo).
 
-
-
-dtrace([C, "-j" | R]) ->
-    sniffle_console_dtrace:command(json, [C | R]);
-
-dtrace([]) ->
-    sniffle_console_dtrace:help(),
-    ok;
-
-dtrace(R) ->
-    sniffle_console_dtrace:command(text, R).
-
 vms([C, "-j" | R]) ->
     sniffle_console_vms:command(json, [C | R]);
 
@@ -306,16 +292,6 @@ pkgs([]) ->
 
 pkgs(R) ->
     sniffle_console_packages:command(text, R).
-
-ds([C, "-j" | R]) ->
-    sniffle_console_datasets:command(json, [C | R]);
-
-ds([]) ->
-    sniffle_console_datasets:help(),
-    ok;
-
-ds(R) ->
-    sniffle_console_datasets:command(text, R).
 
 ips([]) ->
     sniffle_console_ipranges:help(),
