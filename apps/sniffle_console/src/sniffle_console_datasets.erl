@@ -1,89 +1,55 @@
 %% @doc Interface for sniffle-admin commands.
 -module(sniffle_console_datasets).
--export([command/2, help/0]).
+-export([commands/0]).
 
+commands() ->
+    [
+     {["list"], [], [], fun cmd_list/3, help_list()},
+     {["get", '*'], [], [], fun cmd_get/3, help_get()},
+     {["delete", '*'], [], [], fun cmd_delete/3, help_delete()}
+    ].
 
--include_lib("kernel/include/file.hrl").
+help_list() ->
+    "Prints a list of all datasets".
 
--define(T, ft_dataset).
--define(F(Hs, Vs), fifo_console:fields(Hs, Vs)).
--define(H(Hs), fifo_console:hdr(Hs)).
--define(HDR, [{"UUID", 36}, {"OS", 7}, {"Name", 15}, {"Version", 8},
-              {"Imported", 7}, {"Desc", n}]).
+cmd_list(_, _, _) ->
+    {ok, Hs} = sniffle_dataset:list([], true),
+    Tbl = lists:map(fun to_tbl/1, Hs),
+    [clique_status:table(Tbl)].
 
-help() ->
-    io:format("Usage~n"
-              "  list [-j]~n"
-              "  get [-j] <uuid>~n"
-              "  delete <uuid>~n").
+help_get() ->
+    "Reads a single dataset from the database.".
 
-hdr() ->
-    ?H(?HDR).
-
-command(text, ["delete", ID]) ->
-    case sniffle_dataset:delete(list_to_binary(ID)) of
-        ok ->
-            io:format("Dataset ~s delete.~n", [ID]),
-            ok;
-        E ->
-            io:format("Dataset ~s not deleted (~p).~n", [ID, E]),
-            ok
-    end;
-
-command(json, ["get", UUID]) ->
-    case sniffle_dataset:get(list_to_binary(UUID)) of
+cmd_get(["sniffle-admin", "datasets", "get", UUIDs], _, _) ->
+    UUID = list_to_binary(UUIDs),
+    case sniffle_dataset:get(UUID) of
         {ok, H} ->
-            sniffle_console:pp_json(?T:to_json(H)),
-            ok;
+            Tbl = [to_tbl(H)],
+            [clique_status:table(Tbl)];
+        not_found ->
+            [clique_status:alert([clique_status:text("Dataset not found.")])]
+    end.
+
+help_delete() ->
+    "Deletes an object from the database.".
+
+cmd_delete(["sniffle-admin", "datasets", "delete", UUIDs], _, _) ->
+    UUID = list_to_binary(UUIDs),
+    case sniffle_dataset:delete(UUID) of
+        ok ->
+            [clique_status:text("Dataset deleted.")];
+        not_found ->
+            [clique_status:alert([clique_status:text("Dataset not found.")])];
         _ ->
-            sniffle_console:pp_json([]),
-            error
-    end;
+            [clique_status:alert([clique_status:text("Deletion failed.")])]
+    end.
 
-command(text, ["get", ID]) ->
-    hdr(),
-    case sniffle_dataset:get(list_to_binary(ID)) of
-        {ok, D} ->
-            print(D),
-            ok;
-        _ ->
-            error
-    end;
-
-command(json, ["list"]) ->
-    case sniffle_dataset:list() of
-        {ok, Hs} ->
-            sniffle_console:pp_json(
-              lists:map(fun (ID) ->
-                                {ok, H} = sniffle_dataset:get(ID),
-                                ?T:to_json(H)
-                        end, Hs)),
-            ok;
-        _ ->
-            sniffle_console:pp_json([]),
-            error
-    end;
-
-command(text, ["list"]) ->
-    hdr(),
-    case sniffle_dataset:list() of
-        {ok, Ds} ->
-            lists:map(fun (ID) ->
-                              {ok, D} = sniffle_dataset:get(ID),
-                              print(D)
-                      end, Ds);
-        _ ->
-            []
-    end;
-
-command(_, C) ->
-    io:format("Unknown parameters: ~p", [C]),
-    error.
-
-print(D) ->
-    ?F(?HDR, [?T:uuid(D),
-              ?T:os(D),
-              ?T:name(D),
-              ?T:version(D),
-              ?T:imported(D) * 100,
-              ?T:description(D)]).
+to_tbl({_, D}) ->
+    to_tbl(D);
+to_tbl(D) ->
+    [{"UUID",        ft_dataset:uuid(D)},
+     {"OS",          ft_dataset:os(D)},
+     {"Name",        ft_dataset:name(D)},
+     {"Version",     ft_dataset:version(D)},
+     {"Imported",    ft_dataset:imported(D) * 100},
+     {"Description", ft_dataset:description(D)}].

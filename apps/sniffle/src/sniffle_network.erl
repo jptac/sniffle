@@ -30,7 +30,7 @@
 
 -spec sync_repair(fifo:network_id(), ft_obj:obj()) ->
                          ok.
--spec list_() -> {ok, [fifo:obj()]}.
+-spec list_() -> {ok, [fifo:obj()]} | {error, term()}.
 -spec get(Network::fifo:network_id()) ->
                  not_found | {ok, IPR::fifo:network()} | {error, timeout}.
 -spec list() ->
@@ -50,7 +50,7 @@
 lookup(Name) when
       is_binary(Name) ->
     {ok, Res} = ?FM(list, sniffle_coverage, start,
-                    [?MASTER, ?MODULE, {lookup, Name}]),
+                    [?REQ({lookup, Name})]),
     lists:foldl(fun (not_found, Acc) ->
                         Acc;
                     (R, _) ->

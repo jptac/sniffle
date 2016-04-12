@@ -775,23 +775,23 @@ delete(User, Vm) ->
                 {true, _, _, _} ->
                     {error, creating};
                 {_, _, true, _} ->
-                    finish_delete(V);
+                    finish_delete(Vm, V);
                 {_, _, _, <<"storing">>} ->
                     vm_event(Vm, <<"vm-stored">>),
                     state(Vm, <<"stored">>),
                     hypervisor(Vm, <<>>);
                 {_, undefined, _, _} ->
-                    finish_delete(V);
+                    finish_delete(Vm, V);
                 {_, <<>>, _, _} ->
-                    finish_delete(V);
+                    finish_delete(Vm, V);
                 {_, <<"pooled">>, _, _} ->
-                    finish_delete(V);
+                    finish_delete(Vm, V);
                 {_, <<"pending">>, _, _} ->
-                    finish_delete(V);
+                    finish_delete(Vm, V);
                 {_, _, _, undefined} ->
-                    finish_delete(V);
+                    finish_delete(Vm, V);
                 {_, _, _, <<"failed-", _/binary>>} ->
-                    finish_delete(V);
+                    finish_delete(Vm, V);
                 {_, H, _, _} ->
                     state(Vm, <<"deleting">>),
                     deleting(Vm, true),
@@ -804,8 +804,7 @@ delete(User, Vm) ->
             E
     end.
 
-finish_delete(V) ->
-    Vm = ft_vm:uuid(V),
+finish_delete(Vm, V) ->
     [do_delete_backup(Vm, V, BID) || {BID, _} <- ?S:backups(V)],
     Docker = ft_vm:docker(V),
     case jsxd:get([<<"id">>], Docker) of
@@ -1200,7 +1199,7 @@ remove_fw_rule(UUID, V) ->
 deleting(UUID, V)
   when V =:= true;
        V =:= false ->
-    do_write(UUID, deleting, V).
+    do_write(UUID, deleting, [V]).
 ?SET(alias).
 ?SET(owner).
 ?SET(dataset).

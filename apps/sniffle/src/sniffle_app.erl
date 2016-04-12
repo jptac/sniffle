@@ -39,6 +39,7 @@ start(_StartType, _StartArgs) ->
             application:set_env(fifo_db, backend, fifo_db_hanoidb)
     end,
     init_folsom(),
+    sniffle_console:init(),
     case sniffle_sup:start_link() of
         {ok, Pid} ->
             ok = riak_core_ring_events:add_guarded_handler(
