@@ -53,7 +53,7 @@
  {<<"pooler">>,{pkg,<<"pooler">>,<<"1.5.0">>},2},
  {<<"quickrand">>,{pkg,<<"quickrand">>,<<"1.5.1">>},2},
  {<<"ranch">>,{pkg,<<"ranch">>,<<"1.1.0">>},1},
- {<<"rankmatcher">>,{pkg,<<"rankmatcher">>,<<"0.1.4">>},0},
+ {<<"rankmatcher">>,{pkg,<<"rankmatcher">>,<<"0.1.5">>},0},
  {<<"recon">>,{pkg,<<"recon">>,<<"2.2.1">>},0},
  {<<"riak_core">>,{pkg,<<"riak_core_ng">>,<<"2.2.3">>},0},
  {<<"riak_dt">>,{pkg,<<"riak_dt">>,<<"2.1.1">>},1},

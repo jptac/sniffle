@@ -42,7 +42,7 @@
 │  ├─ mdns_server─0.2.0
 │  └─ ranch─1.1.0
 ├─ poolboy─0.8.1-p3
-├─ rankmatcher─0.1.4
+├─ rankmatcher─0.1.5
 ├─ recon─2.2.1
 ├─ riak_core─2.2.3
 │  ├─ basho_stats─1.0.3
