@@ -60,7 +60,7 @@ download(URL) ->
         {Ref, Reply} ->
             Reply
     after
-        2500 ->
+        4500 ->
             {error, timeout}
     end.
 
@@ -120,11 +120,11 @@ get_manifest(_E, State = #state{url = URL, from = From, ref = Ref,
     sniffle_dataset:create(UUID),
     import_manifest(UUID, JSON),
     progress(UUID, 0),
+    From ! {Ref, {ok, UUID}},
     {ok, {Host, Port, AKey, SKey, Bucket}} = sniffle_s3:config(image),
     ChunkSize = application:get_env(sniffle, image_chunk_size,
                                     5*1024*1024),
     {ok, U} = fifo_s3_upload:new(AKey, SKey, Host, Port, Bucket, UUID),
-    From ! {Ref, {ok, UUID}},
     {next_state, init_download,
      State#state{
        uuid = UUID,

@@ -94,7 +94,7 @@
  {<<"ranch">>,{pkg,<<"ranch">>,<<"1.1.0">>},1},
  {<<"rankmatcher">>,
   {git,"https://github.com/Licenser/rankmatcher.git",
-       {ref,"dbffc0dc37a0156b50afa2b9e49e7403a5e4ae36"}},
+       {ref,"8c5a9c31e0d27320d38cd8b372c31dbd8942fccd"}},
   0},
  {<<"recon">>,{pkg,<<"recon">>,<<"2.3.1">>},0},
  {<<"riak_core">>,
