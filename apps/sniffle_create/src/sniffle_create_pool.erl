@@ -127,23 +127,41 @@ handle_info({'DOWN', Ref, process, _Pid, _Reason},
     lager:info("[create] Finished task.", []),
     {noreply, State#state{workers=lists:delete(Ref, Ws)}};
 
+%% We use a FiLo queue while perhaps ironic the reasoning here is that
+%% when prioritizing 'new' requests we get to lower the average
+%% waiting time in the pool while allowing for outliners.
+%% This can be seen as a bit of an experiment, so the origional FiFo
+%% (not so ironic) based implementation is commented below.
 handle_info({'DOWN', Ref, process, _Pid, _Reason},
-            State = #state{rev_reqs = [R |Rs], workers = Ws}) ->
+            State = #state{reqs = [R |Rs], workers = Ws}) ->
     case lists:member(Ref, Ws) of
         true ->
             lager:info("[create] Finished task, taking next: ~p.", [uuid(R)]),
             {ok, Pid1} = run_request(R),
             Ref1 = erlang:monitor(process, Pid1),
             Ws1 = lists:delete(Ref, Ws),
-            {noreply, State#state{workers=[Ref1 | Ws1], rev_reqs = Rs}};
+            {noreply, State#state{workers=[Ref1 | Ws1], reqs = Rs}};
         false ->
             {noreply, State}
-    end;
+    end.
+%% handle_info({'DOWN', Ref, process, _Pid, _Reason},
+%%             State = #state{rev_reqs = [R |Rs], workers = Ws}) ->
+%%     case lists:member(Ref, Ws) of
+%%         true ->
+%%             lager:info("[create] Finished task, taking next: ~p.",
+%%                        [uuid(R)]),
+%%             {ok, Pid1} = run_request(R),
+%%             Ref1 = erlang:monitor(process, Pid1),
+%%             Ws1 = lists:delete(Ref, Ws),
+%%             {noreply, State#state{workers=[Ref1 | Ws1], rev_reqs = Rs}};
+%%         false ->
+%%             {noreply, State}
+%%     end;
 
-handle_info({'DOWN', Ref, process, Pid, Reason},
-            State = #state{reqs = Rs}) ->
-    handle_info({'DOWN', Ref, process, Pid, Reason},
-                State#state{reqs = [], rev_reqs = lists:reverse(Rs)}).
+%% handle_info({'DOWN', Ref, process, Pid, Reason},
+%%             State = #state{reqs = Rs}) ->
+%%     handle_info({'DOWN', Ref, process, Pid, Reason},
+%%                 State#state{reqs = [], rev_reqs = lists:reverse(Rs)}).
 
 %%--------------------------------------------------------------------
 %% @private
