@@ -35,7 +35,7 @@
   0},
  {<<"fifo_s3">>,
   {git,"https://github.com/project-fifo/fifo_s3.git",
-       {ref,"e5bfa9b968dfade03f8c8ec5dfd8efbed9e2d8d4"}},
+       {ref,"94346ade8cabbe683c0c2434f5ecb76b68791f45"}},
   0},
  {<<"fifo_spec">>,
   {git,"https://github.com/project-fifo/fifo_spec.git",
