@@ -1,79 +1,53 @@
 %% @doc Interface for sniffle-admin commands.
 -module(sniffle_console_networks).
--export([command/2, help/0]).
+-export([commands/0]).
 
--define(T, ft_network).
--define(F(Hs, Vs), fifo_console:fields(Hs, Vs)).
--define(H(Hs), fifo_console:hdr(Hs)).
--define(HDR, [{"UUID", 18}, {"Name", 10}, {"IPRanges", 10}]).
 
-help() ->
-    io:format("Usage~n"
-              "  list~n"
-              "  get <uuid>~n"
-              "  delete <uuid>~n").
-hdr() ->
-    ?H(?HDR).
+commands() ->
+    [
+     {["list"], [], [], fun cmd_list/3, help_list()},
+     {["get", '*'], [], [], fun cmd_get/3, help_get()},
+     {["delete", '*'], [], [], fun cmd_delete/3, help_delete()}
+    ].
 
-command(text, ["delete", UUID]) ->
-    case sniffle_network:delete(list_to_binary(UUID)) of
+help_list() ->
+    "Prints a list of all networks".
+
+cmd_list(_, _, _) ->
+    {ok, Hs} = sniffle_network:list([], true),
+    Tbl = lists:map(fun to_tbl/1, Hs),
+    [clique_status:table(Tbl)].
+
+help_get() ->
+    "Reads a single network from the database.".
+
+cmd_get(["sniffle-admin", "networks", "get", UUIDs], _, _) ->
+    UUID = list_to_binary(UUIDs),
+    case sniffle_network:get(UUID) of
+        {ok, H} ->
+            Tbl = [to_tbl(H)],
+            [clique_status:table(Tbl)];
+        not_found ->
+            [clique_status:alert([clique_status:text("Network not found.")])]
+    end.
+
+help_delete() ->
+    "Deletes an object from the database.".
+
+cmd_delete(["sniffle-admin", "networks", "delete", UUIDs], _, _) ->
+    UUID = list_to_binary(UUIDs),
+    case sniffle_network:delete(UUID) of
         ok ->
-            io:format("Network ~s removed.~n", [UUID]),
-            ok;
-        E ->
-            io:format("Network ~s not removed (~p).~n", [UUID, E]),
-            ok
-    end;
-
-command(json, ["get", ID]) ->
-    case sniffle_network:get(list_to_binary(ID)) of
-        {ok, N} ->
-            sniffle_console:pp_json(?T:to_json(N)),
-            ok;
+            [clique_status:text("Network deleted.")];
+        not_found ->
+            [clique_status:alert([clique_status:text("Network not found.")])];
         _ ->
-            error
-    end;
+            [clique_status:alert([clique_status:text("Deletion failed.")])]
+    end.
 
-command(text, ["get", ID]) ->
-    hdr(),
-    case sniffle_network:get(list_to_binary(ID)) of
-        {ok, N} ->
-            print(N),
-            ok;
-        _ ->
-            error
-    end;
-
-command(text, ["list"]) ->
-    hdr(),
-    case sniffle_network:list() of
-        {ok, Hs} ->
-            lists:map(fun (ID) ->
-                              {ok, N} = sniffle_network:get(ID),
-                              print(N)
-                      end, Hs);
-        _ ->
-            []
-    end;
-
-command(json, ["list"]) ->
-    case sniffle_network:list() of
-        {ok, Hs} ->
-            lists:map(fun (ID) ->
-                              {ok, N} = sniffle_network:get(ID),
-                              sniffle_console:pp_json(?T:to_json(N))
-                      end, Hs);
-        _ ->
-            []
-    end;
-
-
-command(_, C) ->
-    io:format("Unknown parameters: ~p~n", [C]),
-    error.
-
-
-print(N) ->
-    ?F(?HDR, [?T:uuid(N),
-              ?T:name(N),
-              length(?T:ipranges(N))]).
+to_tbl({_, N}) ->
+    to_tbl(N);
+to_tbl(N) ->
+    [{"UUDI", ft_network:uuid(N)},
+     {"Name", ft_network:name(N)},
+     {"IPRanges", length(ft_network:ipranges(N))}].

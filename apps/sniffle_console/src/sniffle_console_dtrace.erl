@@ -1,62 +1,68 @@
 %% @doc Interface for sniffle-admin commands.
 -module(sniffle_console_dtrace).
--export([command/2, help/0]).
+-export([commands/0]).
 
 -define(T, ft_dtrace).
 -define(F(Hs, Vs), fifo_console:fields(Hs, Vs)).
 -define(H(Hs), fifo_console:hdr(Hs)).
 -define(HDR, [{"UUID", 36}, {"Name", 15}]).
 
-help() ->
-    io:format("Usage~n"
-              "  list [-j]~n"
-              "  get [-j] <uuid>~n"
-              "  delete <uuid>~n"
-              "  import <file>~n").
-hdr() ->
-    ?H(?HDR).
 
-command(text, ["delete", ID]) ->
-    case sniffle_dtrace:delete(list_to_binary(ID)) of
-        ok ->
-            io:format("Dtrace ~s delete.~n", [ID]),
-            ok;
-        E ->
-            io:format("Dtrace ~s not deleted (~p).~n", [ID, E]),
-            ok
-    end;
+commands() ->
+    [
+     {["list"], [], [], fun cmd_list/3, help_list()},
+     {["get", '*'], [], [], fun cmd_get/3, help_get()},
+     {["import", '*'], [], [], fun cmd_import/3, help_import()},
+     {["delete", '*'], [], [], fun cmd_delete/3, help_delete()}
+    ].
 
-command(json, ["get", UUID]) ->
-    case sniffle_dtrace:get(list_to_binary(UUID)) of
-        {ok, H} ->
-            sniffle_console:pp_json(jsxd:update(<<"script">>,
-                                                fun(S) ->
-                                                        list_to_binary(S)
-                                                end, <<>>, ?T:to_json(H))),
-            ok;
-        _ ->
-            sniffle_console:pp_json([]),
-            error
-    end;
+help_list() ->
+    "Prints a list of all dtrace scripts".
 
-command(text, ["get", ID]) ->
-    hdr(),
-    case sniffle_dtrace:get(list_to_binary(ID)) of
+cmd_list(_, _, _) ->
+    {ok, Hs} = sniffle_dtrace:list([], true),
+    Tbl = lists:map(fun to_tbl/1, Hs),
+    [clique_status:table(Tbl)].
+
+help_get() ->
+    "Reads a single dtrace script from the database.".
+
+cmd_get(["sniffle-admin", "dtrace", "get", UUIDs], _, _) ->
+    UUID = list_to_binary(UUIDs),
+    case sniffle_dtrace:get(UUID) of
         {ok, D} ->
-            print(D),
-            print_vars(D),
-            io:format("~.78c~n~s~n~.78c~n",
-                      [$=, ?T:script(D), $=]),
-            ok;
-        _ ->
-            error
-    end;
+            Tbl = [to_tbl(D)],
+            [clique_status:table(Tbl) |
+             print_vars(D)] ++
+                [clique_status:text(
+                   io:format("~.78c~n~s~n~.78c~n",
+                             [$=, ?T:script(D), $=]))];
+        not_found ->
+            [clique_status:alert([clique_status:text("Dtrace not found.")])]
+    end.
 
-command(_, ["import", File]) ->
+help_delete() ->
+    "Deletes an object from the database.".
+
+cmd_delete(["sniffle-admin", "dtrace", "delete", UUIDs], _, _) ->
+    UUID = list_to_binary(UUIDs),
+    case sniffle_dtrace:delete(UUID) of
+        ok ->
+            [clique_status:text("Dtrace deleted.")];
+        not_found ->
+            [clique_status:alert([clique_status:text("Dtrace not found.")])];
+        _ ->
+            [clique_status:alert([clique_status:text("Deletion failed.")])]
+    end.
+
+help_import() ->
+    "Imports a script json format.".
+
+
+cmd_import(["sniffle-admin", "dtrace", "import", File], _, _) ->
     case file:read_file(File) of
         {error, enoent} ->
-            io:format("That file does not exist or is not an absolute path.~n"),
-            error;
+            [clique_status:alert([clique_status:text("Could not open file.")])];
         {ok, B} ->
             JSON = jsx:decode(B),
             JSX = jsxd:from_list(JSON),
@@ -72,45 +78,16 @@ command(_, ["import", File]) ->
             sniffle_dtrace:set_config(UUID, Config),
             %% sniffle_dtrace:type(UUID, Type),
             %% sniffle_dtrace:set_filter(UUID, Filter),
-            io:format("Imported ~s with uuid ~s.~n", [Name, UUID]),
-            ok
-    end;
+            Str = io_lib:format("Imported ~s with uuid ~s.~n", [Name, UUID]),
+            [clique_status:text(Str)]
+    end.
 
-command(json, ["list"]) ->
-    case sniffle_dtrace:list() of
-        {ok, Hs} ->
-            sniffle_console:pp_json(
-              lists:map(fun (ID) ->
-                                {ok, H} = sniffle_dtrace:get(ID),
-                                ?T:to_json(H)
-                        end, Hs)),
-            ok;
-        _ ->
-            sniffle_console:pp_json([]),
-            error
-    end;
-command(text, ["list"]) ->
-    hdr(),
-    case sniffle_dtrace:list() of
-        {ok, Ds} ->
-            lists:map(fun (ID) ->
-                              {ok, D} = sniffle_dtrace:get(ID),
-                              print(D)
-                      end, Ds);
-        _ ->
-            []
-    end;
-
-command(_, C) ->
-    io:format("Unknown parameters: ~p", [C]),
-    error.
-
-print(D) ->
-    ?F(?HDR, [?T:uuid(D),
-              ?T:name(D)]).
-
+to_tbl({_, N}) ->
+    to_tbl(N);
+to_tbl(N) ->
+    [{"UUDI", ft_dtrace:uuid(N)},
+     {"Name", ft_dtrace:name(N)}].
 
 print_vars(D) ->
-    H = [{"Variable", 15}, {"Default", n}],
-    ?H(H),
-    [?F(H, [N, Def]) || {N, Def} <- ?T:config(D)].
+    Tbl =[[{"Variable", N}, {"Default", Def}] || {N, Def} <- ?T:config(D)],
+    clique_status:table(Tbl).

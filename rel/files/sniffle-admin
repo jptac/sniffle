@@ -463,26 +463,25 @@ case "$1" in
         run sniffle_console pkgs $@
         ;;
     datasets)
-        shift
-        run sniffle_console ds $@
+        node_up_check
+        $NODETOOL rpc sniffle_console command sniffle-admin $@
         ;;
     ipranges)
         shift
         run sniffle_console ips $@
         ;;
-    ipranges)
-        shift
-        run sniffle_console ips $@
+    networks)
+        node_up_check
+        $NODETOOL rpc sniffle_console command sniffle-admin $@
         ;;
 
     dtrace)
-        shift
-        run sniffle_console dtrace $@
+        node_up_check
+        $NODETOOL rpc sniffle_console command sniffle-admin $@
         ;;
-
     connections)
-        shift
-        run sniffle_console connections $@
+        node_up_check
+        $NODETOOL rpc sniffle_console command sniffle-admin $@
         ;;
 
     db)
@@ -807,11 +806,11 @@ case "$1" in
         node_up_check
         exec $NODETOOL rpc riak_core_console command riak-admin $@
         ;;
-    show)
-        # New pattern for command line. Use nodetool for RPC
-        node_up_check
-        exec $NODETOOL rpc riak_core_console command riak-admin $@
-        ;;
+    # show)
+    #     # New pattern for command line. Use nodetool for RPC
+    #     node_up_check
+    #     exec $NODETOOL rpc riak_core_console command riak-admin $@
+    #     ;;
     describe)
         # New pattern for command line. Use nodetool for RPC
         node_up_check

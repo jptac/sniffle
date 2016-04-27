@@ -1,9 +1,8 @@
 -module(sniffle_grouping).
+-define(CMD, sniffle_grouping_cmd).
+-define(BUCKET, <<"grouping">>).
+-define(S, ft_grouping).
 -include("sniffle.hrl").
-
--define(MASTER, sniffle_grouping_vnode_master).
--define(VNODE, sniffle_grouping_vnode).
--define(SERVICE, sniffle_grouping).
 
 -define(FM(Met, Mod, Fun, Args),
         folsom_metrics:histogram_timed_update(
@@ -14,33 +13,29 @@
          create_rules/1,
          create/2,
          delete/1,
-         get/1,
-         list/0,
-         list/2,
-         list/3,
-         wipe/1,
-         sync_repair/2,
          add_element/2,
          remove_element/2,
          add_grouping/2,
          remove_grouping/2,
-         list_/0,
          set_metadata/2,
          set_config/2
         ]).
 
--ignore_xref([
-              create_rules/1,
-              sync_repair/2,
-              list_/0,
-              wipe/1
-             ]).
+%%%===================================================================
+%%% General section
+%%%===================================================================
+-spec sniffle_grouping:get(UUID::fifo:uuid()) ->
+                                  not_found |
+                                  {ok, Grouping::fifo:grouping()} |
+                                  {error, timeout}.
+-spec list() ->
+                  {ok, [UUID::fifo:uuid()]} | {error, timeout}.
 
-wipe(UUID) ->
-    ?FM(wipe, sniffle_coverage, start, [?MASTER, ?SERVICE, {wipe, UUID}]).
 
-sync_repair(UUID, Obj) ->
-    do_write(UUID, sync_repair, Obj).
+-include("sniffle_api.hrl").
+%%%===================================================================
+%%% Custom section
+%%%===================================================================
 
 -spec create(Name::binary(), Type::cluster|stack|none) ->
                     duplicate | {ok, ClusterID :: binary()} | {error, timeout}.
@@ -52,13 +47,6 @@ create(Name, Type) ->
         E ->
             E
     end.
-
--spec sniffle_grouping:get(UUID::fifo:uuid()) ->
-                                  not_found |
-                                  {ok, Grouping::fifo:grouping()} |
-                                  {error, timeout}.
-get(UUID) ->
-    ?FM(get, sniffle_entity_read_fsm, start, [{?VNODE, ?SERVICE}, get, UUID]).
 
 %% Add a alement and make sure only vm's can be added to clusters
 %% and only cluster groupings can be added to stacks
@@ -83,7 +71,7 @@ add_to_cluster(UUID, Element) ->
     case sniffle_vm:get(Element) of
         {ok, _} ->
             sniffle_vm:add_grouping(Element, UUID),
-            do_write(UUID, add_element, Element);
+            do_write(UUID, add_element, [Element]);
         E ->
             E
     end.
@@ -93,8 +81,8 @@ add_to_stack(UUID, Element) ->
         {ok, E} ->
             case ft_grouping:type(E) of
                 cluster ->
-                    do_write(Element, add_grouping, UUID),
-                    do_write(UUID, add_element, Element);
+                    do_write(Element, add_grouping, [UUID]),
+                    do_write(UUID, add_element, [Element]);
                 _ ->
                     {error, not_supported}
             end;
@@ -107,11 +95,11 @@ remove_element(UUID, Element) ->
         {ok, T} ->
             case ft_grouping:type(T) of
                 stack ->
-                    do_write(Element, remove_grouping, UUID),
-                    do_write(UUID, remove_element, Element);
+                    do_write(Element, remove_grouping, [UUID]),
+                    do_write(UUID, remove_element, [Element]);
                 _ ->
-                    sniffle_vm:remove_grouping(Element, UUID),
-                    do_write(UUID, remove_element, Element)
+                    sniffle_vm:remove_grouping(Element, [UUID]),
+                    do_write(UUID, remove_element, [Element])
             end;
         E ->
             E
@@ -180,8 +168,8 @@ add_grouping(UUID, Element) ->
             case {ft_grouping:type(T),
                   ft_grouping:type(E)} of
                 {cluster, stack} ->
-                    do_write(Element, add_element, UUID),
-                    do_write(UUID, add_grouping, Element);
+                    do_write(Element, add_element, [UUID]),
+                    do_write(UUID, add_grouping, [Element]);
                 _ ->
                     {error, not_supported}
             end;
@@ -190,8 +178,8 @@ add_grouping(UUID, Element) ->
     end.
 
 remove_grouping(UUID, Element) ->
-    do_write(Element, remove_element, UUID),
-    do_write(UUID, remove_grouping, Element).
+    do_write(Element, remove_element, [UUID]),
+    do_write(UUID, remove_grouping, [Element]).
 
 -spec delete(UUID::fifo:uuid()) ->
                     not_found | {error, timeout} | ok.
@@ -201,12 +189,12 @@ delete(UUID) ->
             Elements = ft_grouping:elements(T),
             case ft_grouping:type(T) of
                 stack ->
-                    [do_write(Element, remove_grouping, UUID) ||
+                    [do_write(Element, remove_grouping, [UUID]) ||
                         Element <- Elements];
                 _ ->
-                    [sniffle_vm:remove_grouping(Element, UUID) ||
+                    [sniffle_vm:remove_grouping(Element, [UUID]) ||
                         Element <- Elements],
-                    [do_write(Stack, remove_element, UUID) ||
+                    [do_write(Stack, remove_element, [UUID]) ||
                         Stack <- ft_grouping:groupings(T)]
             end;
         _ ->
@@ -214,58 +202,6 @@ delete(UUID) ->
     end,
     do_write(UUID, delete).
 
--spec list() ->
-                  {ok, [UUID::fifo:uuid()]} | {error, timeout}.
-list() ->
-    ?FM(list, sniffle_coverage, start, [?MASTER, ?SERVICE, list]).
+?SET(set_metadata).
+?SET(set_config).
 
-list_() ->
-    {ok, Res} = ?FM(list_all, sniffle_coverage, raw,
-                    [?MASTER, ?SERVICE, []]),
-    Res1 = [R || {_, R} <- Res],
-    {ok,  Res1}.
-
--spec set_metadata(Grouping::fifo:uuid(), Attirbutes::fifo:attr_list()) ->
-                          not_found |
-                          {error, timeout} |
-                          ok.
-set_metadata(Grouping, Attributes) ->
-    do_write(Grouping, set_metadata, Attributes).
-
--spec set_config(Grouping::fifo:uuid(), Attirbutes::fifo:attr_list()) ->
-                        not_found |
-                        {error, timeout} |
-                        ok.
-set_config(Grouping, Attributes) ->
-    do_write(Grouping, set_config, Attributes).
-
-%%--------------------------------------------------------------------
-%% @doc Lists all vm's and fiters by a given matcher set.
-%% @end
-%%--------------------------------------------------------------------
-
-
-list(Requirements, FoldFn, Acc0) ->
-    ?FM(list_all, sniffle_coverage, list,
-                    [?MASTER, ?SERVICE, Requirements, FoldFn, Acc0]).
-
-list(Requirements, Full) ->
-    {ok, Res} = ?FM(list_all, sniffle_coverage, list,
-                    [?MASTER, ?SERVICE, Requirements]),
-
-    Res1 = lists:sort(rankmatcher:apply_scales(Res)),
-    Res2 = case Full of
-               true ->
-                   Res1;
-               false ->
-                   [{P, ft_grouping:uuid(O)} || {P, O} <- Res1]
-           end,
-    {ok, Res2}.
-
-do_write(Grouping, Op) ->
-    ?FM(Op, sniffle_entity_write_fsm, write,
-        [{?VNODE, ?SERVICE}, Grouping, Op]).
-
-do_write(Grouping, Op, Val) ->
-    ?FM(Op, sniffle_entity_write_fsm, write,
-        [{?VNODE, ?SERVICE}, Grouping, Op, Val]).

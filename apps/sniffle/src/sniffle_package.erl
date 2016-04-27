@@ -1,9 +1,8 @@
 -module(sniffle_package).
+-define(CMD, sniffle_package_cmd).
+-define(BUCKET, <<"package">>).
+-define(S, ft_package).
 -include("sniffle.hrl").
-
--define(MASTER, sniffle_package_vnode_master).
--define(VNODE, sniffle_package_vnode).
--define(SERVICE, sniffle_package).
 
 -define(FM(Met, Mod, Fun, Args),
         folsom_metrics:histogram_timed_update(
@@ -13,22 +12,8 @@
 -export([
          create/1,
          delete/1,
-         get/1,
          lookup/1,
-         list/0, list/2, list/3,
-         wipe/1,
-         sync_repair/2,
          org_resource_inc/3, org_resource_dec/3, org_resource_remove/2,
-         list_/0
-        ]).
-
--ignore_xref([
-              sync_repair/2,
-              list_/0, get_/1,
-              wipe/1
-              ]).
-
--export([
          set_metadata/2,
          blocksize/2,
          compression/2,
@@ -43,27 +28,33 @@
          remove_requirement/2,
          add_requirement/2
         ]).
-
+%%%===================================================================
+%%% General section
+%%%===================================================================
 -spec wipe(fifo:package_id()) -> ok.
-wipe(UUID) ->
-    ?FM(wipe, sniffle_coverage, start, [?MASTER, ?SERVICE, {wipe, UUID}]).
 
 -spec sync_repair(fifo:package_id(), ft_obj:obj()) -> ok.
-sync_repair(UUID, Obj) ->
-    do_write(UUID, sync_repair, Obj).
 
 -spec list_() -> {ok, [ft_obj:obj()]}.
-list_() ->
-    {ok, Res} = ?FM(list_all, sniffle_coverage, raw,
-                    [?MASTER, ?SERVICE, []]),
-    Res1 = [R || {_, R} <- Res],
-    {ok,  Res1}.
+-spec get(Package::fifo:package_id()) ->
+                 not_found | {ok, Pkg::fifo:package()} | {error, timeout}.
 
--spec lookup(Package::binary()) ->
+-spec list() ->
+                  {ok, [Pkg::fifo:package_id()]} | {error, timeout}.
+-spec list([fifo:matcher()], boolean()) ->
+                  {error, timeout} |
+                  {ok, [{integer(), fifo:package_id()}] |
+                   [{integer(), fifo:package()}]}.
+
+-include("sniffle_api.hrl").
+%%%===================================================================
+%%% Custom section
+%%%===================================================================
+-spec lookup(Name::binary()) ->
                     not_found | {ok, Pkg::fifo:package()} | {error, timeout}.
-lookup(Package) ->
+lookup(Name) ->
     {ok, Res} = ?FM(list, sniffle_coverage, start,
-                    [?MASTER, ?SERVICE, {lookup, Package}]),
+                    [?REQ({lookup, Name})]),
     lists:foldl(fun (not_found, Acc) ->
                         Acc;
                     (R, _) ->
@@ -87,56 +78,18 @@ create(Package) ->
     end.
 
 org_resource_inc(UUID, Resource, Val) ->
-    do_write(UUID, org_resource_inc, {Resource, Val}).
+    do_write(UUID, org_resource_inc, [Resource, Val]).
 
 org_resource_dec(UUID, Resource, Val) ->
-    do_write(UUID, org_resource_dec, {Resource, Val}).
+    do_write(UUID, org_resource_dec, [Resource, Val]).
 
-org_resource_remove(UUID, Resource) ->
-    do_write(UUID, org_resource_remove, Resource).
-
+?SET(org_resource_remove).
 
 
 -spec delete(Package::fifo:package_id()) ->
                     not_found | {error, timeout} | ok.
 delete(Package) ->
     do_write(Package, delete).
-
--spec get(Package::fifo:package_id()) ->
-                 not_found | {ok, Pkg::fifo:package()} | {error, timeout}.
-get(Package) ->
-    ?FM(get, sniffle_entity_read_fsm, start,
-        [{?VNODE, ?SERVICE}, get, Package]).
-
--spec list() ->
-                  {ok, [Pkg::fifo:package_id()]} | {error, timeout}.
-list() ->
-    ?FM(list, sniffle_coverage, start, [?MASTER, ?SERVICE, list]).
-
-list(Requirements, FoldFn, Acc0) ->
-    ?FM(list_all, sniffle_coverage, list,
-        [?MASTER, ?SERVICE, Requirements, FoldFn, Acc0]).
-
-%%--------------------------------------------------------------------
-%% @doc Lists all vm's and fiters by a given matcher set.
-%% @end
-%%--------------------------------------------------------------------
--spec list([fifo:matcher()], boolean()) ->
-                  {error, timeout} |
-                  {ok, [{integer(), fifo:package_id()}] |
-                   [{integer(), fifo:package()}]}.
-
-list(Requirements, Full) ->
-    {ok, Res} = ?FM(list_all, sniffle_coverage, list,
-                    [?MASTER, ?SERVICE, Requirements]),
-    Res1 = lists:sort(rankmatcher:apply_scales(Res)),
-    Res2 = case Full of
-               true ->
-                   Res1;
-               false ->
-                   [{P, ft_package:uuid(O)} || {P, O} <- Res1]
-           end,
-    {ok, Res2}.
 
 ?SET(set_metadata).
 ?SET(blocksize).
@@ -151,15 +104,3 @@ list(Requirements, Full) ->
 ?SET(zfs_io_priority).
 ?SET(remove_requirement).
 ?SET(add_requirement).
-
-%%%===================================================================
-%%% Internal Functions
-%%%===================================================================
-
-do_write(Package, Op) ->
-    ?FM(Op, sniffle_entity_write_fsm, write,
-        [{?VNODE, ?SERVICE}, Package, Op]).
-
-do_write(Package, Op, Val) ->
-    ?FM(Op, sniffle_entity_write_fsm, write,
-        [{?VNODE, ?SERVICE}, Package, Op, Val]).

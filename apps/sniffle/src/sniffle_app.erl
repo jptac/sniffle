@@ -39,6 +39,7 @@ start(_StartType, _StartArgs) ->
             application:set_env(fifo_db, backend, fifo_db_hanoidb)
     end,
     init_folsom(),
+    sniffle_console:init(),
     case sniffle_sup:start_link() of
         {ok, Pid} ->
             ok = riak_core_ring_events:add_guarded_handler(
@@ -46,16 +47,8 @@ start(_StartType, _StartArgs) ->
             ok = riak_core_node_watcher_events:add_guarded_handler(
                    sniffle_node_event_handler, []),
 
-            ?SRV_WITH_AAE(sniffle_hypervisor_vnode, sniffle_hypervisor),
-            ?SRV_WITH_AAE(sniffle_vm_vnode, sniffle_vm),
-            ?SRV_WITH_AAE(sniffle_iprange_vnode, sniffle_iprange),
-            ?SRV_WITH_AAE(sniffle_package_vnode, sniffle_package),
-            ?SRV_WITH_AAE(sniffle_dataset_vnode, sniffle_dataset),
-            ?SRV_WITH_AAE(sniffle_grouping_vnode, sniffle_grouping),
-            ?SRV_WITH_AAE(sniffle_network_vnode, sniffle_network),
-            ?SRV_WITH_AAE(sniffle_dtrace_vnode, sniffle_dtrace),
-            ?SRV_WITH_AAE(sniffle_2i_vnode, sniffle_2i),
-            ?SRV_WITH_AAE(sniffle_hostname_vnode, sniffle_hostname),
+            ?SRV_WITH_AAE(sniffle_vnode, sniffle),
+
             timer:apply_after(2000, sniffle_opt, update, []),
             sniffle_snmp_handler:start(),
             {ok, Pid};
@@ -76,7 +69,7 @@ init_folsom() ->
          version, kernel_version, sha1, status, imported, remove_requirement,
          add_requirement, create, delete],
     Dtraces = Basic ++
-        [create, delete, set, name, uuid, script, set_metadata, set_config],
+        [create, delete, name, uuid, script, set_metadata, set_config],
     Groupings = Basic ++
         [create, delete, add_element, add_grouping, remove_element,
          remove_grouping, set_metadata, set_config],
@@ -88,8 +81,7 @@ init_folsom() ->
         [create, delete, lookup, name, uuid, network, netmask, gateway,
          set_metadata, tag, vlan, release_ip, claim_ip],
     Nets = Basic ++
-        [create, delete, name, set_metadata, uuid, add_iprange, remove_iprange,
-         set],
+        [create, delete, name, set_metadata, uuid, add_iprange, remove_iprange],
     Pkgs = Basic ++
         [create, delete, set_metadata, blocksize, compression, cpu_cap,
          cpu_shares, max_swap, name, quota, ram, uuid, zfs_io_priority,

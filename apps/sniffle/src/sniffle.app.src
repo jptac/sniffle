@@ -2,7 +2,7 @@
 {application, sniffle,
  [
   {description, "Project FiFo's central management server."},
-  {vsn, "0.8.0p12"},
+  {vsn, "0.8.1"},
   {registered, []},
   {applications, [
                   kernel,
@@ -31,12 +31,13 @@
                   rankmatcher,
                   sniffle_commons,
                   sniffle_console,
-                  sniffle_dtrace,
-                  sniffle_read,
-                  sniffle_write,
                   sniffle_coverage,
                   sniffle_dataset_download,
-                  sniffle_version
+                  sniffle_dtrace,
+                  sniffle_read,
+                  sniffle_req,
+                  sniffle_version,
+                  sniffle_write
                  ]},
   {mod, {sniffle_app, []}},
   {env, []}

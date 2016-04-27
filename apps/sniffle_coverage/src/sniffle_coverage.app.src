@@ -5,7 +5,8 @@
   {registered, []},
   {applications, [
                   kernel,
-                  stdlib
+                  stdlib,
+                  sniffle_req
                  ]},
   {mod, { sniffle_coverage_app, []}},
   {env, []}

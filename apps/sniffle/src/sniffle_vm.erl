@@ -1,16 +1,9 @@
-
 -module(sniffle_vm).
-
--ifdef(TEST).
--include_lib("eunit/include/eunit.hrl").
--endif.
-
+-define(CMD, sniffle_vm_cmd).
+-define(BUCKET, <<"vm">>).
+-define(S, ft_vm).
 -include("sniffle.hrl").
 
--define(MASTER, sniffle_vm_vnode_master).
--define(VNODE, sniffle_vm_vnode).
--define(SERVICE, sniffle_vm).
--define(S, ft_vm).
 -define(FM(Met, Mod, Fun, Args),
         folsom_metrics:histogram_timed_update(
           {sniffle, vm, Met},
@@ -34,11 +27,7 @@
          create_backup/4,
          delete_backup/2,
          delete_snapshot/2,
-         get/1,
          get_docker/1,
-         list/0,
-         list/2,
-         list/3,
          log/2,
          logs/1,
          primary_nic/2,
@@ -61,9 +50,6 @@
          stop/1,
          stop/2,
          unregister/1,
-         wipe/1,
-         sync_repair/2,
-         list_/0,
          dry_run/3,
          set_backup/2,
          set_config/2,
@@ -99,39 +85,35 @@
          hypervisor/2
         ]).
 
--ignore_xref([
-              alias/2,
-              hypervisor/2,
-
-              add_grouping/2,
-              remove_grouping/2,
-              dataset/2,
-              logs/1,
-              sync_repair/2,
-              list_/0,
-              wipe/1,
-              children/2
-             ]).
-
 -type backup_opts() ::
         delete |
         {delete, parent} |
         xml.
 
+
+%%%===================================================================
+%%% General section
+%%%===================================================================
+
+-spec do_write(VM::fifo:uuid(), Op::atom()) -> fifo:write_fsm_reply().
+
+-spec do_write(VM::fifo:uuid(), Op::atom(), Val::term()) ->
+                      fifo:write_fsm_reply().
 -spec wipe(fifo:vm_id()) -> ok.
 
-wipe(UUID) ->
-    ?FM(wipe, sniffle_coverage, start, [?MASTER, ?SERVICE, {wipe, UUID}]).
-
 -spec sync_repair(fifo:vm_id(), ft_obj:obj()) -> ok.
-sync_repair(UUID, Obj) ->
-    do_write(UUID, sync_repair, Obj).
+-spec get(Vm::fifo:uuid()) ->
+                 not_found | {error, timeout} | {ok, fifo:vm()}.
+-spec list() ->
+                  {error, timeout} | {ok, [fifo:uuid()]}.
 
-list_() ->
-    {ok, Res} = ?FM(list_all, sniffle_coverage, raw,
-                    [?MASTER, ?SERVICE, []]),
-    Res1 = [R || {_, R} <- Res],
-    {ok,  Res1}.
+-spec list([fifo:matcher()], boolean()) ->
+                  {error, timeout} | {ok, [fifo:uuid()]}.
+
+-include("sniffle_api.hrl").
+%%%===================================================================
+%%% Custom section
+%%%===================================================================
 
 store(User, Vm) ->
     case sniffle_vm:get(Vm) of
@@ -353,7 +335,6 @@ ds_set([{K, F} | R], UUID, O) ->
             ok
     end,
     ds_set(R, UUID, O).
-
 
 promote_to_image(Vm, SnapID, Config) ->
     case sniffle_vm:get(Vm) of
@@ -764,15 +745,6 @@ dry_run(Package, Dataset, Config) ->
     end.
 
 
-%%--------------------------------------------------------------------
-%% @doc Reads a VM object form the DB.
-%% @end
-%%--------------------------------------------------------------------
--spec get(Vm::fifo:uuid()) ->
-                 not_found | {error, timeout} | {ok, fifo:vm()}.
-get(Vm) ->
-    ?FM(get, sniffle_entity_read_fsm, start, [{?VNODE, ?SERVICE}, get, Vm]).
-
 get_docker(DockerID) ->
     case sniffle_2i:get(docker, DockerID) of
         {ok, UUID} ->
@@ -781,38 +753,6 @@ get_docker(DockerID) ->
             E
     end.
 
-%%--------------------------------------------------------------------
-%% @doc Lists all vm's.
-%% @end
-%%--------------------------------------------------------------------
--spec list() ->
-                  {error, timeout} | {ok, [fifo:uuid()]}.
-list() ->
-    ?FM(list, sniffle_coverage, start, [?MASTER, ?SERVICE, list]).
-
-list(Requirements, FoldFn, Acc0) ->
-    ?FM(list_all, sniffle_coverage, list,
-        [?MASTER, ?SERVICE, Requirements, FoldFn, Acc0]).
-
-%%--------------------------------------------------------------------
-%% @doc Lists all vm's and fiters by a given matcher set.
-%% @end
-%%--------------------------------------------------------------------
-
--spec list([fifo:matcher()], boolean()) ->
-                  {error, timeout} | {ok, [fifo:uuid()]}.
-
-list(Requirements, Full) ->
-    {ok, Res} = ?FM(list_all, sniffle_coverage, list,
-                    [?MASTER, ?SERVICE, Requirements]),
-    Res1 = lists:sort(rankmatcher:apply_scales(Res)),
-    Res2 = case Full of
-               true ->
-                   Res1;
-               false ->
-                   [{P, ft_vm:uuid(O)} || {P, O} <- Res1]
-           end,
-    {ok, Res2}.
 
 %%--------------------------------------------------------------------
 %% @doc Tries to delete a VM, either unregistering it if no
@@ -835,23 +775,23 @@ delete(User, Vm) ->
                 {true, _, _, _} ->
                     {error, creating};
                 {_, _, true, _} ->
-                    finish_delete(V);
+                    finish_delete(Vm, V);
                 {_, _, _, <<"storing">>} ->
                     vm_event(Vm, <<"vm-stored">>),
                     state(Vm, <<"stored">>),
                     hypervisor(Vm, <<>>);
                 {_, undefined, _, _} ->
-                    finish_delete(V);
+                    finish_delete(Vm, V);
                 {_, <<>>, _, _} ->
-                    finish_delete(V);
+                    finish_delete(Vm, V);
                 {_, <<"pooled">>, _, _} ->
-                    finish_delete(V);
+                    finish_delete(Vm, V);
                 {_, <<"pending">>, _, _} ->
-                    finish_delete(V);
+                    finish_delete(Vm, V);
                 {_, _, _, undefined} ->
-                    finish_delete(V);
+                    finish_delete(Vm, V);
                 {_, _, _, <<"failed-", _/binary>>} ->
-                    finish_delete(V);
+                    finish_delete(Vm, V);
                 {_, H, _, _} ->
                     state(Vm, <<"deleting">>),
                     deleting(Vm, true),
@@ -864,8 +804,7 @@ delete(User, Vm) ->
             E
     end.
 
-finish_delete(V) ->
-    Vm = ft_vm:uuid(V),
+finish_delete(Vm, V) ->
     [do_delete_backup(Vm, V, BID) || {BID, _} <- ?S:backups(V)],
     Docker = ft_vm:docker(V),
     case jsxd:get([<<"id">>], Docker) of
@@ -1057,7 +996,7 @@ set_owner(User, Vm, Owner) ->
                  {error, timeout} | not_found | ok.
 log(Vm, Log) ->
     Timestamp = timestamp(),
-    case do_write(Vm, log, {Timestamp, Log}) of
+    case do_write(Vm, log, [Timestamp, Log]) of
         ok ->
             libhowl:send(Vm, [{<<"event">>, <<"log">>},
                               {<<"data">>,
@@ -1245,48 +1184,34 @@ remove_fw_rule(UUID, V) ->
     trigger_fw_change(UUID),
     R.
 
--define(S(T),
-        T(UUID, V) ->
-               do_write(UUID, T, V)).
-?S(remove_grouping).
-?S(add_grouping).
-?S(set_metadata).
-?S(set_info).
-?S(set_config).
-?S(set_backup).
-?S(set_snapshot).
-?S(set_service).
-?S(set_docker).
+?SET(remove_grouping).
+?SET(add_grouping).
+?SET(set_metadata).
+?SET(set_info).
+?SET(set_config).
+?SET(set_backup).
+?SET(set_snapshot).
+?SET(set_service).
+?SET(set_docker).
 
-?S(state).
-?S(creating).
+?SET(state).
+?SET(creating).
 deleting(UUID, V)
   when V =:= true;
        V =:= false ->
-    do_write(UUID, deleting, V).
-?S(alias).
-?S(owner).
-?S(dataset).
-?S(package).
-?S(hypervisor).
-?S(vm_type).
-?S(created_at).
-?S(created_by).
+    do_write(UUID, deleting, [V]).
+?SET(alias).
+?SET(owner).
+?SET(dataset).
+?SET(package).
+?SET(hypervisor).
+?SET(vm_type).
+?SET(created_at).
+?SET(created_by).
 
 %%%===================================================================
 %%% Internal Functions
 %%%===================================================================
-
--spec do_write(VM::fifo:uuid(), Op::atom()) -> fifo:write_fsm_reply().
-
-do_write(VM, Op) ->
-    ?FM(Op, sniffle_entity_write_fsm, write, [{?VNODE, ?SERVICE}, VM, Op]).
-
--spec do_write(VM::fifo:uuid(), Op::atom(), Val::term()) ->
-                      fifo:write_fsm_reply().
-
-do_write(VM, Op, Val) ->
-    ?FM(Op, sniffle_entity_write_fsm, write, [{?VNODE, ?SERVICE}, VM, Op, Val]).
 
 get_hypervisor(V) ->
     get_hypervisor(fifo_dt:type(V), V).

@@ -8,12 +8,12 @@
 -endif.
 
 -export([
+         init/0,
          init_leo/1,
          db_keys/1,
          db_get/1,
          db_delete/1,
-         get_ring/1,
-         connections/1
+         get_ring/1
         ]).
 
 -export([
@@ -22,11 +22,9 @@
 
 -export([
          config/1,
-         ds/1,
-         dtrace/1,
          hvs/1,
          ips/1,
-         networks/1,
+         command/1,
          pkgs/1,
          vms/1
         ]).
@@ -41,17 +39,67 @@
               db_get/1,
               db_delete/1,
               get_ring/1,
-              connections/1,
               aae_status/1,
               config/1,
-              ds/1,
-              dtrace/1,
               hvs/1,
               ips/1,
-              networks/1,
+              command/1,
               pkgs/1,
               vms/1
              ]).
+
+cmds_for(E, L) ->
+    Pfx = ["sniffle-admin", E],
+    [{Pfx ++ Cmd,  KeySpecs, FlagSpecs, Callback, Usage} ||
+        {Cmd, KeySpecs, FlagSpecs, Callback, Usage} <- L].
+
+init() ->
+    Cmds =
+        cmds_for("networks", sniffle_console_networks:commands()) ++
+        cmds_for("dtrace", sniffle_console_dtrace:commands()) ++
+        cmds_for("datasets", sniffle_console_datasets:commands()) ++
+        [{["sniffle-admin"] ++ Cmd,  KeySpecs, FlagSpecs, Callback, Usage} ||
+            {Cmd, KeySpecs, FlagSpecs, Callback, Usage} <- commands()],
+    [begin
+         clique:register_command(Cmd, KeySpecs, FlagSpecs, Callback),
+         clique:register_usage(Cmd, Usage)
+     end || {Cmd, KeySpecs, FlagSpecs, Callback, Usage} <- Cmds].
+
+commands() ->
+    ConFlags =
+        [{endpoint, [{shortname, "e"},
+                     {longname, "endpoint"},
+                     {typecast, fun to_endpoint/1}]}],
+    [
+     {["connections"], [], ConFlags, fun cmd_connections/3, help_connections()}
+    ].
+
+to_endpoint("snarl") ->
+    snarl;
+to_endpoint("howl") ->
+    howl;
+to_endpoint("all") ->
+    all;
+to_endpoint(_) ->
+    {error, bad_endpoint}.
+
+help_connections() ->
+    [
+     "Lists all connections currently held by this server\n",
+     " the --endpoint=snarl|howl|all parameter can be passed.\n"
+    ].
+
+cmd_connections(_, _, [{endpoint, snarl}]) ->
+    [clique_status:text("===== Snarl endpoints ====="),
+     clique_status:table(print_endpoints(libsnarl:servers()))];
+cmd_connections(_, _, [{endpoint, howl}]) ->
+    [clique_status:text("===== Howl endpoints ====="),
+     clique_status:table(print_endpoints(libhowl:servers()))];
+cmd_connections(C, K, [{endpoint, all}]) ->
+    cmd_connections(C, K, []);
+cmd_connections(C, K, []) ->
+    cmd_connections(C, K, [{endpoint, snarl}]) ++
+        cmd_connections(C, K, [{endpoint, howl}]).
 
 
 init_leo([Host]) ->
@@ -94,37 +142,20 @@ init_leo([Manager, Gateway]) ->
     OK = libleofs:add_endpoint(Manager, P, Gateway),
     sniffle_opt:set(["storage", "s3", "host"], Gateway),
     ok = sniffle_opt:set(["storage", "s3", "port"], 443),
-    io:format("Configuring endpoint as: https://~s:~p~n", [Gateway, P]),
-    io:format("Setting storage backend to s3, please reastart sniffle for this "
-              "to take full effect!~n"),
+    io:format("Configuring endpoint as: https://~s:~p~nyes", [Gateway, P]),
     ok.
 
 print_endpoints(Es) ->
-    io:format("Hostname            "
-              "                    "
-              " Node               "
-              " Errors    ~n"),
-    io:format("--------------------"
-              "--------------------"
-              "----------"
-              " ---------------~n", []),
     [print_endpoint(E) || E <- Es].
 
-print_endpoint([{{Hostname, [{port, Port}, {ip, IP}]}, _, Fails}]) ->
+print_endpoint({{Hostname, [{port, Port}, {ip, IP}]}, _, Fails}) ->
     HostPort = <<IP/binary, ":", Port/binary>>,
-    io:format("~40s ~-19s ~9b~n", [Hostname, HostPort, Fails]).
+    [
+     {"Hostname", Hostname},
+     {"Endpoint", HostPort},
+     {"Failures", Fails}
+    ].
 
-connections(["snarl"]) ->
-    io:format("Snarl endpoints.~n"),
-    print_endpoints(libsnarl:servers());
-
-connections(["howl"]) ->
-    io:format("Howl endpoints.~n"),
-    print_endpoints(libhowl:servers());
-
-connections([]) ->
-    connections(["snarl"]),
-    connections(["howl"]).
 
 get_ring([]) ->
     {ok, RingData} = riak_core_ring_manager:get_my_ring(),
@@ -221,11 +252,7 @@ db_keys([CHashS, PrefixS]) ->
     end.
 
 aae_status([]) ->
-    Services = [{sniffle_hypervisor, "Hypervisor"}, {sniffle_vm, "VM"},
-                {sniffle_iprange, "IP Range"}, {sniffle_package, "Package"},
-                {sniffle_dataset, "Dataset"}, {sniffle_network, "Network"},
-                {sniffle_dtrace, "DTrace"}],
-    [fifo_console:aae_status(E) || E <- Services].
+    fifo_console:aae_status({sniffle, "AAE Status"}).
 
 %% aae_status([]) ->
 %%     ExchangeInfo = riak_kv_entropy_info:compute_exchange_info(),
@@ -235,18 +262,6 @@ aae_status([]) ->
 %%     aae_tree_status(TreeInfo),
 %%     io:format("~n"),
 %%     aae_repair_status(ExchangeInfo).
-
-
-
-dtrace([C, "-j" | R]) ->
-    sniffle_console_dtrace:command(json, [C | R]);
-
-dtrace([]) ->
-    sniffle_console_dtrace:help(),
-    ok;
-
-dtrace(R) ->
-    sniffle_console_dtrace:command(text, R).
 
 vms([C, "-j" | R]) ->
     sniffle_console_vms:command(json, [C | R]);
@@ -278,16 +293,6 @@ pkgs([]) ->
 pkgs(R) ->
     sniffle_console_packages:command(text, R).
 
-ds([C, "-j" | R]) ->
-    sniffle_console_datasets:command(json, [C | R]);
-
-ds([]) ->
-    sniffle_console_datasets:help(),
-    ok;
-
-ds(R) ->
-    sniffle_console_datasets:command(text, R).
-
 ips([]) ->
     sniffle_console_ipranges:help(),
     ok;
@@ -298,15 +303,8 @@ ips([C, "-j" | R]) ->
 ips(R) ->
     sniffle_console_ipranges:command(text, R).
 
-networks([]) ->
-    sniffle_console_networks:help(),
-    ok;
-
-networks([C, "-j" | R]) ->
-    sniffle_console_networks:command(json, [C | R]);
-
-networks(R) ->
-    sniffle_console_networks:command(text, R).
+command(Cmd) ->
+    clique:run(Cmd).
 
 config(["show"]) ->
     io:format("Storage~n  General Section~n"),

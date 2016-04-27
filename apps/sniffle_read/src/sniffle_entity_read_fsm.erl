@@ -30,7 +30,7 @@
           size,
           timeout = 10000,
           val,
-          vnode,
+          cmd,
           system,
           replies=[]}).
 
@@ -62,23 +62,23 @@
 %%% API
 %%%===================================================================
 
-start_link(ReqID, {VNode, System}, Op, From, Entity, Val) ->
+start_link(ReqID, {Cmd, System}, Op, From, Entity, Val) ->
     gen_fsm:start_link(?MODULE,
-                       [ReqID, {VNode, System}, Op, From, Entity, Val], []).
+                       [ReqID, {Cmd, System}, Op, From, Entity, Val], []).
 
-start(VNodeInfo, Op) ->
-    start(VNodeInfo, Op, undefined).
+start(CmdInfo, Op) ->
+    start(CmdInfo, Op, undefined).
 
-start(VNodeInfo, Op, User) ->
-    start(VNodeInfo, Op, User, undefined).
+start(CmdInfo, Op, User) ->
+    start(CmdInfo, Op, User, undefined).
 
--spec start(VNodeInfo::term(), Op::atom(), Entity::term() | undefined,
+-spec start(CmdInfo::term(), Op::atom(), Entity::term() | undefined,
             Val::term() | undefined) ->
                    ok | not_found | {ok, Res::term()} | {error, timeout}.
-start(VNodeInfo, Op, Entity, Val) ->
+start(CmdInfo, Op, Entity, Val) ->
     ReqID = sniffle_vnode:mk_reqid(),
     sniffle_entity_read_fsm_sup:start_read_fsm(
-      [ReqID, VNodeInfo, Op, self(), Entity, Val]
+      [ReqID, CmdInfo, Op, self(), Entity, Val]
      ),
     receive
         {ReqID, ok} ->
@@ -99,13 +99,13 @@ start(VNodeInfo, Op, Entity, Val) ->
 %% Intiailize state data.
 -spec init(_) -> {ok, prepare, state(), 0}.
 
-init([ReqId, {VNode, System}, Op, From]) ->
-    init([ReqId, {VNode, System}, Op, From, undefined, undefined]);
+init([ReqId, {Cmd, System}, Op, From]) ->
+    init([ReqId, {Cmd, System}, Op, From, undefined, undefined]);
 
-init([ReqId, {VNode, System}, Op, From, Entity]) ->
-    init([ReqId, {VNode, System}, Op, From, Entity, undefined]);
+init([ReqId, {Cmd, System}, Op, From, Entity]) ->
+    init([ReqId, {Cmd, System}, Op, From, Entity, undefined]);
 
-init([ReqId, {VNode, System}, Op, From, Entity, Val]) ->
+init([ReqId, {Cmd, System}, Op, From, Entity, Val]) ->
     {ok, N} = application:get_env(sniffle, n),
     {ok, R} = application:get_env(sniffle, r),
     SD = #state{
@@ -115,7 +115,7 @@ init([ReqId, {VNode, System}, Op, From, Entity, Val]) ->
             from=From,
             op=Op,
             val=Val,
-            vnode=VNode,
+            cmd=Cmd,
             system=System,
             entity=Entity},
     {ok, prepare, SD, 0}.
@@ -126,7 +126,7 @@ prepare(timeout, SD0=#state{entity=Entity,
                             system=System}) ->
     Bucket = list_to_binary(atom_to_list(System)),
     DocIdx = riak_core_util:chash_key({Bucket, Entity}),
-    Prelist = riak_core_apl:get_apl(DocIdx, N, System),
+    Prelist = riak_core_apl:get_apl(DocIdx, N, sniffle),
     SD = SD0#state{preflist=Prelist},
     {next_state, execute, SD, 0}.
 
@@ -135,17 +135,17 @@ execute(timeout, SD0=#state{req_id=ReqId,
                             entity=Entity,
                             op=Op,
                             val=Val,
-                            vnode=VNode,
+                            cmd=Cmd,
                             preflist=Prelist}) ->
     case Entity of
         undefined ->
-            VNode:Op(Prelist, ReqId);
+            Cmd:Op(Prelist, ReqId);
         _ ->
             case Val of
                 undefined ->
-                    VNode:Op(Prelist, ReqId, Entity);
+                    Cmd:Op(Prelist, ReqId, Entity);
                 _ ->
-                    VNode:Op(Prelist, ReqId, Entity, Val)
+                    Cmd:Op(Prelist, ReqId, Entity, Val)
             end
     end,
     {next_state, waiting, SD0}.
@@ -195,15 +195,15 @@ wait_for_n(timeout, SD) ->
     {stop, timeout, SD}.
 
 finalize(timeout, SD=#state{
-                        vnode=VNode,
+                        cmd=Cmd,
                         replies=Replies,
                         entity=Entity}) ->
     MObj = merge(Replies),
     case needs_repair(MObj, Replies) of
         true ->
             lager:warning("[~p] performing read repair on '~p'.",
-                          [SD#state.vnode, Entity]),
-            repair(VNode, Entity, MObj, Replies),
+                          [SD#state.cmd, Entity]),
+            repair(Cmd, Entity, MObj, Replies),
             {stop, normal, SD};
         false ->
             {stop, normal, SD}
@@ -257,22 +257,22 @@ needs_repair(MObj, Replies) ->
 different(A) -> fun(B) -> not ft_obj:equal(A, B) end.
 
 %%
-%% @doc Repair any vnodes that do not have the correct object.
+%% @doc Repair any cmds that do not have the correct object.
 -spec repair(atom(), string(), fifo:obj(), [vnode_reply()]) -> io.
 repair(_, _, _, []) -> io;
 
-repair(VNode, StatName, MObj, [{IdxNode, Obj}|T]) ->
+repair(Cmd, StatName, MObj, [{IdxNode, Obj}|T]) ->
     case ft_obj:equal(MObj, Obj) of
         true ->
-            repair(VNode, StatName, MObj, T);
+            repair(Cmd, StatName, MObj, T);
         false ->
             case Obj of
                 not_found ->
-                    VNode:repair(IdxNode, StatName, not_found, MObj);
+                    Cmd:repair(IdxNode, StatName, not_found, MObj);
                 _ ->
-                    VNode:repair(IdxNode, StatName, ft_obj:vclock(Obj), MObj)
+                    Cmd:repair(IdxNode, StatName, ft_obj:vclock(Obj), MObj)
             end,
-            repair(VNode, StatName, MObj, T)
+            repair(Cmd, StatName, MObj, T)
     end.
 
 %%
@@ -281,17 +281,17 @@ repair(VNode, StatName, MObj, [{IdxNode, Obj}|T]) ->
 unique(L) ->
     sets:to_list(sets:from_list(L)).
 
-%%stat_name(sniffle_dtrace_vnode) ->
+%%stat_name(sniffle_dtrace_cmd) ->
 %%    "dtrace";
-%%stat_name(sniffle_vm_vnode) ->
+%%stat_name(sniffle_vm_cmd) ->
 %%    "vm";
-%%stat_name(sniffle_hypervisor_vnode) ->
+%%stat_name(sniffle_hypervisor_cmd) ->
 %%    "hypervisor";
-%%stat_name(sniffle_package_vnode) ->
+%%stat_name(sniffle_package_cmd) ->
 %%    "package";
-%%stat_name(sniffle_dataset_vnode) ->
+%%stat_name(sniffle_dataset_cmd) ->
 %%    "dataset";
-%%stat_name(sniffle_network_vnode) ->
+%%stat_name(sniffle_network_cmd) ->
 %%    "network";
-%%stat_name(sniffle_iprange_vnode) ->
+%%stat_name(sniffle_iprange_cmd) ->
 %%    "iprange".
