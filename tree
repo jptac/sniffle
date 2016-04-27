@@ -2,9 +2,9 @@
 │  └─ lager─2.1.1
 ├─ eper─0.94.0
 ├─ eplugin─0.1.4
-├─ erlcloud─0.13.0
-│  └─ lhttpc─1.3.0
-├─ fifo_db─0.2.1
+├─ erlcloud─0.13.3
+│  └─ lhttpc─1.4.0
+├─ fifo_db─0.2.2
 │  ├─ eleveldb─2.1.3
 │  └─ erocksdb─0.4.1
 ├─ fifo_dt─0.1.68
@@ -13,7 +13,7 @@
 ├─ fifo_lager─0.1.3
 │  ├─ lager_graylog─0.1.0
 │  └─ lager_logstash_backend─0.1.0
-├─ fifo_s3─0.1.16
+├─ fifo_s3─0.2.2
 │  └─ base16─1.0.0
 ├─ fifo_spec─0.1.27
 ├─ fifo_utils─0.1.22
@@ -30,21 +30,21 @@
 │  └─ ssl_verify_hostname─1.0.5
 ├─ jsx─1.4.5
 ├─ jsxd─0.1.10
-├─ libchunter─0.1.46
-├─ libhowl─0.1.34
-│  └─ mdns_client_lib─0.1.38
+├─ libchunter─0.1.47
+├─ libhowl─0.1.36
+│  └─ mdns_client_lib─0.1.39
 │     ├─ mdns_client─0.1.7
 │     └─ pooler─1.5.0
 ├─ libleofs─0.1.2
-├─ libsnarl─0.3.44
+├─ libsnarl─0.3.46
 │  └─ oauth2─0.6.1
 ├─ mdns_server_lib─0.2.3
 │  ├─ mdns_server─0.2.0
 │  └─ ranch─1.1.0
 ├─ poolboy─0.8.1-p3
 ├─ rankmatcher─0.1.5
-├─ recon─2.2.1
-├─ riak_core─2.2.3
+├─ recon─2.3.1
+├─ riak_core─2.2.5
 │  ├─ basho_stats─1.0.3
 │  ├─ chash─0.1.1
 │  ├─ clique─3.0.1
@@ -61,7 +61,7 @@
 │  ├─ riak_ensemble─2.1.3
 │  └─ riak_sysmon─2.1.2
 ├─ sgte─0.7.1
-├─ sniffle─0.8.0p11
+├─ sniffle─0.8.1
 ├─ sniffle_api─0.1.0
 ├─ sniffle_commons─0.1.0
 ├─ sniffle_console─0.1.0
@@ -71,6 +71,7 @@
 ├─ sniffle_dtrace─0.1.0
 ├─ sniffle_ip─1
 ├─ sniffle_read─0.1.0
+├─ sniffle_req─0.1.0
 ├─ sniffle_version─0.1.0
 ├─ sniffle_watchdog─0.1.0
 └─ sniffle_write─0.1.0

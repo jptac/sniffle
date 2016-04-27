@@ -37,18 +37,6 @@ init(_Args) ->
           [sniffle, sniffle_vnode]},
          permanent, 30000, worker, [riak_core_entropy_manager]},
 
-    EntropyManager2i =
-        {sniffle_2i_entropy_manager,
-         {riak_core_entropy_manager, start_link,
-          [sniffle_2i, sniffle_2i_vnode]},
-         permanent, 30000, worker, [riak_core_entropy_manager]},
-
-    EntropyManagerHostname =
-        {sniffle_hostname_entropy_manager,
-         {riak_core_entropy_manager, start_link,
-          [sniffle_hostname, sniffle_hostname_vnode]},
-         permanent, 30000, worker, [riak_core_entropy_manager]},
-
     {ok,
      {{one_for_one, 5, 10},
       [VNode, EntropyManager]}}.
