@@ -5,6 +5,7 @@
   {registered, []},
   {applications, [
                   kernel,
+                  lager,
                   stdlib
                  ]},
   {mod, { sniffle_read_app, []}},

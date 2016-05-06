@@ -30,7 +30,7 @@
 │  └─ ssl_verify_hostname─1.0.5
 ├─ jsx─1.4.5
 ├─ jsxd─0.1.10
-├─ libchunter─0.1.47
+├─ libchunter─0.1.48
 ├─ libhowl─0.1.36
 │  └─ mdns_client_lib─0.1.39
 │     ├─ mdns_client─0.1.7
@@ -61,7 +61,7 @@
 │  ├─ riak_ensemble─2.1.3
 │  └─ riak_sysmon─2.1.2
 ├─ sgte─0.7.1
-├─ sniffle─0.8.1
+├─ sniffle─0.8.2
 ├─ sniffle_api─0.1.0
 ├─ sniffle_commons─0.1.0
 ├─ sniffle_console─0.1.0

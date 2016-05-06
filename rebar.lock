@@ -35,7 +35,7 @@
   {pkg,<<"lager_logstash_backend">>,<<"0.1.0">>},
   1},
  {<<"lhttpc">>,{pkg,<<"lhttpc">>,<<"1.4.0">>},1},
- {<<"libchunter">>,{pkg,<<"libchunter">>,<<"0.1.47">>},0},
+ {<<"libchunter">>,{pkg,<<"libchunter">>,<<"0.1.48">>},0},
  {<<"libhowl">>,{pkg,<<"libhowl">>,<<"0.1.36">>},0},
  {<<"libleofs">>,{pkg,<<"libleofs">>,<<"0.1.2">>},0},
  {<<"libsnarl">>,{pkg,<<"libsnarl">>,<<"0.3.46">>},0},
