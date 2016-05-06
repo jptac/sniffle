@@ -1,5 +1,6 @@
 REBAR = $(shell pwd)/rebar3
 ELVIS = $(shell pwd)/elvis
+APP=sniffle
 
 .PHONY: rel stagedevrel package version all tree
 
