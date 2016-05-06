@@ -119,8 +119,10 @@ store(User, Vm) ->
     case sniffle_vm:get(Vm) of
         {ok, V} ->
             Bs = ?S:backups(V),
-            case has_xml(Bs) of
-                true ->
+            case {?S:dataset(V), has_xml(Bs)} of
+                {<<>>, _} ->
+                    {error, no_dataset};
+                {_, true} ->
                     state(Vm, <<"storing">>),
                     [set_backup(Vm, [{[B, <<"local">>], false}])
                      || {B, _} <- Bs],
@@ -132,8 +134,8 @@ store(User, Vm) ->
                     {Host, Port} = get_hypervisor(V),
                     resource_action(V, store, User, []),
                     free_res(V),
-                    libchunter:delete_machine(Host, Port, Vm);
-                false ->
+                    libchunter:store_machine(Host, Port, Vm);
+                {_, false} ->
                     {error, no_backup}
             end;
         _ ->
@@ -155,11 +157,14 @@ restore(User, Vm, BID, Requeirements) ->
 restore(User, Vm, BID, Requeirements, Package) ->
     case sniffle_vm:get(Vm) of
         {ok, V} ->
-            case ?S:hypervisor(V) of
-                <<>> ->
+            %% ensure we can't restore a VM while it's still being stored
+            case {?S:state(V), ?S:hypervisor(V)} of
+                {<<"storing">>, _} ->
+                    {error, storing};
+                {_, <<>>} ->
                     restore_(User, Vm, V, BID, Requeirements, Package);
                 _ ->
-                    already_deployed
+                    {error, already_deployed}
             end;
         _ ->
             not_found
@@ -176,7 +181,7 @@ restore_(User, UUID, V, BID, Requeirements, Package) ->
             sniffle_create_pool:restore(
               UUID, BID, Requeirements, Package, User);
         false ->
-            no_xml
+            {error, no_xml}
     end.
 
 
@@ -775,23 +780,23 @@ delete(User, Vm) ->
                 {true, _, _, _} ->
                     {error, creating};
                 {_, _, true, _} ->
-                    finish_delete(Vm, V);
+                    finish_delete(User, Vm, V);
                 {_, _, _, <<"storing">>} ->
                     vm_event(Vm, <<"vm-stored">>),
                     state(Vm, <<"stored">>),
                     hypervisor(Vm, <<>>);
-                {_, undefined, _, _} ->
-                    finish_delete(Vm, V);
+                {_, undefined, _, <<"stored">>} ->
+                    finish_delete(User, Vm, V);
                 {_, <<>>, _, _} ->
-                    finish_delete(Vm, V);
+                    finish_delete(User, Vm, V);
                 {_, <<"pooled">>, _, _} ->
-                    finish_delete(Vm, V);
+                    finish_delete(User, Vm, V);
                 {_, <<"pending">>, _, _} ->
-                    finish_delete(Vm, V);
+                    finish_delete(User, Vm, V);
                 {_, _, _, undefined} ->
-                    finish_delete(Vm, V);
+                    finish_delete(User, Vm, V);
                 {_, _, _, <<"failed-", _/binary>>} ->
-                    finish_delete(Vm, V);
+                    finish_delete(User, Vm, V);
                 {_, H, _, _} ->
                     state(Vm, <<"deleting">>),
                     deleting(Vm, true),
@@ -804,7 +809,7 @@ delete(User, Vm) ->
             E
     end.
 
-finish_delete(Vm, V) ->
+finish_delete(User, Vm, V) ->
     [do_delete_backup(Vm, V, BID) || {BID, _} <- ?S:backups(V)],
     Docker = ft_vm:docker(V),
     case jsxd:get([<<"id">>], Docker) of
@@ -814,7 +819,7 @@ finish_delete(Vm, V) ->
             ok
     end,
     sniffle_vm:unregister(Vm),
-    resource_action(V, destroy, []),
+    resource_action(V, destroy, User, []),
     libhowl:send(Vm, [{<<"event">>, <<"delete">>}]),
     free_res(V),
     vm_event(Vm, <<"vm-delete">>).
@@ -1293,8 +1298,8 @@ do_delete_backup(UUID, VM, BID) ->
                                               {<<"uuid">>, BID}]}])
     end.
 
-resource_action(UUID, Action, Opts) ->
-    resource_action(UUID, Action, undefined, Opts).
+%% resource_action(UUID, Action, Opts) ->
+%%     resource_action(UUID, Action, undefined, Opts).
 
 resource_action(VM, Action, User, Opts) ->
     case ft_vm:owner(VM) of
