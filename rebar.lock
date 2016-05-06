@@ -61,7 +61,7 @@
  {<<"lhttpc">>,{pkg,<<"lhttpc">>,<<"1.4.0">>},1},
  {<<"libchunter">>,
   {git,"https://github.com/project-fifo/libchunter.git",
-       {ref,"2cc36f8ebce6de0aa34450c2ad56181cd3e96ecd"}},
+       {ref,"4e6ac50e58f0d149c49e297b3e28dde6c35e48f8"}},
   0},
  {<<"libhowl">>,
   {git,"https://github.com/project-fifo/libhowl.git",

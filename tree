@@ -30,7 +30,7 @@
 │  └─ ssl_verify_hostname─1.0.5
 ├─ jsx─1.4.5
 ├─ jsxd─0.1.10
-├─ libchunter─0.1.47
+├─ libchunter─0.1.48
 ├─ libhowl─0.1.36
 │  └─ mdns_client_lib─0.1.39
 │     ├─ mdns_client─0.1.7

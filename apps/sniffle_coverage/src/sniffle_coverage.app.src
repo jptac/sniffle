@@ -7,6 +7,7 @@
                   kernel,
                   stdlib,
                   riak_core,
+                  lager,
                   sniffle_req
                  ]},
   {mod, { sniffle_coverage_app, []}},

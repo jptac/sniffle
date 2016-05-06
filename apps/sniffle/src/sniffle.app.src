@@ -26,6 +26,7 @@
                   eplugin,
                   fifo_lager,
                   lager,
+                  lager,
                   bugsnag,
                   jsxd,
                   rankmatcher,

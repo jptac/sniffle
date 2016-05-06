@@ -6,6 +6,7 @@
   {applications, [
                   kernel,
                   base16,
+                  lager,
                   stdlib
                  ]},
   {mod, { sniffle_dataset_download_app, []}},
