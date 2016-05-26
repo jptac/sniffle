@@ -615,6 +615,7 @@ get_networks(_Event, State = #state{config = Config}) ->
                                "addresses in ~p ipranges.",
                                [Name, Network, Sum, Count])
                end, State, Nets1),
+    next(),
     {next_state, get_server,
      State1#state{nets = Nets2}}.
 
