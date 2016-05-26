@@ -611,7 +611,7 @@ get_networks(_Event, State = #state{config = Config}) ->
     State1 = lists:foldl(
                fun ({Name, {Network, Rs, Sum}}, SAcc) ->
                        Count = length(Rs),
-                       fmt_log(SAcc, info, "[net:~s/~p] Fund ~p free ip "
+                       fmt_log(SAcc, info, "[net:~s/~s] Fund ~p free ip "
                                "addresses in ~p ipranges.",
                                [Name, Network, Sum, Count])
                end, State, Nets1),
@@ -940,18 +940,18 @@ test_hypervisors(UUID, [{_, HypervisorID} | R], Nets, State) ->
     {ok, H} = sniffle_hypervisor:get(HypervisorID),
     case test_hypervisor(UUID, ft_hypervisor:networks(H), Nets, []) of
         {ok, Nets1} ->
-            State1 = fmt_log(State, info, "[hypervisor:~p] Found ~p valid "
+            State1 = fmt_log(State, info, "[hypervisor:~s] Found ~p valid "
                              "networks.", [HypervisorID, length(Nets1)]),
             {Host, Port} = ft_hypervisor:endpoint(H),
             case libchunter:lock(Host, Port, UUID) of
                 ok ->
                     State2 = fmt_log(State1, info,
-                                     "[hypervisor:~p] locked.",
+                                     "[hypervisor:~s] locked.",
                                      [HypervisorID]),
                     {ok, HypervisorID, {Host, Port}, Nets1, State2};
                 _ ->
                     State2 = fmt_log(State1, warning,
-                                     "[hypervisor:~p] could not be lock.",
+                                     "[hypervisor:~s] could not be lock.",
                                      [HypervisorID]),
                     test_hypervisors(UUID, R, Nets, State2)
             end;
