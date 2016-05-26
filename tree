@@ -2,7 +2,8 @@
 │  └─ lager─2.1.1
 ├─ eper─0.94.0
 ├─ eplugin─0.1.4
-├─ erlcloud─0.13.3
+├─ erlcloud─0.13.4
+│  ├─ eini─1.2.1
 │  └─ lhttpc─1.4.0
 ├─ fifo_db─0.2.2
 │  ├─ eleveldb─2.1.3
