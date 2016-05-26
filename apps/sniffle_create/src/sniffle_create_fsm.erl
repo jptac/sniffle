@@ -601,11 +601,22 @@ get_networks(_Event, State = #state{config = Config}) ->
                               Rs2 = [{R, D} || {R, {ok, D}} <- Rs1],
                               Rs3 = [{IPRange, ft_iprange:tag(R)}
                                      || {IPRange, R} <- Rs2],
-                              {Name, {Network, Rs3}}
+                              Free = [length(ft_iprange:free(R)) ||
+                                         {_, {ok, R}} <- Rs1],
+                              Sum = lists:sum(Free),
+                              {Name, {Network, Rs3, Sum}}
                       end, Nets),
-    next(),
+    Nets2 = [{Name, {Network, Rs}} ||
+                {Name, {Network, Rs, _Sum}}  <- Nets1],
+    State1 = lists:foldl(
+               fun ({Name, {Network, Rs, Sum}}, SAcc) ->
+                       Count = length(Rs),
+                       fmt_log(SAcc, info, "[net:~s/~p] Fund ~p free ip "
+                               "addresses in ~p ipranges.",
+                               [Name, Network, Sum, Count])
+               end, State, Nets1),
     {next_state, get_server,
-     State#state{nets = Nets1}}.
+     State1#state{nets = Nets2}}.
 
 get_server(_Event, State = #state{
                               uuid = UUID,
@@ -618,9 +629,12 @@ get_server(_Event, State = #state{
     {ok, Hypervisors} = sniffle_hypervisor:list(FinalRules, false),
     Hypervisors1 = lists:reverse(lists:sort(Hypervisors)),
     lager:debug("[create] Hypervisors found: ~p", [Hypervisors1]),
+    State1 = fmt_log(State, info, "[hypervisors] Found a total of ~p "
+                     "hypervisors matching the required rules.",
+                     [length(Hypervisors1)]),
     next(),
     {next_state, test_hypervisors,
-     State#state{hypervisors = Hypervisors1}}.
+     State1#state{hypervisors = Hypervisors1}}.
 
 test_hypervisors(_Event, State = #state{
                                     hypervisors = Hypervisors,
@@ -632,13 +646,13 @@ test_hypervisors(_Event, State = #state{
     lager:debug("[create] test_hypervisors: ~p", [Nets]),
     FinalRules = Rules ++ GRules,
     Ram = ft_package:ram(Package),
-    case {Hypervisors, test_hypervisors(UUID, Hypervisors, Nets)} of
-        {_, {ok, HypervisorID, H, Nets1}} ->
+    case {Hypervisors, test_hypervisors(UUID, Hypervisors, Nets, State)} of
+        {_, {ok, HypervisorID, H, Nets1, State1}} ->
             RamB = list_to_binary(integer_to_list(Ram)),
-            S1 = add_log(State, info,
+            S1 = add_log(State1, info,
                          <<"Assigning memory ", RamB/binary>>),
             S2 = add_log(S1, info, <<"Deploying on hypervisor ",
-                                    HypervisorID/binary>>),
+                                     HypervisorID/binary>>),
             next(),
             {next_state, get_ips,
              S2#state{hypervisor_id = HypervisorID,
@@ -649,8 +663,8 @@ test_hypervisors(_Event, State = #state{
                       "[create] Could not find hypervisor for "
                       "rules: ~p.", [FinalRules]),
             do_retry(S1);
-        {Hvs, EH} ->
-            S1 = warn(State,
+        {Hvs, {error, EH, State1}} ->
+            S1 = warn(State1,
                       "could not lock hypervisor.",
                       "[create] Could not claim a lock on any of "
                       "the provided hypervisors: ~p -> ~p",
@@ -919,25 +933,35 @@ test_net(_Have, []) ->
     lager:debug("[create] test_net: false"),
     false.
 
-test_hypervisors(UUID, [{_, HypervisorID} | R], Nets) ->
+test_hypervisors(UUID, [{_, HypervisorID} | R], Nets, State) ->
     lager:debug("[create] test_hypervisors: ~p ~p",
                 [HypervisorID, Nets]),
     {ok, H} = sniffle_hypervisor:get(HypervisorID),
     case test_hypervisor(UUID, ft_hypervisor:networks(H), Nets, []) of
         {ok, Nets1} ->
+            State1 = fmt_log(State, info, "[hypervisor:~p] Found ~p valid "
+                             "networks.", [HypervisorID, length(Nets1)]),
             {Host, Port} = ft_hypervisor:endpoint(H),
             case libchunter:lock(Host, Port, UUID) of
                 ok ->
-                    {ok, HypervisorID, {Host, Port}, Nets1};
+                    State2 = fmt_log(State1, info,
+                                     "[hypervisor:~p] locked.",
+                                     [HypervisorID]),
+                    {ok, HypervisorID, {Host, Port}, Nets1, State2};
                 _ ->
-                    test_hypervisors(UUID, R, Nets)
+                    State2 = fmt_log(State1, warning,
+                                     "[hypervisor:~p] could not be lock.",
+                                     [HypervisorID]),
+                    test_hypervisors(UUID, R, Nets, State2)
             end;
         _ ->
-            test_hypervisors(UUID, R, Nets)
+            State1 = fmt_log(State, warning, "[hypervisor:~p] Found no valid "
+                             "networks.", [HypervisorID]),
+            test_hypervisors(UUID, R, Nets, State1)
     end;
 
-test_hypervisors(_, [], _) ->
-    {error, no_hypervisors}.
+test_hypervisors(_, [], _, State) ->
+    {error, no_hypervisors, State}.
 
 
 test_hypervisor(UUID, H, [{NetName, {Network, Posibilities}} | Nets], Acc) ->
@@ -1071,6 +1095,9 @@ vm_log(State, warning, M)  ->
 
 vm_log(State, error, M)  ->
     vm_log(State, <<"[error] ", M/binary>>).
+
+fmt_log(State, Type, Msg, Args) ->
+    add_log(State, Type, list_to_binary(io_lib:format(Msg, Args))).
 
 add_log(State = #state{log_cache = C}, Type, Msg)
   when is_binary(Msg),
