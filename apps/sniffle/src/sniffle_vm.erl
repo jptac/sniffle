@@ -1180,12 +1180,12 @@ trigger_fw_change(UUID) ->
 
 
 add_fw_rule(UUID, V) ->
-    R = do_write(UUID, add_fw_rule, V),
+    R = do_write(UUID, add_fw_rule, [V]),
     trigger_fw_change(UUID),
     R.
 
 remove_fw_rule(UUID, V) ->
-    R = do_write(UUID, remove_fw_rule, V),
+    R = do_write(UUID, remove_fw_rule, [V]),
     trigger_fw_change(UUID),
     R.
 
