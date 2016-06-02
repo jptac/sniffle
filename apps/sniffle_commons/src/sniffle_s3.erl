@@ -64,6 +64,9 @@ config(Type) ->
     R = {get_host(), get_port(), get_access_key(), get_secret_key(),
          get_bucket(Type)},
     case R of
+        %% @TODO: this is a ugly hack!
+        {"no_s3", _, _, _, _} ->
+            {ok, no_s3};
         {"", _, _, _, _} ->
             error;
         {_, "", _, _, _} ->
