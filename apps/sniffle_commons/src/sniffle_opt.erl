@@ -25,6 +25,7 @@ update() ->
          {storage, s3, access_key},
          {storage, s3, secret_key},
          {storage, s3, host},
+         {storage, s3, backup_host},
          {storage, s3, port}
         ],
     [update(A, B, C) || {A, B, C} <- Opts].
@@ -46,8 +47,10 @@ opts() ->
     [{"network",
       [{"http", [{"proxy", string}]}]},
      {"storage",
-      [{"s3", [{"image_bucket", string}, {"snapshot_bucket", string},
-               {"general_bucket", string},
-               {"access_key", string}, {"secret_key", string},
-               {"host", string}, {"port", integer}]}]}].
-
+      [{"s3",
+        [{"image_bucket", string}, {"snapshot_bucket", string},
+         {"general_bucket", string},
+         {"access_key", string}, {"secret_key", string},
+         {"host", string}, {"port", integer},
+         {"backup_host", string}, {"backup_port", integer},
+         {"backup_access_key", string}, {"backup_secret_key", string}]}]}].
