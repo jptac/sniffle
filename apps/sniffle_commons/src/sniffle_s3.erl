@@ -49,61 +49,40 @@ get_config(Type) ->
                     get_host(Type), get_port(Type)).
 
 get_access_key(backup) ->
-    case get_opt(backup_access_key) of
-        "" ->
-            get_access_key();
-        Res ->
-            Res
-    end;
+    get_opt(backup_access_key, access_key);
 get_access_key(_Type) ->
-    get_access_key().
-get_access_key() ->
     get_opt(access_key).
 
 get_secret_key(backup) ->
-    case get_opt(backup_secret_key) of
-        "" ->
-            get_secret_key();
-        Res ->
-            Res
-    end;
+    get_opt(backup_secret_key, secret_key);
 get_secret_key(_Type) ->
-    get_secret_key().
-get_secret_key() ->
     get_opt(secret_key).
 
 get_host(backup) ->
-    case get_opt(backup_host) of
-        "" ->
-            get_host();
-        Res ->
-            Res
-    end;
+    get_opt(backup_host, host);
 get_host(_Type) ->
-    get_host().
-get_host() ->
     get_opt(host).
 
 
 get_port(backup) ->
-    case get_opt(backup_port) of
-        "" ->
-            get_port();
-        Res ->
-            Res
-    end;
+    get_opt(backup_port, port);
 get_port(_Type) ->
-    get_port().
-
-get_port() ->
     get_opt(port).
+
+get_opt(Key, Secondary) ->
+    case get_opt(Key) of
+        "" ->
+            get_opt(Secondary);
+        Result ->
+            Result
+    end.
 
 get_opt(Key) ->
     sniffle_opt:get(storage, s3, Key).
 
 config(Type) ->
-    R = {get_host(Type), get_port(), get_access_key(), get_secret_key(),
-         get_bucket(Type)},
+    R = {get_host(Type), get_port(Type), get_access_key(Type),
+         get_secret_key(Type), get_bucket(Type)},
     case R of
         %% @TODO: this is a ugly hack!
         {"no_s3", _, _, _, _} ->
