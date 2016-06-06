@@ -6,6 +6,8 @@
   {applications, [
                   kernel,
                   stdlib,
+                  trie,
+                  lager,
                   riak_core,
                   sniffle_req
                  ]},
