@@ -18,7 +18,7 @@
 -type merge_fn() ::  fun(([term()]) -> term()).
 
 -record(state, {replies = #{} :: #{binary() => pos_integer()},
-                seen = sets:new() :: sets:set(),
+                seen = btrie:new() :: btrie:btrie(),
                 r = 1 :: pos_integer(),
                 reqid :: integer(),
                 from :: pid(),
@@ -110,7 +110,7 @@ update({Pts, {Key, V}}, State) when not is_binary(Pts) ->
     update({Key, {Pts, V}}, State);
 
 update({Key, Value}, State = #state{seen = Seen}) ->
-    case sets:is_element(Key, Seen) of
+    case btrie:is_key(Key, Seen) of
         true ->
             State;
         false ->
@@ -119,7 +119,7 @@ update({Key, Value}, State = #state{seen = Seen}) ->
 
 update1({Key, Value}, State = #state{r = R, completed = Competed, seen = Seen})
   when R < 2 ->
-    Seen1 = sets:add_element(Key, Seen),
+    Seen1 = btrie:store(Key, Seen),
     State#state{seen = Seen1, completed = [Value | Competed]};
 
 update1({Key, Value},
@@ -131,7 +131,7 @@ update1({Key, Value},
             State#state{replies = Replies1};
         {ok, Vals} when length(Vals) >= R - 1 ->
             Merged = Merge([Value | Vals]),
-            Seen1 = sets:add_element(Key, Seen),
+            Seen1 = btrie:store(Key, Seen),
             Replies1 = maps:remove(Key, Replies),
             State#state{seen = Seen1, completed = [Merged | Competed],
                         replies = Replies1};

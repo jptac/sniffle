@@ -6,8 +6,9 @@
   {applications, [
                   kernel,
                   stdlib,
-                  riak_core,
+                  trie,
                   lager,
+                  riak_core,
                   sniffle_req
                  ]},
   {mod, { sniffle_coverage_app, []}},
