@@ -94,8 +94,8 @@ base_init({From, ReqID, _}, Request) ->
     %% all - full coverage; allup - partial coverage
     VNodeSelector = allup,
     PrimaryVNodeCoverage = R,
-    %% We timeout after 5s
-    Timeout = 9000,
+    %% We timeout after 10s or whatever is configured
+    Timeout = application:get_env(sniffle, coverage_timeout, 10000),
     State = #state{r = R, from = From, reqid = ReqID},
     {Request, VNodeSelector, N, PrimaryVNodeCoverage,
      sniffle, sniffle_vnode_master, Timeout, State}.
