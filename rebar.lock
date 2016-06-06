@@ -111,4 +111,5 @@
        {ref,"c921b55dc6eb2d541a6afd8edf37aaa0b9b577c0"}},
   0},
  {<<"ssl_verify_fun">>,{pkg,<<"ssl_verify_fun">>,<<"1.1.0">>},1},
+ {<<"trie">>,{pkg,<<"trie">>,<<"1.5.1">>},0},
  {<<"uuid">>,{pkg,<<"uuid_erl">>,<<"1.5.1">>},1}].
