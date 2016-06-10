@@ -103,6 +103,9 @@ base_init({From, ReqID, _}, Request) ->
 update(Key, State) when is_binary(Key) ->
     update({Key, Key}, State);
 
+update(not_found, State) ->
+    update({<<"not_found">>, not_found}, State);
+
 update(Key, State) when is_atom(Key) ->
     update({Key, Key}, State);
 
