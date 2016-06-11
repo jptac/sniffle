@@ -59,6 +59,7 @@ fold(Request, FoldFn, Acc0) ->
 -spec wait(term(), fun(), term()) ->
     ok | {ok, term()} | {error, term()}.
 wait(ReqID, FoldFn, Acc) ->
+    Timeout = application:get_env(sniffle, coverage_timeout, 10000),
     receive
         {ok, ReqID} ->
             ok;
@@ -66,7 +67,7 @@ wait(ReqID, FoldFn, Acc) ->
             wait(ReqID, FoldFn, FoldFn(Result1, Acc));
         {ok, ReqID, Result1} ->
             {ok, FoldFn(Result1, Acc)}
-    after 10000 ->
+    after Timeout ->
             {error, timeout}
     end.
 
