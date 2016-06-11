@@ -94,7 +94,7 @@ base_init({From, ReqID, _}, Request) ->
     {ok, R} = application:get_env(sniffle, r),
     %% all - full coverage; allup - partial coverage
     VNodeSelector = allup,
-    PrimaryVNodeCoverage = 1,
+    PrimaryVNodeCoverage = R,
     %% We timeout after 10s or whatever is configured
     Timeout = application:get_env(sniffle, coverage_timeout, 10000),
     State = #state{r = R, from = From, reqid = ReqID},
