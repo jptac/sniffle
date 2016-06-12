@@ -574,7 +574,11 @@ message({vm, stream, Requirements}, State) when
 ?HM(set_characteristic);
 ?HM(set_metadata);
 ?HM(set_pool);
-?HM(set_service);
+
+message({hypervisor, set_service, _VM, _V}, State) when
+      is_binary(_VM) ->
+    {reply, ok, State};
+
 
 ?HM(alias);
 ?HM(last_seen);
