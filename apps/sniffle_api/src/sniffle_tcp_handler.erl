@@ -528,7 +528,11 @@ message({vm, get, hostname, Hostname, Org}, State) when
      sniffle_hostname:get(Hostname, Org),
      State};
 
-?VM(set_service);
+
+message({vm, set_service, _VM, _V}, State) when
+      is_binary(_VM) ->
+    {reply, ok, State};
+
 ?VM(state);
 ?VM(creating);
 ?VM(set_info);
