@@ -346,7 +346,7 @@ promote_to_image(Vm, SnapID, Config) ->
         {ok, V} ->
             case jsxd:get([SnapID, <<"timestamp">>], ?S:snapshots(V)) of
                 {ok, _} ->
-                    promite_to_image_(Vm, SnapID, Config, V);
+                    promote_to_image_(Vm, SnapID, Config, V);
                 undefined ->
                     not_found
             end;
@@ -354,11 +354,22 @@ promote_to_image(Vm, SnapID, Config) ->
             E
     end.
 
-promite_to_image_(UUID, SnapID, Config, V) ->
+promote_to_image_(UUID, SnapID, Config, V) ->
     {Server, Port} = get_hypervisor(V),
     DatasetUUID = fifo_utils:uuid(dataset),
     ok = sniffle_dataset:create(DatasetUUID),
     C = ?S:config(V),
+    lager:info("config: ~p", [C]),
+    case jsxd:get([<<"disks">>], C) of
+        undefined ->
+            ok;
+        {ok, Disks} -> % for kvm dataset, image_size is required
+            [BootDisk] = lists:filter(fun(E) ->
+                proplists:get_value(<<"boot">>, E)
+            end, Disks),
+            {ok, ImageSize} = jsxd:get([<<"size">>], BootDisk),
+            sniffle_dataset:image_size(DatasetUUID, ImageSize)
+    end,
     Config1 = jsxd:from_list(Config),
     ds_set(
       [
