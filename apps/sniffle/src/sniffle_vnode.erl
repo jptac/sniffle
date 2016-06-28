@@ -34,13 +34,12 @@
           {Mod, Fun},
           Mod, Fun, Args)).
 
--define(PARTIAL_SIZE, 10).
-
 -record(state, {
           db,
           partition,
           node,
-          hashtrees
+          hashtrees,
+          partial_size = 10
          }).
 
 %%%===================================================================
@@ -76,8 +75,10 @@ init([Partition]) ->
            sniffle, Partition, ?MODULE, undefined),
     WorkerPoolSize = application:get_env(sniffle, async_workers, 5),
     FoldWorkerPool = {pool, sniffle_worker, WorkerPoolSize, []},
+    Partial = application:get_env(sniffle, partial_size, 10),
     {ok,
-     #state{db=DB, hashtrees=HT, partition=Partition, node=node()},
+     #state{db=DB, hashtrees=HT, partition=Partition, node=node(),
+            partial_size = Partial},
      [FoldWorkerPool]}.
 
 
@@ -435,16 +436,17 @@ fold(Bucket, Fun, Acc0, Sender, State=#state{db=DB}) ->
                 end,
     {async, {fold, AsyncWork, FinishFun}, Sender, State}.
 
+
+send_partial(Sender, L, State = #state{partial_size = Size})
+  when length(L) >= Size ->
+    partial(L, Sender, State),
+    [];
+send_partial(_Sender, L, _State) ->
+    L.
+
 list_keys(Bucket, Sender, State=#state{db=DB}) ->
     FoldFn = fun (K, L) ->
-                     L1 = [K|L],
-                     case length(L1) of
-                         ?PARTIAL_SIZE ->
-                             partial(L1, Sender, State),
-                             [];
-                         _ ->
-                             L1
-                     end
+                     send_partial(Sender, [K|L], State)
              end,
     AsyncWork = fun() ->
                         fold_keys(DB, Bucket, FoldFn, [])
@@ -454,7 +456,8 @@ list_keys(Bucket, Sender, State=#state{db=DB}) ->
                 end,
     {async, {fold, AsyncWork, FinishFun}, Sender, State}.
 
-list_keys(Bucket, Mod, Getter, Requirements, Sender, State) ->
+list_keys(Bucket, Mod, Getter, Requirements, Sender,
+          State) ->
     ID = mkid(),
     FoldFn = fun (Key, E, C) ->
                      E1 = load_obj(ID, Mod, E),
@@ -464,13 +467,7 @@ list_keys(Bucket, Mod, Getter, Requirements, Sender, State) ->
                               Pts ->
                                   [{Pts, Key} | C]
                           end,
-                     case length(C1) of
-                         ?PARTIAL_SIZE ->
-                             partial(C1, Sender, State),
-                             [];
-                         _ ->
-                             C1
-                     end
+                     send_partial(Sender, C1, State)
              end,
     fold(Bucket, FoldFn, [], Sender, State).
 
@@ -484,13 +481,7 @@ list(Bucket, Mod, Getter, Requirements, Sender, State) ->
                               Pts ->
                                   [{Pts, {Key, E1}} | C]
                           end,
-                     case length(C1) of
-                         ?PARTIAL_SIZE ->
-                             partial(C1, Sender, State),
-                             [];
-                         _ ->
-                             C1
-                     end
+                     send_partial(Sender, C1, State)
              end,
     fold(Bucket, FoldFn, [], Sender, State).
 

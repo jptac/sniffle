@@ -528,7 +528,11 @@ message({vm, get, hostname, Hostname, Org}, State) when
      sniffle_hostname:get(Hostname, Org),
      State};
 
-?VM(set_service);
+
+message({vm, set_service, _VM, _V}, State) when
+      is_binary(_VM) ->
+    {reply, ok, State};
+
 ?VM(state);
 ?VM(creating);
 ?VM(set_info);
@@ -570,7 +574,11 @@ message({vm, stream, Requirements}, State) when
 ?HM(set_characteristic);
 ?HM(set_metadata);
 ?HM(set_pool);
-?HM(set_service);
+
+message({hypervisor, set_service, _VM, _V}, State) when
+      is_binary(_VM) ->
+    {reply, ok, State};
+
 
 ?HM(alias);
 ?HM(last_seen);

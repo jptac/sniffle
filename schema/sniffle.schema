@@ -132,11 +132,16 @@
   {commented, 3}]}.
 
 %% @doc Timeout for completing a coverage request.
-{mapping, "sniffle, coverage_timeout", "sniffle.coverage_timeout",
+{mapping, "sniffle.coverage_timeout", "sniffle.coverage_timeout",
  [{default, "10s"},
   {commented, "10s"},
   {datatype, {duration, ms}}]}.
 
+%% @doc Number of elements in each partial
+{mapping, "sniffle.partial_size", "sniffle.partial_size",
+ [{default, 20},
+  {commented, 20},
+  {datatype, integer}]}.
 
 %% @doc This parameter defines the number of bytes of
 %% server memory to assign to leveldb.  leveldb will dynamically
