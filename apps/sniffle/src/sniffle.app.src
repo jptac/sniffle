@@ -2,7 +2,7 @@
 {application, sniffle,
  [
   {description, "Project FiFo's central management server."},
-  {vsn, "0.8.1p12"},
+  {vsn, "0.8.2"},
   {registered, []},
   {applications, [
                   kernel,
@@ -25,6 +25,7 @@
                   mnesia,
                   eplugin,
                   fifo_lager,
+                  lager,
                   lager,
                   bugsnag,
                   jsxd,

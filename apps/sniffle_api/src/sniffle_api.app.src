@@ -8,6 +8,7 @@
                   sniffle,
                   sniffle_version,
                   mdns_server_lib,
+                  lager,
                   stdlib
                  ]},
   {mod, { sniffle_api_app, []}},
