@@ -14,7 +14,7 @@
 ├─ fifo_lager─0.1.4
 │  ├─ lager_graylog─0.1.1
 │  └─ lager_logstash_backend─0.1.1
-├─ fifo_s3─0.2.2
+├─ fifo_s3─0.2.3
 │  └─ base16─1.0.0
 ├─ fifo_spec─0.1.27
 ├─ fifo_utils─0.1.22
@@ -24,7 +24,7 @@
 │  └─ ddb_client─0.1.17
 │     ├─ dproto─0.1.12
 │     └─ mmath─0.1.15
-├─ hackney─1.6.0
+├─ hackney─1.6.1
 │  ├─ certifi─0.4.0
 │  ├─ idna─1.2.0
 │  ├─ metrics─1.0.1
