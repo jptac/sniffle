@@ -19,7 +19,7 @@
  {<<"fifo_db">>,{pkg,<<"fifo_db">>,<<"0.2.2">>},0},
  {<<"fifo_dt">>,{pkg,<<"fifo_dt">>,<<"0.1.69">>},0},
  {<<"fifo_lager">>,{pkg,<<"fifo_lager">>,<<"0.1.4">>},0},
- {<<"fifo_s3">>,{pkg,<<"fifo_s3">>,<<"0.2.3">>},0},
+ {<<"fifo_s3">>,{pkg,<<"fifo_s3">>,<<"0.2.4">>},0},
  {<<"fifo_spec">>,{pkg,<<"fifo_spec">>,<<"0.1.27">>},0},
  {<<"fifo_utils">>,{pkg,<<"fifo_utils">>,<<"0.1.22">>},0},
  {<<"folsom">>,{pkg,<<"folsom">>,<<"0.8.3">>},2},
