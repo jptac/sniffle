@@ -14,7 +14,7 @@
 ├─ fifo_lager─0.1.4
 │  ├─ lager_graylog─0.1.1
 │  └─ lager_logstash_backend─0.1.1
-├─ fifo_s3─0.2.4
+├─ fifo_s3─0.2.5
 │  └─ base16─1.0.0
 ├─ fifo_spec─0.1.27
 ├─ fifo_utils─0.1.22
