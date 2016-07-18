@@ -14,7 +14,7 @@
 ├─ fifo_lager─0.1.4
 │  ├─ lager_graylog─0.1.1
 │  └─ lager_logstash_backend─0.1.1
-├─ fifo_s3─0.2.4
+├─ fifo_s3─0.2.5
 │  └─ base16─1.0.0
 ├─ fifo_spec─0.1.27
 ├─ fifo_utils─0.1.22
@@ -24,11 +24,12 @@
 │  └─ ddb_client─0.1.17
 │     ├─ dproto─0.1.12
 │     └─ mmath─0.1.15
-├─ hackney─1.4.8
-│  ├─ certifi─0.3.0
-│  ├─ idna─1.0.3
+├─ hackney─1.6.1
+│  ├─ certifi─0.4.0
+│  ├─ idna─1.2.0
+│  ├─ metrics─1.0.1
 │  ├─ mimerl─1.0.2
-│  └─ ssl_verify_hostname─1.0.5
+│  └─ ssl_verify_fun─1.1.0
 ├─ jsx─1.4.5
 ├─ jsxd─0.1.10
 ├─ libchunter─0.1.48
