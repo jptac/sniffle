@@ -92,7 +92,7 @@
   0},
  {<<"metrics">>,{pkg,<<"metrics">>,<<"1.0.1">>},1},
  {<<"mimerl">>,{pkg,<<"mimerl">>,<<"1.0.2">>},1},
- {<<"mmath">>,{pkg,<<"mmath">>,<<"0.2.0-alpha9">>},0},
+ {<<"mmath">>,{pkg,<<"mmath">>,<<"0.2.0-alpha9">>},2},
  {<<"oauth2">>,{pkg,<<"oauth2_erlang">>,<<"0.6.1">>},1},
  {<<"parse_trans">>,{pkg,<<"parse_trans">>,<<"2.9.0">>},2},
  {<<"pbkdf2">>,{pkg,<<"pbkdf2">>,<<"2.0.0">>},1},

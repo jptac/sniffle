@@ -23,7 +23,7 @@
 ├─ folsom_ddb─0.1.25
 │  ├─ ddb_client─0.1.22
 │  │  ├─ dproto─0.1.19
-│  │  └─ mmath─0.2.0-alpha8
+│  │  └─ mmath─0.2.0-alpha9
 │  ├─ dqe_idx─0.1.18
 │  ├─ dqe_idx_ddb─0.1.13
 │  │  └─ ddb_connection─0.1.3
