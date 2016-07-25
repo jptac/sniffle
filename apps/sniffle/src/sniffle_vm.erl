@@ -591,18 +591,25 @@ test_pkg(Package, OrigRam, H, Vm) ->
         E ->
             E
     end.
+
+
+%% If there was no package we got no resources.
+old_res(<<>>) ->
+    [];
+old_res(Package) ->
+    case sniffle_package:get(Package) of
+        {ok, POld} ->
+            ft_package:org_resources(POld);
+        _ ->
+            []
+    end.
+
 %% If we have no org we always allow upgrading
 check_org_res(P, _, <<>>) ->
     {ok, P};
 
 check_org_res(P, OldID, OrgID) ->
-    ResOld = case OldID of
-                 <<>> ->
-                     [];
-                 _ ->
-                     {ok, POld} = sniffle_package:get(OldID),
-                     ft_package:org_resources(POld)
-             end,
+    ResOld = old_res(OldID),
     ResNew = ft_package:org_resources(P),
     ResNew1 = orddict:from_list(ResNew),
     ResOld1 = orddict:from_list(ResOld),
