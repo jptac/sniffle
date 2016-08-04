@@ -129,7 +129,7 @@ usage() {
     echo "                    reip | wait-for-service | ringready | transfers | force-remove | down |"
     echo "                    cluster-info | member-status | ring-status | vnode-status |"
     echo "                    aae-status | diag | stat | status | transfer-limit |"
-    echo "                    downgrade-objects | services | ensemble-status | handoff | set |"
+    echo "                    downgrade-objects | services | handoff | set |"
     echo "                    show | describe }"
     echo "               metadata-update                    - updates snarl metadata to seperate public and private."
     echo "               ring                               - shows the ring."
@@ -687,19 +687,6 @@ case "$1" in
         node_up_check
 
         $NODETOOL rpc sniffle_console aae_status "$@"
-        ;;
-
-    ensemble[_-]status)
-        if [ $# -ne 1 ] && [ $# -ne 2 ]; then
-            echo "Usage: $SCRIPT $1 [<ensemble>]"
-            exit 1
-        fi
-        shift
-
-        # Make sure the local node is running
-        node_up_check
-
-        $NODETOOL rpc fifo_console ensemble_status "$@"
         ;;
 
     repair[_-]2i)
