@@ -297,10 +297,10 @@ terminate(Reason, _StateName,
 terminate(Reason, _StateName,
           #state{uuid = UUID, http_client = Client, upload = U}) ->
     libhowl:send(UUID,
-                 [{<<"event">>, <<"error">>},
-                  {<<"data">>,
-                   [{<<"message">>,
-                     list_to_binary(io_lib:format("~p", [Reason]))}]}]),
+                 #{<<"event">> => <<"error">>,
+                   <<"data">> =>
+                       #{<<"message">> =>
+                             list_to_binary(io_lib:format("~p", [Reason]))}}),
     sniffle_dataset:status(UUID, <<"failed">>),
     hackney:close(Client),
     fifo_s3_upload:abort(U),
@@ -402,5 +402,5 @@ ensure_integer(B) when is_binary(B) ->
 progress(UUID, Imported) ->
     sniffle_dataset:imported(UUID, Imported),
     libhowl:send(UUID,
-                 [{<<"event">>, <<"progress">>},
-                  {<<"data">>, [{<<"imported">>, Imported}]}]).
+                 #{<<"event">> => <<"progress">>,
+                   <<"data">> => #{<<"imported">> => Imported}}).

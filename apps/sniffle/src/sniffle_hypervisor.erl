@@ -82,52 +82,54 @@ unregister(Hypervisor) ->
 
 -spec status() -> {error, timeout} |
                   {ok, {Resources::fifo:object(),
-                        Warnings::fifo:object()}}.
+                        Warnings::[fifo:object()]}}.
 status() ->
     %% TODO: We need to remove the storage part here!
     {ok, {Warnings, Resources}} = sniffle_watchdog:status(),
-    Resources1 = [{<<"storage">>, <<"s3">>} | Resources],
+    Resources1 = Resources#{<<"storage">> => <<"s3">>},
     Warnings1 = [to_msg(W) || W <- Warnings],
-    {ok,  {lists:sort(Resources1), lists:sort(Warnings1)}}.
+    {ok,  {Resources1, lists:sort(Warnings1)}}.
 
 to_msg({handoff, Node}) ->
-    [
-     {<<"category">>, <<"sniffle">>},
-     {<<"element">>, <<"handoff">>},
-     {<<"message">>, bin_fmt("Handoff pending on node ~s.", [Node])},
-     {<<"type">>, <<"info">>}
-    ];
+    #{
+       <<"category">> => <<"sniffle">>,
+       <<"element">> => <<"handoff">>,
+       <<"message">> => bin_fmt("Handoff pending on node ~s.", [Node]),
+       <<"type">> => <<"info">>
+     };
 
 to_msg({stopped, Node}) ->
-    [
-     {<<"category">>, <<"sniffle">>},
-     {<<"element">>, <<"handoff">>},
-     {<<"message">>, bin_fmt("Node ~s stopped.", [Node])},
-     {<<"type">>, <<"warning">>}
-    ];
+    #{
+       <<"category">> => <<"sniffle">>,
+       <<"element">> => <<"handoff">>,
+       <<"message">> => bin_fmt("Node ~s stopped.", [Node]),
+       <<"type">> => <<"warning">>
+     };
 
 to_msg({down, Node}) ->
-    [{<<"category">>, <<"sniffle">>},
-     {<<"element">>, <<"handoff">>},
-     {<<"type">>, <<"error">>},
-     {<<"message">>, bin_fmt("Node ~s DOWN.", [Node])}];
+    #{
+       <<"category">> => <<"sniffle">>,
+       <<"element">> => <<"handoff">>,
+       <<"type">> => <<"error">>,
+       <<"message">> => bin_fmt("Node ~s DOWN.", [Node])
+        };
 
 to_msg({chunter_down, UUID, Alias}) ->
-    [
-     {<<"category">>, <<"chunter">>},
-     {<<"element">>, UUID},
-     {<<"message">>, bin_fmt("Chunter node ~s(~s) down.", [Alias, UUID])},
-     {<<"type">>, <<"critical">>}
-    ];
+    #{
+     <<"category">> => <<"chunter">>,
+     <<"element">> => UUID,
+     <<"message">> => bin_fmt("Chunter node ~s(~s) down.", [Alias, UUID]),
+     <<"type">> => <<"critical">>
+    };
 
 to_msg({pool_error, UUID, Alias, Name, State}) ->
-    [
-     {<<"category">>, <<"chunter">>},
-     {<<"element">>, UUID},
-     {<<"message">>, bin_fmt("Zpool ~s on node ~s(~s) in state ~s.",
-                             [Name, Alias, UUID, State])},
-     {<<"type">>, <<"critical">>}
-    ].
+    #{
+     <<"category">> => <<"chunter">>,
+     <<"element">> => UUID,
+     <<"message">> => bin_fmt("Zpool ~s on node ~s(~s) in state ~s.",
+                              [Name, Alias, UUID, State]),
+     <<"type">> => <<"critical">>
+    }.
 
 service(UUID, Action, Service) ->
     case sniffle_hypervisor:get(UUID) of

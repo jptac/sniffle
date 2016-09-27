@@ -34,7 +34,7 @@
   0},
  {<<"fifo_dt">>,
   {git,"https://github.com/project-fifo/fifo_dt.git",
-       {ref,"ef30535d50c4366c3bfe94ce32df44f7f376ae53"}},
+       {ref,"d93ddb4260759de8fa97ed5c7b2cc79ce24bbf03"}},
   0},
  {<<"fifo_lager">>,
   {git,"https://github.com/project-fifo/fifo_lager.git",
@@ -46,11 +46,11 @@
   0},
  {<<"fifo_spec">>,
   {git,"https://github.com/project-fifo/fifo_spec.git",
-       {ref,"a1959fd70c419c2f6e59fa22e20501abeba3e392"}},
+       {ref,"8997433baf159e3431ea721599ef667129e9c646"}},
   0},
  {<<"fifo_utils">>,
   {git,"https://github.com/project-fifo/fifo_utils.git",
-       {ref,"41555f295e276b8ae6de7bb47d81cb21350bc91d"}},
+       {ref,"60071a5b3e3907ddc6df37667095275c1a9cfde1"}},
   0},
  {<<"folsom">>,{pkg,<<"folsom">>,<<"0.8.3">>},1},
  {<<"folsom_ddb">>,{pkg,<<"folsom_ddb">>,<<"0.1.30">>},0},
@@ -122,4 +122,4 @@
  {<<"snappy">>,{pkg,<<"snappy">>,<<"1.1.1">>},2},
  {<<"ssl_verify_fun">>,{pkg,<<"ssl_verify_fun">>,<<"1.1.0">>},1},
  {<<"trie">>,{pkg,<<"trie">>,<<"1.5.3">>},0},
- {<<"uuid">>,{pkg,<<"uuid_erl">>,<<"1.5.1">>},1}].
+ {<<"uuid">>,{pkg,<<"uuid_erl">>,<<"1.5.3">>},1}].

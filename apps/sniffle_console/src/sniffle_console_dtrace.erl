@@ -89,5 +89,6 @@ to_tbl(N) ->
      {"Name", ft_dtrace:name(N)}].
 
 print_vars(D) ->
-    Tbl =[[{"Variable", N}, {"Default", Def}] || {N, Def} <- ?T:config(D)],
+    Tbl =[[{"Variable", N}, {"Default", Def}] ||
+             {N, Def} <- maps:to_list(?T:config(D))],
     clique_status:table(Tbl).
