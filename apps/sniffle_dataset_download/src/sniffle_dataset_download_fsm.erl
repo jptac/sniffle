@@ -355,7 +355,7 @@ import_manifest(UUID, D1) ->
     end,
     case jsxd:get(<<"min_platform">>, RS) of
         {ok, Min} ->
-            Min1 = [V || {_, V} <- Min],
+            Min1 = maps:values(Min),
             [M | _] = lists:sort(Min1),
             R = {must, '>=', <<"sysinfo.Live Image">>, M},
             sniffle_dataset:add_requirement(UUID, R);
