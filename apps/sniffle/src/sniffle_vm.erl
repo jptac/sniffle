@@ -1318,14 +1318,12 @@ do_delete_backup(UUID, VM, BID) ->
         {ok, Files} ->
             Fs = case jsxd:get([BID, <<"xml">>], false, Backups) of
                      true ->
-                         [<<UUID/binary, "/", BID/binary, ".xml">> | Files];
+                         [<<UUID/binary, "/", BID/binary, ".xml">>
+                              | maps:keys(Files)];
                      _ ->
-                         Files
+                         maps:keys(Files)
                  end,
-            %% We do this for old and new backup formates here
-            %%[sniffle_s3:delete(snapshot, F) || F <- Fs, is_binary(F)],
-            [sniffle_s3:delete(snapshot, F) || F <- maps:keys(Fs),
-                                               is_binary(F)];
+            [sniffle_s3:delete(snapshot, F) || F <- Fs, is_binary(F)];
         _ ->
             ok
     end,
