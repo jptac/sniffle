@@ -741,7 +741,7 @@ create(Package, Dataset, Config) ->
                                   lists:sort(
                                     [#{<<"interface">> => Iface,
                                        <<"network">> => Net} ||
-                                        {Iface, Net} <- N])
+                                        {Iface, Net} <- maps:to_list(N)])
                           end, [], Config1),
     set_config(UUID, Config2),
     state(UUID, <<"pooled">>),
