@@ -594,7 +594,7 @@ get_networks(_Event, State = #state{type = restore}) ->
 
 get_networks(_Event, State = #state{config = Config}) ->
     lager:debug("[create] get_networks"),
-    Nets = jsxd:get([<<"networks">>], [], Config),
+    Nets = maps:to_list(jsxd:get([<<"networks">>], #{}, Config)),
     Nets1 = lists:map(fun({Name, Network}) ->
                               {ok, N} = sniffle_network:get(Network),
                               Rs = ft_network:ipranges(N),
