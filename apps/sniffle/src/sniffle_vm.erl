@@ -2,6 +2,7 @@
 -define(CMD, sniffle_vm_cmd).
 -define(BUCKET, <<"vm">>).
 -define(S, ft_vm).
+-define(EMPTY, <<"00000000-0000-0000-0000-000000000000">>).
 -include("sniffle.hrl").
 
 -define(FM(Met, Mod, Fun, Args),
@@ -1231,7 +1232,38 @@ remove_fw_rule(UUID, V) ->
 ?SET(add_grouping).
 ?SET(set_metadata).
 ?SET(set_info).
-?SET(set_config).
+set_config(UUID, Config) ->
+    case jsxd:get([<<"dataset">>], Config) of
+        {ok, D} when D =/= ?EMPTY ->
+            dataset(UUID, D);
+        _ ->
+            ok
+    end,
+    case jsxd:get([<<"alias">>], Config) of
+        {ok, A} when A =/= ?EMPTY ->
+            alias(UUID, A);
+        _ ->
+            ok
+    end,
+    case jsxd:get([<<"owner">>], Config) of
+        {ok, O} when O =/= ?EMPTY ->
+            owner(UUID, O);
+        _ ->
+            ok
+    end,
+    case jsxd:get([<<"creator">>], Config) of
+        {ok, C} when C =/= ?EMPTY ->
+            created_by(UUID, C);
+        _ ->
+            ok
+    end,
+    case jsxd:get([<<"package">>], Config) of
+        {ok, P} when P =/= ?EMPTY ->
+            package(UUID, P);
+        _ ->
+            ok
+    end,
+    do_write(UUID, set_config, [Config]).
 ?SET(set_backup).
 ?SET(set_snapshot).
 ?SET(set_service).
