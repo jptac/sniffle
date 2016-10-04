@@ -178,14 +178,14 @@ message({grouping, grouping, remove, ID, Grouping}, State) when
 
 message({grouping, metadata, set, ID, Attributes}, State) when
       is_binary(ID),
-      is_list(Attributes) ->
+      (is_list(Attributes) orelse is_map(Attributes)) ->
     {reply,
      sniffle_grouping:set_metadata(ID, Attributes),
      State};
 
 message({grouping, config, set, ID, Attributes}, State) when
       is_binary(ID),
-      is_list(Attributes) ->
+      (is_list(Attributes) orelse is_map(Attributes)) ->
     {reply,
      sniffle_grouping:set_config(ID, Attributes),
      State};
@@ -427,14 +427,14 @@ message({vm, snapshot, promote, Vm, UUID, Config}, State) when
 
 message({vm, create, Package, Dataset, Config}, State) when
       is_binary(Package),
-      is_list(Config) ->
+      (is_list(Config) orelse is_map(Config)) ->
     {reply,
      sniffle_vm:create(Package, Dataset, Config),
      State};
 
 message({vm, dry_run, Package, Dataset, Config}, State) when
       is_binary(Package),
-      is_list(Config),
+      (is_list(Config) orelse is_map(Config)),
       is_binary(Dataset) ->
     {reply,
      sniffle_vm:dry_run(Package, Dataset, Config),
@@ -442,7 +442,7 @@ message({vm, dry_run, Package, Dataset, Config}, State) when
 
 message({vm, update, User, Vm, Package, Config}, State) when
       is_binary(Vm),
-      is_list(Config) ->
+      (is_list(Config) orelse is_map(Config)) ->
     {reply,
      sniffle_vm:update(User, Vm, Package, Config),
      State};
@@ -946,7 +946,7 @@ message({cloud, status}, State) ->
      State};
 
 message(Message, State) ->
-    io:format("Unsuppored TCP message: ~p", [Message]),
+    lager:warning("Unsuppored TCP message: ~p", [Message]),
     {noreply, State}.
 
 %%%===================================================================

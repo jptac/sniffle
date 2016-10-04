@@ -86,7 +86,7 @@ init([]) ->
 handle_call(status, _From,
             State = #state{alerts = Alerts}) ->
     Reply = sets:to_list(Alerts),
-    {reply, {ok, {Reply, []}}, State};
+    {reply, {ok, {Reply, #{}}}, State};
 
 handle_call(_Request, _From, State) ->
     Reply = ok,

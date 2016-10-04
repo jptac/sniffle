@@ -343,8 +343,8 @@ get_package(_Event, State = #state{
 
 check_org_resources(_Event, State = #state{owner = <<>>, package = P}) ->
     lager:debug("[create] Checking resources (no owner)"),
-    case ft_package:org_resources(P) of
-        [] ->
+    case maps:size(ft_package:org_resources(P)) of
+        0 ->
             lager:debug("[create] No resources required by package"),
             next(),
             {next_state, claim_org_resources, State};
@@ -358,13 +358,13 @@ check_org_resources(_Event, State = #state{owner = OrgID, package = P}) ->
     Res  = ft_package:org_resources(P),
     lager:debug("[create] Checking resources: ~p", [Res]),
     {ok, Org} = ls_org:get(OrgID),
-    Ok = lists:foldl(fun({R, V}, true) ->
-                             case ft_org:resource(Org, R) of
-                                 {ok, V1} when V1 >= V -> true;
-                                 _ -> {R, V}
-                             end;
-                        (_, R) -> R
-                     end, true, Res),
+    Ok = maps:fold(fun(R, V, true) ->
+                           case ft_org:resource(Org, R) of
+                               {ok, V1} when V1 >= V -> true;
+                               _ -> {R, V}
+                           end;
+                      (_, _, R) -> R
+                   end, true, Res),
     case Ok of
         true ->
             next(),
@@ -400,7 +400,7 @@ claim_org_resources(_Event, State = #state{uuid = UUID,
                                            package_uuid = PackageUUID}) ->
     lager:debug("[create] claim resources"),
     Res = ft_package:org_resources(P),
-    [ls_org:resource_dec(OrgID, R, V)  || {R, V} <- Res],
+    [ls_org:resource_dec(OrgID, R, V)  || {R, V} <- maps:to_list(Res)],
     sniffle_vm:package(UUID, PackageUUID),
     next(),
     {next_state, create_permissions, State}.
@@ -442,8 +442,8 @@ create_permissions(_Event, State = #state{
             sniffle_vm:owner(UUID, Owner),
             ls_org:execute_trigger(Owner, vm_create, UUID)
     end,
-    libhowl:send(UUID, [{<<"event">>, <<"update">>},
-                        {<<"data">>, [{<<"owner">>, Owner}]}]),
+    libhowl:send(UUID, #{<<"event">> => <<"update">>,
+                         <<"data">> => #{<<"owner">> => Owner}}),
     next(),
     {next_state, write_accounting, State}.
 
@@ -524,7 +524,8 @@ finish_rules(_Event, State = #state{
                      Rules1;
                  VM ->
                      Mappings = ft_vm:iprange_map(VM),
-                     Networks = [sniffle_iprange:get(N) || {_, N} <- Mappings],
+                     Networks = [sniffle_iprange:get(N)
+                                 || N <- maps:values(Mappings)],
                      Networks1 = [ft_iprange:tag(N) || {ok, N} <- Networks],
                      Networks2 = ordsets:from_list(Networks1),
                      [{must, 'subset', <<"networks">>, Networks2}
@@ -593,7 +594,7 @@ get_networks(_Event, State = #state{type = restore}) ->
 
 get_networks(_Event, State = #state{config = Config}) ->
     lager:debug("[create] get_networks"),
-    Nets = jsxd:get([<<"networks">>], [], Config),
+    Nets = maps:to_list(jsxd:get([<<"networks">>], #{}, Config)),
     Nets1 = lists:map(fun({Name, Network}) ->
                               {ok, N} = sniffle_network:get(Network),
                               Rs = ft_network:ipranges(N),
