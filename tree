@@ -9,7 +9,7 @@
 ├─ fifo_db─0.2.3
 │  ├─ eleveldb─2.2.19
 │  └─ erocksdb─0.4.1
-├─ fifo_dt─0.2.2
+├─ fifo_dt─0.2.3
 │  ├─ libsnarlmatch─0.1.7
 │  └─ riak_dt─2.1.1
 ├─ fifo_lager─0.1.4
@@ -17,8 +17,8 @@
 │  └─ lager_logstash_backend─0.1.1
 ├─ fifo_s3─0.2.6
 │  └─ base16─1.0.0
-├─ fifo_spec─0.1.28
-├─ fifo_utils─0.1.23
+├─ fifo_spec─0.1.29
+├─ fifo_utils─0.1.24
 │  └─ uuid─1.5.3
 │     └─ quickrand─1.5.3
 ├─ folsom_ddb─0.1.30
@@ -43,12 +43,12 @@
 ├─ jsx─1.4.5
 ├─ jsxd─0.2.3
 ├─ libchunter─0.1.48
-├─ libhowl─0.1.36
-│  └─ mdns_client_lib─0.1.39
-│     ├─ mdns_client─0.1.7
+├─ libhowl─0.1.37
+│  └─ mdns_client_lib─0.1.41
+│     ├─ mdns_client─0.1.8
 │     └─ pooler─1.5.0
 ├─ libleofs─0.1.2
-├─ libsnarl─0.3.46
+├─ libsnarl─0.3.47
 │  └─ oauth2─0.6.1
 ├─ mdns_server_lib─0.2.3
 │  ├─ mdns_server─0.2.0
