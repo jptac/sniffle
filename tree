@@ -9,7 +9,7 @@
 ├─ fifo_db─0.2.3
 │  ├─ eleveldb─2.2.19
 │  └─ erocksdb─0.4.1
-├─ fifo_dt─0.2.1
+├─ fifo_dt─0.2.3
 │  ├─ libsnarlmatch─0.1.7
 │  └─ riak_dt─2.1.1
 ├─ fifo_lager─0.1.4
@@ -18,7 +18,7 @@
 ├─ fifo_s3─0.2.6
 │  └─ base16─1.0.0
 ├─ fifo_spec─0.1.28
-├─ fifo_utils─0.1.23
+├─ fifo_utils─0.1.24
 │  └─ uuid─1.5.3
 │     └─ quickrand─1.5.3
 ├─ folsom_ddb─0.1.30
