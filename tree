@@ -3,13 +3,13 @@
 │  └─ lager─3.2.1
 ├─ eper─0.94.0
 ├─ eplugin─0.1.4
-├─ erlcloud─0.13.6
-│  ├─ eini─1.2.1
+├─ erlcloud─0.13.10
+│  ├─ eini─1.2.4
 │  └─ lhttpc─1.4.0
 ├─ fifo_db─0.2.3
 │  ├─ eleveldb─2.2.19
 │  └─ erocksdb─0.4.1
-├─ fifo_dt─0.2.3
+├─ fifo_dt─0.2.4
 │  ├─ libsnarlmatch─0.1.7
 │  └─ riak_dt─2.1.1
 ├─ fifo_lager─0.1.4
@@ -18,9 +18,9 @@
 ├─ fifo_s3─0.2.6
 │  └─ base16─1.0.0
 ├─ fifo_spec─0.1.28
-├─ fifo_utils─0.1.24
+├─ fifo_utils─0.1.25
 │  └─ uuid─1.5.3
-│     └─ quickrand─1.5.3
+│     └─ quickrand─1.5.4
 ├─ folsom_ddb─0.1.30
 │  ├─ ddb_client─0.1.30
 │  │  ├─ dproto─0.1.25
@@ -86,4 +86,4 @@
 ├─ sniffle_version─0.1.0
 ├─ sniffle_watchdog─0.1.0
 ├─ sniffle_write─0.1.0
-└─ trie─1.5.3
+└─ trie─1.5.4
