@@ -17,9 +17,9 @@
 │  └─ lager_logstash_backend─0.1.1
 ├─ fifo_s3─0.2.6
 │  └─ base16─1.0.0
-├─ fifo_spec─0.1.28
-├─ fifo_utils─0.1.25
-│  └─ uuid─1.5.3
+├─ fifo_spec─0.1.30
+├─ fifo_utils─0.1.26
+│  └─ uuid─1.5.4
 │     └─ quickrand─1.5.4
 ├─ folsom_ddb─0.1.30
 │  ├─ ddb_client─0.1.30
@@ -48,7 +48,7 @@
 │     ├─ mdns_client─0.1.8
 │     └─ pooler─1.5.0
 ├─ libleofs─0.1.2
-├─ libsnarl─0.3.47
+├─ libsnarl─0.3.48
 │  └─ oauth2─0.6.1
 ├─ mdns_server_lib─0.2.3
 │  ├─ mdns_server─0.2.0
