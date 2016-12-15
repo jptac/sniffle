@@ -204,6 +204,12 @@ init([create, UUID, Package, Dataset, Config, Pid]) ->
                 [UUID, Package, Dataset, Config, Pid]),
     sniffle_vm:state(UUID, <<"placing">>),
     sniffle_vm:creating(UUID, {creating, erlang:system_time(seconds)}),
+    case jsxd:get([<<"metadata">>], Config) of
+        {ok, M} ->
+            sniffle_vm:set_metadata(UUID, M);
+        _ ->
+            ok
+    end,
     random:seed(erlang:phash2([node()]),
                 erlang:monotonic_time(),
                 erlang:unique_integer()),
