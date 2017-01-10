@@ -817,7 +817,6 @@ delete(User, Vm) ->
                 {_, _, true, _} ->
                     finish_delete(User, Vm, V);
                 {_, _, _, <<"storing">>} ->
-                    vm_event(Vm, <<"vm-stored">>),
                     state(Vm, <<"stored">>),
                     hypervisor(Vm, <<>>);
                 {_, undefined, _, <<"stored">>} ->
@@ -856,15 +855,7 @@ finish_delete(User, Vm, V) ->
     sniffle_vm:unregister(Vm),
     resource_action(V, destroy, User, []),
     libhowl:send(Vm, #{<<"event">> => <<"delete">>}),
-    free_res(V),
-    vm_event(Vm, <<"vm-delete">>).
-
-vm_event(UUID, Event) ->
-    libhowl:send(<<"command">>, #{
-                     <<"event">> => Event,
-                     <<"uuid">> => fifo_utils:uuid(),
-                     <<"data">> => #{
-                         <<"uuid">> => UUID}}).
+    free_res(V).
 
 free_res(V) ->
     free_package_res(ft_vm:package(V), ft_vm:owner(V)).
