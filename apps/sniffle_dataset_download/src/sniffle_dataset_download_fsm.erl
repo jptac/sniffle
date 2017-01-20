@@ -297,10 +297,10 @@ terminate(Reason, _StateName,
 terminate(Reason, _StateName,
           #state{uuid = UUID, http_client = Client, upload = U}) ->
     libhowl:send(UUID,
-                 [{<<"event">>, <<"error">>},
-                  {<<"data">>,
-                   [{<<"message">>,
-                     list_to_binary(io_lib:format("~p", [Reason]))}]}]),
+                 #{<<"event">> => <<"error">>,
+                   <<"data">> =>
+                       #{<<"message">> =>
+                             list_to_binary(io_lib:format("~p", [Reason]))}}),
     sniffle_dataset:status(UUID, <<"failed">>),
     hackney:close(Client),
     fifo_s3_upload:abort(U),
@@ -342,9 +342,9 @@ import_manifest(UUID, D1) ->
         jsxd:get(<<"image_size">>,
                  jsxd:get([<<"files">>, 0, <<"size">>], 0, D1), D1))),
     RS = jsxd:get(<<"requirements">>, [], D1),
-    Networks = jsxd:get(<<"networks">>, [], RS),
+    Networks = jsxd:get(<<"networks">>, #{}, RS),
     [sniffle_dataset:add_network(UUID, {NName, NDesc}) ||
-        [{<<"description">>, NDesc}, {<<"name">>, NName}] <- Networks],
+        #{<<"description">> := NDesc, <<"name">> := NName} <- Networks],
     case jsxd:get(<<"homepage">>, D1) of
         {ok, HomePage} ->
             sniffle_dataset:set_metadata(
@@ -355,7 +355,7 @@ import_manifest(UUID, D1) ->
     end,
     case jsxd:get(<<"min_platform">>, RS) of
         {ok, Min} ->
-            Min1 = [V || {_, V} <- Min],
+            Min1 = maps:values(Min),
             [M | _] = lists:sort(Min1),
             R = {must, '>=', <<"sysinfo.Live Image">>, M},
             sniffle_dataset:add_requirement(UUID, R);
@@ -402,5 +402,5 @@ ensure_integer(B) when is_binary(B) ->
 progress(UUID, Imported) ->
     sniffle_dataset:imported(UUID, Imported),
     libhowl:send(UUID,
-                 [{<<"event">>, <<"progress">>},
-                  {<<"data">>, [{<<"imported">>, Imported}]}]).
+                 #{<<"event">> => <<"progress">>,
+                   <<"data">> => #{<<"imported">> => Imported}}).

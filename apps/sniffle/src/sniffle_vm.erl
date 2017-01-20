@@ -2,6 +2,7 @@
 -define(CMD, sniffle_vm_cmd).
 -define(BUCKET, <<"vm">>).
 -define(S, ft_vm).
+-define(EMPTY, <<"00000000-0000-0000-0000-000000000000">>).
 -include("sniffle.hrl").
 
 -define(FM(Met, Mod, Fun, Args),
@@ -124,11 +125,12 @@ store(User, Vm) ->
                     {error, no_dataset};
                 {_, true} ->
                     state(Vm, <<"storing">>),
+                    BIDs = maps:keys(Bs),
                     [set_backup(Vm, [{[B, <<"local">>], false}])
-                     || {B, _} <- Bs],
+                     || B <- BIDs],
                     [set_backup(Vm, [{[B, <<"local_size">>], 0}])
-                     || {B, _} <- Bs],
-                    S1 = [{UUID, delete} || {UUID, _ } <- ?S:snapshots(V)],
+                     || B <- BIDs],
+                    S1 = [{UUID, delete} || UUID <- maps:keys(?S:snapshots(V))],
                     set_snapshot(Vm, S1),
                     hypervisor(Vm, <<>>),
                     {Host, Port} = get_hypervisor(V),
@@ -142,14 +144,21 @@ store(User, Vm) ->
             not_found
     end.
 
-has_xml([]) ->
+-spec has_xml(maps:map()) ->
+                     boolean().
+has_xml(M) ->
+    has_xml_(maps:values(M)).
+
+-spec has_xml_([maps:map()]) ->
+                      boolean().
+has_xml_([]) ->
     false;
-has_xml([{_, B} | Bs]) ->
+has_xml_([B | Bs]) ->
     case jsxd:get(<<"xml">>, false, B) of
         true ->
             true;
         false ->
-            has_xml(Bs)
+            has_xml_(Bs)
     end.
 
 restore(User, Vm, BID, Requeirements) ->
@@ -206,7 +215,7 @@ delete_backup(VM, BID) ->
             Backups = ?S:backups(V),
             case jsxd:get([BID], Backups) of
                 {ok, _} ->
-                    Children = children(Backups, BID, true),
+                    Children = children(maps:to_list(Backups), BID, true),
                     [do_delete_backup(VM, V, C) || C <- Children],
                     do_delete_backup(VM, V, BID);
                 _ ->
@@ -365,8 +374,8 @@ promote_to_image_(UUID, SnapID, Config, V) ->
             ok;
         {ok, Disks} -> % for kvm dataset, image_size is required
             [BootDisk] = lists:filter(fun(E) ->
-                proplists:get_value(<<"boot">>, E)
-            end, Disks),
+                                              proplists:get_value(<<"boot">>, E)
+                                      end, Disks),
             {ok, ImageSize} = jsxd:get([<<"size">>], BootDisk),
             sniffle_dataset:image_size(DatasetUUID, ImageSize)
     end,
@@ -458,16 +467,17 @@ add_nic_(Vm, V, Network) ->
             IPb = ft_iprange:to_bin(IP),
             Netb = ft_iprange:to_bin(Net),
             GWb = ft_iprange:to_bin(Gw),
-            NicSpec0 =
-                jsxd:from_list([{<<"ip">>, IPb},
-                                {<<"gateway">>, GWb},
-                                {<<"network_uuid">>, IPRange},
-                                {<<"netmask">>, Netb},
-                                {<<"nic_tag">>, Tag }]),
+            NicSpec0 = #{
+              <<"ip">> => IPb,
+              <<"gateway">> => GWb,
+              <<"network_uuid">> => IPRange,
+              <<"netmask">> => Netb,
+              <<"nic_tag">> => Tag
+             },
             NicSpec1 = set_primary(jsxd:get([<<"networks">>], ?S:config(V)),
                                    NicSpec0),
             NicSpec2 = add_vlan(VLan, NicSpec1),
-            UR = [{<<"add_nics">>, [NicSpec2]}],
+            UR = #{<<"add_nics">> => [NicSpec2]},
             ok = libchunter:update_machine(Server, Port, Vm, undefined, UR),
             add_network_map(Vm, IP, Network),
             add_iprange_map(Vm, IP, IPRange);
@@ -495,7 +505,7 @@ remove_nic(Vm, Mac) ->
             case {?S:state(V), jsxd:get(Mac, NicMap)} of
                 {<<"stopped">>, {ok, Idx}}  ->
                     {Server, Port} = get_hypervisor(V),
-                    UR = [{<<"remove_nics">>, [Mac]}],
+                    UR = #{<<"remove_nics">> => [Mac]},
                     {ok, IpStr} = jsxd:get([<<"networks">>, Idx, <<"ip">>],
                                            ?S:config(V)),
                     IP = ft_iprange:parse_bin(IpStr),
@@ -505,8 +515,7 @@ remove_nic(Vm, Mac) ->
                     remove_network_map(Vm, IP),
                     remove_hostname_map(Vm, IP, V),
                     remove_iprange_map(Vm, IP),
-                    [{IP, IPRange}] = [ {IP1, IPRange} ||
-                                          {IP1, IPRange} <- Ms, IP1 =:= IP],
+                    IPRange = maps:get(IP, Ms),
                     sniffle_iprange:release_ip(IPRange, IP);
                 {<<"stopped">>, _} ->
                     {error, not_stopped};
@@ -525,8 +534,9 @@ primary_nic(Vm, Mac) ->
                 {<<"stopped">>, {ok, _Idx}}  ->
                     {Server, Port} = get_hypervisor(V),
                     libchunter:ping(Server, Port),
-                    UR = [{<<"update_nics">>, [[{<<"mac">>, Mac},
-                                                {<<"primary">>, true}]]}],
+                    UR = #{
+                      <<"update_nics">> => [#{<<"mac">> => Mac,
+                                              <<"primary">> => true}]},
                     libchunter:update_machine(Server, Port, Vm,
                                               undefined, UR);
                 {_, {ok, _}} ->
@@ -595,14 +605,25 @@ test_pkg(Package, OrigRam, H, Vm) ->
 
 %% If there was no package we got no resources.
 old_res(<<>>) ->
-    [];
+    #{};
 old_res(Package) ->
     case sniffle_package:get(Package) of
         {ok, POld} ->
             ft_package:org_resources(POld);
         _ ->
-            []
+            #{}
     end.
+
+-spec res_fold_fn(binary(), number(), maps:map()) ->
+                         maps:map().
+res_fold_fn(K, VOld, AccNew) ->
+    VNew = case maps:find(K, AccNew) of
+               error ->
+                   0;
+               {ok, VNewX} ->
+                   VNewX
+           end,
+    maps:put(K, VNew - VOld, AccNew).
 
 %% If we have no org we always allow upgrading
 check_org_res(P, _, <<>>) ->
@@ -611,22 +632,11 @@ check_org_res(P, _, <<>>) ->
 check_org_res(P, OldID, OrgID) ->
     ResOld = old_res(OldID),
     ResNew = ft_package:org_resources(P),
-    ResNew1 = orddict:from_list(ResNew),
-    ResOld1 = orddict:from_list(ResOld),
-    Res = orddict:fold(
-            fun(K, VOld, AccNew) ->
-                    VNew = case orddict:find(K, AccNew) of
-                               error ->
-                                   0;
-                               {ok, VNewX} ->
-                                   VNewX
-                           end,
-                    orddict:store(K, VNew - VOld, AccNew)
-            end, ResNew1, ResOld1),
+    Res = maps:fold(fun res_fold_fn/3 , ResNew, ResOld),
     {ok, Org} = ls_org:get(OrgID),
     case check_resources(Org, Res) of
         ok ->
-            [ls_org:resource_dec(OrgID, R, V)  || {R, V} <- Res],
+            [ls_org:resource_dec(OrgID, R, V)  || {R, V} <- maps:to_list(Res)],
             {ok, P};
         {R, V} ->
             lager:warning("Could not resize VM since the Org missed the "
@@ -634,14 +644,21 @@ check_org_res(P, OldID, OrgID) ->
             {error, org_resource_missing}
     end.
 
-check_resources(_Org, []) ->
+-spec check_resources(maps:map(), #{binary() => number()}) ->
+                             ok | {binary(), number()}.
+check_resources(Org, Res) when is_map(Res) ->
+    check_resources_(Org, maps:to_list(Res)).
+
+-spec check_resources_(maps:map(), [{binary(), number()}]) ->
+                              ok | {binary(), number()}.
+check_resources_(_Org, []) ->
     ok;
-check_resources(Org, [{_R, V} | Rest]) when V =< 0 ->
-    check_resources(Org, Rest);
-check_resources(Org, [{R, V} | Rest]) ->
+check_resources_(Org, [{_R, V} | Rest]) when V =< 0 ->
+    check_resources_(Org, Rest);
+check_resources_(Org, [{R, V} | Rest]) ->
     case ft_org:resource(Org, R) of
         {ok, V1} when V1 >= V ->
-            check_resources(Org, Rest);
+            check_resources_(Org, Rest);
         _ ->
             {R, V}
     end.
@@ -669,9 +686,9 @@ unregister(Vm) ->
     case sniffle_vm:get(Vm) of
         {ok, V} ->
             do_write(Vm, unregister),
-            lists:map(fun({Ip, Net}) ->
+            maps:fold(fun(Ip, Net, _) ->
                               sniffle_iprange:release_ip(Net, Ip)
-                      end, ?S:iprange_map(V)),
+                      end, ok, ?S:iprange_map(V)),
             VmPrefix = [<<"vms">>, Vm],
             ChannelPrefix = [<<"channels">>, Vm],
             Users = r_to_list(ls_user:list()),
@@ -722,11 +739,10 @@ create(Package, Dataset, Config) ->
     %% however use Config1
     Config2 = jsxd:update(<<"networks">>,
                           fun (N) ->
-                                  jsxd:from_list(
-                                    lists:map(fun ({Iface, Net}) ->
-                                                      [{<<"interface">>, Iface},
-                                                       {<<"network">>, Net}]
-                                              end, N))
+                                  lists:sort(
+                                    [#{<<"interface">> => Iface,
+                                       <<"network">> => Net} ||
+                                        {Iface, Net} <- maps:to_list(N)])
                           end, [], Config1),
     set_config(UUID, Config2),
     state(UUID, <<"pooled">>),
@@ -743,10 +759,11 @@ create(Package, Dataset, Config) ->
             vm_type(UUID, zone),
             dataset(UUID, Dataset)
     end,
-    libhowl:send(UUID, [{<<"event">>, <<"update">>},
-                        {<<"data">>,
-                         [{<<"config">>, Config1},
-                          {<<"package">>, Package}]}]),
+    libhowl:send(UUID, #{
+                   <<"event">> => <<"update">>,
+                   <<"data">> => #{
+                       <<"config">> => Config1,
+                       <<"package">> => Package}}),
     %% TODO: is this the right place?
     {ok, Creator} = jsxd:get([<<"owner">>], Config1),
     created_by(UUID, Creator),
@@ -800,7 +817,6 @@ delete(User, Vm) ->
                 {_, _, true, _} ->
                     finish_delete(User, Vm, V);
                 {_, _, _, <<"storing">>} ->
-                    vm_event(Vm, <<"vm-stored">>),
                     state(Vm, <<"stored">>),
                     hypervisor(Vm, <<>>);
                 {_, undefined, _, <<"stored">>} ->
@@ -828,7 +844,7 @@ delete(User, Vm) ->
     end.
 
 finish_delete(User, Vm, V) ->
-    [do_delete_backup(Vm, V, BID) || {BID, _} <- ?S:backups(V)],
+    [do_delete_backup(Vm, V, BID) || BID <- maps:keys(?S:backups(V))],
     Docker = ft_vm:docker(V),
     case jsxd:get([<<"id">>], Docker) of
         {ok, DockerID} ->
@@ -838,29 +854,23 @@ finish_delete(User, Vm, V) ->
     end,
     sniffle_vm:unregister(Vm),
     resource_action(V, destroy, User, []),
-    libhowl:send(Vm, [{<<"event">>, <<"delete">>}]),
-    free_res(V),
-    vm_event(Vm, <<"vm-delete">>).
-
-vm_event(UUID, Event) ->
-    libhowl:send(<<"command">>,
-                 [{<<"event">>, Event},
-                  {<<"uuid">>, fifo_utils:uuid()},
-                  {<<"data">>,
-                   [{<<"uuid">>, UUID}]}]).
+    libhowl:send(Vm, #{<<"event">> => <<"delete">>}),
+    free_res(V).
 
 free_res(V) ->
     free_package_res(ft_vm:package(V), ft_vm:owner(V)).
 
+
+-spec free_package_res(binary(), binary()) ->
+                              ok.
 free_package_res(<<>>, _) ->
     ok;
 free_package_res(_, <<>>) ->
     ok;
 free_package_res(PkgID, OrgID) ->
     {ok, P} = sniffle_package:get(PkgID),
-    Res  = ft_package:org_resources(P),
-    [ls_org:resource_inc(OrgID, R, V)  || {R, V} <- Res],
-    ok.
+    RVs = maps:to_list(ft_package:org_resources(P)),
+    [ls_org:resource_inc(OrgID, R, V) || {R, V} <- RVs].
 
 %%--------------------------------------------------------------------
 %% @doc Triggers the start of a VM on the hypervisor.
@@ -974,7 +984,7 @@ set_owner(User, Vm, Owner) ->
         {ok, V} ->
             case fetch_hypervisor(Vm) of
                 {ok, Server, Port} ->
-                    UR = [{<<"owner">>, Owner}],
+                    UR = #{<<"owner">> => Owner},
                     ok = libchunter:update_machine(
                            Server, Port, Vm, undefined, UR);
                 _ ->
@@ -987,9 +997,10 @@ set_owner(User, Vm, Owner) ->
                 OldOwner ->
                     ls_org:reverse_trigger(OldOwner, vm_create, Vm)
             end,
-            libhowl:send(Vm, [{<<"event">>, <<"update">>},
-                              {<<"data">>,
-                               [{<<"owner">>, Owner}]}]),
+            libhowl:send(Vm, #{
+                           <<"event">> => <<"update">>,
+                           <<"data">> =>
+                               #{<<"owner">> => Owner}}),
             %% We can use the Vm object we got to end the accouting period
             %% for the old org
             resource_action(V, destroy, User, []),
@@ -1021,10 +1032,11 @@ log(Vm, Log) ->
     Timestamp = timestamp(),
     case do_write(Vm, log, [Timestamp, Log]) of
         ok ->
-            libhowl:send(Vm, [{<<"event">>, <<"log">>},
-                              {<<"data">>,
-                               [{<<"log">>, Log},
-                                {<<"date">>, Timestamp}]}]),
+            libhowl:send(Vm, #{
+                           <<"event">> => <<"log">>,
+                           <<"data">> => #{
+                               <<"log">> => Log,
+                               <<"date">> => Timestamp}}),
             ok;
         R ->
             R
@@ -1113,7 +1125,7 @@ commit_snapshot_rollback(Vm, UUID) ->
             case jsxd:get([UUID, <<"timestamp">>], Snapshots) of
                 {ok, T} when is_number(T) ->
                     Snapshots1 = [{SUUID, jsxd:get([<<"timestamp">>], 0, Sn)}
-                                  || {SUUID, Sn} <- Snapshots],
+                                  || {SUUID, Sn} <- maps:to_list(Snapshots)],
                     Snapshots2 = [{SUUID, delete}
                                   || {SUUID, X} <- Snapshots1,
                                      is_number(X), X > T],
@@ -1182,7 +1194,7 @@ remove_hostname_map(UUID, IP, V) ->
             ok;
         Owner ->
             Map = ft_vm:hostname_map(V),
-            case orddict:find(IP, Map) of
+            case maps:find(IP, Map) of
                 {ok, Hostname} ->
                     sniffle_hostname:remove(Hostname, Owner, {UUID, IP});
                 _ ->
@@ -1211,7 +1223,38 @@ remove_fw_rule(UUID, V) ->
 ?SET(add_grouping).
 ?SET(set_metadata).
 ?SET(set_info).
-?SET(set_config).
+set_config(UUID, Config) ->
+    case jsxd:get([<<"dataset">>], Config) of
+        {ok, D} when D =/= ?EMPTY ->
+            dataset(UUID, D);
+        _ ->
+            ok
+    end,
+    case jsxd:get([<<"alias">>], Config) of
+        {ok, A} when A =/= ?EMPTY ->
+            alias(UUID, A);
+        _ ->
+            ok
+    end,
+    case jsxd:get([<<"owner">>], Config) of
+        {ok, O} when O =/= ?EMPTY ->
+            owner(UUID, O);
+        _ ->
+            ok
+    end,
+    case jsxd:get([<<"creator">>], Config) of
+        {ok, C} when C =/= ?EMPTY ->
+            created_by(UUID, C);
+        _ ->
+            ok
+    end,
+    case jsxd:get([<<"package">>], Config) of
+        {ok, P} when P =/= ?EMPTY ->
+            package(UUID, P);
+        _ ->
+            ok
+    end,
+    do_write(UUID, set_config, [Config]).
 ?SET(set_backup).
 ?SET(set_snapshot).
 ?SET(set_service).
@@ -1274,9 +1317,13 @@ make_nic_map(V) ->
 timestamp() ->
     erlang:system_time(micro_seconds).
 
+-spec children(maps:map(), binary()) ->
+                      [binary()].
 children(Backups, Parent) ->
-    children(Backups, Parent, false).
+    children(maps:to_list(Backups), Parent, false).
 
+-spec children([{binary(), maps:map()}], binary(), boolean()) ->
+                      [binary()].
 children(Backups, Parent, Recursive) ->
     R = [U ||
             {U, B} <- Backups,
@@ -1294,13 +1341,12 @@ do_delete_backup(UUID, VM, BID) ->
         {ok, Files} ->
             Fs = case jsxd:get([BID, <<"xml">>], false, Backups) of
                      true ->
-                         [<<UUID/binary, "/", BID/binary, ".xml">> | Files];
+                         [<<UUID/binary, "/", BID/binary, ".xml">>
+                              | maps:keys(Files)];
                      _ ->
-                         Files
+                         maps:keys(Files)
                  end,
-            %% We do this for old and new backup formates here
-            [sniffle_s3:delete(snapshot, F) || F <- Fs, is_binary(F)],
-            [sniffle_s3:delete(snapshot, F) || {F, _} <- Fs, is_binary(F)];
+            [sniffle_s3:delete(snapshot, F) || F <- Fs, is_binary(F)];
         _ ->
             ok
     end,
@@ -1311,9 +1357,10 @@ do_delete_backup(UUID, VM, BID) ->
             {Server, Port} = get_hypervisor(H),
             libchunter:delete_snapshot(Server, Port, UUID, BID),
             set_backup(UUID, [{[BID], delete}]),
-            libhowl:send(UUID, [{<<"event">>, <<"backup">>},
-                                {<<"data">>, [{<<"action">>, <<"deleted">>},
-                                              {<<"uuid">>, BID}]}])
+            libhowl:send(UUID, #{<<"event">> => <<"backup">>,
+                                 <<"data">> => #{
+                                     <<"action">> => <<"deleted">>,
+                                     <<"uuid">> => BID}})
     end.
 
 %% resource_action(UUID, Action, Opts) ->
@@ -1379,7 +1426,7 @@ update_network_2i(UUID) ->
             ok;
         Owner ->
             [sniffle_hostname:add(Hostname, Owner, {UUID, IP})
-             || {IP, Hostname} <- ft_vm:hostname_map(V)]
+             || {IP, Hostname} <- maps:to_list(ft_vm:hostname_map(V))]
     end.
 
 delete_network_2i(UUID) ->
@@ -1389,5 +1436,5 @@ delete_network_2i(UUID) ->
             ok;
         Owner ->
             [sniffle_hostname:remove(Hostname, Owner, {UUID, IP})
-             || {IP, Hostname} <- ft_vm:hostname_map(V)]
+             || {IP, Hostname} <- maps:to_list(ft_vm:hostname_map(V))]
     end.

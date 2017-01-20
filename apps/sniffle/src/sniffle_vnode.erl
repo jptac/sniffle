@@ -115,10 +115,10 @@ handle_command(#req{request = {repair, UUID, _VClock, Obj}, bucket = Bucket},
                _Sender, State) ->
     Mod = bkt_to_mod(Bucket),
     ID = mkid(),
-    Obj1 = load_obj(ID, Mod, Obj),
+    Obj1 = load_obj(UUID, ID, Mod, Obj),
     case get(Bucket, UUID, State) of
         {ok, Old} ->
-            Old1 = load_obj(ID, Mod, Old),
+            Old1 = load_obj(UUID, ID, Mod, Old),
             Merged = ft_obj:merge(sniffle_entity_read_fsm, [Old1, Obj1]),
             put(Bucket, UUID, Merged, State);
         not_found ->
@@ -135,7 +135,7 @@ handle_command(
     case get(Bucket, UUID, State) of
         {ok, Old} ->
             ID = mkid(),
-            Old1 = load_obj(ID, Mod, Old),
+            Old1 = load_obj(UUID, ID, Mod, Old),
             lager:info("[sync-repair:~s] Merging with old object", [UUID]),
             Merged = ft_obj:merge(sniffle_entity_read_fsm, [Old1, Obj]),
             put(Bucket, UUID, Merged, State);
@@ -156,7 +156,7 @@ handle_command(#req{id = ReqID, request = {get, UUID}, bucket = Bucket},
                   ID = {ReqID, load},
                   %% We want to write a loaded object back to storage
                   %% if a change happend.
-                  case  load_obj(ID, Mod, R) of
+                  case  load_obj(UUID, ID, Mod, R) of
                       R1 when R =/= R1 ->
                           put(Bucket, UUID, R1, State),
                           R1;
@@ -186,7 +186,7 @@ handle_command(#req{
     Mod = bkt_to_mod(Bucket),
     case get(Bucket, UUID, State) of
         {ok, O} ->
-            O1 = load_obj(ID, Mod, O),
+            O1 = load_obj(UUID, ID, Mod, O),
             H1 = ft_obj:val(O1),
             H2 = lists:foldr(
                    fun ({Resource, Value}, H) ->
@@ -304,7 +304,7 @@ handle_coverage(#req{request = {lookup, Name}, bucket = Bucket},
     Mod = bkt_to_mod(Bucket),
     ID = mkid(),
     FoldFn = fun (U, O, [not_found]) ->
-                     O1 = load_obj(ID, Mod, O),
+                     O1 = load_obj(U, ID, Mod, O),
                      V = ft_obj:val(O1),
                      case Mod:name(V) of
                          AName when AName =:= Name ->
@@ -395,7 +395,7 @@ put(Bucket, Key, Obj, State) ->
 
 
 
-load_obj({T, ID}, Mod, Obj) ->
+load_obj(UUID, {T, ID}, Mod, Obj) ->
     V = ft_obj:val(Obj),
     try
         case Mod:load({T-1, ID}, V) of
@@ -407,7 +407,9 @@ load_obj({T, ID}, Mod, Obj) ->
     catch
         E1:E2 ->
             lager:error("[~p:~p] Failed to load ~s : ~p", [E1, E2, Mod, Obj]),
-            ft_obj:new(Mod:new({T, ID}), node())
+            O = Mod:new({1, ID}),
+            O1 = Mod:uuid({2, ID}, UUID, O),
+            ft_obj:new(O1, node())
     end.
 %%%===================================================================
 %%% Internal functions - Folding
@@ -418,7 +420,7 @@ fold_with_bucket(Fun, Acc0, Sender, State) ->
     FoldFn = fun(K, E, O) ->
                      {Bucket, Key} = split(K),
                      Mod = bkt_to_mod(Bucket),
-                     E1 = load_obj(ID, Mod, E),
+                     E1 = load_obj(K, ID, Mod, E),
                      Fun({Bucket, Key}, E1, O)
              end,
     fold(<<>>, FoldFn, Acc0, Sender, State).
@@ -460,7 +462,7 @@ list_keys(Bucket, Mod, Getter, Requirements, Sender,
           State) ->
     ID = mkid(),
     FoldFn = fun (Key, E, C) ->
-                     E1 = load_obj(ID, Mod, E),
+                     E1 = load_obj(Key, ID, Mod, E),
                      C1 = case rankmatcher:match(E1, Getter, Requirements) of
                               false ->
                                   C;
@@ -474,7 +476,7 @@ list_keys(Bucket, Mod, Getter, Requirements, Sender,
 list(Bucket, Mod, Getter, Requirements, Sender, State) ->
     ID = mkid(),
     FoldFn = fun (Key, E, C) ->
-                     E1 = load_obj(ID, Mod, E),
+                     E1 = load_obj(Key, ID, Mod, E),
                      C1 = case rankmatcher:match(E1, Getter, Requirements) of
                               false ->
                                   C;
@@ -488,16 +490,17 @@ list(Bucket, Mod, Getter, Requirements, Sender, State) ->
 change(Bucket, UUID, Action, Vals, {ReqID, Coordinator} = ID,
        State) ->
     Mod= bkt_to_mod(Bucket),
-    O1 = case get(Bucket, UUID, State) of
+    OR = case get(Bucket, UUID, State) of
              {ok, O} ->
-                 load_obj(ID, Mod, O);
+                 load_obj(UUID, ID, Mod, O);
              _R ->
-                 H0 = Mod:new({1, Coordinator}),
-                 ft_obj:new(H0, Coordinator)
+                 O = Mod:new({1, Coordinator}),
+                 O1 = Mod:uuid({2, ID}, UUID, O),
+                 ft_obj:new(O1, Coordinator)
          end,
-    H1 = ft_obj:val(O1),
+    H1 = ft_obj:val(OR),
     H2 = erlang:apply(Mod, Action, [ID] ++ Vals ++ [H1]),
-    Obj = ft_obj:update(H2, Coordinator, O1),
+    Obj = ft_obj:update(H2, Coordinator, OR),
     put(Bucket, UUID, Obj, State),
     {reply, {ok, ReqID}, State}.
 
