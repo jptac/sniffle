@@ -43,20 +43,20 @@
 ├─ jsx─1.4.5
 ├─ jsxd─0.2.3
 ├─ libchunter─0.1.48
-├─ libhowl─0.1.37
-│  └─ mdns_client_lib─0.1.41
+├─ libhowl─0.1.38
+│  └─ mdns_client_lib─0.1.43
 │     ├─ mdns_client─0.1.8
 │     └─ pooler─1.5.0
 ├─ libleofs─0.1.2
-├─ libsnarl─0.3.48
+├─ libsnarl─0.3.49
 │  └─ oauth2─0.6.1
 ├─ mdns_server_lib─0.2.3
 │  ├─ mdns_server─0.2.0
 │  └─ ranch─1.1.0
 ├─ poolboy─0.8.1-p3
-├─ rankmatcher─0.1.5
+├─ rankmatcher─0.1.6
 ├─ recon─2.3.2
-├─ riak_core─2.2.8
+├─ riak_core─2.2.9
 │  ├─ basho_stats─1.0.3
 │  ├─ blume─0.1.0
 │  ├─ chash─0.1.2
@@ -68,11 +68,12 @@
 │  │  ├─ parse_trans─2.9.0
 │  │  └─ setup─1.7.0
 │  ├─ goldrush─0.1.8
+│  ├─ jam─1.0.0
 │  ├─ pbkdf2─2.0.0
 │  ├─ riak_ensemble─2.2.0
 │  └─ riak_sysmon─2.1.3
 ├─ sgte─0.7.1
-├─ sniffle─0.9.0
+├─ sniffle─0.9.1
 ├─ sniffle_api─0.1.0
 ├─ sniffle_commons─0.1.0
 ├─ sniffle_console─0.1.0

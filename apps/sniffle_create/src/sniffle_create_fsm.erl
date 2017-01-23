@@ -73,20 +73,21 @@
              ]).
 
 -record(state, {
-          test_pid                :: {pid(), reference()},
+          test_pid                :: {pid(), reference()} | undefined,
           uuid                    :: binary(),
-          package                 :: ft_package:package(),
-          package_uuid            :: binary(),
-          dataset                 :: ft_dataset:dataset() | {docker, binary()},
-          dataset_uuid            :: binary() | {docker, binary()},
+          package                 :: ft_package:package() | undefined,
+          package_uuid            :: binary() | undefined,
+          dataset                 :: ft_dataset:dataset() | {docker, binary()}
+                                   | undefined,
+          dataset_uuid            :: binary() | {docker, binary()} | undefined,
           config                  :: term() | undefined,
           resulting_networks = [] :: [binary()],
           owner                   :: binary() | undefined,
           creator                 :: binary() | undefined,
-          creator_obj             :: ft_org:org(),
+          creator_obj             :: ft_user:user() | undefined,
           nets = []               :: [{binary(), {binary(), [binary()]}}],
-          hypervisor              :: {string(), pos_integer()},
-          hypervisor_id           :: binary(),
+          hypervisor              :: {string(), pos_integer()} | undefined,
+          hypervisor_id           :: binary() | undefined,
           mapping = []            :: [{binary(), binary(),
                                        binary(), integer()}],
           delay = 5000            :: pos_integer(),
@@ -95,14 +96,14 @@
           rules = []              :: [librankmatcher:rule()],
           log_cache = []          :: [{error | warning | info, binary()}],
           last_error              :: atom(),
-          backup                  :: binary(),
+          backup                  :: binary() | undefined,
           type = create           :: create | restore,
           grouping                :: binary() | undefined,
           backup_vm               :: ft_vm:vm() | undefined,
-          permissions             :: [[binary()]],
+          permissions             :: [[binary()]] | undefined,
           resources = []          :: [{binary(), integer()}],
           grouping_rules = []     :: [librankmatcher:rule()],
-          hypervisors             :: [{integer(), binary()}]
+          hypervisors             :: [{integer(), binary()}] | undefined
          }).
 
 %%%===================================================================
@@ -163,9 +164,7 @@ init([restore, UUID, BackupID, Rules, Package, Creator]) ->
     lager:debug("[create] initialiing restore ~s ~s ~p ~s ~s",
                 [UUID, BackupID, Rules, Package, Creator]),
     sniffle_vm:state(UUID, <<"restoring">>),
-    random:seed(erlang:phash2([node()]),
-                erlang:monotonic_time(),
-                erlang:unique_integer()),
+    rand:seed(exsplus),
     lager:info("[create] Starting FSM for ~s", [UUID]),
     process_flag(trap_exit, true),
     {ok, Permissions} = ls_user:cache(Creator),
@@ -210,9 +209,7 @@ init([create, UUID, Package, Dataset, Config, Pid]) ->
         _ ->
             ok
     end,
-    random:seed(erlang:phash2([node()]),
-                erlang:monotonic_time(),
-                erlang:unique_integer()),
+    rand:seed(exsplus),
     lager:info("[create] Starting FSM for ~s", [UUID]),
     process_flag(trap_exit, true),
     Config1 = jsxd:from_list(Config),
@@ -499,7 +496,7 @@ get_dataset(_Event, State = #state{
 finish_rules(_Event, State = #state{
                                 dataset = Dataset,
                                 uuid = UUID,
-                              package = Package,
+                                package = Package,
                                 permissions = Permissions,
                                 rules = Rules}) ->
     lager:debug("[create] finish srules"),

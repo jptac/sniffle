@@ -22,8 +22,8 @@
                 r = 1 :: pos_integer(),
                 reqid :: integer(),
                 from :: pid(),
-                reqs :: list(),
-                raw :: boolean(),
+                reqs :: list() | undefined,
+                raw = false :: boolean(),
                 merge_fn = fun([E | _]) -> E  end :: merge_fn(),
                 completed = [] :: [binary()]}).
 
@@ -53,7 +53,7 @@ fold(Request) ->
 fold(Request, FoldFn, Acc0) ->
     ReqID = mk_reqid(),
     sniffle_coverage_sup:start_coverage(
-      ?MODULE, {self(), ReqID, something_else}, Request#req{id = ReqID}),
+      ?MODULE, {raw, ReqID, self()}, Request#req{id = ReqID}),
     wait(ReqID, FoldFn, Acc0).
 
 -spec wait(term(), fun(), term()) ->
@@ -89,7 +89,7 @@ init(Req, RequestIn = #req{request = {list, Requirements, Raw}}) ->
 init(Req, Request) ->
     base_init(Req, Request).
 
-base_init({From, ReqID, _}, Request) ->
+base_init({_, ReqID, From}, Request) ->
     {ok, N} = application:get_env(sniffle, n),
     {ok, R} = application:get_env(sniffle, r),
     %% all - full coverage; allup - partial coverage
