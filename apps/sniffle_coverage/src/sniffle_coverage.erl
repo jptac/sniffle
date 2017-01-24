@@ -83,8 +83,8 @@ init(Req, RequestIn = #req{request = {list, Requirements, Raw}}) ->
                     fun merge/1
             end,
     State2 = State1#state{reqs = Requirements, raw = Raw, merge_fn = Merge},
-    {Request, VNodeSelector, N, PrimaryVNodeCoverage,
-     sniffle, sniffle_vnode_master, Timeout, State2};
+    {Request, VNodeSelector, N, PrimaryVNodeCoverage, sniffle,
+     sniffle_vnode_master, Timeout, riak_core_coverage_plan, State2};
 
 init(Req, Request) ->
     base_init(Req, Request).

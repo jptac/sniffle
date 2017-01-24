@@ -9,7 +9,7 @@
 ├─ fifo_db─0.2.3
 │  ├─ eleveldb─2.2.19
 │  └─ erocksdb─0.4.1
-├─ fifo_dt─0.2.4
+├─ fifo_dt─0.2.5
 │  ├─ libsnarlmatch─0.1.7
 │  └─ riak_dt─2.1.1
 ├─ fifo_lager─0.1.4
@@ -67,7 +67,7 @@
 │  ├─ exometer_core─1.0.2
 │  │  ├─ parse_trans─2.9.0
 │  │  └─ setup─1.7.0
-│  ├─ goldrush─0.1.8
+│  ├─ goldrush─0.1.9
 │  ├─ jam─1.0.0
 │  ├─ pbkdf2─2.0.0
 │  ├─ riak_ensemble─2.2.0
