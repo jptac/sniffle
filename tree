@@ -6,8 +6,8 @@
 ├─ erlcloud─0.13.10
 │  ├─ eini─1.2.4
 │  └─ lhttpc─1.4.0
-├─ fifo_db─0.2.3
-│  ├─ eleveldb─2.2.19
+├─ fifo_db─0.2.4
+│  ├─ eleveldb─2.2.20
 │  └─ erocksdb─0.4.1
 ├─ fifo_dt─0.2.5
 │  ├─ libsnarlmatch─0.1.7
