@@ -74,7 +74,7 @@ wait(ReqID, FoldFn, Acc) ->
 %% The first is the vnode service used
 init(Req, RequestIn = #req{request = {list, Requirements, Raw}}) ->
     {Request, VNodeSelector, N, PrimaryVNodeCoverage,
-     sniffle, sniffle_vnode_master, Timeout, State1} =
+     sniffle, sniffle_vnode_master, Timeout, Plan, State1} =
         base_init(Req, RequestIn#req{request = {list, Requirements, true}}),
     Merge = case Raw of
                 true ->
@@ -84,7 +84,7 @@ init(Req, RequestIn = #req{request = {list, Requirements, Raw}}) ->
             end,
     State2 = State1#state{reqs = Requirements, raw = Raw, merge_fn = Merge},
     {Request, VNodeSelector, N, PrimaryVNodeCoverage, sniffle,
-     sniffle_vnode_master, Timeout, riak_core_coverage_plan, State2};
+     sniffle_vnode_master, Timeout, Plan, State2};
 
 init(Req, Request) ->
     base_init(Req, Request).
@@ -98,8 +98,8 @@ base_init({_, ReqID, From}, Request) ->
     %% We timeout after 10s or whatever is configured
     Timeout = application:get_env(sniffle, coverage_timeout, 10000),
     State = #state{r = R, from = From, reqid = ReqID},
-    {Request, VNodeSelector, N, PrimaryVNodeCoverage,
-     sniffle, sniffle_vnode_master, Timeout, State}.
+    {Request, VNodeSelector, N, PrimaryVNodeCoverage, sniffle,
+     sniffle_vnode_master, Timeout, riak_core_coverage_plan, State}.
 
 update(Key, State) when is_binary(Key) ->
     update({Key, Key}, State);
