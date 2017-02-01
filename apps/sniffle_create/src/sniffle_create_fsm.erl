@@ -609,13 +609,13 @@ get_networks(_Event, State = #state{config = Config}) ->
                               Free = [length(ft_iprange:free(R)) ||
                                          {_, {ok, R}} <- Rs1],
                               Sum = lists:sum(Free),
-                              {Name, {Network, Rs3, Sum}}
+                              Resolvers = ft_network:resolvers(N),
+                              {Name, {Network, Rs3, Sum, Resolvers}}
                       end, Nets),
     Nets2 = [{Name, {Network, Rs}} ||
-                {Name, {Network, Rs, _Sum}}  <- Nets1],
-    Resolvers1 = [begin
-                      ft_network:resolvers(Network)
-                  end || {_Name, {Network, _Rs}}  <- Nets2],
+                {Name, {Network, Rs, _Sum, _Resolvers}}  <- Nets1],
+    Resolvers1 = [Resolvers ||
+                     {_Name, {_Network, _Rs, _Sum, Resolvers}}  <- Nets],
     Resolvers2 = lists:flatten(Resolvers1),
     State1 = lists:foldl(
                fun ({Name, {Network, Rs, Sum}}, SAcc) ->
