@@ -763,6 +763,18 @@ message({network, remove_iprange, Network, IPRange}, State) when
      sniffle_network:remove_iprange(Network, IPRange),
      State};
 
+message({network, add_resolver, Network, Resolver}, State) when
+      is_binary(Network) ->
+    {reply,
+     sniffle_network:add_resolver(Network, Resolver),
+     State};
+
+message({network, remove_resolver, Network, Resolver}, State) when
+      is_binary(Network) ->
+    {reply,
+     sniffle_network:remove_resolver(Network, Resolver),
+     State};
+
 message({network, list}, State) ->
     {reply,
      sniffle_network:list(),

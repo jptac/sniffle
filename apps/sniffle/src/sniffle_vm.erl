@@ -104,7 +104,7 @@
 
 -spec sync_repair(fifo:vm_id(), ft_obj:obj()) -> ok.
 -spec get(Vm::fifo:uuid()) ->
-                 not_found | {error, timeout} | {ok, fifo:vm()}.
+                 not_found | {error, timeout} | {ok, ft_vm:vm()}.
 -spec list() ->
                   {error, timeout} | {ok, [fifo:uuid()]}.
 

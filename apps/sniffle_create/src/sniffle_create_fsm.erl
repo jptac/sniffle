@@ -73,20 +73,22 @@
              ]).
 
 -record(state, {
-          test_pid                :: {pid(), reference()},
+          resolvers = []          :: [binary()],
+          test_pid                :: {pid(), reference()} | undefined,
           uuid                    :: binary(),
-          package                 :: ft_package:package(),
-          package_uuid            :: binary(),
-          dataset                 :: ft_dataset:dataset() | {docker, binary()},
-          dataset_uuid            :: binary() | {docker, binary()},
+          package                 :: ft_package:package() | undefined,
+          package_uuid            :: binary() | undefined,
+          dataset                 :: ft_dataset:dataset() | {docker, binary()}
+                                   | undefined,
+          dataset_uuid            :: binary() | {docker, binary()} | undefined,
           config                  :: term() | undefined,
           resulting_networks = [] :: [binary()],
           owner                   :: binary() | undefined,
           creator                 :: binary() | undefined,
-          creator_obj             :: ft_org:org(),
+          creator_obj             :: ft_user:user() | undefined,
           nets = []               :: [{binary(), {binary(), [binary()]}}],
-          hypervisor              :: {string(), pos_integer()},
-          hypervisor_id           :: binary(),
+          hypervisor              :: {string(), pos_integer()} | undefined,
+          hypervisor_id           :: binary() | undefined,
           mapping = []            :: [{binary(), binary(),
                                        binary(), integer()}],
           delay = 5000            :: pos_integer(),
@@ -95,14 +97,14 @@
           rules = []              :: [librankmatcher:rule()],
           log_cache = []          :: [{error | warning | info, binary()}],
           last_error              :: atom(),
-          backup                  :: binary(),
+          backup                  :: binary() | undefined,
           type = create           :: create | restore,
           grouping                :: binary() | undefined,
           backup_vm               :: ft_vm:vm() | undefined,
-          permissions             :: [[binary()]],
+          permissions             :: [[binary()]] | undefined,
           resources = []          :: [{binary(), integer()}],
           grouping_rules = []     :: [librankmatcher:rule()],
-          hypervisors             :: [{integer(), binary()}]
+          hypervisors             :: [{integer(), binary()}] | undefined
          }).
 
 %%%===================================================================
@@ -163,9 +165,7 @@ init([restore, UUID, BackupID, Rules, Package, Creator]) ->
     lager:debug("[create] initialiing restore ~s ~s ~p ~s ~s",
                 [UUID, BackupID, Rules, Package, Creator]),
     sniffle_vm:state(UUID, <<"restoring">>),
-    random:seed(erlang:phash2([node()]),
-                erlang:monotonic_time(),
-                erlang:unique_integer()),
+    rand:seed(exsplus),
     lager:info("[create] Starting FSM for ~s", [UUID]),
     process_flag(trap_exit, true),
     {ok, Permissions} = ls_user:cache(Creator),
@@ -210,9 +210,7 @@ init([create, UUID, Package, Dataset, Config, Pid]) ->
         _ ->
             ok
     end,
-    random:seed(erlang:phash2([node()]),
-                erlang:monotonic_time(),
-                erlang:unique_integer()),
+    rand:seed(exsplus),
     lager:info("[create] Starting FSM for ~s", [UUID]),
     process_flag(trap_exit, true),
     Config1 = jsxd:from_list(Config),
@@ -499,7 +497,7 @@ get_dataset(_Event, State = #state{
 finish_rules(_Event, State = #state{
                                 dataset = Dataset,
                                 uuid = UUID,
-                              package = Package,
+                                package = Package,
                                 permissions = Permissions,
                                 rules = Rules}) ->
     lager:debug("[create] finish srules"),
@@ -611,12 +609,16 @@ get_networks(_Event, State = #state{config = Config}) ->
                               Free = [length(ft_iprange:free(R)) ||
                                          {_, {ok, R}} <- Rs1],
                               Sum = lists:sum(Free),
-                              {Name, {Network, Rs3, Sum}}
+                              Resolvers = ft_network:resolvers(N),
+                              {Name, {Network, Rs3, Sum, Resolvers}}
                       end, Nets),
     Nets2 = [{Name, {Network, Rs}} ||
-                {Name, {Network, Rs, _Sum}}  <- Nets1],
+                {Name, {Network, Rs, _Sum, _Resolvers}}  <- Nets1],
+    Resolvers1 = [Resolvers ||
+                     {_Name, {_Network, _Rs, _Sum, Resolvers}}  <- Nets1],
+    Resolvers2 = lists:flatten(Resolvers1),
     State1 = lists:foldl(
-               fun ({Name, {Network, Rs, Sum}}, SAcc) ->
+               fun ({Name, {Network, Rs, Sum, _Resolvers}}, SAcc) ->
                        Count = length(Rs),
                        fmt_log(SAcc, info, "[net:~s/~s] Fund ~p free ip "
                                "addresses in ~p ipranges.",
@@ -624,7 +626,7 @@ get_networks(_Event, State = #state{config = Config}) ->
                end, State, Nets1),
     next(),
     {next_state, get_server,
-     State1#state{nets = Nets2}}.
+     State1#state{nets = Nets2, resolvers = Resolvers2}}.
 
 get_server(_Event, State = #state{
                               uuid = UUID,
@@ -784,14 +786,35 @@ create(_Event, State = #state{
                           package = Package,
                           uuid = UUID,
                           config = Config,
+                          resolvers = Resolvers,
                           resulting_networks = Nics,
                           hypervisor_id = HID,
                           hypervisor = {Host, Port},
                           mapping = Mapping}) ->
     vm_log(State, <<"Handing off to hypervisor ", HID/binary, ".">>),
     Config1 = jsxd:set(<<"nics">>, Nics, Config),
+    Config2 = case {Resolvers, jsxd:get(<<"resolvers">>, Config)} of
+                  %% We don't include the resolvers if none are provided so we
+                  %% don't end up enforcing empty ones.
+                  {[], _} ->
+                      lager:debug("[create] Not updating resolvers as they"
+                                  " are empty."),
+                      Config1;
+                  %% If there were no resolvers in the config we set the
+                  %% defaults from the networks.
+                  {_, undefined} ->
+                      lager:debug("[create] Updating resolvers to: ~p",
+                                  [Resolvers]),
+                      jsxd:set(<<"resolvers">>, Resolvers, Config1);
+                  %% If we had resolvers set our networks should not
+                  %% overwrite them.
+                  {_, R}->
+                      lager:debug("[create] Not updating resolvers to ~p as w "
+                                  " got something else ~p.", [Resolvers, R]),
+                      Config1
+              end,
     case
-        libchunter:create_machine(Host, Port, UUID, Package, Dataset, Config1)
+        libchunter:create_machine(Host, Port, UUID, Package, Dataset, Config2)
     of
         {error, _} ->
             %% TODO is it a good idea to handle all errors like this?

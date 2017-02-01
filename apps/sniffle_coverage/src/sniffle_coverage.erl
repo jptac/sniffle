@@ -22,8 +22,8 @@
                 r = 1 :: pos_integer(),
                 reqid :: integer(),
                 from :: pid(),
-                reqs :: list(),
-                raw :: boolean(),
+                reqs :: list() | undefined,
+                raw = false :: boolean(),
                 merge_fn = fun([E | _]) -> E  end :: merge_fn(),
                 completed = [] :: [binary()]}).
 
@@ -53,7 +53,7 @@ fold(Request) ->
 fold(Request, FoldFn, Acc0) ->
     ReqID = mk_reqid(),
     sniffle_coverage_sup:start_coverage(
-      ?MODULE, {self(), ReqID, something_else}, Request#req{id = ReqID}),
+      ?MODULE, {raw, ReqID, self()}, Request#req{id = ReqID}),
     wait(ReqID, FoldFn, Acc0).
 
 -spec wait(term(), fun(), term()) ->
@@ -74,7 +74,7 @@ wait(ReqID, FoldFn, Acc) ->
 %% The first is the vnode service used
 init(Req, RequestIn = #req{request = {list, Requirements, Raw}}) ->
     {Request, VNodeSelector, N, PrimaryVNodeCoverage,
-     sniffle, sniffle_vnode_master, Timeout, State1} =
+     sniffle, sniffle_vnode_master, Timeout, Plan, State1} =
         base_init(Req, RequestIn#req{request = {list, Requirements, true}}),
     Merge = case Raw of
                 true ->
@@ -83,13 +83,13 @@ init(Req, RequestIn = #req{request = {list, Requirements, Raw}}) ->
                     fun merge/1
             end,
     State2 = State1#state{reqs = Requirements, raw = Raw, merge_fn = Merge},
-    {Request, VNodeSelector, N, PrimaryVNodeCoverage,
-     sniffle, sniffle_vnode_master, Timeout, State2};
+    {Request, VNodeSelector, N, PrimaryVNodeCoverage, sniffle,
+     sniffle_vnode_master, Timeout, Plan, State2};
 
 init(Req, Request) ->
     base_init(Req, Request).
 
-base_init({From, ReqID, _}, Request) ->
+base_init({_, ReqID, From}, Request) ->
     {ok, N} = application:get_env(sniffle, n),
     {ok, R} = application:get_env(sniffle, r),
     %% all - full coverage; allup - partial coverage
@@ -98,8 +98,8 @@ base_init({From, ReqID, _}, Request) ->
     %% We timeout after 10s or whatever is configured
     Timeout = application:get_env(sniffle, coverage_timeout, 10000),
     State = #state{r = R, from = From, reqid = ReqID},
-    {Request, VNodeSelector, N, PrimaryVNodeCoverage,
-     sniffle, sniffle_vnode_master, Timeout, State}.
+    {Request, VNodeSelector, N, PrimaryVNodeCoverage, sniffle,
+     sniffle_vnode_master, Timeout, riak_core_coverage_plan, State}.
 
 update(Key, State) when is_binary(Key) ->
     update({Key, Key}, State);
