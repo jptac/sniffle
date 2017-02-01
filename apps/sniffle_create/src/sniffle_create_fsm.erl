@@ -618,7 +618,7 @@ get_networks(_Event, State = #state{config = Config}) ->
                      {_Name, {_Network, _Rs, _Sum, Resolvers}}  <- Nets],
     Resolvers2 = lists:flatten(Resolvers1),
     State1 = lists:foldl(
-               fun ({Name, {Network, Rs, Sum}}, SAcc) ->
+               fun ({Name, {Network, Rs, Sum, _Resolvers}}, SAcc) ->
                        Count = length(Rs),
                        fmt_log(SAcc, info, "[net:~s/~s] Fund ~p free ip "
                                "addresses in ~p ipranges.",
