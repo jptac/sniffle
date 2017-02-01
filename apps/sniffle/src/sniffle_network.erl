@@ -15,6 +15,8 @@
          lookup/1,
          add_iprange/2,
          remove_iprange/2,
+         add_resolver/2,
+         remove_resolver/2,
          claim_ip/1,
          claim_ip/2,
          name/2,
@@ -90,6 +92,15 @@ add_iprange(Network, IPRange) ->
 remove_iprange(Network, IPRange) ->
     do_write(Network, remove_iprange, [IPRange]).
 
+-spec add_resolver(fifo:network_id(), binary()) ->
+                         ok | not_found | {error, timeout}.
+add_resolver(Network, Resolver) ->
+    do_write(Network, add_resolver, [Resolver]).
+
+-spec remove_resolver(fifo:network_id(), binary()) ->
+                         ok | not_found | {error, timeout}.
+remove_resolver(Network, Resolver) ->
+    do_write(Network, remove_resolver, [Resolver]).
 
 -spec claim_ip(Iprange::fifo:network_id()) ->
                       not_found |
