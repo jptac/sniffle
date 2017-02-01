@@ -73,6 +73,7 @@
              ]).
 
 -record(state, {
+          resolvers = []          :: [binary()],
           test_pid                :: {pid(), reference()} | undefined,
           uuid                    :: binary(),
           package                 :: ft_package:package() | undefined,
@@ -612,6 +613,10 @@ get_networks(_Event, State = #state{config = Config}) ->
                       end, Nets),
     Nets2 = [{Name, {Network, Rs}} ||
                 {Name, {Network, Rs, _Sum}}  <- Nets1],
+    Resolvers1 = [begin
+                      ft_network:resolvers(Network)
+                  end || {_Name, {Network, _Rs}}  <- Nets2],
+    Resolvers2 = lists:flatten(Resolvers1),
     State1 = lists:foldl(
                fun ({Name, {Network, Rs, Sum}}, SAcc) ->
                        Count = length(Rs),
@@ -621,7 +626,7 @@ get_networks(_Event, State = #state{config = Config}) ->
                end, State, Nets1),
     next(),
     {next_state, get_server,
-     State1#state{nets = Nets2}}.
+     State1#state{nets = Nets2, resolvers = Resolvers2}}.
 
 get_server(_Event, State = #state{
                               uuid = UUID,
@@ -781,14 +786,29 @@ create(_Event, State = #state{
                           package = Package,
                           uuid = UUID,
                           config = Config,
+                          resolvers = Resolvers,
                           resulting_networks = Nics,
                           hypervisor_id = HID,
                           hypervisor = {Host, Port},
                           mapping = Mapping}) ->
     vm_log(State, <<"Handing off to hypervisor ", HID/binary, ".">>),
     Config1 = jsxd:set(<<"nics">>, Nics, Config),
+    Config2 = case {Resolvers, jsxd:get(<<"resolvers">>, Config)} of
+                  %% We don't include the resolvers if none are provided so we
+                  %% don't end up enforcing empty ones.
+                  {[], _} ->
+                      Config1;
+                  %% If there were no resolvers in the config we set the
+                  %% defaults from the networks.
+                  {_, undefined} ->
+                      jsxd:set(<<"resolvers">>, Resolvers, Config1);
+                  %% If we had resolvers set our networks should not
+                  %% overwrite them.
+                  _ ->
+                      Config1
+              end,
     case
-        libchunter:create_machine(Host, Port, UUID, Package, Dataset, Config1)
+        libchunter:create_machine(Host, Port, UUID, Package, Dataset, Config2)
     of
         {error, _} ->
             %% TODO is it a good idea to handle all errors like this?
