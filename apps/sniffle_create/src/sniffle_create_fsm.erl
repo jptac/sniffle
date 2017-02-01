@@ -797,14 +797,20 @@ create(_Event, State = #state{
                   %% We don't include the resolvers if none are provided so we
                   %% don't end up enforcing empty ones.
                   {[], _} ->
+                      lager:debug("[create] Not updating resolvers as they"
+                                  " are empty."),
                       Config1;
                   %% If there were no resolvers in the config we set the
                   %% defaults from the networks.
                   {_, undefined} ->
+                      lager:debug("[create] Updating resolvers to: ~p",
+                                  [Resolvers]),
                       jsxd:set(<<"resolvers">>, Resolvers, Config1);
                   %% If we had resolvers set our networks should not
                   %% overwrite them.
-                  _ ->
+                  {_, R}->
+                      lager:debug("[create] Not updating resolvers to ~p as w "
+                                  " got something else ~p.", [Resolvers, R]),
                       Config1
               end,
     case
