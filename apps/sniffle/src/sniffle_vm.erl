@@ -257,7 +257,7 @@ restore_backup(Vm, Snap) ->
 create_backup(Vm, full, Comment, Opts) ->
     case sniffle_vm:get(Vm) of
         {ok, V} ->
-            do_snap(Vm, V, Comment, Opts);
+            do_backup(Vm, V, Comment, Opts);
         _ ->
             not_found
     end;
@@ -268,7 +268,7 @@ create_backup(Vm, incremental, Comment, Opts) ->
             Parent = proplists:get_value(parent, Opts),
             case jsxd:get([Parent, <<"local">>], ?S:backups(V)) of
                 {ok, true} ->
-                    do_snap(Vm, V, Comment, Opts);
+                    do_backup(Vm, V, Comment, Opts);
                 _ ->
                     {error, parent}
             end;
@@ -321,7 +321,17 @@ service_restart(Vm, Service) ->
             not_found
     end.
 
-do_snap(Vm, V, Comment, Opts) ->
+do_backup(Vm, V, Comment, Opts) ->
+    Conf = ft_vm:config(V),
+    case jsxd:get(<<"datasets">>, Conf) of
+        {ok, Es} when is_list(Es), length(Es) > 0 ->
+            lager:warning("Can't create backups from zones w/ delegates"),
+            {error, not_supported};
+        _ ->
+            do_backup_(Vm, V, Comment, Opts)
+    end.
+
+do_backup_(Vm, V, Comment, Opts) ->
     UUID = fifo_utils:uuid(),
     Opts1 = [create | Opts],
     {Server, Port} = get_hypervisor(V),
