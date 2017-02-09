@@ -23,7 +23,7 @@
 │     └─ quickrand─1.5.4
 ├─ folsom_ddb─0.1.32
 │  ├─ ddb_client─0.2.0
-│  │  ├─ dproto─0.2.2
+│  │  ├─ dproto─0.2.3
 │  │  ├─ mmath─0.2.14
 │  │  └─ snappy─1.1.1
 │  ├─ dqe_idx─0.2.1
