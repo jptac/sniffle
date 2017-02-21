@@ -83,6 +83,11 @@ init([Partition]) ->
             partial_size = Partial},
      [FoldWorkerPool]}.
 
+handle_overload_command(_Req, Sender, Idx) ->
+    riak_core_vnode:reply(Sender, {fail, Idx, overload}).
+
+handle_overload_info(_, _Idx) ->
+    ok.
 
 %%%===================================================================
 %%% Commands
@@ -563,9 +568,3 @@ repair(Data, State) ->
 
 vc_bin(VClock) ->
     term_to_binary(lists:sort(VClock)).
-
-handle_overload_command(_Req, Sender, Idx) ->
-    riak_core_vnode:reply(Sender, {fail, Idx, overload}).
-
-handle_overload_info(_, _Idx) ->
-    ok.
