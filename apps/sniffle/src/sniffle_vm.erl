@@ -754,7 +754,7 @@ create(Package, Dataset, Config) ->
                                        <<"network">> => Net} ||
                                         {Iface, Net} <- maps:to_list(N)])
                           end, [], Config1),
-    set_config(UUID, Config2),
+    set_config(UUID, jsxd:delete([<<"owner">>], Config2)),
     state(UUID, <<"pooled">>),
     package(UUID, Package),
     case Dataset of
