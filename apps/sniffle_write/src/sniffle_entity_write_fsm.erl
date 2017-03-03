@@ -38,7 +38,7 @@
                 system,
                 cordinator :: node(),
                 val = undefined :: term() | undefined,
-                preflist :: riak_core_apl:preflist(),
+                preflist :: riak_core_apl:preflist() | undefined,
                 num_w = 0 :: non_neg_integer()}).
 
 -type state() :: #state{}.

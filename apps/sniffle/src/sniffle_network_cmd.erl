@@ -9,7 +9,9 @@
          create/4,
          delete/3,
          add_iprange/4,
-         remove_iprange/4
+         remove_iprange/4,
+         add_resolver/4,
+         remove_resolver/4
         ]).
 
 -ignore_xref([
@@ -70,6 +72,8 @@ create(Preflist, ReqID, UUID, Args) ->
 
 ?VSET(add_iprange).
 ?VSET(remove_iprange).
+?VSET(add_resolver).
+?VSET(remove_resolver).
 ?VSET(uuid).
 ?VSET(name).
 ?VSET(set_metadata).

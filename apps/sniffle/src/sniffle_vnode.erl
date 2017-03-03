@@ -18,6 +18,8 @@
          encode_handoff_item/2,
          handle_coverage/4,
          handle_exit/3,
+         handle_overload_command/3,
+         handle_overload_info/2,
          handle_info/2
         ]).
 
@@ -81,6 +83,11 @@ init([Partition]) ->
             partial_size = Partial},
      [FoldWorkerPool]}.
 
+handle_overload_command(_Req, Sender, Idx) ->
+    riak_core_vnode:reply(Sender, {fail, Idx, overload}).
+
+handle_overload_info(_, _Idx) ->
+    ok.
 
 %%%===================================================================
 %%% Commands
@@ -94,7 +101,7 @@ handle_command(#req{id = ID = {ReqID, _}, request = {apply, Key, Fun, Args},
                 R0;
             {reply, R0} ->
                 R0
-    end,
+        end,
     case R of
         ok ->
             {reply, {ok, ReqID}, State};
@@ -295,7 +302,7 @@ delete(State) ->
     {ok, State#state{hashtrees=undefined}}.
 
 handle_coverage(#req{request = {wipe, UUID}, bucket = Bucket}, _KeySpaces,
-                 {_, ReqID, _}, State) ->
+                {_, ReqID, _}, State) ->
     ?FM(fifo_db, delete, [State#state.db, Bucket, UUID]),
     {reply, {ok, ReqID}, State};
 
