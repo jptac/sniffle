@@ -23,7 +23,7 @@ list(Type) ->
 
 delete(Type, Key) ->
     case get_host(Type) of
-        "" ->
+        "no_s3" ->
             ok;
         _ ->
             fifo_s3:delete(get_bucket(Type), Key, get_config(Type))

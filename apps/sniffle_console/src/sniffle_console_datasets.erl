@@ -19,11 +19,14 @@ cmd_jail_add(["sniffle-admin", "datasets", "jail", "add", ReleaseS], _, _) ->
     ok = sniffle_dataset:create(UUID),
     ok = sniffle_dataset:type(UUID, jail),
     ok = sniffle_dataset:name(UUID, <<"FreeBSD">>),
+    ok = sniffle_dataset:os(UUID, <<"FreeBSD">>),
+    ok = sniffle_dataset:description(UUID, <<"FreeBSD base jail">>),
     ok = sniffle_dataset:version(UUID, Release),
     ok = sniffle_dataset:kernel_version(UUID, Release),
     ok = sniffle_dataset:imported(UUID, 1.0),
     ok = sniffle_dataset:status(UUID, <<"imported">>),
-    io:format("Dataset ~s created for base jail ~s~n", [UUID, Release]).
+    R = io_lib:format("Dataset ~s created for base jail ~s~n", [UUID, Release]),
+    [clique_status:text(R)].
 
 
 help_list() ->
