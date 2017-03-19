@@ -8,8 +8,8 @@
 │  └─ lhttpc─1.4.0
 ├─ fifo_db─0.2.4
 │  ├─ eleveldb─2.2.20
-│  └─ erocksdb─0.4.1
-├─ fifo_dt─0.2.8
+│  └─ rocksdb─0.6.3
+├─ fifo_dt─0.2.9
 │  ├─ libsnarlmatch─0.1.8
 │  └─ riak_dt─2.1.1
 ├─ fifo_lager─0.1.4
