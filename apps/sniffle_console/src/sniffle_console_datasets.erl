@@ -5,9 +5,26 @@
 commands() ->
     [
      {["list"], [], [], fun cmd_list/3, help_list()},
+     {["jail", "add", '*'], [], [], fun cmd_jail_add/3, help_jail_add()},
      {["get", '*'], [], [], fun cmd_get/3, help_get()},
      {["delete", '*'], [], [], fun cmd_delete/3, help_delete()}
     ].
+
+help_jail_add() ->
+    "Adds a jail".
+
+cmd_jail_add(["sniffle-admin", "datasets", "jail", "add", ReleaseS], _, _) ->
+    Release = list_to_binary(ReleaseS),
+    UUID = fifo_utils:uuid(dataset),
+    ok = sniffle_dataset:create(UUID),
+    ok = sniffle_dataset:type(UUID, jail),
+    ok = sniffle_dataset:name(UUID, <<"FreeBSD">>),
+    ok = sniffle_dataset:version(UUID, Release),
+    ok = sniffle_dataset:kernel_version(UUID, Release),
+    ok = sniffle_dataset:imported(UUID, 1.0),
+    ok = sniffle_dataset:status(UUID, <<"imported">>),
+    io:format("Dataset ~s created for base jail ~s~n", [UUID, Release]).
+
 
 help_list() ->
     "Prints a list of all datasets".
@@ -19,6 +36,7 @@ cmd_list(_, _, _) ->
 
 help_get() ->
     "Reads a single dataset from the database.".
+
 
 cmd_get(["sniffle-admin", "datasets", "get", UUIDs], _, _) ->
     UUID = list_to_binary(UUIDs),
