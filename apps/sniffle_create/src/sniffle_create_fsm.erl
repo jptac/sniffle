@@ -513,6 +513,7 @@ finish_rules(_Event, State = #state{
                   TZT = {ft_dataset:type(Dataset),
                          ft_dataset:zone_type(Dataset)},
                   case TZT of
+                      {jail, _}     -> <<"jail">>;
                       {kvm, _}      -> <<"kvm">>;
                       {zone, lipkg} -> <<"ipkg">>;
                       {zone, ipkg}  -> <<"ipkg">>;
