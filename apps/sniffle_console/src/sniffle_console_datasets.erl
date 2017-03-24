@@ -23,6 +23,7 @@ cmd_jail_add(["sniffle-admin", "datasets", "jail", "add", ReleaseS], _, _) ->
     ok = sniffle_dataset:description(UUID, <<"FreeBSD base jail">>),
     ok = sniffle_dataset:version(UUID, Release),
     ok = sniffle_dataset:kernel_version(UUID, Release),
+    ok = sniffle_dataset:add_network(UUID, {<<"net0">>, <<"public">>}),
     ok = sniffle_dataset:imported(UUID, 1.0),
     ok = sniffle_dataset:status(UUID, <<"imported">>),
     R = io_lib:format("Dataset ~s created for base jail ~s~n", [UUID, Release]),
