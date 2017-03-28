@@ -540,6 +540,11 @@ object_info({Bucket, _Key}=BKey) ->
 %%% Internal functions - Replies
 %%%===================================================================
 
+%% If we don't have a reqid it's some riak_core specific thingything.
+%% OMG why am I doing this o.O it can't end well.
+reply(Reply, {_, undefined, _} = Sender, _) ->
+    riak_core_vnode:reply(Sender, Reply);
+
 reply(Reply, {_, ReqID, _} = Sender, #state{node=N, partition=P}) ->
     riak_core_vnode:reply(Sender, {ok, ReqID, {P, N}, Reply}).
 
