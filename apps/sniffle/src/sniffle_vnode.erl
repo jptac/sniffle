@@ -24,6 +24,7 @@
         ]).
 
 -export([
+         object_info/1,
          request_hash/1,
          nval_map/1,
          master/0,
@@ -530,6 +531,11 @@ request_hash(#req{ request = {delete, UUID}, bucket = Bucket}) ->
     riak_core_util:chash_key({Bucket, UUID});
 request_hash(_) ->
     undefined.
+
+object_info({Bucket, _Key}=BKey) ->
+    Hash = riak_core_util:chash_key(BKey),
+    {Bucket, Hash}.
+
 %%%===================================================================
 %%% Internal functions - Replies
 %%%===================================================================
