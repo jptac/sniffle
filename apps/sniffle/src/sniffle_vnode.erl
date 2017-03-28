@@ -24,6 +24,7 @@
         ]).
 
 -export([
+         nval_map/1,
          master/0,
          aae_repair/2,
          hash_object/2
@@ -547,6 +548,9 @@ split(<<"network", UUID/binary>>)    -> {<<"network">>, UUID};
 split(<<"package", UUID/binary>>)    -> {<<"package">>, UUID};
 split(<<"vm", UUID/binary>>)         -> {<<"vm">>, UUID}.
 
+nval_map(Ring) ->
+    riak_core_bucket:bucket_nval_map(Ring).
+
 %%%===================================================================
 %%% Internal functions - Helper
 %%%===================================================================
@@ -568,3 +572,4 @@ repair(Data, State) ->
 
 vc_bin(VClock) ->
     term_to_binary(lists:sort(VClock)).
+
