@@ -512,6 +512,23 @@ change(Bucket, UUID, Action, Vals, {ReqID, Coordinator} = ID,
     put(Bucket, UUID, Obj, State),
     {reply, {ok, ReqID}, State}.
 
+
+%%%===================================================================
+%%% Resize functions
+%%%===================================================================
+
+nval_map(Ring) ->
+    riak_core_bucket:bucket_nval_map(Ring).
+
+%% callback used by dynamic ring sizing to determine where requests should be
+%% forwarded.
+%% Puts/deletes are forwarded during the operation, all other requests are not
+request_hash(#req{ request = {apply, UUID, _, _}, bucket = B }) ->
+    riak_core_util:chash_key({Bucket, UUID});
+request_hash(#req{ request = {delete, UUID}, bucket = B }) ->
+    riak_core_util:chash_key({Bucket, UUID});
+request_hash(_) ->
+    undefined.
 %%%===================================================================
 %%% Internal functions - Replies
 %%%===================================================================
@@ -547,9 +564,6 @@ split(<<"iprange", UUID/binary>>)    -> {<<"iprange">>, UUID};
 split(<<"network", UUID/binary>>)    -> {<<"network">>, UUID};
 split(<<"package", UUID/binary>>)    -> {<<"package">>, UUID};
 split(<<"vm", UUID/binary>>)         -> {<<"vm">>, UUID}.
-
-nval_map(Ring) ->
-    riak_core_bucket:bucket_nval_map(Ring).
 
 %%%===================================================================
 %%% Internal functions - Helper
