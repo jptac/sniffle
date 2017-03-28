@@ -24,6 +24,7 @@
         ]).
 
 -export([
+         request_hash/1,
          nval_map/1,
          master/0,
          aae_repair/2,
