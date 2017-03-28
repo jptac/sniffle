@@ -524,9 +524,9 @@ nval_map(Ring) ->
 %% callback used by dynamic ring sizing to determine where requests should be
 %% forwarded.
 %% Puts/deletes are forwarded during the operation, all other requests are not
-request_hash(#req{ request = {apply, UUID, _, _}, bucket = B }) ->
+request_hash(#req{ request = {apply, UUID, _, _}, bucket = Bucket}) ->
     riak_core_util:chash_key({Bucket, UUID});
-request_hash(#req{ request = {delete, UUID}, bucket = B }) ->
+request_hash(#req{ request = {delete, UUID}, bucket = Bucket}) ->
     riak_core_util:chash_key({Bucket, UUID});
 request_hash(_) ->
     undefined.
