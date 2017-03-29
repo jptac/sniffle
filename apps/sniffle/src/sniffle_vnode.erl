@@ -410,8 +410,6 @@ put(Bucket, Key, Obj, State) ->
       hash_bkt(Bucket), Key, vc_bin(ft_obj:vclock(Obj)),
       State#state.hashtrees).
 
-
-
 load_obj(UUID, {T, ID}, Mod, Obj) ->
     V = ft_obj:val(Obj),
     try
@@ -581,11 +579,11 @@ bkt_to_mod(<<"network">>)            -> ft_network;
 bkt_to_mod(<<"package">>)            -> ft_package;
 bkt_to_mod(<<"vm">>)                 -> ft_vm.
 
-db_bkt(<<"sniffle_", Bkt/binary>>) -> Bkt;
-db_bkt(Bkt) -> Btk.
+db_bkt(<<"sniffle_", Bucket/binary>>) -> Bucket;
+db_bkt(Bucket) -> Bucket.
 
-hash_bkt(<<"sniffle_", _/binary>> = Bkt) -> Bkt;
-hash_bkt(Bkt) -> <<"sniffle_", Btk/binary>>.
+hash_bkt(<<"sniffle_", _/binary>> = Bucket) -> Bucket;
+hash_bkt(Bucket) -> <<"sniffle_", Bucket/binary>>.
 
 
 split(<<"2i", UUID/binary>>)         -> {<<"sniffle_2i">>, UUID};
