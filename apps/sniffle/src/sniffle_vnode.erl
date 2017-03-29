@@ -534,7 +534,9 @@ request_hash(_) ->
 
 object_info({Bucket, _Key}=BKey) ->
     Hash = riak_core_util:chash_key(BKey),
-    {Bucket, Hash}.
+    R = {Bucket, Hash},
+    lager:info("object_info(~p) -> ~p.", [BKey, R]),
+    R.
 
 %%%===================================================================
 %%% Internal functions - Replies
