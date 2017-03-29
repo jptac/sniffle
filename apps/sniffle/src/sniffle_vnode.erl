@@ -568,16 +568,16 @@ partial(Reply, {_, ReqID, _} = Sender, #state{node=N, partition=P}) ->
 
 %% CHANGE: added sniffle_
 bkt_to_mod(<<"sniffle_", R/binary>>) -> bkt_to_mod(R);
-bkt_to_mod(<<"2i">>)         -> 2i_state;
-bkt_to_mod(<<"dataset">>)    -> ft_dataset;
-bkt_to_mod(<<"dtrace">>)     -> ft_dtrace;
-bkt_to_mod(<<"grouping">>)   -> ft_grouping;
-bkt_to_mod(<<"hostname">>)   -> ft_hostname;
-bkt_to_mod(<<"hypervisor">>) -> ft_hypervisor;
-bkt_to_mod(<<"iprange">>)    -> ft_iprange;
-bkt_to_mod(<<"network">>)    -> ft_network;
-bkt_to_mod(<<"package">>)    -> ft_package;
-bkt_to_mod(<<"vm">>)         -> ft_vm.
+bkt_to_mod(<<"2i">>)                 -> '2i_state';
+bkt_to_mod(<<"dataset">>)            -> ft_dataset;
+bkt_to_mod(<<"dtrace">>)             -> ft_dtrace;
+bkt_to_mod(<<"grouping">>)           -> ft_grouping;
+bkt_to_mod(<<"hostname">>)           -> ft_hostname;
+bkt_to_mod(<<"hypervisor">>)         -> ft_hypervisor;
+bkt_to_mod(<<"iprange">>)            -> ft_iprange;
+bkt_to_mod(<<"network">>)            -> ft_network;
+bkt_to_mod(<<"package">>)            -> ft_package;
+bkt_to_mod(<<"vm">>)                 -> ft_vm.
 
 split(<<"2i", UUID/binary>>)         -> {<<"sniffle_2i">>, UUID};
 split(<<"dataset", UUID/binary>>)    -> {<<"sniffle_dataset">>, UUID};
