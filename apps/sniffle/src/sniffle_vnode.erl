@@ -525,15 +525,18 @@ nval_map(Ring) ->
 %% callback used by dynamic ring sizing to determine where requests should be
 %% forwarded.
 %% Puts/deletes are forwarded during the operation, all other requests are not
+
+%% We do use the sniffle_prefix to define bucket as the bucket in read/write
+%% does equal the system.
 request_hash(#req{ request = {apply, UUID, _, _}, bucket = Bucket}) ->
-    riak_core_util:chash_key({Bucket, UUID});
+    riak_core_util:chash_key({<<"sniffle_", Bucket/binary>>, UUID});
 request_hash(#req{ request = {delete, UUID}, bucket = Bucket}) ->
-    riak_core_util:chash_key({Bucket, UUID});
+    riak_core_util:chash_key({<<"sniffle_", Bucket/binary>>, UUID});
 request_hash(_) ->
     undefined.
 
-object_info({Bucket, _Key}=BKey) ->
-    Hash = riak_core_util:chash_key(BKey),
+object_info({Bucket, UUID}=BKey) ->
+    Hash = riak_core_util:chash_key({<<"sniffle_", Bucket/binary>>, UUID}),
     R = {Bucket, Hash},
     lager:info("object_info(~p) -> ~p.", [BKey, R]),
     R.
