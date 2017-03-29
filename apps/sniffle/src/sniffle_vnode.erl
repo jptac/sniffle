@@ -98,7 +98,7 @@ handle_overload_info(_, _Idx) ->
 
 handle_command(#req{id = ID = {ReqID, _}, request = {apply, Key, Fun, Args},
                     bucket = Bucket}, _Sender, State) ->
-    R = case Fun(ID, fifo_db:get(State#state.db, Bucket, Key), Args) of
+    R = case Fun(ID, get(Bucket, Key, State), Args) of
             {write, R0, Obj} ->
                 put(Bucket, Key, Obj, State),
                 R0;
@@ -392,8 +392,8 @@ handle_info(_, State) ->
 %%%===================================================================
 
 %% CHANGE crash here!
-get(<<"sniffle_", _/binary>>, _, _) ->
-    exit(wrong);
+get(<<"sniffle_", Bucket/binary>>, UUID, State) ->
+    get(Bucket, UUID, State);
 get(Bucket, UUID, State) ->
     try
         ?FM(fifo_db, get, [State#state.db, Bucket, UUID])
@@ -405,8 +405,8 @@ get(Bucket, UUID, State) ->
             not_found
     end.
 
-put(<<"sniffle_", _/binary>>, _, _, _) ->
-    exit(wrong);
+put(<<"sniffle_", Bucket/binary>>, Key, Obj, State) ->
+    put(Bucket, Key, Obj, State);
 put(Bucket, Key, Obj, State) ->
     ?FM(fifo_db, put, [State#state.db, Bucket, Key, Obj]),
     %% CHANGE add sniffle
