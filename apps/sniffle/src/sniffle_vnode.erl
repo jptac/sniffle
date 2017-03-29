@@ -182,8 +182,9 @@ handle_command(#req{id = ReqID, request = {get, UUID}, bucket = Bucket},
 handle_command(#req{id = {ReqID, _Coordinator}, request = {delete, UUID},
                     bucket = Bucket}, _Sender, State) ->
     ?FM(fifo_db, delete, [State#state.db, Bucket, UUID]),
+    %% Change add sniffle_ prefix
     riak_core_index_hashtree:delete(
-      [{object, {Bucket, UUID}}], State#state.hashtrees),
+      [{object, {<<"sniffle_", Bucket/binary>>, UUID}}], State#state.hashtrees),
     {reply, {ok, ReqID}, State};
 
 
@@ -238,11 +239,14 @@ handle_command({rehash, {Bucket, UUID}}, _,
                State=#state{hashtrees=HT}) ->
     case get(Bucket, UUID, State) of
         {ok, Obj} ->
+            %% CHANGE add sniffle_
             riak_core_aae_vnode:update_hashtree(
-              Bucket, UUID, vc_bin(ft_obj:vclock(Obj)), HT);
+              <<"sniffle_", Bucket>>, UUID, vc_bin(ft_obj:vclock(Obj)), HT);
         _ ->
             %% Make sure hashtree isn't tracking deleted data
-            riak_core_index_hashtree:delete([{object, {Bucket, UUID}}], HT)
+            %% CHANGE add sniffle_
+            riak_core_index_hashtree:delete(
+              [{object, {<<"sniffle_", Bucket>>, UUID}}], HT)
     end,
     {noreply, State};
 
@@ -405,8 +409,10 @@ put(<<"sniffle_", _/binary>>, _, _, _) ->
     exit(wrong);
 put(Bucket, Key, Obj, State) ->
     ?FM(fifo_db, put, [State#state.db, Bucket, Key, Obj]),
+    %% CHANGE add sniffle
     riak_core_aae_vnode:update_hashtree(
-      Bucket, Key, vc_bin(ft_obj:vclock(Obj)), State#state.hashtrees).
+      <<"sniffle_", Bucket>>, Key, vc_bin(ft_obj:vclock(Obj)),
+      State#state.hashtrees).
 
 
 
