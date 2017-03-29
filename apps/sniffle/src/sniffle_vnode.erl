@@ -181,10 +181,10 @@ handle_command(#req{id = ReqID, request = {get, UUID}, bucket = Bucket},
 
 handle_command(#req{id = {ReqID, _Coordinator}, request = {delete, UUID},
                     bucket = Bucket}, _Sender, State) ->
-    ?FM(fifo_db, delete, [State#state.db, Bucket, UUID]),
+    ?FM(fifo_db, delete, [State#state.db, db_bkt(Bucket), UUID]),
     %% Change add sniffle_ prefix
     riak_core_index_hashtree:delete(
-      [{object, {<<"sniffle_", Bucket/binary>>, UUID}}], State#state.hashtrees),
+      [{object, {hash_bkt(Bucket), UUID}}], State#state.hashtrees),
     {reply, {ok, ReqID}, State};
 
 
@@ -241,12 +241,12 @@ handle_command({rehash, {Bucket, UUID}}, _,
         {ok, Obj} ->
             %% CHANGE add sniffle_
             riak_core_aae_vnode:update_hashtree(
-              <<"sniffle_", Bucket>>, UUID, vc_bin(ft_obj:vclock(Obj)), HT);
+              hash_bkt(Bucket), UUID, vc_bin(ft_obj:vclock(Obj)), HT);
         _ ->
             %% Make sure hashtree isn't tracking deleted data
             %% CHANGE add sniffle_
             riak_core_index_hashtree:delete(
-              [{object, {<<"sniffle_", Bucket>>, UUID}}], HT)
+              [{object, {hash_bkt(Bucket), UUID}}], HT)
     end,
     {noreply, State};
 
@@ -392,11 +392,9 @@ handle_info(_, State) ->
 %%%===================================================================
 
 %% CHANGE crash here!
-get(<<"sniffle_", Bucket/binary>>, UUID, State) ->
-    get(Bucket, UUID, State);
 get(Bucket, UUID, State) ->
     try
-        ?FM(fifo_db, get, [State#state.db, Bucket, UUID])
+        ?FM(fifo_db, get, [State#state.db, db_bkt(Bucket), UUID])
     catch
         E1:E2 ->
             lager:error("[vnode] Failed to get object ~s/~s ~p:~p ~w",
@@ -405,13 +403,11 @@ get(Bucket, UUID, State) ->
             not_found
     end.
 
-put(<<"sniffle_", Bucket/binary>>, Key, Obj, State) ->
-    put(Bucket, Key, Obj, State);
 put(Bucket, Key, Obj, State) ->
-    ?FM(fifo_db, put, [State#state.db, Bucket, Key, Obj]),
+    ?FM(fifo_db, put, [State#state.db, db_bkt(Bucket), Key, Obj]),
     %% CHANGE add sniffle
     riak_core_aae_vnode:update_hashtree(
-      <<"sniffle_", Bucket>>, Key, vc_bin(ft_obj:vclock(Obj)),
+      hash_bkt(Bucket), Key, vc_bin(ft_obj:vclock(Obj)),
       State#state.hashtrees).
 
 
@@ -540,14 +536,14 @@ nval_map(Ring) ->
 %% We do use the sniffle_prefix to define bucket as the bucket in read/write
 %% does equal the system.
 request_hash(#req{ request = {apply, UUID, _, _}, bucket = Bucket}) ->
-    riak_core_util:chash_key({<<"sniffle_", Bucket/binary>>, UUID});
+    riak_core_util:chash_key({hash_bkt(Bucket), UUID});
 request_hash(#req{ request = {delete, UUID}, bucket = Bucket}) ->
-    riak_core_util:chash_key({<<"sniffle_", Bucket/binary>>, UUID});
+    riak_core_util:chash_key({hash_bkt(Bucket), UUID});
 request_hash(_) ->
     undefined.
 
 object_info({Bucket, UUID}=BKey) ->
-    Hash = riak_core_util:chash_key({<<"sniffle_", Bucket/binary>>, UUID}),
+    Hash = riak_core_util:chash_key({hash_bkt(Bucket), UUID}),
     R = {Bucket, Hash},
     lager:info("object_info(~p) -> ~p.", [BKey, R]),
     R.
@@ -573,7 +569,7 @@ partial(Reply, {_, ReqID, _} = Sender, #state{node=N, partition=P}) ->
 
 
 %% CHANGE: added sniffle_
-bkt_to_mod(<<"sniffle_", R/binary>>) -> bkt_to_mod(R);
+bkt_to_mod(<<"sniffle_", Bkt/binary>>) -> bkt_to_mod(Bkt);
 bkt_to_mod(<<"2i">>)                 -> '2i_state';
 bkt_to_mod(<<"dataset">>)            -> ft_dataset;
 bkt_to_mod(<<"dtrace">>)             -> ft_dtrace;
@@ -584,6 +580,13 @@ bkt_to_mod(<<"iprange">>)            -> ft_iprange;
 bkt_to_mod(<<"network">>)            -> ft_network;
 bkt_to_mod(<<"package">>)            -> ft_package;
 bkt_to_mod(<<"vm">>)                 -> ft_vm.
+
+db_bkt(<<"sniffle_", Bkt/binary>>) -> Bkt;
+db_bkt(Bkt) -> Btk.
+
+hash_bkt(<<"sniffle_", _/binary>> = Bkt) -> Bkt;
+hash_bkt(Bkt) -> <<"sniffle_", Btk/binary>>.
+
 
 split(<<"2i", UUID/binary>>)         -> {<<"sniffle_2i">>, UUID};
 split(<<"dataset", UUID/binary>>)    -> {<<"sniffle_dataset">>, UUID};
@@ -611,7 +614,8 @@ mk_reqid() ->
 
 repair(Data, State) ->
     {{Bkt, UUID}, Obj} = binary_to_term(Data),
-    Req = #req{request = {repair, UUID, undefined, Obj}, bucket = Bkt},
+    Req = #req{request = {repair, UUID, undefined, Obj},
+               bucket = db_bkt(Bkt)},
     {noreply, State1} = handle_command(Req, undefined, State),
     {reply, ok, State1}.
 
