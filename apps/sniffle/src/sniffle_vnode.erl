@@ -387,6 +387,9 @@ handle_info(_, State) ->
 %%% Internal functions - Access
 %%%===================================================================
 
+%% CHANGE crash here!
+get(<<"sniffle_", _/binary>>, _, _) ->
+    exit(wrong);
 get(Bucket, UUID, State) ->
     try
         ?FM(fifo_db, get, [State#state.db, Bucket, UUID])
@@ -398,6 +401,8 @@ get(Bucket, UUID, State) ->
             not_found
     end.
 
+put(<<"sniffle_", _/binary>>, _, _, _) ->
+    exit(wrong);
 put(Bucket, Key, Obj, State) ->
     ?FM(fifo_db, put, [State#state.db, Bucket, Key, Obj]),
     riak_core_aae_vnode:update_hashtree(
@@ -560,7 +565,10 @@ partial(Reply, {_, ReqID, _} = Sender, #state{node=N, partition=P}) ->
 %%% Internal functions - Translations
 %%%===================================================================
 
-bkt_to_mod(<<"2i">>)         -> sniffle_2i_state;
+
+%% CHANGE: added sniffle_
+bkt_to_mod(<<"sniffle_", R/binary>>) -> bkt_to_mod(R);
+bkt_to_mod(<<"2i">>)         -> 2i_state;
 bkt_to_mod(<<"dataset">>)    -> ft_dataset;
 bkt_to_mod(<<"dtrace">>)     -> ft_dtrace;
 bkt_to_mod(<<"grouping">>)   -> ft_grouping;
@@ -571,16 +579,16 @@ bkt_to_mod(<<"network">>)    -> ft_network;
 bkt_to_mod(<<"package">>)    -> ft_package;
 bkt_to_mod(<<"vm">>)         -> ft_vm.
 
-split(<<"2i", UUID/binary>>)         -> {<<"2i">>, UUID};
-split(<<"dataset", UUID/binary>>)    -> {<<"dataset">>, UUID};
-split(<<"dtrace", UUID/binary>>)     -> {<<"dtrace">>, UUID};
-split(<<"grouping", UUID/binary>>)   -> {<<"grouping">>, UUID};
-split(<<"hostname", UUID/binary>>)   -> {<<"hostname">>, UUID};
-split(<<"hypervisor", UUID/binary>>) -> {<<"hypervisor">>, UUID};
-split(<<"iprange", UUID/binary>>)    -> {<<"iprange">>, UUID};
-split(<<"network", UUID/binary>>)    -> {<<"network">>, UUID};
-split(<<"package", UUID/binary>>)    -> {<<"package">>, UUID};
-split(<<"vm", UUID/binary>>)         -> {<<"vm">>, UUID}.
+split(<<"2i", UUID/binary>>)         -> {<<"sniffle_2i">>, UUID};
+split(<<"dataset", UUID/binary>>)    -> {<<"sniffle_dataset">>, UUID};
+split(<<"dtrace", UUID/binary>>)     -> {<<"sniffle_dtrace">>, UUID};
+split(<<"grouping", UUID/binary>>)   -> {<<"sniffle_grouping">>, UUID};
+split(<<"hostname", UUID/binary>>)   -> {<<"sniffle_hostname">>, UUID};
+split(<<"hypervisor", UUID/binary>>) -> {<<"sniffle_hypervisor">>, UUID};
+split(<<"iprange", UUID/binary>>)    -> {<<"sniffle_iprange">>, UUID};
+split(<<"network", UUID/binary>>)    -> {<<"sniffle_network">>, UUID};
+split(<<"package", UUID/binary>>)    -> {<<"sniffle_package">>, UUID};
+split(<<"vm", UUID/binary>>)         -> {<<"sniffle_vm">>, UUID}.
 
 %%%===================================================================
 %%% Internal functions - Helper
