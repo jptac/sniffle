@@ -9,7 +9,7 @@
   0},
  {<<"certifi">>,{pkg,<<"certifi">>,<<"1.0.0">>},1},
  {<<"chash">>,{pkg,<<"chash">>,<<"0.1.2">>},1},
- {<<"clique">>,{pkg,<<"clique">>,<<"0.3.6">>},1},
+ {<<"clique">>,{pkg,<<"clique">>,<<"0.3.9">>},1},
  {<<"cuttlefish">>,{pkg,<<"cuttlefish">>,<<"2.0.11">>},1},
  {<<"ddb_client">>,{pkg,<<"ddb_client">>,<<"0.4.1">>},1},
  {<<"ddb_connection">>,{pkg,<<"ddb_connection">>,<<"0.2.0">>},2},
@@ -110,7 +110,7 @@
  {<<"recon">>,{pkg,<<"recon">>,<<"2.3.2">>},0},
  {<<"riak_core">>,
   {git,"https://github.com/project-fifo/riak_core",
-       {ref,"aa9562e328a611329aa57d6fb0d3460ed01de571"}},
+       {ref,"6ea1e2283c082cf2d4875293c86d6116c23c7df5"}},
   0},
  {<<"riak_dt">>,{pkg,<<"riak_dt">>,<<"2.1.1">>},1},
  {<<"riak_ensemble">>,{pkg,<<"riak_ensemble_ng">>,<<"2.4.0">>},1},
@@ -126,7 +126,7 @@
   0},
  {<<"snappiest">>,{pkg,<<"snappiest">>,<<"1.2.0">>},3},
  {<<"ssl_verify_fun">>,{pkg,<<"ssl_verify_fun">>,<<"1.1.1">>},1},
- {<<"trie">>,{pkg,<<"trie">>,<<"1.6.0">>},0},
+ {<<"trie">>,{pkg,<<"trie">>,<<"1.7.0">>},0},
  {<<"uuid">>,{pkg,<<"uuid_erl">>,<<"1.5.4">>},1}]}.
 [
 {pkg_hash,[
@@ -136,7 +136,7 @@
  {<<"blume">>, <<"62DDA46B43E24D4B8D5407B8F6DDB78EBD2A8CDC84D9BC822CDDAEF6F402F3EB">>},
  {<<"certifi">>, <<"1C787A85B1855BA354F0B8920392C19AA1D06B0EE1362F9141279620A5BE2039">>},
  {<<"chash">>, <<"AF02484F2640C653C4B9A8557A14CA0704989DBEDB27E7CCBC442F1903A3BCA7">>},
- {<<"clique">>, <<"1A7EB99DF038CC3C76686A67CA41D0F5F6A2F0F5D9863FE091EB8C35600EF80F">>},
+ {<<"clique">>, <<"A56298B7582C1AC2C278F21D3C779CE3ECCE02AE06751DAA107441ED90DC5E69">>},
  {<<"cuttlefish">>, <<"D266AC68BA801803ACE4EF3DEC0FC419F184092E1882E19F7AFC29A6D4334E6A">>},
  {<<"ddb_client">>, <<"39CA1CBB08D18CC1C9154025A99562EE8A5E3D22DD237021CC3AE671E8DD23C4">>},
  {<<"ddb_connection">>, <<"E8FD9B24E0B9550FF03EE5BC9A7DAC9787C869CBA0D48DAB79BBAB8434848E27">>},
@@ -187,6 +187,6 @@
  {<<"setup">>, <<"15DF8E57C6DF9755E22BFB1AEF0C640BD97E9889396FDFB2A85A5536A9043674">>},
  {<<"snappiest">>, <<"25706FEBB5ECAEA900D879A89C6D967C8D1BF700F8546BEBD0DEA514A8CCBFB7">>},
  {<<"ssl_verify_fun">>, <<"28A4D65B7F59893BC2C7DE786DEC1E1555BD742D336043FE644AE956C3497FBE">>},
- {<<"trie">>, <<"8D2B0C850A01B46FC4711AA1862D45D6AE3A0DA963127E44E6535EA88274D7D3">>},
+ {<<"trie">>, <<"E022B7B33338957BCE17BFD52B6BFE0840F2269E89DAB0C00C01C6CD7FCBEECC">>},
  {<<"uuid">>, <<"06240EFF3EAF013CC22274689B0C1FF6345645EE5D47A9E4ED7545EEB7698B23">>}]}
 ].

@@ -59,7 +59,7 @@
 │  ├─ basho_stats─1.0.3
 │  ├─ blume─0.1.0
 │  ├─ chash─0.1.2
-│  ├─ clique─0.3.6
+│  ├─ clique─0.3.9
 │  ├─ cuttlefish─2.0.11
 │  │  └─ getopt─0.8.2
 │  ├─ exometer_core─1.0.2
@@ -87,4 +87,4 @@
 ├─ sniffle_version─0.1.0
 ├─ sniffle_watchdog─0.1.0
 ├─ sniffle_write─0.1.0
-└─ trie─1.6.0
+└─ trie─1.7.0

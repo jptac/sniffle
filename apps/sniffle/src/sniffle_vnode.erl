@@ -26,7 +26,10 @@
 -export([
          object_info/1,
          request_hash/1,
-         nval_map/1,
+         nval_map/1
+         ]).
+
+-export([
          master/0,
          aae_repair/2,
          hash_object/2
