@@ -22,7 +22,12 @@ list(Type) ->
     fifo_s3:list(get_bucket(Type), get_config(Type)).
 
 delete(Type, Key) ->
-    fifo_s3:delete(get_bucket(Type), Key, get_config(Type)).
+    case get_host(Type) of
+        "no_s3" ->
+            ok;
+        _ ->
+            fifo_s3:delete(get_bucket(Type), Key, get_config(Type))
+    end.
 
 new_stream(Type, Key) ->
     fifo_s3:new_stream(get_bucket(Type), Key, get_config(Type)).
