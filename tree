@@ -6,7 +6,7 @@
 ├─ erlcloud─0.13.10
 │  ├─ eini─1.2.4
 │  └─ lhttpc─1.4.0
-├─ fifo_db─0.2.6
+├─ fifo_db─0.2.7
 │  ├─ eleveldb─2.2.20
 │  └─ rocksdb─0.7.1
 ├─ fifo_dt─0.2.9
