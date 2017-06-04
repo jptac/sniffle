@@ -16,9 +16,7 @@ version_header: version
 
 clean:
 	$(REBAR) clean
-	-rm -rf apps/sniffle/.eunit
-	-rm -rf apps/sniffle/ebin/
-	make -C rel/pkg clean
+	$(MAKE) -C rel/pkg clean
 
 long-test:
 	$(REBAR) as eqc,long eunit
@@ -29,4 +27,4 @@ rel: update
 	$(REBAR) as prod release
 
 package: rel
-	make -C rel/pkg package
+	$(MAKE) -C rel/pkg package

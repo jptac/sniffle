@@ -24,6 +24,12 @@
         ]).
 
 -export([
+         object_info/1,
+         request_hash/1,
+         nval_map/1
+         ]).
+
+-export([
          master/0,
          aae_repair/2,
          hash_object/2
@@ -95,7 +101,7 @@ handle_overload_info(_, _Idx) ->
 
 handle_command(#req{id = ID = {ReqID, _}, request = {apply, Key, Fun, Args},
                     bucket = Bucket}, _Sender, State) ->
-    R = case Fun(ID, fifo_db:get(State#state.db, Bucket, Key), Args) of
+    R = case Fun(ID, get(Bucket, Key, State), Args) of
             {write, R0, Obj} ->
                 put(Bucket, Key, Obj, State),
                 R0;
@@ -178,9 +184,10 @@ handle_command(#req{id = ReqID, request = {get, UUID}, bucket = Bucket},
 
 handle_command(#req{id = {ReqID, _Coordinator}, request = {delete, UUID},
                     bucket = Bucket}, _Sender, State) ->
-    ?FM(fifo_db, delete, [State#state.db, Bucket, UUID]),
+    ?FM(fifo_db, delete, [State#state.db, db_bkt(Bucket), UUID]),
+    %% Change add sniffle_ prefix
     riak_core_index_hashtree:delete(
-      [{object, {Bucket, UUID}}], State#state.hashtrees),
+      [{object, {hash_bkt(Bucket), UUID}}], State#state.hashtrees),
     {reply, {ok, ReqID}, State};
 
 
@@ -235,11 +242,14 @@ handle_command({rehash, {Bucket, UUID}}, _,
                State=#state{hashtrees=HT}) ->
     case get(Bucket, UUID, State) of
         {ok, Obj} ->
+            %% CHANGE add sniffle_
             riak_core_aae_vnode:update_hashtree(
-              Bucket, UUID, vc_bin(ft_obj:vclock(Obj)), HT);
+              hash_bkt(Bucket), UUID, vc_bin(ft_obj:vclock(Obj)), HT);
         _ ->
             %% Make sure hashtree isn't tracking deleted data
-            riak_core_index_hashtree:delete([{object, {Bucket, UUID}}], HT)
+            %% CHANGE add sniffle_
+            riak_core_index_hashtree:delete(
+              [{object, {hash_bkt(Bucket), UUID}}], HT)
     end,
     {noreply, State};
 
@@ -384,9 +394,10 @@ handle_info(_, State) ->
 %%% Internal functions - Access
 %%%===================================================================
 
+%% CHANGE crash here!
 get(Bucket, UUID, State) ->
     try
-        ?FM(fifo_db, get, [State#state.db, Bucket, UUID])
+        ?FM(fifo_db, get, [State#state.db, db_bkt(Bucket), UUID])
     catch
         E1:E2 ->
             lager:error("[vnode] Failed to get object ~s/~s ~p:~p ~w",
@@ -396,11 +407,11 @@ get(Bucket, UUID, State) ->
     end.
 
 put(Bucket, Key, Obj, State) ->
-    ?FM(fifo_db, put, [State#state.db, Bucket, Key, Obj]),
+    ?FM(fifo_db, put, [State#state.db, db_bkt(Bucket), Key, Obj]),
+    %% CHANGE add sniffle
     riak_core_aae_vnode:update_hashtree(
-      Bucket, Key, vc_bin(ft_obj:vclock(Obj)), State#state.hashtrees).
-
-
+      hash_bkt(Bucket), Key, vc_bin(ft_obj:vclock(Obj)),
+      State#state.hashtrees).
 
 load_obj(UUID, {T, ID}, Mod, Obj) ->
     V = ft_obj:val(Obj),
@@ -511,9 +522,41 @@ change(Bucket, UUID, Action, Vals, {ReqID, Coordinator} = ID,
     put(Bucket, UUID, Obj, State),
     {reply, {ok, ReqID}, State}.
 
+
+%%%===================================================================
+%%% Resize functions
+%%%===================================================================
+
+nval_map(Ring) ->
+    riak_core_bucket:bucket_nval_map(Ring).
+
+%% callback used by dynamic ring sizing to determine where requests should be
+%% forwarded.
+%% Puts/deletes are forwarded during the operation, all other requests are not
+
+%% We do use the sniffle_prefix to define bucket as the bucket in read/write
+%% does equal the system.
+request_hash(#req{ request = {apply, UUID, _, _}, bucket = Bucket}) ->
+    riak_core_util:chash_key({hash_bkt(Bucket), UUID});
+request_hash(#req{ request = {delete, UUID}, bucket = Bucket}) ->
+    riak_core_util:chash_key({hash_bkt(Bucket), UUID});
+request_hash(_) ->
+    undefined.
+
+object_info({Bucket, UUID}=BKey) ->
+    Hash = riak_core_util:chash_key({hash_bkt(Bucket), UUID}),
+    R = {Bucket, Hash},
+    lager:info("object_info(~p) -> ~p.", [BKey, R]),
+    R.
+
 %%%===================================================================
 %%% Internal functions - Replies
 %%%===================================================================
+
+%% If we don't have a reqid it's some riak_core specific thingything.
+%% OMG why am I doing this o.O it can't end well.
+reply(Reply, {_, undefined, _} = Sender, _) ->
+    riak_core_vnode:reply(Sender, Reply);
 
 reply(Reply, {_, ReqID, _} = Sender, #state{node=N, partition=P}) ->
     riak_core_vnode:reply(Sender, {ok, ReqID, {P, N}, Reply}).
@@ -525,27 +568,37 @@ partial(Reply, {_, ReqID, _} = Sender, #state{node=N, partition=P}) ->
 %%% Internal functions - Translations
 %%%===================================================================
 
-bkt_to_mod(<<"2i">>)         -> sniffle_2i_state;
-bkt_to_mod(<<"dataset">>)    -> ft_dataset;
-bkt_to_mod(<<"dtrace">>)     -> ft_dtrace;
-bkt_to_mod(<<"grouping">>)   -> ft_grouping;
-bkt_to_mod(<<"hostname">>)   -> ft_hostname;
-bkt_to_mod(<<"hypervisor">>) -> ft_hypervisor;
-bkt_to_mod(<<"iprange">>)    -> ft_iprange;
-bkt_to_mod(<<"network">>)    -> ft_network;
-bkt_to_mod(<<"package">>)    -> ft_package;
-bkt_to_mod(<<"vm">>)         -> ft_vm.
 
-split(<<"2i", UUID/binary>>)         -> {<<"2i">>, UUID};
-split(<<"dataset", UUID/binary>>)    -> {<<"dataset">>, UUID};
-split(<<"dtrace", UUID/binary>>)     -> {<<"dtrace">>, UUID};
-split(<<"grouping", UUID/binary>>)   -> {<<"grouping">>, UUID};
-split(<<"hostname", UUID/binary>>)   -> {<<"hostname">>, UUID};
-split(<<"hypervisor", UUID/binary>>) -> {<<"hypervisor">>, UUID};
-split(<<"iprange", UUID/binary>>)    -> {<<"iprange">>, UUID};
-split(<<"network", UUID/binary>>)    -> {<<"network">>, UUID};
-split(<<"package", UUID/binary>>)    -> {<<"package">>, UUID};
-split(<<"vm", UUID/binary>>)         -> {<<"vm">>, UUID}.
+%% CHANGE: added sniffle_
+bkt_to_mod(<<"sniffle_", Bkt/binary>>) -> bkt_to_mod(Bkt);
+bkt_to_mod(<<"2i">>)                 -> '2i_state';
+bkt_to_mod(<<"dataset">>)            -> ft_dataset;
+bkt_to_mod(<<"dtrace">>)             -> ft_dtrace;
+bkt_to_mod(<<"grouping">>)           -> ft_grouping;
+bkt_to_mod(<<"hostname">>)           -> ft_hostname;
+bkt_to_mod(<<"hypervisor">>)         -> ft_hypervisor;
+bkt_to_mod(<<"iprange">>)            -> ft_iprange;
+bkt_to_mod(<<"network">>)            -> ft_network;
+bkt_to_mod(<<"package">>)            -> ft_package;
+bkt_to_mod(<<"vm">>)                 -> ft_vm.
+
+db_bkt(<<"sniffle_", Bucket/binary>>) -> Bucket;
+db_bkt(Bucket) -> Bucket.
+
+hash_bkt(<<"sniffle_", _/binary>> = Bucket) -> Bucket;
+hash_bkt(Bucket) -> <<"sniffle_", Bucket/binary>>.
+
+
+split(<<"2i", UUID/binary>>)         -> {<<"sniffle_2i">>, UUID};
+split(<<"dataset", UUID/binary>>)    -> {<<"sniffle_dataset">>, UUID};
+split(<<"dtrace", UUID/binary>>)     -> {<<"sniffle_dtrace">>, UUID};
+split(<<"grouping", UUID/binary>>)   -> {<<"sniffle_grouping">>, UUID};
+split(<<"hostname", UUID/binary>>)   -> {<<"sniffle_hostname">>, UUID};
+split(<<"hypervisor", UUID/binary>>) -> {<<"sniffle_hypervisor">>, UUID};
+split(<<"iprange", UUID/binary>>)    -> {<<"sniffle_iprange">>, UUID};
+split(<<"network", UUID/binary>>)    -> {<<"sniffle_network">>, UUID};
+split(<<"package", UUID/binary>>)    -> {<<"sniffle_package">>, UUID};
+split(<<"vm", UUID/binary>>)         -> {<<"sniffle_vm">>, UUID}.
 
 %%%===================================================================
 %%% Internal functions - Helper
@@ -562,9 +615,11 @@ mk_reqid() ->
 
 repair(Data, State) ->
     {{Bkt, UUID}, Obj} = binary_to_term(Data),
-    Req = #req{request = {repair, UUID, undefined, Obj}, bucket = Bkt},
+    Req = #req{request = {repair, UUID, undefined, Obj},
+               bucket = db_bkt(Bkt)},
     {noreply, State1} = handle_command(Req, undefined, State),
     {reply, ok, State1}.
 
 vc_bin(VClock) ->
     term_to_binary(lists:sort(VClock)).
+
