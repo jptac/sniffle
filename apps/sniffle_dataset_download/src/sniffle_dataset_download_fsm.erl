@@ -31,7 +31,8 @@
 
 -define(SERVER, ?MODULE).
 
--record(state, {uuid, url, sha1, img_sha1, upload, total_size, img_url,
+-record(state, {uuid,
+                url :: binary(), sha1, img_sha1, upload, total_size, img_url,
                 chunk_size, from, ref, acc = <<>>, downloaded = 0,
                 http_opts = [], http_client, done = false}).
 
@@ -152,8 +153,9 @@ init_download(_E, State = #state{img_url = URL, http_opts = HTTPOpts}) ->
        http_client = Client
       }, 0}.
 
+-dialyzer([{nowarn_function, [get_manifest/2, client/2]}]).
 client(URL, HTTPOpts) ->
-    {ok, 200, _, Client} = hackney:request(get, URL, [], <<>>, HTTPOpts),
+    {ok, 200, _, Client} =  hackney:request(get, URL, [], <<>>, HTTPOpts),
     Client.
 
 download(_E, State = #state{acc = Acc, chunk_size = ChunkSize, upload = U,

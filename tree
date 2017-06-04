@@ -15,31 +15,33 @@
 ├─ fifo_lager─0.1.4
 │  ├─ lager_graylog─0.1.1
 │  └─ lager_logstash_backend─0.1.1
-├─ fifo_s3─0.2.10
+├─ fifo_s3─0.2.11
 │  └─ base16─1.0.0
 ├─ fifo_spec─0.1.32
-├─ fifo_utils─0.1.35
+├─ fifo_utils─0.1.37
 │  └─ uuid─1.5.4
 │     └─ quickrand─1.5.4
-├─ folsom_ddb─0.2.0
-│  ├─ ddb_client─0.4.2
-│  │  ├─ dproto─0.4.1
+├─ folsom_ddb─0.3.0
+│  ├─ ddb_client─0.5.5
+│  │  ├─ dproto─0.5.2
 │  │  │  └─ snappiest─1.2.0
 │  │  └─ mmath─0.2.17
-│  ├─ dqe_idx─0.2.1
-│  ├─ dqe_idx_ddb─0.3.0
-│  │  └─ ddb_connection─0.2.2
+│  ├─ dqe_idx─0.3.0
+│  ├─ dqe_idx_ddb─0.4.0
+│  │  └─ ddb_connection─0.4.2
 │  │     └─ otters─0.2.8
 │  │        ├─ dynamic_compile─1.0.0
 │  │        └─ ibrowse─4.4.0
-│  ├─ dqe_idx_pg─0.3.6
-│  │  └─ pgapp─0.0.2
-│  │     └─ epgsql─3.3.0
+│  ├─ dqe_idx_pg─0.4.4
+│  │  ├─ pgapp─0.0.2
+│  │  │  └─ epgsql─3.3.0
+│  │  └─ sqlmig─0.1.5
 │  └─ folsom─0.8.3
 │     └─ bear─0.8.3
-├─ hackney─1.8.0
-│  ├─ certifi─1.1.0
-│  ├─ idna─4.0.0
+├─ hackney─1.8.5
+│  ├─ certifi─1.2.1
+│  ├─ idna─5.0.2
+│  │  └─ unicode_util_compat─0.2.0
 │  ├─ metrics─1.0.1
 │  ├─ mimerl─1.0.2
 │  └─ ssl_verify_fun─1.1.1
@@ -59,7 +61,7 @@
 ├─ poolboy─0.8.1-p3
 ├─ rankmatcher─0.1.6
 ├─ recon─2.3.2
-├─ riak_core─3.0.4
+├─ riak_core─3.0.5
 │  ├─ basho_stats─1.0.3
 │  ├─ blume─0.1.0
 │  ├─ chash─0.1.2
