@@ -880,7 +880,8 @@ free_package_res(_, <<>>) ->
 free_package_res(PkgID, OrgID) ->
     {ok, P} = sniffle_package:get(PkgID),
     RVs = maps:to_list(ft_package:org_resources(P)),
-    [ls_org:resource_inc(OrgID, R, V) || {R, V} <- RVs].
+    [ls_org:resource_inc(OrgID, R, V) || {R, V} <- RVs],
+    ok.
 
 %%--------------------------------------------------------------------
 %% @doc Triggers the start of a VM on the hypervisor.
