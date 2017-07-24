@@ -1003,10 +1003,10 @@ set_owner(User, Vm, Owner) ->
             end,
             ls_org:execute_trigger(Owner, vm_create, Vm),
             case ft_vm:owner(V) of
-                <<>> ->
-                    ok;
-                OldOwner ->
-                    ls_org:reverse_trigger(OldOwner, vm_create, Vm)
+                <<OldOwner:36/binary>> ->
+                    ls_org:reverse_trigger(OldOwner, vm_create, Vm);
+                _ ->
+                    ok
             end,
             libhowl:send(Vm, #{
                            <<"event">> => <<"update">>,
@@ -1177,10 +1177,10 @@ set_hostname(UUID, IFace, Hostname) ->
             IP = ft_iprange:parse_bin(IPs),
             remove_hostname_map(UUID, IP, V),
             case Hostname of
-                <<>> ->
-                    ok;
+                <<_, _/binary>> ->
+                    add_hostname_map(UUID, IP, Hostname);
                 _ ->
-                    add_hostname_map(UUID, IP, Hostname)
+                    ok
             end
     end.
 
@@ -1201,16 +1201,16 @@ remove_hostname_map(UUID, IP) ->
 
 remove_hostname_map(UUID, IP, V) ->
     case ft_vm:owner(V) of
-        <<>> ->
-            ok;
-        Owner ->
+        <<Owner:36/binary>> ->
             Map = ft_vm:hostname_map(V),
             case maps:find(IP, Map) of
                 {ok, Hostname} ->
                     sniffle_hostname:remove(Hostname, Owner, {UUID, IP});
                 _ ->
                     ok
-            end
+            end;
+        _ ->
+            ok
     end,
     do_write(UUID, set_hostname_map, [IP, delete]).
 
@@ -1362,16 +1362,16 @@ do_delete_backup(UUID, VM, BID) ->
             ok
     end,
     case ?S:hypervisor(VM) of
-        <<>> ->
-            ok;
-        H ->
+        <<H:36/binary>> ->
             {Server, Port} = get_hypervisor(H),
             libchunter:delete_snapshot(Server, Port, UUID, BID),
             set_backup(UUID, [{[BID], delete}]),
             libhowl:send(UUID, #{<<"event">> => <<"backup">>,
                                  <<"data">> => #{
                                      <<"action">> => <<"deleted">>,
-                                     <<"uuid">> => BID}})
+                                     <<"uuid">> => BID}});
+        _ ->
+            ok
     end.
 
 %% resource_action(UUID, Action, Opts) ->
@@ -1379,9 +1379,7 @@ do_delete_backup(UUID, VM, BID) ->
 
 resource_action(VM, Action, User, Opts) ->
     case ft_vm:owner(VM) of
-        <<>> ->
-            ok;
-        Org ->
+        <<Org:36/binary>> ->
             Opts1 = case User of
                         undefined ->
                             Opts;
@@ -1398,7 +1396,9 @@ resource_action(VM, Action, User, Opts) ->
                 Event ->
                     Event1 = atom_to_binary(Event, utf8),
                     ls_acc:update(Org, UUID, T, [{<<"event">>, Event1} | Opts1])
-            end
+            end;
+        _ ->
+            ok
     end.
 
 is_creating(V) ->
@@ -1433,19 +1433,19 @@ encode_dataset(D) when is_binary(D) ->
 update_network_2i(UUID) ->
     {ok, V} = sniffle_vm:get(UUID),
     case ft_vm:owner(V) of
-        <<>> ->
-            ok;
-        Owner ->
+        <<Owner:36/binary>> ->
             [sniffle_hostname:add(Hostname, Owner, {UUID, IP})
-             || {IP, Hostname} <- maps:to_list(ft_vm:hostname_map(V))]
+             || {IP, Hostname} <- maps:to_list(ft_vm:hostname_map(V))];
+        _ ->
+            ok
     end.
 
 delete_network_2i(UUID) ->
     {ok, V} = sniffle_vm:get(UUID),
     case ft_vm:owner(V) of
-        <<>> ->
-            ok;
-        Owner ->
+        <<Owner:36/binary>> ->
             [sniffle_hostname:remove(Hostname, Owner, {UUID, IP})
-             || {IP, Hostname} <- maps:to_list(ft_vm:hostname_map(V))]
+             || {IP, Hostname} <- maps:to_list(ft_vm:hostname_map(V))];
+        _ ->
+            ok
     end.
