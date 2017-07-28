@@ -596,6 +596,9 @@ update(User, Vm, Package, Config) ->
 test_pkg(undefined, _, _, _) ->
     no_pkg_change;
 
+test_pkg(null, _, _, _) ->
+    no_pkg_change;
+
 test_pkg(Package, OrigRam, H, Vm) ->
     case sniffle_package:get(Package) of
         {ok, P} ->
