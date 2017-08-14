@@ -368,6 +368,16 @@ import_manifest(UUID, D1) ->
         {ok, <<"smartos">>} ->
             sniffle_dataset:os(UUID, <<"smartos">>),
             sniffle_dataset:type(UUID, <<"zone">>);
+        {ok, <<"freebsd">>} ->
+            case jsxd:get(<<"type">>, D1) of
+                {ok, <<"jail-dataset">>} ->
+                    sniffle_dataset:os(UUID, <<"freebsd">>),
+                    sniffle_dataset:type(UUID, <<"jail">>),
+                    sniffle_dataset:zone_type(UUID, <<"jail">>);
+                _ ->
+                    sniffle_dataset:os(UUID, <<"freebsd">>),
+                    sniffle_dataset:type(UUID, <<"kvm">>)
+            end;
         {ok, OS} ->
             case jsxd:get(<<"type">>, D1) of
                 {ok, <<"lx-dataset">>} ->

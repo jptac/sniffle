@@ -163,6 +163,7 @@ has_xml_([B | Bs]) ->
 
 restore(User, Vm, BID, Requeirements) ->
     restore(User, Vm, BID, Requeirements, undefined).
+
 restore(User, Vm, BID, Requeirements, Package) ->
     case sniffle_vm:get(Vm) of
         {ok, V} ->
