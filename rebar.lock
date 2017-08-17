@@ -113,7 +113,7 @@
  {<<"recon">>,{pkg,<<"recon">>,<<"2.3.2">>},0},
  {<<"riak_core">>,
   {git,"https://github.com/Kyorai/riak_core",
-       {ref,"5bb625aa36defe56390826dbe3f3e07f0c385c13"}},
+       {ref,"82b1c03fbff314819de7ad7bd7044bfb205f8214"}},
   0},
  {<<"riak_dt">>,{pkg,<<"riak_dt">>,<<"2.1.1">>},1},
  {<<"riak_ensemble">>,{pkg,<<"riak_ensemble_ng">>,<<"2.4.0">>},1},
