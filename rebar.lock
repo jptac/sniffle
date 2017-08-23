@@ -51,7 +51,7 @@
   0},
  {<<"fifo_utils">>,
   {git,"https://github.com/project-fifo/fifo_utils.git",
-       {ref,"20b1d1df786394243f418a604d7d5a68fe973b92"}},
+       {ref,"8ae325931efbfb2d3a9f6d17dd578feeb57a5583"}},
   0},
  {<<"folsom">>,{pkg,<<"folsom">>,<<"0.8.5">>},1},
  {<<"folsom_ddb">>,{pkg,<<"folsom_ddb">>,<<"0.3.0">>},0},
@@ -104,7 +104,7 @@
  {<<"pgapp">>,{pkg,<<"pgapp">>,<<"0.0.2">>},2},
  {<<"poolboy">>,{pkg,<<"basho_poolboy">>,<<"0.8.1-p3">>},0},
  {<<"pooler">>,{pkg,<<"pooler">>,<<"1.5.3">>},2},
- {<<"quickrand">>,{pkg,<<"quickrand">>,<<"1.5.4">>},2},
+ {<<"quickrand">>,{pkg,<<"quickrand">>,<<"1.7.1">>},1},
  {<<"ranch">>,{pkg,<<"ranch">>,<<"1.1.0">>},1},
  {<<"rankmatcher">>,
   {git,"https://github.com/Licenser/rankmatcher.git",
@@ -129,7 +129,7 @@
  {<<"ssl_verify_fun">>,{pkg,<<"ssl_verify_fun">>,<<"1.1.1">>},1},
  {<<"trie">>,{pkg,<<"trie">>,<<"1.7.1">>},0},
  {<<"unicode_util_compat">>,{pkg,<<"unicode_util_compat">>,<<"0.3.1">>},2},
- {<<"uuid">>,{pkg,<<"uuid_erl">>,<<"1.5.4">>},1}]}.
+ {<<"uuid">>,{pkg,<<"uuid_erl">>,<<"1.7.1">>},1}]}.
 [
 {pkg_hash,[
  {<<"base16">>, <<"283644E2B21BD5915ACB7178BED7851FB07C6E5749B8FAD68A53C501092176D9">>},
@@ -183,7 +183,7 @@
  {<<"pgapp">>, <<"3E104BB777C8455D8B26D1538B67ABE0188EE97B1DF973FD936C2204CB316196">>},
  {<<"poolboy">>, <<"EBA815CD24871C37BF0538221D3E12EE14DC015CA5DCA74696E579E53F0FF9D5">>},
  {<<"pooler">>, <<"898CD1FA301FC42D4A8ED598CE139B71CA85B54C16AB161152B5CC5FBDCFA1A8">>},
- {<<"quickrand">>, <<"47ADD4755CC5F209CBEFFD6F47C84061196CD7FAD99FD8FD12418EB0D06B939D">>},
+ {<<"quickrand">>, <<"B0C2A41D08C955F055C44BED357660DE443CD9068A33ABA530076910B7333659">>},
  {<<"ranch">>, <<"F7ED6D97DB8C2A27CCA85CACBD543558001FC5A355E93A7BFF1E9A9065A8545B">>},
  {<<"recon">>, <<"4444C879BE323B1B133EEC5241CB84BD3821EA194C740D75617E106BE4744318">>},
  {<<"riak_dt">>, <<"56B1898A543C561994F5D052FDEA972525CA98F46FDB3DCDB7366E4F92EE8F54">>},
@@ -196,5 +196,5 @@
  {<<"ssl_verify_fun">>, <<"28A4D65B7F59893BC2C7DE786DEC1E1555BD742D336043FE644AE956C3497FBE">>},
  {<<"trie">>, <<"2B4249CEBD7007840C051D3833C7A0ECF84A5CF8837E5D51ADBD1A9726959A9A">>},
  {<<"unicode_util_compat">>, <<"A1F612A7B512638634A603C8F401892AFBF99B8CE93A45041F8AACA99CADB85E">>},
- {<<"uuid">>, <<"06240EFF3EAF013CC22274689B0C1FF6345645EE5D47A9E4ED7545EEB7698B23">>}]}
+ {<<"uuid">>, <<"252D12D1154BC75C40BC03E2E67714BD843DDFAD40FD3BC1541F65F622C9E7FC">>}]}
 ].

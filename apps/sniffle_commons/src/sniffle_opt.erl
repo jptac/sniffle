@@ -39,6 +39,7 @@ update(A, B, C) ->
             set([A, B, C], V)
     end.
 
+
 %%%===================================================================
 %%% Internal Functions
 %%%===================================================================
@@ -46,6 +47,9 @@ update(A, B, C) ->
 opts() ->
     [{"network",
       [{"http", [{"proxy", string}]}]},
+     {"endpoints",
+      [{"datasets",
+        [{"servers", {list, binary}}]}]},
      {"storage",
       [{"s3",
         [{"image_bucket", string}, {"snapshot_bucket", string},

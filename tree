@@ -18,9 +18,9 @@
 ├─ fifo_s3─0.2.12
 │  └─ base16─1.0.0
 ├─ fifo_spec─0.1.32
-├─ fifo_utils─0.1.38
-│  └─ uuid─1.5.4
-│     └─ quickrand─1.5.4
+├─ fifo_utils─0.1.39
+│  ├─ quickrand─1.7.1
+│  └─ uuid─1.7.1
 ├─ folsom_ddb─0.3.0
 │  ├─ ddb_client─0.5.7
 │  │  ├─ dproto─0.5.2
