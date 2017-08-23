@@ -660,6 +660,11 @@ message({hypervisor, stream, Requirements}, State) when
 %%%  Dataset Functions
 %%%===================================================================
 
+message({dataset, available}, State) ->
+    {reply,
+     sniffle_dataset:available(),
+     State};
+
 message({dataset, create, Dataset}, State) when
       is_binary(Dataset) ->
     {reply,

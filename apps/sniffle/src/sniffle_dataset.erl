@@ -16,7 +16,8 @@
          remove_requirement/2,
          add_requirement/2,
          remove_network/2,
-         add_network/2
+         add_network/2,
+         available/0
         ]).
 
 -export([
@@ -56,6 +57,33 @@
 %%% Custom section
 %%%===================================================================
 
+available() ->
+    Servers = case sniffle_opt:get("endpoints", "datasets", "servers") of
+                  undefined -> [];
+                  L -> L
+              end,
+    Opts = case sniffle_opt:get(network, http, proxy) of
+               undefined ->
+                   [];
+               P ->
+                   [{proxy, P}]
+           end,
+    Clients = [{Server, hackney:request(get, Server, [], <<>>, Opts)}
+               || Server <- Servers],
+    Datasets = get_datasets(Clients, []),
+    {ok, Datasets}.
+
+get_datasets([{Server, {ok, 200, _, Client}} | Rest], Acc) ->
+    {ok, Body} = hackney:body(Client),
+    JSON = jsxd:from_list(jsx:decode(Body)),
+    JSON1 = [jsxd:set(<<"server">>, Server, E) || E <- JSON],
+    get_datasets(Rest, [JSON1 | Acc]);
+
+get_datasets([_ | Rest], Acc) ->
+    get_datasets(Rest, Acc);
+
+get_datasets([], Acc) ->
+    lists:flatten(Acc).
 
 -spec create(UUID::fifo:dataset_id()) ->
                     duplicate | ok | {error, timeout}.
