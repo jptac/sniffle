@@ -52,7 +52,6 @@ Copyright 2012 Project FiFo / Heinz N. Gies
           <envvar name='PATH' value='/opt/local/gnu/bin:/opt/local/bin:/opt/local/sbin:/usr/bin:/usr/sbin'/>
           <envvar name='HOME' value='/data/sniffle/db'/>
           <envvar name='ERL_CRASH_DUMP' value='/data/sniffle/log'/>
-          <envvar name='PIPE_DIR' value='/tmp/sniffle_pipes'/>
         </method_environment>
       </method_context>
     </exec_method>
@@ -68,7 +67,6 @@ Copyright 2012 Project FiFo / Heinz N. Gies
           <envvar name='PATH' value='/opt/local/gnu/bin:/opt/local/bin:/opt/local/sbin:/usr/bin:/usr/sbin'/>
           <envvar name='HOME' value='/data/sniffle/db'/>
           <envvar name='ERL_CRASH_DUMP' value='/data/sniffle/log'/>
-          <envvar name='PIPE_DIR' value='/tmp/sniffle_pipes'/>
         </method_environment>
       </method_context>
     </exec_method>
@@ -84,7 +82,6 @@ Copyright 2012 Project FiFo / Heinz N. Gies
           <envvar name='PATH' value='/opt/local/gnu/bin:/opt/local/bin:/opt/local/sbin:/usr/bin:/usr/sbin'/>
           <envvar name='HOME' value='/data/sniffle/db'/>
           <envvar name='ERL_CRASH_DUMP' value='/data/sniffle/log'/>
-          <envvar name='PIPE_DIR' value='/tmp/sniffle_pipes'/>
         </method_environment>
       </method_context>
     </exec_method>
