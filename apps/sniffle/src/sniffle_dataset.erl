@@ -16,7 +16,9 @@
          remove_requirement/2,
          add_requirement/2,
          remove_network/2,
-         add_network/2
+         add_network/2,
+         available/0,
+         available/1
         ]).
 
 -export([
@@ -56,6 +58,83 @@
 %%% Custom section
 %%%===================================================================
 
+available() ->
+    Clients = available_clients(),
+    get_datasets(Clients, []).
+
+available(Send) ->
+    Clients = available_clients(),
+    send_datasets(Clients, Send).
+
+http_opts() ->
+    case sniffle_opt:get(network, http, proxy) of
+        undefined ->
+            [{follow_redirect, true}];
+        P ->
+            [{proxy, P}, {follow_redirect, true}]
+    end.
+
+available_clients() ->
+    Servers = case sniffle_opt:get("endpoints", "datasets", "servers") of
+                  undefined -> [];
+                  L -> L
+              end,
+    Opts = http_opts(),
+    [{Server, hackney:request(get, Server, [], <<>>, [async | Opts])}
+     || Server <- Servers].
+
+
+
+read_body(Ref, Acc) ->
+    receive
+        {hackney_response, Ref, done} ->
+            Acc;
+        {hackney_response, Ref, Bin} when is_binary(Bin) ->
+            read_body(Ref, <<Acc/binary, Bin/binary>>);
+        {hackney_response, Ref, {redirect, To, _}} ->
+            case hackney:request(get, To, [], <<>>, http_opts()) of
+                {ok, 200, _, Client} ->
+                    {ok, Body} = hackney:body(Client),
+                    Body;
+                _ ->
+                    <<>>
+            end;
+        {hackney_response, Ref, _} ->
+            read_body(Ref, Acc)
+    after
+        5000 ->
+            Acc
+    end.
+
+client_to_json(Server, Client) ->
+    Body = read_body(Client, <<>>),
+    JSON = try
+               jsxd:from_list(jsx:decode(Body))
+           catch
+               _:_ ->
+                   []
+           end,
+    [jsxd:set(<<"server">>, Server, E) || E <- JSON].
+
+send_datasets([{Server, {ok, Client}} | Rest], Send) ->
+    Send(client_to_json(Server, Client)),
+    send_datasets(Rest, Send);
+
+send_datasets([_ | Rest], Send) ->
+    send_datasets(Rest, Send);
+
+send_datasets([], _Send) ->
+    ok.
+
+
+get_datasets([{Server, {ok, Client}} | Rest], Acc) ->
+    get_datasets(Rest, [client_to_json(Server, Client) | Acc]);
+
+get_datasets([_ | Rest], Acc) ->
+    get_datasets(Rest, Acc);
+
+get_datasets([], Acc) ->
+    {ok, lists:flatten(Acc)}.
 
 -spec create(UUID::fifo:dataset_id()) ->
                     duplicate | ok | {error, timeout}.

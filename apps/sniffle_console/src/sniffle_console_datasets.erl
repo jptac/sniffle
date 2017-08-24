@@ -4,30 +4,59 @@
 
 commands() ->
     [
+     {["servers", "list"], [], [],
+      fun cmd_servers_list/3, help_servers_list()},
+     {["servers", "add", '*'], [], [],
+      fun cmd_servers_add/3, help_servers_add()},
+     {["servers", "remove", '*'], [], [],
+      fun cmd_servers_remove/3, help_servers_remove()},
      {["list"], [], [], fun cmd_list/3, help_list()},
-     {["jail", "add", '*'], [], [], fun cmd_jail_add/3, help_jail_add()},
      {["get", '*'], [], [], fun cmd_get/3, help_get()},
      {["delete", '*'], [], [], fun cmd_delete/3, help_delete()}
     ].
 
-help_jail_add() ->
-    "Adds a jail".
 
-cmd_jail_add(["sniffle-admin", "datasets", "jail", "add", ReleaseS], _, _) ->
-    Release = list_to_binary(ReleaseS),
-    UUID = fifo_utils:uuid(dataset),
-    ok = sniffle_dataset:create(UUID),
-    ok = sniffle_dataset:type(UUID, jail),
-    ok = sniffle_dataset:name(UUID, <<"FreeBSD">>),
-    ok = sniffle_dataset:os(UUID, <<"FreeBSD">>),
-    ok = sniffle_dataset:description(UUID, <<"FreeBSD base jail">>),
-    ok = sniffle_dataset:version(UUID, Release),
-    ok = sniffle_dataset:kernel_version(UUID, Release),
-    ok = sniffle_dataset:add_network(UUID, {<<"net0">>, <<"public">>}),
-    ok = sniffle_dataset:imported(UUID, 1.0),
-    ok = sniffle_dataset:status(UUID, <<"imported">>),
-    R = io_lib:format("Dataset ~s created for base jail ~s~n", [UUID, Release]),
-    [clique_status:text(R)].
+help_servers_list() ->
+    "Lists configured dataser servers".
+cmd_servers_list(_, _, _) ->
+    Servers = case sniffle_opt:get("endpoints", "datasets", "servers") of
+                 undefined -> [];
+                 L -> L
+             end,
+    [io:format(" * ~s~n", [S]) || S <- Servers],
+    [].
+
+help_servers_remove() ->
+    "Removes a dataset server".
+cmd_servers_remove(["sniffle-admin", "datasets", "servers",
+                    "remove", Server], _, _) ->
+    ServerB = list_to_binary(Server),
+    Servers = case sniffle_opt:get("endpoints", "datasets", "servers") of
+                  undefined -> [];
+                  L -> L
+              end,
+    Servers1 = lists:delete(ServerB, Servers),
+    sniffle_opt:set(["endpoints", "datasets", "servers"], Servers1),
+    [clique_status:text("Server removed")].
+
+help_servers_add() ->
+    "Adds a dataset server".
+cmd_servers_add(["sniffle-admin", "datasets", "servers",
+                 "add", Server], _, _) ->
+    ServerB = list_to_binary(Server),
+    Servers = case sniffle_opt:get("endpoints", "datasets", "servers") of
+                  undefined -> [];
+                  L -> L
+              end,
+    case lists:member(ServerB, Servers) of
+        true ->
+            [clique_status:alert(
+               [clique_status:text("Server already selected")])];
+        false ->
+            Servers1 = Servers ++ [ServerB],
+            sniffle_opt:set(["endpoints", "datasets", "servers"], Servers1),
+            [clique_status:text("Server added")]
+    end.
 
 
 help_list() ->

@@ -163,14 +163,17 @@ has_xml_([B | Bs]) ->
 
 restore(User, Vm, BID, Requeirements) ->
     restore(User, Vm, BID, Requeirements, undefined).
+
 restore(User, Vm, BID, Requeirements, Package) ->
     case sniffle_vm:get(Vm) of
         {ok, V} ->
             %% ensure we can't restore a VM while it's still being stored
-            case {?S:state(V), ?S:hypervisor(V)} of
-                {<<"storing">>, _} ->
+            case {?S:state(V), maps:size(?S:snapshots(V)), ?S:hypervisor(V)} of
+                {<<"storing">>, _, _} ->
                     {error, storing};
-                {_, <<>>} ->
+                {_, N, _} when N > 0 ->
+                    {error, snapshots};
+                {_, _, <<>>} ->
                     restore_(User, Vm, V, BID, Requeirements, Package);
                 _ ->
                     {error, already_deployed}

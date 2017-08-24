@@ -106,6 +106,7 @@ init_leo([Host]) ->
     init_leo([Host, Host]);
 
 init_leo([Manager, Gateway]) ->
+
     P = 10020,
     User = "fifo",
     OK = {ok, [{<<"result">>, <<"OK">>}]},
@@ -143,6 +144,15 @@ init_leo([Manager, Gateway]) ->
     sniffle_opt:set(["storage", "s3", "host"], Gateway),
     ok = sniffle_opt:set(["storage", "s3", "port"], 443),
     io:format("Configuring endpoint as: https://~s:~p~nyes", [Gateway, P]),
+
+    io:format("Setting dataset servers: "
+              "https://datasets.project-fifo.net/images, "
+              "https://datasets.at/images, "
+              "https://bsd.project-fifo.net/images"),
+    sniffle_opt:set(["endpoints", "datasets", "servers"],
+                    ["https://datasets.project-fifo.net/images",
+                     "https://bsd.project-fifo.net/images",
+                     "https://datasets.at/images"]),
     ok.
 
 print_endpoints(Es) ->
