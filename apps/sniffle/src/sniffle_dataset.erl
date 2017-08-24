@@ -73,7 +73,7 @@ available_clients() ->
               end,
     Opts = case sniffle_opt:get(network, http, proxy) of
                undefined ->
-                   [];
+                   [async];
                P ->
                    [{proxy, P}, async]
            end,
