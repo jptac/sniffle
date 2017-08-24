@@ -75,18 +75,32 @@ available_clients() ->
                undefined ->
                    [];
                P ->
-                   [{proxy, P}]
+                   [{proxy, P}, async]
            end,
     [{Server, hackney:request(get, Server, [], <<>>, Opts)}
      || Server <- Servers].
 
 
+
+read_body(Ref, Acc) ->
+    receive
+        {hackney_response, Ref, done} ->
+            Acc;
+        {hackney_response, Ref, Bin} ->
+            read_body(Ref, <<Acc/binary, Bin/binary>>);
+        {hackney_response, Ref, _} ->
+            read_body(Ref, Acc)
+    after
+        5000 ->
+            Acc
+    end.
+
 client_to_json(Server, Client) ->
-    {ok, Body} = hackney:body(Client),
+    Body = read_body(Client, <<>>),
     JSON = jsxd:from_list(jsx:decode(Body)),
     [jsxd:set(<<"server">>, Server, E) || E <- JSON].
 
-send_datasets([{Server, {ok, 200, _, Client}} | Rest], Send) ->
+send_datasets([{Server, {ok, Client}} | Rest], Send) ->
     Send(client_to_json(Server, Client)),
     send_datasets(Rest, Send);
 
