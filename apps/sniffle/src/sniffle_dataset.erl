@@ -66,18 +66,21 @@ available(Send) ->
     Clients = available_clients(),
     send_datasets(Clients, Send).
 
+http_opts() ->
+    case sniffle_opt:get(network, http, proxy) of
+        undefined ->
+            [{follow_redirect, true}];
+        P ->
+            [{proxy, P}, {follow_redirect, true}]
+    end.
+
 available_clients() ->
     Servers = case sniffle_opt:get("endpoints", "datasets", "servers") of
                   undefined -> [];
                   L -> L
               end,
-    Opts = case sniffle_opt:get(network, http, proxy) of
-               undefined ->
-                   [async];
-               P ->
-                   [{proxy, P}, async]
-           end,
-    [{Server, hackney:request(get, Server, [], <<>>, Opts)}
+    Opts = http_opts(),
+    [{Server, hackney:request(get, Server, [], <<>>, [async | Opts])}
      || Server <- Servers].
 
 
@@ -88,6 +91,14 @@ read_body(Ref, Acc) ->
             Acc;
         {hackney_response, Ref, Bin} when is_binary(Bin) ->
             read_body(Ref, <<Acc/binary, Bin/binary>>);
+        {hackney_response, Ref, {redirect, To, _}} ->
+            case hackney:request(get, To, [], <<>>, http_opts()) of
+                {ok, 200, _, Client} ->
+                    {ok, Body} = hackney:body(Client),
+                    Body;
+                _ ->
+                    <<>>
+            end;
         {hackney_response, Ref, _} ->
             read_body(Ref, Acc)
     after
@@ -97,7 +108,12 @@ read_body(Ref, Acc) ->
 
 client_to_json(Server, Client) ->
     Body = read_body(Client, <<>>),
-    JSON = jsxd:from_list(jsx:decode(Body)),
+    JSON = try
+               jsxd:from_list(jsx:decode(Body))
+           catch
+               _:_ ->
+                   []
+           end,
     [jsxd:set(<<"server">>, Server, E) || E <- JSON].
 
 send_datasets([{Server, {ok, Client}} | Rest], Send) ->
