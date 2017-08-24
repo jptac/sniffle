@@ -86,7 +86,7 @@ read_body(Ref, Acc) ->
     receive
         {hackney_response, Ref, done} ->
             Acc;
-        {hackney_response, Ref, Bin} ->
+        {hackney_response, Ref, Bin} when is_binary(Bin) ->
             read_body(Ref, <<Acc/binary, Bin/binary>>);
         {hackney_response, Ref, _} ->
             read_body(Ref, Acc)
@@ -111,7 +111,7 @@ send_datasets([], _Send) ->
     ok.
 
 
-get_datasets([{Server, {ok, 200, _, Client}} | Rest], Acc) ->
+get_datasets([{Server, {ok, Client}} | Rest], Acc) ->
     get_datasets(Rest, [client_to_json(Server, Client) | Acc]);
 
 get_datasets([_ | Rest], Acc) ->
