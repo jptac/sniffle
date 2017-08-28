@@ -344,10 +344,9 @@ import_manifest(UUID, D1) ->
         jsxd:get(<<"image_size">>,
                  jsxd:get([<<"files">>, 0, <<"size">>], 0, D1), D1))),
     RS = jsxd:get(<<"requirements">>, [], D1),
-    Networks = jsxd:get(<<"networks">>, #{}, RS),
-    jsxd:map(fun (#{<<"description">> := NDesc, <<"name">> := NName}) ->
-                     sniffle_dataset:add_network(UUID, {NName, NDesc})
-             end, Networks),
+    Networks = jsxd:get(<<"networks">>, [], RS),
+    [sniffle_dataset:add_network(UUID, {NName, NDesc}) ||
+        #{<<"description">> := NDesc, <<"name">> := NName} <- Networks],
     case jsxd:get(<<"homepage">>, D1) of
         {ok, HomePage} ->
             sniffle_dataset:set_metadata(
