@@ -86,9 +86,9 @@ init([URL, From, Ref]) ->
     process_flag(trap_exit, true),
     Opts = case sniffle_opt:get(network, http, proxy) of
                undefined ->
-                   [];
+                   [{follow_redirect, true}];
                P ->
-                   [{proxy, P}]
+                   [{proxy, P}, {follow_redirect, true}]
            end,
     {ok, get_manifest,
      #state{url = URL, from = From, ref = Ref, http_opts = Opts}, 0}.
