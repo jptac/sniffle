@@ -1081,6 +1081,7 @@ update_nics(Nics, Nets, State) ->
                                " tag ", Tag/binary>>),
                       Res = jsxd:from_list([{<<"nic_tag">>, Tag},
                                             {<<"ip">>, IPb},
+                                            {<<"interface">>, Name},
                                             {<<"network_uuid">>, NicTag},
                                             {<<"netmask">>, Netb},
                                             {<<"gateway">>, GWb}]),
