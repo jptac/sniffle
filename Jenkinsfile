@@ -10,7 +10,7 @@ for (x in labels) {
     builders[label] = {
       node(label) {
         // build steps that should happen on all nodes go here
-        sh """
+        sh '''
         	export PORTABLE=1
 			export TERM=dumb
 			export GPG_KEY=BB975564
@@ -18,8 +18,8 @@ for (x in labels) {
 			#Comment out this line for REL 
 			export SUFFIX=$(/opt/local/bin/erl -noshell -eval '{{Y, MM, D}, {H, M, S}} = calendar:universal_time(), io:format("pre~4.10.0B~2.10.0B~2.10.0B~2.10.0B~2.10.0B~2.10.0B", [Y, MM, D, H, M, S]),init:stop()'); 
 
-/opt/local/bin/make package
-        """
+			/opt/local/bin/make package
+        '''
       }
     }
 }
