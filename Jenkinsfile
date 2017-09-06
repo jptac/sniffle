@@ -3,6 +3,8 @@
 def labels = ["smartos_15_4_1", "smartos_16_4_0"]
 def builders = [:]
 
+sh 'ls -lah'
+
 for (x in labels) {
     def label = x // Need to bind the label variable before the closure - can't do 'for (label in labels)'
 
@@ -12,6 +14,7 @@ for (x in labels) {
         // build steps that should happen on all nodes go here
         sh '''
         	pwd
+        	ls -lah
         	export PORTABLE=1
 			export TERM=dumb
 			export GPG_KEY=BB975564
