@@ -1,5 +1,5 @@
 #!/usr/bin/env groovy
-#GIT_BRANCH = sh(returnStdout: true, script: 'git rev-parse --abbrev-ref HEAD').trim()
+//GIT_BRANCH = sh(returnStdout: true, script: 'git rev-parse --abbrev-ref HEAD').trim()
 def labels = ["smartos_15_4_1", "smartos_16_4_0"]
 def builders = [:]
 
