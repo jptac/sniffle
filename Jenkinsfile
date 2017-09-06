@@ -11,6 +11,7 @@ for (x in labels) {
       node(label) {
         // build steps that should happen on all nodes go here
         sh '''
+        	pwd
         	export PORTABLE=1
 			export TERM=dumb
 			export GPG_KEY=BB975564
