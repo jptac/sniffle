@@ -29,7 +29,11 @@ for (x in labels) {
         '''
 */
         //find ds version
-        def DS_VERSION = Pattern.compile(/smartos_dataset_([^ ]+)/).matcher(env.NODE_LABELS).find()
+        Pattern pattern = Pattern.compile("smartos_dataset_([^ ]+)");
+		Matcher matcher = pattern.matcher(env.NODE_LABELS)
+    	def DS_VERSION = matcher.group(1);
+
+      //  def DS_VERSION = Pattern.compile(/smartos_dataset_([^ ]+)/).matcher(env.NODE_LABELS).find()
 
         //sh(returnStdout: true, script: 'echo $NODE_LABELS | sed -n \'s/^.*\\(smartos_dataset_[^ ]*\\).*/\\1/p\' | awk -F\'_\' \'{print $3"}\'').trim()
 
