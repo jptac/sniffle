@@ -10,7 +10,7 @@ for (x in labels) {
     builders[label] = {
       node(label) {
         // clean our workspace
-        deleteDir
+        deleteDir()
         // checkout
         checkout scm
         GIT_BRANCH = sh(returnStdout: true, script: 'git rev-parse --abbrev-ref HEAD').trim()
