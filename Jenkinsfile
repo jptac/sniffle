@@ -31,9 +31,10 @@ for (x in labels) {
         }
 
         sh '''
-			mkdir rel/pkg/info
+			mkdir -p rel/pkg/info
 			pkg_info -X rel/pkg/*.tgz > rel/pkg/info/$(pkg_info -X rel/pkg/*.tgz | awk -F "=" '/FILE_NAME/ {print $2}')
         '''
+
         withAWS(profile:'Fifo PKG') {
         	s3Upload(file:'rel/pkg/*.tgz', bucket:'release-test.project-fifo.net', path:'pkg/15.4.1/dev')
     		// do something
