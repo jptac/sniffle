@@ -45,7 +45,7 @@ for (x in labels) {
 parallel builders
 
 
-def build (String git_branch) ->
+def build (String git_branch) {
     SUFFIX = ""
     if (git_branch != 'origin/master'){
     	SUFFIX = '''
