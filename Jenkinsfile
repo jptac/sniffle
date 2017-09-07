@@ -26,17 +26,20 @@ for (x in labels) {
 				export TERM=dumb
 				export GPG_KEY=BB975564
 				export SUFFIX=$(/opt/local/bin/erl -noshell -eval '{{Y, MM, D}, {H, M, S}} = calendar:universal_time(), io:format("pre~4.10.0B~2.10.0B~2.10.0B~2.10.0B~2.10.0B~2.10.0B", [Y, MM, D, H, M, S]),init:stop()'); 
-				/opt/local/bin/make package
+				/opt/local/bin/make package 
 			'''
         }
 
         sh '''
+        	mkdir -p rel/pkg/artifacts
+        	mv rel/pkg/*.tgz rel/pkg/artifacts
 			mkdir -p rel/pkg/info
 			pkg_info -X rel/pkg/*.tgz > rel/pkg/info/$(pkg_info -X rel/pkg/*.tgz | awk -F "=" '/FILE_NAME/ {print $2}')
+
         '''
 
         withAWS(profile:'Fifo PKG') {
-        	s3Upload(file:'rel/pkg/*.tgz', bucket:'release-test.project-fifo.net', path:'pkg/15.4.1/dev')
+        	s3Upload(file:'rel/pkg/artifacts/', bucket:'release-test.project-fifo.net', path:'pkg/15.4.1/dev/')
     		// do something
 		}
       }
