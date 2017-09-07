@@ -1,5 +1,5 @@
 #!/usr/bin/env groovy
-def labels = ["smartos_dataset_15.4.1" "smartos_dataset_16.4.0"]
+def labels = ["smartos_dataset_15.4.1","smartos_dataset_16.4.0"]
 def builders = [:]
 
 
@@ -16,9 +16,9 @@ for (x in labels) {
         
         stage ('Checkout'){
         	checkout scm
-        	BRANCH = sh(returnStdout: true, script: 'git rev-parse --abbrev-ref HEAD').trim()
         }
         
+        BRANCH = sh(returnStdout: true, script: 'git rev-parse --abbrev-ref HEAD').trim()
 
         stage ('Build'){
 			build(BRANCH)
