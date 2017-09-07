@@ -19,18 +19,18 @@ for (x in labels) {
         //build
         def SUFFIX = ""
         if (GIT_BRANCH != 'origin/master'){
-        	SUFFIX = """
+        	SUFFIX = '''
         		export SUFFIX=$(/opt/local/bin/erl -noshell -eval '{{Y, MM, D}, {H, M, S}} = calendar:universal_time(), io:format("pre~4.10.0B~2.10.0B~2.10.0B~2.10.0B~2.10.0B~2.10.0B", [Y, MM, D, H, M, S]),init:stop()');
-        	"""
+        	'''
         }
 
-        sh """
+        sh '''
     		export PORTABLE=1
 			export TERM=dumb
 			export GPG_KEY=BB975564
 			${SUFFIX}
 			/opt/local/bin/make package 
-		"""
+		'''
 
         //create info file
         sh '''
