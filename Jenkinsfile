@@ -62,12 +62,12 @@ def build (String git_branch) {
 		export PORTABLE=1
 		export TERM=dumb
 		export GPG_KEY=BB975564
-		${{SUFFIX}}
+		${SUFFIX}
 		/opt/local/bin/make package 
 	    mkdir -p rel/pkg/artifacts
     	cp rel/pkg/*.tgz rel/pkg/artifacts
 		mkdir -p rel/pkg/info
-		pkg_info -X rel/pkg/*.tgz > rel/pkg/info/$(pkg_info -X rel/pkg/*.tgz | awk -F "=" '/FILE_NAME/ {print $2}')
+		pkg_info -X rel/pkg/*.tgz > rel/pkg/info/\$(pkg_info -X rel/pkg/*.tgz | awk -F "=" '/FILE_NAME/ {print \$2}')
 	"""
 
 	sh EXEC
