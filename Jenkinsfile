@@ -32,7 +32,7 @@ for (x in labels) {
 
         sh '''
         	mkdir -p rel/pkg/artifacts
-        	mv rel/pkg/*.tgz rel/pkg/artifacts
+        	cp rel/pkg/*.tgz rel/pkg/artifacts
 			mkdir -p rel/pkg/info
 			pkg_info -X rel/pkg/*.tgz > rel/pkg/info/$(pkg_info -X rel/pkg/*.tgz | awk -F "=" '/FILE_NAME/ {print $2}')
 
