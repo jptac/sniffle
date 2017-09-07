@@ -9,10 +9,13 @@ for (x in labels) {
     // Create a map to pass in to the 'parallel' step so we can fire all the builds at once
     builders[label] = {
       node(label) {
-        // build steps that should happen on all nodes go here
+        // clean our workspace
+        deleteDir
+        // checkout
         checkout scm
         GIT_BRANCH = sh(returnStdout: true, script: 'git rev-parse --abbrev-ref HEAD').trim()
 
+        //build
         if (GIT_BRANCH == 'origin/master'){
         	sh '''
         		export PORTABLE=1
@@ -30,6 +33,7 @@ for (x in labels) {
 			'''
         }
 
+        //create info file
         sh '''
         	mkdir -p rel/pkg/artifacts
         	cp rel/pkg/*.tgz rel/pkg/artifacts
@@ -38,6 +42,7 @@ for (x in labels) {
 
         '''
 
+        //upload
         withAWS(region:'us-east-2', credentials:'FifoS3-d54ea704-b99e-4fd1-a9ec-2a3c50e3f2a9') {
         	s3Upload(file:'rel/pkg/artifacts/', bucket:'release-test.project-fifo.net', path:'pkg/15.4.1/dev/')
     		// do something
