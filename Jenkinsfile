@@ -27,7 +27,7 @@ for (x in labels) {
         stage ('Upload'){
 			def matcher = env.NODE_LABELS =~ 'smartos_dataset_([^ ]+)'
 	    	DS_VERSION = matcher[0][1];
-	    	matcher = null
+	    	//matcher = null
 
 	        withAWS(region:'us-east-2', credentials:'FifoS3-d54ea704-b99e-4fd1-a9ec-2a3c50e3f2a9') {
 	        	s3Upload(file:'rel/pkg/artifacts/', bucket:'release-test.project-fifo.net', path:"pkg/${DS_VERSION}/dev/")
@@ -42,10 +42,17 @@ for (x in labels) {
     }
 }
 
-stage ('Fan out'){
-	parallel builders
-	notify("SUCCESSFUL")
+try {
+	stage ('Fan out'){
+		parallel builders
+		notify("SUCCESSFUL")
+	}
+} catch(err) {
+  notify("FAILURE")
+  throw err
 }
+
+
 
 
 
