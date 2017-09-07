@@ -1,5 +1,5 @@
 #!/usr/bin/env groovy
-def labels = ["smartos_15_4_1", "smartos_16_4_0"]
+def labels = ["smartos_15_4_1"]
 def builders = [:]
 
 
