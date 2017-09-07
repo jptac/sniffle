@@ -34,7 +34,7 @@ for (x in labels) {
 	//	    echo "Building version ${matcher[0][1]}"
 	//	  }
     //   Pattern pattern = Pattern.compile("smartos_dataset_([^ ]+)");
-		matcher = env.NODE_LABELS =~ 'smartos_dataset_([^ ]+)'
+		def matcher = env.NODE_LABELS =~ 'smartos_dataset_([^ ]+)'
     	def DS_VERSION = matcher[0][0];
 
       //  def DS_VERSION = Pattern.compile(/smartos_dataset_([^ ]+)/).matcher(env.NODE_LABELS).find()
