@@ -11,6 +11,13 @@ for (x in labels) {
       node(label) {
         // clean our workspace
         deleteDir()
+        //setup env
+        environment { 
+            DSLABEL = label 
+        }
+        sh '''
+        	env
+        '''
         // checkout
         checkout scm
         GIT_BRANCH = sh(returnStdout: true, script: 'git rev-parse --abbrev-ref HEAD').trim()
