@@ -29,7 +29,8 @@ for (x in labels) {
         '''
 */
         //find ds version
-        def DS_VERSION = env.NODE_LABELS.split(/smartos_dataset_([^ ]+)/)
+        def DS_VERSION = Pattern.compile(/smartos_dataset_([^ ]+)/).matcher(env.NODE_LABELS).find()
+
         //sh(returnStdout: true, script: 'echo $NODE_LABELS | sed -n \'s/^.*\\(smartos_dataset_[^ ]*\\).*/\\1/p\' | awk -F\'_\' \'{print $3"}\'').trim()
 
         //upload
