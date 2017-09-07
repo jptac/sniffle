@@ -11,13 +11,6 @@ for (x in labels) {
       node(label) {
         // clean our workspace
         deleteDir()
-        //setup env
-        environment { 
-            DSLABEL = label 
-        }
-        sh '''
-        	env
-        '''
         // checkout
         checkout scm
         GIT_BRANCH = sh(returnStdout: true, script: 'git rev-parse --abbrev-ref HEAD').trim()
@@ -49,9 +42,15 @@ for (x in labels) {
 
         '''
 
+        //find ds version
+        DS_VERSION = sh(returnStdout: true, script: '''
+        	echo $NODE_LABELS | sed -n 's/^.*\(smartos[^ ]*\).*/\1/p' | awk -F'_' '{print $2"."$3"."$4}'
+        	''').trim()
+
         //upload
+        
         withAWS(region:'us-east-2', credentials:'FifoS3-d54ea704-b99e-4fd1-a9ec-2a3c50e3f2a9') {
-        	s3Upload(file:'rel/pkg/artifacts/', bucket:'release-test.project-fifo.net', path:'pkg/15.4.1/dev/')
+        	s3Upload(file:'rel/pkg/artifacts/', bucket:'release-test.project-fifo.net', path:'pkg/${DS_VERSION}/dev/')
     		// do something
 		}
       }
