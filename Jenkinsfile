@@ -62,7 +62,7 @@ def build (String git_branch) {
 		export PORTABLE=1
 		export TERM=dumb
 		export GPG_KEY=BB975564
-		${SUFFIX}
+		${{SUFFIX}}
 		/opt/local/bin/make package 
 	    mkdir -p rel/pkg/artifacts
     	cp rel/pkg/*.tgz rel/pkg/artifacts
