@@ -36,6 +36,7 @@ for (x in labels) {
     //   Pattern pattern = Pattern.compile("smartos_dataset_([^ ]+)");
 		def matcher = env.NODE_LABELS =~ 'smartos_dataset_([^ ]+)'
     	DS_VERSION = matcher[0][1];
+    	matcher = null
 
       //  def DS_VERSION = Pattern.compile(/smartos_dataset_([^ ]+)/).matcher(env.NODE_LABELS).find()
 
