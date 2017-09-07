@@ -24,13 +24,15 @@ for (x in labels) {
         	'''
         }
 
-        sh '''
+        def exec """
     		export PORTABLE=1
 			export TERM=dumb
 			export GPG_KEY=BB975564
 			${SUFFIX}
 			/opt/local/bin/make package 
-		'''
+		"""
+
+		sh exec
 
         //create info file
         sh '''
