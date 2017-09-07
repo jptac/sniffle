@@ -1,5 +1,5 @@
 #!/usr/bin/env groovy
-def labels = ["smartos_dataset_15.4.1"]
+def labels = ["smartos_dataset_15.4.1" "smartos_dataset_16.4.0"]
 def builders = [:]
 
 
@@ -27,7 +27,7 @@ for (x in labels) {
         stage ('Upload'){
 			def matcher = env.NODE_LABELS =~ 'smartos_dataset_([^ ]+)'
 	    	DS_VERSION = matcher[0][1];
-	    	//matcher = null
+	    	matcher = null
 
 	        withAWS(region:'us-east-2', credentials:'FifoS3-d54ea704-b99e-4fd1-a9ec-2a3c50e3f2a9') {
 	        	s3Upload(file:'rel/pkg/artifacts/', bucket:'release-test.project-fifo.net', path:"pkg/${DS_VERSION}/dev/")
