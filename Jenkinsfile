@@ -10,6 +10,7 @@ for (x in labels) {
     builders[label] = {
       node(label) {
         // clean our workspace
+  /*
         deleteDir()
         // checkout
         checkout scm
@@ -41,9 +42,10 @@ for (x in labels) {
 			pkg_info -X rel/pkg/*.tgz > rel/pkg/info/$(pkg_info -X rel/pkg/*.tgz | awk -F "=" '/FILE_NAME/ {print $2}')
 
         '''
+        */
 
         //find ds version
-        DS_VERSION = sh(returnStdout: true, script: 'echo $NODE_LABELS | sed -n \'s/^.*\\(smartos[^ ]*\\).*/\\1/p\' | awk -F\'_\' \'{print $2"."$3"."$4}\'').trim()
+        def DS_VERSION = sh(returnStdout: true, script: 'echo $NODE_LABELS | sed -n \'s/^.*\\(smartos[^ ]*\\).*/\\1/p\' | awk -F\'_\' \'{print $2"."$3"."$4}\'').trim()
 
         //upload
         
