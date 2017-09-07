@@ -45,9 +45,9 @@ for (x in labels) {
 parallel builders
 
 
-def build = { string GIT_BRANCH ->
+def build (String git_branch) ->
     SUFFIX = ""
-    if (GIT_BRANCH != 'origin/master'){
+    if (git_branch != 'origin/master'){
     	SUFFIX = '''
     		export SUFFIX=$(/opt/local/bin/erl -noshell -eval '{{Y, MM, D}, {H, M, S}} = calendar:universal_time(), io:format("pre~4.10.0B~2.10.0B~2.10.0B~2.10.0B~2.10.0B~2.10.0B", [Y, MM, D, H, M, S]),init:stop()');
     	'''
