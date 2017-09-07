@@ -24,7 +24,7 @@ for (x in labels) {
         	'''
         }
 
-        def exec """
+        def EXEC ="""
     		export PORTABLE=1
 			export TERM=dumb
 			export GPG_KEY=BB975564
@@ -32,7 +32,7 @@ for (x in labels) {
 			/opt/local/bin/make package 
 		"""
 
-		sh exec
+		sh EXEC
 
         //create info file
         sh '''
