@@ -50,7 +50,7 @@ for (x in labels) {
         //upload
         
         withAWS(region:'us-east-2', credentials:'FifoS3-d54ea704-b99e-4fd1-a9ec-2a3c50e3f2a9') {
-        	s3Upload(file:'rel/pkg/artifacts/', bucket:'release-test.project-fifo.net', path:'pkg/${DS_VERSION}/dev/')
+        	s3Upload(file:'rel/pkg/artifacts/', bucket:'release-test.project-fifo.net', path:"pkg/${DS_VERSION}/dev/")
     		// do something
 		}
       }
