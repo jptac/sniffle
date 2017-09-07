@@ -43,9 +43,7 @@ for (x in labels) {
         '''
 
         //find ds version
-        DS_VERSION = sh(returnStdout: true, script: '''
-        	echo $NODE_LABELS | sed -n 's/^.*\(smartos[^ ]*\).*/\1/p' | awk -F'_' '{print $2"."$3"."$4}'
-        	''').trim()
+        DS_VERSION = sh(returnStdout: true, script: 'echo $NODE_LABELS | sed -n \'s/^.*\(smartos[^ ]*\).*/\1/p\' | awk -F\'_\' \'{print $2"."$3"."$4}\'').trim()
 
         //upload
         
