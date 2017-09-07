@@ -43,10 +43,8 @@ for (x in labels) {
 }
 
 try {
-	stage ('Fan out'){
-		parallel builders
-		notify("SUCCESSFUL")
-	}
+	parallel builders
+	notify("SUCCESSFUL")
 } catch(err) {
   notify("FAILURE")
   throw err
