@@ -29,9 +29,13 @@ for (x in labels) {
         '''
 */
         //find ds version
-        Pattern pattern = Pattern.compile("smartos_dataset_([^ ]+)");
-		Matcher matcher = pattern.matcher(env.NODE_LABELS)
-    	def DS_VERSION = matcher.group(1);
+    //     def matcher = readFile('pom.xml') =~ '<version>(.+)</version>'
+	//	  if (matcher) {
+	//	    echo "Building version ${matcher[0][1]}"
+	//	  }
+    //   Pattern pattern = Pattern.compile("smartos_dataset_([^ ]+)");
+		Matcher matcher = env.NODE_LABELS =~ 'smartos_dataset_([^ ]+)'
+    	def DS_VERSION = matcher[0][0];
 
       //  def DS_VERSION = Pattern.compile(/smartos_dataset_([^ ]+)/).matcher(env.NODE_LABELS).find()
 
