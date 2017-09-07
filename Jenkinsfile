@@ -1,5 +1,5 @@
 #!/usr/bin/env groovy
-def labels = ["smartos_dataset_15.4.1","smartos_dataset_16.4.0"]
+def labels = ["smartos_dataset_15.4.1"]
 def builders = [:]
 
 
@@ -43,7 +43,9 @@ for (x in labels) {
 }
 
 try {
-	parallel builders
+	timeout(time=5, unit=MINUTES){
+		parallel builders
+	}
 	notify("SUCCESSFUL")
 } catch(err) {
   notify("FAILURE")
