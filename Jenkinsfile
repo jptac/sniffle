@@ -11,15 +11,14 @@ for (x in labels) {
       node(label) {
       	"Cleanup" : {
         	deleteDir()
-    	}
+    	},
         "Checkout" : {
         	checkout scm
         	BRANCH = sh(returnStdout: true, script: 'git rev-parse --abbrev-ref HEAD').trim()
-    	}
+    	},
         "Build" : {
         	build(BRANCH)
-        }
-
+        },
         "Upload" : {
 			//find ds version
 			def matcher = env.NODE_LABELS =~ 'smartos_dataset_([^ ]+)'
