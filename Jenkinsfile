@@ -25,13 +25,23 @@ for (x in labels) {
         }
         
         stage ('Upload'){
+
 			def matcher = env.NODE_LABELS =~ 'smartos_dataset_([^ ]+)'
 	    	DS_VERSION = matcher[0][1];
 	    	matcher = null
 
-	        withAWS(region:'us-east-2', credentials:'FifoS3-d54ea704-b99e-4fd1-a9ec-2a3c50e3f2a9') {
-	        	s3Upload(file:'rel/pkg/artifacts/', bucket:'release-test.project-fifo.net', path:"pkg/${DS_VERSION}/dev/")
-			}
+        	if (BRANCH != 'origin/dev'){
+        		withAWS(region:'us-east-2', credentials:'FifoS3-d54ea704-b99e-4fd1-a9ec-2a3c50e3f2a9') {
+	        		s3Upload(file:'rel/pkg/artifacts/', bucket:'release-test.project-fifo.net', path:"pkg/${DS_VERSION}/dev/")
+				}
+        	}
+        	else if (BRANCH != 'origin/master'){
+        		withAWS(region:'us-east-2', credentials:'FifoS3-d54ea704-b99e-4fd1-a9ec-2a3c50e3f2a9') {
+	        		s3Upload(file:'rel/pkg/artifacts/', bucket:'release-test.project-fifo.net', path:"pkg/${DS_VERSION}/rel/")
+				}
+        	}
+        	//No else because we dont publish anything besides dev/rel
+
         }
 
         stage ('BuildNotify'){
