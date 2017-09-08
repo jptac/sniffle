@@ -2,8 +2,6 @@
 def labels = ["smartos_dataset_15.4.1"]
 def builders = [:]
 
-TAG = sh(returnStdout: true, script: 'git describe --tags').trim()
-
 
 for (x in labels) {
     def label = x // Need to bind the label variable before the closure - can't do 'for (label in labels)'
