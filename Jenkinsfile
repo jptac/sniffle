@@ -3,6 +3,7 @@ def labels = ["smartos_dataset_15.4.1"]
 def builders = [:]
 
 def s3bucket = 'release-test.project-fifo.net'
+def s3Region = 'us-east-2'
 
 properties([[$class: 'BuildDiscarderProperty', 
 		strategy: [
@@ -42,12 +43,12 @@ for (x in labels) {
 	    	matcher = null
 
         	if (BRANCH != 'origin/dev'){
-        		withAWS(region:'us-east-2', credentials:'FifoS3-d54ea704-b99e-4fd1-a9ec-2a3c50e3f2a9') {
+        		withAWS(region: s3Region, credentials:'FifoS3-d54ea704-b99e-4fd1-a9ec-2a3c50e3f2a9') {
 	        		s3Upload(file:'rel/pkg/artifacts/', bucket:s3bucket, path:"pkg/${DS_VERSION}/dev/")
 				}
         	}
         	else if (BRANCH != 'origin/master'){
-        		withAWS(region:'us-east-2', credentials:'FifoS3-d54ea704-b99e-4fd1-a9ec-2a3c50e3f2a9') {
+        		withAWS(region: s3Region, credentials:'FifoS3-d54ea704-b99e-4fd1-a9ec-2a3c50e3f2a9') {
 	        		s3Upload(file:'rel/pkg/artifacts/', bucket:s3bucket, path:"pkg/${DS_VERSION}/rel/")
 				}
         	}
