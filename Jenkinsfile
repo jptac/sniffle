@@ -54,10 +54,6 @@ for (x in labels) {
         	//No else because we dont publish anything besides dev/rel
 
         }
-
-        stage ('BuildNotify'){
-
-        }
 		
       }
     }
