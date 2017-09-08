@@ -2,6 +2,15 @@
 def labels = ["smartos_dataset_15.4.1"]
 def builders = [:]
 
+properties([[$class: 'BuildDiscarderProperty', 
+		strategy: [
+		$class: 'LogRotator', 
+		artifactDaysToKeepStr: '', 
+		artifactNumToKeepStr: '', 
+		daysToKeepStr: '', 
+		numToKeepStr: '10']
+	]]);
+
 
 for (x in labels) {
     def label = x // Need to bind the label variable before the closure - can't do 'for (label in labels)'
@@ -64,10 +73,9 @@ try {
 
 
 
-
-
-
 def build (String git_branch) {
+	sh 'git fetch --tags'
+
     SUFFIX = ""
     if (git_branch != 'origin/master'){
     	SUFFIX = '''
