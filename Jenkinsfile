@@ -22,6 +22,10 @@ for (x in labels) {
     builders[label] = {
       node(label) {
 
+      	def matcher = env.NODE_LABELS =~ 'smartos_dataset_([^ ]+)'
+	    DS_VERSION = matcher[0][1];
+	    matcher = null
+
         stage ('Clean Workspace'){
         	deleteDir()
         }
@@ -38,10 +42,6 @@ for (x in labels) {
         
         stage ('Upload'){
 
-			def matcher = env.NODE_LABELS =~ 'smartos_dataset_([^ ]+)'
-	    	DS_VERSION = matcher[0][1];
-	    	matcher = null
-
         	if (BRANCH == 'origin/dev'){
         		withAWS(region: s3Region, credentials:'FifoS3-d54ea704-b99e-4fd1-a9ec-2a3c50e3f2a9') {
 	        		s3Upload(file:'rel/pkg/artifacts/', bucket:s3bucket, path:"pkg/${DS_VERSION}/dev/")
@@ -55,13 +55,21 @@ for (x in labels) {
         	//No else because we dont publish anything besides dev/rel
 
         }
-      //  stage ('Publish'){
+        stage ('Publish'){
+        	if (BRANCH == 'origin/dev'){
+        		publish ('dev', DS_VERSION)
+        	}
+        	else if (BRANCH == 'origin/master'){
+        		publish ('rel', DS_VERSION)
+        	}
+        	
+
         	//(
        // 	s3cmd ls s3://release-info.project-fifo.net/pkg/15.4.1/dev/ | awk '{print $4}' | xargs -L1 -I {} s3cmd --no-progress get {} - 2>/dev/null) | bzip2 > fifo.15.4.1.dev.bz2
 		//	s3cmd put fifo.15.4.1.dev.bz2 s3://release.project-fifo.net/pkg/15.4.1/dev/pkg_summary.bz2
 
 
-       // }
+        }
 		
       }
     }
@@ -100,6 +108,15 @@ def build (String git_branch) {
     	cp rel/pkg/*.tgz rel/pkg/artifacts
 		mkdir -p rel/pkg/info
 		pkg_info -X rel/pkg/*.tgz > rel/pkg/info/\$(pkg_info -X rel/pkg/*.tgz | awk -F "=" '/FILE_NAME/ {print \$2}')
+	"""
+
+	sh EXEC
+}
+
+def publish (String rel_dir ,String ds_version) {
+	def EXEC ="""
+	s3cmd ls s3://release-info.project-fifo.net/pkg/${ds_version}/${rel_dir}/ | awk '{print $4}' | xargs -L1 -I {} s3cmd --no-progress get {} - 2>/dev/null) | bzip2 > pkgsummary.bz2
+	s3cmd put pkgsummary.bz2 s3://release.project-fifo.net/pkg/${ds_version}/${rel_dir}/pkg_summary.bz2
 	"""
 
 	sh EXEC
