@@ -22,10 +22,6 @@ for (x in labels) {
     builders[label] = {
       node(label) {
 
-      	def matcher = env.NODE_LABELS =~ 'smartos_dataset_([^ ]+)'
-	    DS_VERSION = matcher[0][1];
-	    matcher = null
-
         stage ('Clean Workspace'){
         	deleteDir()
         }
@@ -35,6 +31,9 @@ for (x in labels) {
         }
         
         BRANCH = sh(returnStdout: true, script: 'git rev-parse --abbrev-ref HEAD').trim()
+        def matcher = env.NODE_LABELS =~ 'smartos_dataset_([^ ]+)'
+	    DS_VERSION = matcher[0][1];
+	    matcher = null
 
         stage ('Build'){
 			build(BRANCH)
