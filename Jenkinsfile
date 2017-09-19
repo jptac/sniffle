@@ -66,7 +66,7 @@ try {
 		parallel builders
 	}
 	timeout(time: 5, unit: 'MINUTES'){
-		node {
+		node('s3') {
 			build 'FifoPackage'
 		}
 	}
