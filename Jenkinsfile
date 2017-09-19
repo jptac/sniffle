@@ -58,6 +58,8 @@ for (x in labels) {
 		
       }
     }
+
+    build 'FifoPackage'
 }
 
 try {
