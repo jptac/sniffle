@@ -57,10 +57,15 @@ for (x in labels) {
         }
         stage ('Publish'){
         	if (BRANCH == 'origin/dev'){
+        		echo 'publishing dev'
         		publish ('dev', DS_VERSION)
         	}
         	else if (BRANCH == 'origin/master'){
+        		echo 'publishing rel'
         		publish ('rel', DS_VERSION)
+        	}
+        	else {
+        		echo 'Skipping publish'
         	}
         }
       }
