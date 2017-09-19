@@ -66,6 +66,7 @@ for (x in labels) {
         	}
         	else {
         		echo 'Skipping publish'
+        		echo BRANCH
         	}
         }
       }
