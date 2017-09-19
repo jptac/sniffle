@@ -62,18 +62,9 @@ for (x in labels) {
         	else if (BRANCH == 'origin/master'){
         		publish ('rel', DS_VERSION)
         	}
-        	
-
-        	//(
-       // 	s3cmd ls s3://release-info.project-fifo.net/pkg/15.4.1/dev/ | awk '{print $4}' | xargs -L1 -I {} s3cmd --no-progress get {} - 2>/dev/null) | bzip2 > fifo.15.4.1.dev.bz2
-		//	s3cmd put fifo.15.4.1.dev.bz2 s3://release.project-fifo.net/pkg/15.4.1/dev/pkg_summary.bz2
-
-
         }
-		
       }
     }
- 
 }
 
 try {
@@ -113,7 +104,7 @@ def build (String git_branch) {
 	sh EXEC
 }
 
-def publish (String rel_dir, String ds_version) {
+def publish(String rel_dir, String ds_version) {
 	def EXEC ="""
 		s3cmd ls s3://release-info.project-fifo.net/pkg/${ds_version}/${rel_dir}/ | awk '{print \$4}' | xargs -L1 -I {} s3cmd --no-progress get {} - 2>/dev/null) | bzip2 > pkgsummary.bz2
 		s3cmd put pkgsummary.bz2 s3://release.project-fifo.net/pkg/${ds_version}/${rel_dir}/pkg_summary.bz2
