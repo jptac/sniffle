@@ -105,8 +105,6 @@ def build (String git_branch) {
 	sh EXEC
 }
 
-def 
-
 def notify(String buildStatus) {
   // build status of null means successful
   buildStatus =  buildStatus ?: 'SUCCESSFUL'
