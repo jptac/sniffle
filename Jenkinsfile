@@ -66,7 +66,9 @@ try {
 		parallel builders
 	}
 	timeout(time: 5, unit: 'MINUTES'){
-		build 'FifoPackage'
+		node {
+			build 'FifoPackage'
+		}
 	}
 	notify("SUCCESSFUL")
 } catch(err) {
