@@ -42,12 +42,12 @@ for (x in labels) {
 	    	DS_VERSION = matcher[0][1];
 	    	matcher = null
 
-        	if (BRANCH != 'origin/dev'){
+        	if (BRANCH == 'origin/dev'){
         		withAWS(region: s3Region, credentials:'FifoS3-d54ea704-b99e-4fd1-a9ec-2a3c50e3f2a9') {
 	        		s3Upload(file:'rel/pkg/artifacts/', bucket:s3bucket, path:"pkg/${DS_VERSION}/dev/")
 				}
         	}
-        	else if (BRANCH != 'origin/master'){
+        	else if (BRANCH == 'origin/master'){
         		withAWS(region: s3Region, credentials:'FifoS3-d54ea704-b99e-4fd1-a9ec-2a3c50e3f2a9') {
 	        		s3Upload(file:'rel/pkg/artifacts/', bucket:s3bucket, path:"pkg/${DS_VERSION}/rel/")
 				}
@@ -55,6 +55,13 @@ for (x in labels) {
         	//No else because we dont publish anything besides dev/rel
 
         }
+      //  stage ('Publish'){
+        	//(
+       // 	s3cmd ls s3://release-info.project-fifo.net/pkg/15.4.1/dev/ | awk '{print $4}' | xargs -L1 -I {} s3cmd --no-progress get {} - 2>/dev/null) | bzip2 > fifo.15.4.1.dev.bz2
+		//	s3cmd put fifo.15.4.1.dev.bz2 s3://release.project-fifo.net/pkg/15.4.1/dev/pkg_summary.bz2
+
+
+       // }
 		
       }
     }
@@ -64,11 +71,6 @@ for (x in labels) {
 try {
 	timeout(time: 15, unit: 'MINUTES'){
 		parallel builders
-	}
-	timeout(time: 5, unit: 'MINUTES'){
-		node('s3') {
-			build 'FifoPackage'
-		}
 	}
 	notify("SUCCESSFUL")
 } catch(err) {
@@ -103,6 +105,7 @@ def build (String git_branch) {
 	sh EXEC
 }
 
+def 
 
 def notify(String buildStatus) {
   // build status of null means successful
