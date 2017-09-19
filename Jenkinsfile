@@ -58,13 +58,17 @@ for (x in labels) {
 		
       }
     }
-
-    build 'FifoPackage'
+ 
 }
 
 try {
 	timeout(time: 15, unit: 'MINUTES'){
 		parallel builders
+	}
+	timeout(time: 5, unit: 'MINUTES'){
+		node("fifo,s3"){
+			build 'FifoPackage'
+		}
 	}
 	notify("SUCCESSFUL")
 } catch(err) {
