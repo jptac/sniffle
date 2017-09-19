@@ -113,10 +113,10 @@ def build (String git_branch) {
 	sh EXEC
 }
 
-def publish (String rel_dir ,String ds_version) {
+def publish (String rel_dir, String ds_version) {
 	def EXEC ="""
-	s3cmd ls s3://release-info.project-fifo.net/pkg/${ds_version}/${rel_dir}/ | awk '{print $4}' | xargs -L1 -I {} s3cmd --no-progress get {} - 2>/dev/null) | bzip2 > pkgsummary.bz2
-	s3cmd put pkgsummary.bz2 s3://release.project-fifo.net/pkg/${ds_version}/${rel_dir}/pkg_summary.bz2
+		s3cmd ls s3://release-info.project-fifo.net/pkg/${ds_version}/${rel_dir}/ | awk '{print \$4}' | xargs -L1 -I {} s3cmd --no-progress get {} - 2>/dev/null) | bzip2 > pkgsummary.bz2
+		s3cmd put pkgsummary.bz2 s3://release.project-fifo.net/pkg/${ds_version}/${rel_dir}/pkg_summary.bz2
 	"""
 
 	sh EXEC
