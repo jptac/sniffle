@@ -48,7 +48,7 @@ for (x in labels) {
 	        		s3Upload(file:'rel/pkg/artifacts/', bucket:s3bucket, path:"${s3dirprefix}/${DS_VERSION}/dev/")
 				}
 				withAWS(region: s3region, credentials:'FifoS3-d54ea704-b99e-4fd1-a9ec-2a3c50e3f2a9') {
-	        		s3Upload(file:'rel/pkg/info/', bucket:s3bucket, path:"${s3dirprefix}/info/${DS_VERSION}/dev/")
+	        		s3Upload(file:'rel/pkg/info/', bucket:s3infobucket, path:"${s3dirprefix}/${DS_VERSION}/dev/")
 				}
         	}
         	else if (BRANCH == 'master'){
@@ -56,7 +56,7 @@ for (x in labels) {
 	        		s3Upload(file:'rel/pkg/artifacts/', bucket:s3bucket, path:"${s3dirprefix}/${DS_VERSION}/rel/")
 				}
 				withAWS(region: s3region, credentials:'FifoS3-d54ea704-b99e-4fd1-a9ec-2a3c50e3f2a9') {
-	        		s3Upload(file:'rel/pkg/info/', bucket:s3bucket, path:"${s3dirprefix}/info/${DS_VERSION}/rel/")
+	        		s3Upload(file:'rel/pkg/info/', bucket:s3infobucket, path:"${s3dirprefix}/${DS_VERSION}/rel/")
 				}
         	}
         	//No else because we dont publish anything besides dev/rel
