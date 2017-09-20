@@ -112,7 +112,7 @@ def build (String git_branch) {
 
 def publish(String rel_dir, String ds_version) {
 	def EXEC ="""
-		s3cmd ls s3://${s3infobucket}/pkg/${ds_version}/${rel_dir}/ | awk '{print \$4}' | xargs -L1 -I {} s3cmd --no-progress get {} - 2>/dev/null) | bzip2 > pkgsummary.bz2
+		(s3cmd ls s3://${s3infobucket}/pkg/${ds_version}/${rel_dir}/ | awk '{print \$4}' | xargs -L1 -I {} s3cmd --no-progress get {} - 2>/dev/null) | bzip2 > pkgsummary.bz2
 		s3cmd put pkgsummary.bz2 s3://${s3bucket}/pkg/${ds_version}/${rel_dir}/pkg_summary.bz2
 	"""
 
