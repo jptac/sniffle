@@ -42,12 +42,12 @@ for (x in labels) {
         
         stage ('Upload'){
 
-        	if (BRANCH == 'origin/dev'){
+        	if (BRANCH == 'dev'){
         		withAWS(region: s3Region, credentials:'FifoS3-d54ea704-b99e-4fd1-a9ec-2a3c50e3f2a9') {
 	        		s3Upload(file:'rel/pkg/artifacts/', bucket:s3bucket, path:"pkg/${DS_VERSION}/dev/")
 				}
         	}
-        	else if (BRANCH == 'origin/master'){
+        	else if (BRANCH == 'master'){
         		withAWS(region: s3Region, credentials:'FifoS3-d54ea704-b99e-4fd1-a9ec-2a3c50e3f2a9') {
 	        		s3Upload(file:'rel/pkg/artifacts/', bucket:s3bucket, path:"pkg/${DS_VERSION}/rel/")
 				}
@@ -56,11 +56,11 @@ for (x in labels) {
 
         }
         stage ('Publish'){
-        	if (BRANCH == 'origin/dev'){
+        	if (BRANCH == 'dev'){
         		echo 'publishing dev'
         		publish ('dev', DS_VERSION)
         	}
-        	else if (BRANCH == 'origin/master'){
+        	else if (BRANCH == 'master'){
         		echo 'publishing rel'
         		publish ('rel', DS_VERSION)
         	}
