@@ -2,9 +2,9 @@
 def labels = ["smartos_dataset_15.4.1"]
 def builders = [:]
 
-def s3bucket = 'release-test.project-fifo.net'
-def s3infobucket = 'release-info.project-fifo.net'
-def s3Region = 'us-east-2'
+s3bucket = 'release-test.project-fifo.net'
+s3infobucket = 'release-info.project-fifo.net'
+s3Region = 'us-east-2'
 
 properties([[$class: 'BuildDiscarderProperty', 
 		strategy: [
