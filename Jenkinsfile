@@ -31,7 +31,7 @@ for (x in labels) {
         	checkout scm
         }
         
-        BRANCH = sh(returnStdout: true, script: 'git rev-parse --abbrev-ref HEAD').trim()
+        BRANCH = sh(returnStdout: true, script: 'git ls-remote --heads origin | grep $(git rev-parse HEAD) | cut -d / -f 3').trim()
         def matcher = env.NODE_LABELS =~ 'smartos_dataset_([^ ]+)'
 	    DS_VERSION = matcher[0][1];
 	    matcher = null
