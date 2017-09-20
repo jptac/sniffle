@@ -4,7 +4,8 @@ def builders = [:]
 
 s3bucket = 'release-test.project-fifo.net'
 s3infobucket = 'release-info.project-fifo.net'
-s3Region = 'us-east-2'
+s3dirprefix = 'test/pkg'
+s3region = 'us-east-2'
 
 properties([[$class: 'BuildDiscarderProperty', 
 		strategy: [
@@ -43,13 +44,19 @@ for (x in labels) {
         stage ('Upload'){
 
         	if (BRANCH == 'dev'){
-        		withAWS(region: s3Region, credentials:'FifoS3-d54ea704-b99e-4fd1-a9ec-2a3c50e3f2a9') {
-	        		s3Upload(file:'rel/pkg/artifacts/', bucket:s3bucket, path:"pkg/${DS_VERSION}/dev/")
+        		withAWS(region: s3region, credentials:'FifoS3-d54ea704-b99e-4fd1-a9ec-2a3c50e3f2a9') {
+	        		s3Upload(file:'rel/pkg/artifacts/', bucket:s3bucket, path:"${s3dirprefix}/${DS_VERSION}/dev/")
+				}
+				withAWS(region: s3region, credentials:'FifoS3-d54ea704-b99e-4fd1-a9ec-2a3c50e3f2a9') {
+	        		s3Upload(file:'rel/pkg/info/', bucket:s3bucket, path:"${s3dirprefix}/${DS_VERSION}/dev/")
 				}
         	}
         	else if (BRANCH == 'master'){
-        		withAWS(region: s3Region, credentials:'FifoS3-d54ea704-b99e-4fd1-a9ec-2a3c50e3f2a9') {
-	        		s3Upload(file:'rel/pkg/artifacts/', bucket:s3bucket, path:"pkg/${DS_VERSION}/rel/")
+        		withAWS(region: s3region, credentials:'FifoS3-d54ea704-b99e-4fd1-a9ec-2a3c50e3f2a9') {
+	        		s3Upload(file:'rel/pkg/artifacts/', bucket:s3bucket, path:"${s3dirprefix}/${DS_VERSION}/rel/")
+				}
+				withAWS(region: s3region, credentials:'FifoS3-d54ea704-b99e-4fd1-a9ec-2a3c50e3f2a9') {
+	        		s3Upload(file:'rel/pkg/info/', bucket:s3bucket, path:"${s3dirprefix}/${DS_VERSION}/rel/")
 				}
         	}
         	//No else because we dont publish anything besides dev/rel
@@ -112,8 +119,8 @@ def build (String git_branch) {
 
 def publish(String rel_dir, String ds_version) {
 	def EXEC ="""
-		(s3cmd ls s3://${s3infobucket}/pkg/${ds_version}/${rel_dir}/ | awk '{print \$4}' | xargs -L1 -I {} s3cmd --no-progress get {} - 2>/dev/null) | bzip2 > pkgsummary.bz2
-		s3cmd put pkgsummary.bz2 s3://${s3bucket}/pkg/${ds_version}/${rel_dir}/pkg_summary.bz2
+		(s3cmd ls s3://${s3infobucket}/{s3dirprefix}/${ds_version}/${rel_dir}/ | awk '{print \$4}' | xargs -L1 -I {} s3cmd --no-progress get {} - 2>/dev/null) | bzip2 > pkgsummary.bz2
+		s3cmd put pkgsummary.bz2 s3://${s3bucket}/{s3dirprefix}/${ds_version}/${rel_dir}/pkg_summary.bz2
 	"""
 
 	sh EXEC
