@@ -2,7 +2,7 @@
 def labels = ["smartos_dataset_15.4.1"]
 def builders = [:]
 
-s3bucket = 'release-test.project-fifo.net'
+s3bucket = 'release.project-fifo.net'
 s3infobucket = 'release-info.project-fifo.net'
 s3dirprefix = 'test/pkg'
 s3region = 'us-east-2'
